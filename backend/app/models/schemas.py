@@ -8,7 +8,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, computed_field, Field
 
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
@@ -79,6 +79,9 @@ class CosmosNode(BaseModel):
 class CosmosData(BaseModel):
     nodes: list[CosmosNode] = Field(default_factory=list)
     unlocked_sectors: list[str] = Field(default_factory=lambda: ["sector_0"])
+    # Read-only projection exposed by the API so the frontend can gate which
+    # nodes are assaultable given the user's current XP. Not stored to disk.
+    user_xp: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -136,19 +139,21 @@ class Exam(BaseModel):
     duration_seconds: int = Field(default=0, ge=0)
     created_at: str = ""
 
-    # Derived metrics — excluded from serialization.
-    model_config = {"populate_by_name": True}
+    # Derived metrics — computed on serialization via @computed_field.
 
+    @computed_field
     @property
     def total(self) -> int:
         """Total answered items (correct + incorrect)."""
         return self.correct + self.incorrect
 
+    @computed_field
     @property
     def net(self) -> float:
         """YKS net score: correct minus 1/4 penalty on each incorrect."""
         return self.correct - (self.incorrect / 4.0)
 
+    @computed_field
     @property
     def xp(self) -> int:
         """XP earned from this exam. See core/formulas.py."""

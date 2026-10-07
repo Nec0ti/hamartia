@@ -11,10 +11,11 @@ import json
 import logging
 from pathlib import Path
 
-from openai import AsyncOpenAI, OpenAIError
+from openai import AsyncOpenAI, OpenAI, OpenAIError
 
+from app.core.config import DATA_DIR
 from app.core.formulas import net_score
-from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question
+from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
 
 logger = logging.getLogger("hamartia.ai")
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -58,6 +59,17 @@ class AIService:
         self.client = OpenAI(base_url=base_url, api_key=self.api_key) if sync_client else None
         self._async_client: AsyncOpenAI | None = None
 
+    @classmethod
+    def default(cls) -> "AIService":
+        """Factory for the default sync-backed council engine."""
+        settings = Settings()
+        return cls(
+            base_url=settings.litellm_base_url,
+            model_name=settings.model_name,
+            api_key=settings.api_key,
+            sync_client=True,
+        )
+
     # -- lifecycle ----------------------------------------------------------
 
     async def _ensure_async(self) -> AsyncOpenAI:
@@ -67,8 +79,6 @@ class AIService:
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"AIService(model={self.model_name!r}, base={self.base_url!r})"
-
-    # -- council pipeline ---------------------------------------------------
 
     async def analyze_question(self, question: Question) -> CouncilAnalysis:
         """Run the full council over a question and attach the verdict."""
@@ -143,3 +153,10 @@ class AIService:
             if cleaned.lower() in allowed.lower():
                 return allowed
         return TAGS[0]
+
+
+# Shared dependency provider so routers can request the default council engine
+# without manually constructing it.
+def get_ai() -> AIService:
+    """Return the default sync-backed council engine (singleton)."""
+    return AIService.default()

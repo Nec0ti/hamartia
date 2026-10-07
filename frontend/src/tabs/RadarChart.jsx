@@ -21,7 +21,9 @@ export default function RadarChart({ radar }) {
   if (!radar)
     return (
       <Panel>
-        <Empty>No radar data yet</Empty>
+        <div className="flex items-center justify-center h-48 text-zinc-500 text-xs">
+          No radar data recorded yet.
+        </div>
       </Panel>
     )
 
@@ -72,7 +74,6 @@ export default function RadarChart({ radar }) {
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      <Legend />
     </Panel>
   )
 }

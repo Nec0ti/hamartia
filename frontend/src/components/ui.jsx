@@ -55,7 +55,7 @@ export function Toggle({ value, options, onChange }) {
                 : 'text-canvas-muted hover:text-canvas-text',
             ].join(' ')}
           >
-            {active && <Icon size={12} className="inline mr-1" />}
+            {active && (Icon && typeof Icon === 'function' ? <Icon size={12} className="inline mr-1" /> : null)}
             {opt.label}
           </button>
         )

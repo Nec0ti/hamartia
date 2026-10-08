@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   FileQuestion,
@@ -22,23 +22,25 @@ const TABS = [
  * Top navigation bar. Renders the four primary tabs, a collapsible Settings
  * trigger, and a live XP/Level badge driven by the user.json datastore.
  */
-export default function Navbar({ activeTab, onSelectTab }) {
+export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
   const [profile, setProfile] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const load = async () => {
+  // Progression profile (XP, level, radar) is stored in /user, not /settings.
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.settings.get()
-      const level = levelForXp(data.total_xp ?? 0)
+      const data = await api.user.get()
+      const level = data.level ?? levelForXp(data.total_xp ?? 0)
       setProfile({
         total_xp: data.total_xp ?? 0,
         level,
         progress: xpProgress(data.total_xp ?? 0, level),
         nextThreshold: xpToNextLevel(level),
+        radar: data.radar_stats ?? { speed: 50, focus: 50, precision: 50, stamina: 50 },
       })
     } catch (e) {
       const res = handleApiError(e)
@@ -46,14 +48,12 @@ export default function Navbar({ activeTab, onSelectTab }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  // Debounced reload after settings edits so the badge updates live.
-  if (settingsOpen) {
-    const t = setTimeout(load, 500)
+  useEffect(() => {
+    load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    return null
-  }
+  }, [])
 
   const badge = profile
     ? { xp: profile.total_xp, level: profile.level, progress: profile.progress, next: profile.nextThreshold }
@@ -125,7 +125,10 @@ export default function Navbar({ activeTab, onSelectTab }) {
 
           <button
             type="button"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              setSettingsOpen(true)
+              onOpenSettings?.()
+            }}
             className="relative rounded-lg border border-canvas-line bg-canvas-base p-2 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
             aria-label="Open settings"
           >

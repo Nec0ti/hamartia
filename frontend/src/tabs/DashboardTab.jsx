@@ -48,10 +48,10 @@ export default function DashboardTab({ onUploadQuestion }) {
     setLoading(true)
     setError(null)
     try {
-      const [ex, prof] = await Promise.all([api.exams.list(), api.settings.get()])
+      const [ex, prof] = await Promise.all([api.exams.list(), api.user.get()])
       setExams(ex)
       setProfile({
-        level: levelForXp(prof.total_xp ?? 0),
+        level: prof.level ?? levelForXp(prof.total_xp ?? 0),
         radar: prof.radar_stats ?? { speed: 50, focus: 50, precision: 50, stamina: 50 },
       })
     } catch (e) {

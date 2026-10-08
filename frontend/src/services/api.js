@@ -78,6 +78,13 @@ export const agent = {
   },
 }
 
+/* -------------------------------- user / profile ----------------------- */
+
+export const user = {
+  get: () => client.get('/user').then((r) => r.data),
+  update: (payload) => client.patch('/user', payload).then((r) => r.data),
+}
+
 /* -------------------------------- settings ------------------------------- */
 
 export const settings = {

@@ -1,0 +1,32 @@
+{
+  "id": "b159e266b",
+  "name": "vite dev server",
+  "command": "npm run dev -- --host 127.0.0.1",
+  "description": "Start Vite dev server for browser smoke test",
+  "status": "failed",
+  "outputPath": ".pi\\tasks\\01a11c5a-5844-7384-a7f8-7e93daaea0f7-7500\\b159e266b.output",
+  "cwd": "C:\\Users\\PC\\Desktop\\hamartia",
+  "startTime": 1791478851667,
+  "endTime": 1791478852083,
+  "exitCode": 1,
+  "signal": null,
+  "pid": 10128,
+  "bytesWritten": 236,
+  "isAgent": false,
+  "surviveReload": false,
+  "error": "Exited with code 1",
+  "notified": true,
+  "notifyOnCompletion": true,
+  "triggerOnCompletion": true,
+  "timeoutSeconds": 300,
+  "shellPolicy": {
+    "policy": "cmd",
+    "executable": "C:\\WINDOWS\\system32\\cmd.exe",
+    "argvPrefix": [
+      "/d",
+      "/s",
+      "/c"
+    ],
+    "dialect": "cmd"
+  }
+}

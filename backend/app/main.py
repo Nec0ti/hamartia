@@ -43,6 +43,9 @@ app.add_middleware(
 # Order matters: more specific routes must be registered before broader ones.
 app.include_router(exams.router)
 app.include_router(questions.router)
+# 'user' is imported via __import__: the name shadows a Python stdlib module,
+# which breaks a plain `from app.api import user`.
+app.include_router(__import__("app.api.user", fromlist=["router"]).router)
 app.include_router(cosmos.router)
 app.include_router(agent.router)
 app.include_router(settings.router)

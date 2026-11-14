@@ -186,7 +186,18 @@ class ExamCreate(BaseModel):
     incorrect: int = Field(ge=0)
     blank: int = Field(ge=0)
     duration_minutes: int = Field(default=0, ge=0)
-    duration_seconds: int = Field(default=0, ge=0)
+    duration_seconds: int = Field(default=0, ge=0, lt=60)
+
+    @field_validator("date")
+    @classmethod
+    def require_iso_date(cls, value: str) -> str:
+        try:
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("date must use YYYY-MM-DD") from exc
+        if parsed.strftime("%Y-%m-%d") != value:
+            raise ValueError("date must use YYYY-MM-DD")
+        return value
 
     @field_validator("subject")
     @classmethod

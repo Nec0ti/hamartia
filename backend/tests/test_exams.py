@@ -121,6 +121,10 @@ class ExamFlowTests(unittest.TestCase):
             ExamCreate(**{**base, "subject": "   "})
         with self.assertRaises(ValidationError):
             ExamCreate(**{**base, "correct": -1})
+        with self.assertRaises(ValidationError):
+            ExamCreate(**{**base, "date": "2026-02-30"})
+        with self.assertRaises(ValidationError):
+            ExamCreate(**{**base, "duration_seconds": 60})
 
 
 if __name__ == "__main__":

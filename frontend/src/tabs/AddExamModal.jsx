@@ -74,6 +74,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit })
             <input
               type="number"
               min={0}
+              max={59}
               value={form.duration_seconds}
               onChange={(e) => set('duration_seconds', Math.max(0, Number(e.target.value) || 0))}
               className={inputCls}

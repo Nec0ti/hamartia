@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtInt, fmtNet, subjectLabel } from '../src/utils/formatters.js'
+import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtDate, fmtInt, fmtNet, subjectLabel } from '../src/utils/formatters.js'
 
 test('net score applies the YKS quarter penalty', () => {
   assert.equal(netScore(3, 2), 2.5)
@@ -41,4 +41,11 @@ test('subject display fallback can follow the selected language', () => {
   assert.equal(subjectLabel('', 'Unlabelled'), 'Unlabelled')
   assert.equal(subjectLabel('', 'Etiketsiz'), 'Etiketsiz')
   assert.equal(subjectLabel('Matematik', 'Unlabelled'), 'Matematik')
+})
+
+test('date display follows the selected locale and stays on the calendar date', () => {
+  assert.equal(fmtDate('2026-11-14', 'en-US'), 'Nov 14, 2026')
+  assert.equal(fmtDate('2026-11-14', 'tr-TR'), '14 Kas 2026')
+  assert.equal(fmtDate('2026-11-14', 'tr-TR', { month: 'numeric', day: 'numeric' }), '14/11')
+  assert.equal(fmtDate('invalid', 'en-US'), 'invalid')
 })

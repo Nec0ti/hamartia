@@ -65,17 +65,17 @@ export function Toggle({ value, options, onChange }) {
 }
 
 /** Minimal select for subject filtering. */
-export function SubjectSelect({ value, options, onChange }) {
+export function SubjectSelect({ value, options, onChange, allLabel = 'All subjects', ariaLabel = 'Subject filter for net trend' }) {
   return (
     <select
-      aria-label="Net değişimi ders filtresi"
+      aria-label={ariaLabel}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-1.5 text-xs text-canvas-text outline-none transition hover:bg-canvas-raise"
     >
       {options.map((s) => (
         <option key={s} value={s} className="bg-canvas-panel">
-          {s === 'all' ? 'Tüm dersler' : s}
+          {s === 'all' ? allLabel : s}
         </option>
       ))}
     </select>

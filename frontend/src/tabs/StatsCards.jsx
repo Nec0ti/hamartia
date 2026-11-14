@@ -6,23 +6,20 @@ import {
   Flame,
 } from 'lucide-react'
 import { fmtInt, fmtNet } from '../utils/formatters'
+import { useI18n } from '../i18n.jsx'
 
 const CARDS = [
-  { label: 'Deneme sayısı', value: (p) => fmtInt(p.total), icon: GraduationCap, tone: 'text-canvas-indigo' },
-  { label: 'Ortalama net', value: (p) => fmtNet(p.avgNet), icon: Target, tone: 'text-emerald' },
-  { label: 'Toplam XP', value: (p) => fmtInt(p.totalXp), icon: Zap, tone: 'text-canvas-cyan' },
-  { label: 'Seviye', value: (p) => p.level, icon: Shield, tone: 'text-amber' },
-  { label: 'Günlük seri', value: (p) => fmtInt(p.streakDays), icon: Flame, tone: 'text-orange' },
+  { label: 'dashboard.stat.examCount', value: (p, locale) => fmtInt(p.total, locale), icon: GraduationCap, tone: 'text-canvas-indigo' },
+  { label: 'dashboard.stat.averageNet', value: (p, locale) => fmtNet(p.avgNet, locale), icon: Target, tone: 'text-emerald' },
+  { label: 'dashboard.stat.totalXp', value: (p, locale) => fmtInt(p.totalXp, locale), icon: Zap, tone: 'text-canvas-cyan' },
+  { label: 'dashboard.stat.level', value: (p, locale) => fmtInt(p.level, locale), icon: Shield, tone: 'text-amber' },
+  { label: 'dashboard.stat.dailyStreak', value: (p, locale) => fmtInt(p.streakDays, locale), icon: Flame, tone: 'text-orange' },
 ]
 
 /** Five stat cards across the top of the dashboard. */
 export default function StatsCards({ profile, stats, examType = 'all' }) {
-  const examLabel = {
-    all: 'Deneme sayısı',
-    tyt: 'Deneme sayısı · TYT',
-    ayt: 'Deneme sayısı · AYT',
-    branch: 'Deneme sayısı · Branş',
-  }[examType]
+  const { t, locale } = useI18n()
+  const examLabel = t({ all: 'dashboard.stat.examCount', tyt: 'dashboard.stat.examCountTyt', ayt: 'dashboard.stat.examCountAyt', branch: 'dashboard.stat.examCountBranch' }[examType])
   const values = {
     ...stats,
     totalXp: profile?.totalXp ?? 0,
@@ -41,11 +38,11 @@ export default function StatsCards({ profile, stats, examType = 'all' }) {
             <div className="flex items-center gap-2 text-canvas-muted">
               <Icon size={14} />
               <span className="text-xs font-medium uppercase tracking-wider">
-                {card.label === 'Deneme sayısı' ? examLabel : card.label}
+                {card.label === 'dashboard.stat.examCount' ? examLabel : t(card.label)}
               </span>
             </div>
             <div className="mt-2 text-2xl font-bold text-canvas-text">
-              {card.value(values)}
+              {card.value(values, locale)}
             </div>
           </div>
         )

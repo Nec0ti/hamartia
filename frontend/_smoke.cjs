@@ -42,6 +42,13 @@ async function main() {
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
+    const seedResponse = await fetch(`${apiUrl}/exams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-11-14', exam_type: 'branch', subject: 'Matematik', duration_minutes: 30, correct: 30, incorrect: 4, blank: 2 }),
+    })
+    assert.equal(seedResponse.ok, true, `Locale fixture failed: ${await seedResponse.text()}`)
+    const localeExam = await seedResponse.json()
     browser = await chromium.launch({
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
@@ -70,7 +77,39 @@ async function main() {
 
     const started = performance.now()
     await page.goto(baseUrl, { waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
+    assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
+    await page.getByRole('cell', { name: 'Nov 14, 2026' }).waitFor()
+    await page.getByRole('img', { name: 'Net trend · All subjects' }).waitFor()
+    await page.getByRole('img', { name: 'Performance radar: speed, focus, precision, and stamina' }).waitFor()
+    await page.getByText('11/14', { exact: true }).waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'fr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
+    await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.getByRole('button', { name: 'My Mistakes' }).click()
+    await page.getByRole('heading', { name: 'Missed questions' }).waitFor()
+    await page.getByRole('button', { name: 'Dashboard' }).click()
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.getByRole('button', { name: 'Open settings' }).click()
+    await page.getByLabel('Language').selectOption('tr')
+    await page.waitForFunction(() => document.documentElement.lang === 'tr' && localStorage.getItem('hamartia.language') === 'tr')
+    assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
     await page.getByRole('heading', { name: 'Genel bakış' }).waitFor()
+    assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
+    await page.getByRole('cell', { name: '14 Kas 2026' }).waitFor()
+    await page.getByRole('img', { name: 'Net değişimi · Tüm dersler' }).waitFor()
+    await page.getByRole('img', { name: 'Performans radarı: hız, odak, isabet ve dayanıklılık' }).waitFor()
+    await page.getByText('14/11', { exact: true }).waitFor()
+    const deleteFixture = await fetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
+    assert.equal(deleteFixture.ok, true, `Locale fixture cleanup failed: ${await deleteFixture.text()}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByText('Henüz deneme kaydı yok.').waitFor()
     assert.equal(await page.getByText('Cannot read properties of undefined', { exact: false }).count(), 0)
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     await page.getByRole('heading', { name: 'Şimdi çöz' }).waitFor()

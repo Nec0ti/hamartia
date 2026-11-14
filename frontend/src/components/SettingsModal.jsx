@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Download, Save, X } from 'lucide-react'
 import Modal from './Modal.jsx'
 import { API_BASE, handleApiError } from '../services/api'
+import { useI18n } from '../i18n.jsx'
 
 /**
  * Settings modal. Edits the LiteLLM proxy configuration (base URL, model name,
@@ -10,6 +11,7 @@ import { API_BASE, handleApiError } from '../services/api'
  * backend/data/user.json and is served read-only via /user.
  */
 export default function SettingsModal({ open, settings, onSave, onClose, loadError }) {
+  const { t, language, setLanguage } = useI18n()
   const [draft, setDraft] = useState(
     settings ?? { litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', api_key: '' },
   )
@@ -33,7 +35,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
       await onSave({ ...config, clear_api_key: clearApiKey })
       setSaved(true)
     } catch (e) {
-      setError(handleApiError(e).detail)
+      setError(handleApiError(e, t).detail)
     } finally {
       setSaving(false)
     }
@@ -54,11 +56,11 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
         className="absolute right-4 top-4 z-10 w-full max-w-lg rounded-xl border border-canvas-line bg-canvas-panel p-6 shadow-glow"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">Ayarlar</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">{t('settings.title')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Ayarları kapat"
+            aria-label={t('settings.close')}
             className="rounded-md p-1 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
           >
             <X size={18} />
@@ -66,8 +68,23 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
         </div>
         <div className="space-y-4">
           <div>
+            <label htmlFor="settings-language" className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
+              {t('settings.language')}
+            </label>
+            <select
+              id="settings-language"
+              aria-label={t('settings.language')}
+              className={inputCls}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
+            >
+              <option value="en">English</option>
+              <option value="tr">Türkçe</option>
+            </select>
+          </div>
+          <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              Yerel model sunucu adresi
+              {t('settings.localAiServerUrl')}
             </label>
             <input
               className={inputCls}
@@ -78,7 +95,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              Model adı
+              {t('settings.modelName')}
             </label>
             <input
               className={inputCls}
@@ -89,7 +106,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </div>
           <div>
             <label htmlFor="settings-api-key" className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              API anahtarı <span className="text-canvas-muted/60">(isteğe bağlı)</span>
+              {t('settings.apiKey')} <span className="text-canvas-muted/60">({t('settings.optional')})</span>
             </label>
             <input
               id="settings-api-key"
@@ -100,7 +117,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
                 setDraft({ ...draft, api_key: e.target.value })
                 if (e.target.value) setClearApiKey(false)
               }}
-              placeholder={settings?.has_api_key ? 'Boş bırakılırsa kayıtlı anahtar korunur' : 'Yerel sunucu anahtar istemiyorsa boş bırak'}
+              placeholder={settings?.has_api_key ? t('settings.keepKeyPlaceholder') : t('settings.emptyKeyPlaceholder')}
             />
             {settings?.has_api_key && (
               <label className="mt-2 flex items-center gap-2 text-xs text-canvas-muted">
@@ -109,11 +126,11 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
                   checked={clearApiKey}
                   onChange={(e) => setClearApiKey(e.target.checked)}
                 />
-                Kayıtlı API anahtarını sil
+                {t('settings.clearApiKey')}
               </label>
             )}
           </div>
-          {saved && <p className="text-xs text-emerald-400">Ayarlar kaydedildi.</p>}
+          {saved && <p className="text-xs text-emerald-400">{t('settings.saved')}</p>}
           {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
           <div className="rounded-lg border border-canvas-line bg-canvas-base p-3">
             <a
@@ -121,10 +138,10 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
               download="hamartia-backup.zip"
               className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent"
             >
-              <Download size={15} /> Yedeği indir
+              <Download size={15} /> {t('settings.downloadBackup')}
             </a>
             <p className="mt-2 text-xs leading-relaxed text-canvas-muted">
-              Geri yüklemek için Hamartia'yı kapatıp repo klasöründe <code>python scripts/restore_backup.py hamartia-backup.zip</code> komutunu çalıştır. Önceki veriler ayrı bir klasörde saklanır.
+              {t('settings.restoreBefore')} <code>python scripts/restore_backup.py hamartia-backup.zip</code> {t('settings.restoreAfter')}
             </p>
           </div>
         </div>
@@ -134,7 +151,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             onClick={onClose}
             className="rounded-lg border border-canvas-line bg-canvas-base px-4 py-2 text-sm font-medium text-canvas-muted transition hover:bg-canvas-raise"
           >
-            Vazgeç
+            {t('settings.cancel')}
           </button>
           <button
             type="button"
@@ -143,7 +160,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+            {saving ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
       </div>

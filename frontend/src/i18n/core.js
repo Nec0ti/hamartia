@@ -1,5 +1,7 @@
 import messages from './messages/index.js'
 
+export { messages }
+
 export const LANGUAGE_STORAGE_KEY = 'hamartia.language'
 export const SUPPORTED_LANGUAGES = ['en', 'tr']
 

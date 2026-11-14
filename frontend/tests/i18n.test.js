@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { getSavedLanguage, LANGUAGE_STORAGE_KEY, normalizeLanguage, translate } from '../src/i18n/core.js'
+import { getSavedLanguage, LANGUAGE_STORAGE_KEY, messages, normalizeLanguage, translate } from '../src/i18n/core.js'
 
 test('language preference accepts only English and Turkish', () => {
   assert.equal(normalizeLanguage('en'), 'en')
@@ -19,4 +19,11 @@ test('fresh or invalid storage defaults to English and storage failures are safe
 
 test('missing translations fall back to the English key', () => {
   assert.equal(translate('missing.translation.key', 'en'), 'missing.translation.key')
+})
+
+test('every message has English and Turkish text', () => {
+  for (const [key, localized] of Object.entries(messages)) {
+    assert.equal(typeof localized.en, 'string', `${key} is missing English text`)
+    assert.equal(typeof localized.tr, 'string', `${key} is missing Turkish text`)
+  }
 })

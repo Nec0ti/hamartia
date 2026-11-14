@@ -13,11 +13,12 @@ import TrendChart from './TrendChart.jsx'
 import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
 import { examPayloadFromForm, examResultsForSubject, examSubjectOptions } from '../utils/examSections.js'
+import { useI18n } from '../i18n.jsx'
 
 const EMPTY_FORM = {
   date: new Date().toLocaleDateString('en-CA'),
   exam_type: 'branch',
-  subject: 'Matematik',
+  subject: '',
   duration_minutes: 30,
   duration_seconds: 0,
   correct: 10,
@@ -33,13 +34,14 @@ const EMPTY_FORM = {
  * the question-upload modal.
  */
 export default function DashboardTab({ onUploadQuestion }) {
+  const { t } = useI18n()
   const [exams, setExams] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, subject: t('exams.defaultSubject') }))
   const [editingExam, setEditingExam] = useState(null)
 
   const [toggle, setToggle] = useState('bar') // 'bar' | 'line'
@@ -60,7 +62,7 @@ export default function DashboardTab({ onUploadQuestion }) {
         radar: prof.radar_stats ?? { speed: 50, focus: 50, precision: 50, stamina: 50 },
       })
     } catch (e) {
-      setError(handleApiError(e).detail)
+      setError(handleApiError(e, t).detail)
     } finally {
       setLoading(false)
     }
@@ -102,8 +104,8 @@ export default function DashboardTab({ onUploadQuestion }) {
     save.then(load).then(() => {
       setShowAdd(false)
       setEditingExam(null)
-      setForm(EMPTY_FORM)
-    }).catch((err) => setRecentError(handleApiError(err).detail))
+      setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
+    }).catch((err) => setRecentError(handleApiError(err, t).detail))
   }
 
   const editExam = (exam) => {
@@ -125,20 +127,20 @@ export default function DashboardTab({ onUploadQuestion }) {
   }
 
   const deleteExam = async (exam) => {
-    if (!window.confirm(`${exam.date} · ${exam.subject} denemesi silinsin mi?`)) return
+    if (!window.confirm(t('dashboard.deleteConfirm', { date: exam.date, subject: exam.subject }))) return
     setRecentError(null)
     try {
       await api.exams.remove(exam.id)
       await load()
     } catch (err) {
-      setRecentError(handleApiError(err).detail)
+      setRecentError(handleApiError(err, t).detail)
     }
   }
 
   if (loading)
     return (
       <div className="px-6 py-24 text-center text-canvas-muted">
-        Ana sayfa yükleniyor…
+        {t('dashboard.loading')}
       </div>
     )
 
@@ -146,19 +148,19 @@ export default function DashboardTab({ onUploadQuestion }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-canvas-text">
-          Genel bakış
+          {t('dashboard.title')}
         </h1>
         <button
           type="button"
           onClick={() => {
             setEditingExam(null)
-            setForm(EMPTY_FORM)
+            setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
             setShowAdd(true)
           }}
           className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
         >
           <Plus size={16} />
-          Deneme ekle
+          {t('dashboard.addExam')}
         </button>
       </div>
 
@@ -169,18 +171,18 @@ export default function DashboardTab({ onUploadQuestion }) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="exam-type-filter" className="text-xs text-canvas-muted">Deneme türü</label>
+        <label htmlFor="exam-type-filter" className="text-xs text-canvas-muted">{t('dashboard.examType')}</label>
         <select
           id="exam-type-filter"
-          aria-label="Deneme türü filtresi"
+          aria-label={t('dashboard.examTypeFilter')}
           value={examTypeFilter}
           onChange={(e) => setExamTypeFilter(e.target.value)}
           className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-1.5 text-xs text-canvas-text"
         >
-          <option value="all">Tüm türler</option>
+          <option value="all">{t('dashboard.allTypes')}</option>
           <option value="tyt">TYT</option>
           <option value="ayt">AYT</option>
-          <option value="branch">Branş</option>
+          <option value="branch">{t('dashboard.branch')}</option>
         </select>
       </div>
       <StatsCards profile={profile} stats={stats} examType={examTypeFilter} />
@@ -208,7 +210,7 @@ export default function DashboardTab({ onUploadQuestion }) {
         onClose={() => {
           setShowAdd(false)
           setEditingExam(null)
-          setForm(EMPTY_FORM)
+          setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
         }}
         onSubmit={submitExam}
         editing={Boolean(editingExam)}

@@ -13,8 +13,9 @@ import {
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { Panel, Header, Toggle, SubjectSelect } from '../components/ui.jsx'
-import { fmtNet } from '../utils/formatters'
+import { fmtDate, fmtNet } from '../utils/formatters'
 import { examResultsForSubject } from '../utils/examSections.js'
+import { useI18n } from '../i18n.jsx'
 
 /**
  * Recharts net-score trend chart with a bar/line toggle and a subject filter.
@@ -22,7 +23,10 @@ import { examResultsForSubject } from '../utils/examSections.js'
  * meaningful; the filter narrows the series to a single subject.
  */
 export default function TrendChart({ data, toggle, subjectFilter, subjects, onToggle, onFilter }) {
+  const { t, locale } = useI18n()
   const [hover, setHover] = useState(null)
+
+  const formatDate = (date) => fmtDate(date, locale, { month: 'numeric', day: 'numeric' })
 
   const series = useMemo(() => {
     return examResultsForSubject(data, subjectFilter).filter((exam) => exam.net > 0)
@@ -32,7 +36,7 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
     toggle === 'line' ? (
       <LineChart data={series} onMouseMove={setHover} onMouseLeave={() => setHover(null)}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-        <XAxis dataKey="date" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
+        <XAxis dataKey="date" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickFormatter={formatDate} />
         <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} domain={[-2, 'auto']} width={34} />
         <Tooltip
           contentStyle={{
@@ -42,14 +46,14 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
             color: '#d4d4d8',
             fontSize: '12px',
           }}
-          formatter={(v) => [fmtNet(v), 'Net']}
+          formatter={(v) => [fmtNet(v, locale), t('exams.net')]}
         />
         <Line type="monotone" dataKey="net" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
       </LineChart>
     ) : (
       <BarChart data={series}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-        <XAxis dataKey="date" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
+        <XAxis dataKey="date" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickFormatter={formatDate} />
         <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} domain={[-2, 'auto']} width={34} />
         <Tooltip
           contentStyle={{
@@ -59,7 +63,7 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
             color: '#d4d4d8',
             fontSize: '12px',
           }}
-          formatter={(v) => [fmtNet(v), 'Net']}
+          formatter={(v) => [fmtNet(v, locale), t('exams.net')]}
         />
         <Bar dataKey="net" radius={[4, 4, 0, 0]}>
           {series.map((entry, i) => (
@@ -72,20 +76,20 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
   return (
     <Panel>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <Header icon={TrendingUp} title="Net değişimi" />
+        <Header icon={TrendingUp} title={t('dashboard.netTrend')} />
         <div className="flex items-center gap-2">
-          <SubjectSelect value={subjectFilter} options={['all', ...subjects]} onChange={onFilter} />
-          <Toggle value={toggle} options={[{ value: 'bar', label: 'Sütun' }, { value: 'line', label: 'Çizgi' }]} onChange={onToggle} />
+          <SubjectSelect value={subjectFilter} options={['all', ...subjects]} onChange={onFilter} allLabel={t('common.allSubjects')} ariaLabel={t('dashboard.subjectFilter')} />
+          <Toggle value={toggle} options={[{ value: 'bar', label: t('dashboard.bar') }, { value: 'line', label: t('dashboard.line') }]} onChange={onToggle} />
         </div>
       </div>
-      <div role="img" aria-label={`Net değişimi · ${subjectFilter === 'all' ? 'tüm dersler' : subjectFilter}`} className="h-72">
+      <div role="img" aria-label={`${t('dashboard.netTrend')} · ${subjectFilter === 'all' ? t('common.allSubjects') : subjectFilter}`} className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           {chart}
         </ResponsiveContainer>
       </div>
       {hover && (
         <div className="mt-2 text-center text-xs text-canvas-muted">
-          {hover.date.slice(5)} — net {fmtNet(hover.net)}
+          {formatDate(hover.date)} — {t('exams.net')} {fmtNet(hover.net, locale)}
         </div>
       )}
     </Panel>

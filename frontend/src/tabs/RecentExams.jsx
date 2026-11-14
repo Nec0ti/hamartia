@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
-import { fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
+import { fmtDate, fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
 
 /**
@@ -12,7 +12,6 @@ import { useI18n } from '../i18n.jsx'
 export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onDelete, recentError }) {
   const { t, locale } = useI18n()
   const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)), [exams])
-  const formatDate = (date) => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
 
   if (recent.length === 0) {
     return (
@@ -54,7 +53,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                   onDoubleClick={ex.sections?.length ? undefined : () => onDoubleClickIncorrect(ex)}
                   className={`${ex.sections?.length ? '' : 'cursor-pointer '}transition hover:bg-canvas-raise/50`}
                 >
-                  <td className="py-3 pr-4 text-canvas-text">{formatDate(ex.date)}</td>
+                  <td className="py-3 pr-4 text-canvas-text">{fmtDate(ex.date, locale)}</td>
                   <td className="py-3 pr-4 text-canvas-text">
                     {ex.sections?.length ? (
                       <details>
@@ -63,7 +62,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                           {ex.sections.map((section) => (
                             <div key={section.subject} className="flex items-center justify-between gap-2">
                               <span>{section.subject}: {fmtInt(section.correct, locale)} {t('exams.correctShort')} / {fmtInt(section.incorrect, locale)} {t('exams.incorrectShort')} / {fmtInt(section.blank, locale)} {t('exams.blankShort')} · {t('exams.net')} {fmtNet(section.correct - section.incorrect / 4, locale)}</span>
-                              <button type="button" aria-label={t('exams.addMissedQuestionFor', { subject: section.subject, date: formatDate(ex.date) })} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">{t('exams.addMissedQuestion')}</button>
+                              <button type="button" aria-label={t('exams.addMissedQuestionFor', { subject: section.subject, date: fmtDate(ex.date, locale) })} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">{t('exams.addMissedQuestion')}</button>
                             </div>
                           ))}
                         </div>
@@ -103,7 +102,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                     <div className="inline-flex gap-1">
                       <button
                         type="button"
-                        aria-label={t('exams.editNamed', { subject: ex.subject, date: formatDate(ex.date) })}
+                        aria-label={t('exams.editNamed', { subject: ex.subject, date: fmtDate(ex.date, locale) })}
                         onClick={() => onEdit(ex)}
                         className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text"
                       >
@@ -111,7 +110,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                       </button>
                       <button
                         type="button"
-                        aria-label={t('exams.deleteNamed', { subject: ex.subject, date: formatDate(ex.date) })}
+                        aria-label={t('exams.deleteNamed', { subject: ex.subject, date: fmtDate(ex.date, locale) })}
                         onClick={() => onDelete(ex)}
                         className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-accent"
                       >

@@ -9,5 +9,5 @@ export function handleApiError(error, t = (key) => key) {
   else if (status === 422) key = 'error.invalidData'
   else if (status === 502) key = 'error.localAi'
   else if (status >= 500) key = 'error.server'
-  return { ok: false, status, detail: t(key) }
+  return { ok: false, status, key, detail: t(key) }
 }

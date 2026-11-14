@@ -52,6 +52,12 @@ export const fmtNet = (net, locale = 'en-US') => {
   }).format(rounded)
 }
 
+export const fmtDate = (value, locale = 'en-US', options = { dateStyle: 'medium' }) => {
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.valueOf())) return value
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(date)
+}
+
 /** Format a whole number of minutes with leading zero padding. */
 export const fmtDuration = (minutes, seconds) => {
   const m = Math.max(0, Math.floor(minutes))

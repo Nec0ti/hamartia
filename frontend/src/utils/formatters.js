@@ -41,14 +41,15 @@ export const xpProgress = (totalXp, level) => {
 /* ------------------------------ formatters ------------------------------ */
 
 /** Compact numeric formatter for stat labels (e.g. 127 -> "127"). */
-export const fmtInt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US')
+export const fmtInt = (n, locale = 'en-US') => Math.round(Number(n) || 0).toLocaleString(locale)
 
 /** Present positive nets in green, negative in crimson, zero neutral. */
-export const fmtNet = (net) => {
+export const fmtNet = (net, locale = 'en-US') => {
   const rounded = Math.round(net * 100) / 100
-  if (rounded === 0) return '0.0'
-  const sign = rounded < 0 ? '-' : ''
-  return `${sign}${rounded.toFixed(2)}`
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: rounded === 0 ? 1 : 2,
+    maximumFractionDigits: 2,
+  }).format(rounded)
 }
 
 /** Format a whole number of minutes with leading zero padding. */

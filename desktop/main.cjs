@@ -1,9 +1,32 @@
-const { app, BrowserWindow, dialog } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const { spawn } = require('node:child_process')
 const net = require('node:net')
 const path = require('node:path')
+const { backendInvocation } = require('./backendInvocation.cjs')
+const { restoreWithRestart } = require('./restoreFlow.cjs')
 
 const HOST = '127.0.0.1'
+const RESTORE_CHANNEL = 'hamartia:restore-backup'
+const restoreCopy = {
+  en: {
+    pickerTitle: 'Select a Hamartia backup',
+    pickerButton: 'Select backup',
+    confirmTitle: 'Restore Hamartia backup?',
+    confirmMessage: 'Replace the current study data with this backup?',
+    confirmDetail: 'Hamartia first preserves a snapshot of the current data folder.',
+    cancel: 'Cancel',
+    restore: 'Restore',
+  },
+  tr: {
+    pickerTitle: 'Hamartia yedeği seç',
+    pickerButton: 'Yedeği seç',
+    confirmTitle: 'Hamartia yedeği geri yüklensin mi?',
+    confirmMessage: 'Mevcut çalışma verileri bu yedekle değiştirilsin mi?',
+    confirmDetail: 'Hamartia önce mevcut veri klasörünün bir kopyasını saklar.',
+    cancel: 'Vazgeç',
+    restore: 'Geri yükle',
+  },
+}
 let backend
 let backendUrl
 let stoppingBackend = false
@@ -19,32 +42,35 @@ function freePort() {
   })
 }
 
-function startBackend(port) {
+function backendEnvironment(port) {
   const env = {
     ...process.env,
     HAMARTIA_HOST: HOST,
     HAMARTIA_PORT: String(port),
     HAMARTIA_DATA_DIR: path.join(app.getPath('userData'), 'data'),
   }
+  if (!app.isPackaged) env.HAMARTIA_STATIC_DIR = path.resolve(__dirname, '../frontend/dist')
+  return env
+}
 
-  if (app.isPackaged) {
-    const executable = path.join(
-      process.resourcesPath,
-      'backend',
-      'hamartia-backend',
-      `hamartia-backend${process.platform === 'win32' ? '.exe' : ''}`,
-    )
-    return spawn(executable, [], { env, stdio: 'ignore', windowsHide: true })
-  }
-
-  env.HAMARTIA_STATIC_DIR = path.resolve(__dirname, '../frontend/dist')
-  const python = process.env.HAMARTIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')
-  return spawn(python, [path.resolve(__dirname, '../backend/desktop_server.py')], {
+function spawnBackend(args, port) {
+  const command = backendInvocation({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    desktopDir: __dirname,
+    platform: process.platform,
+    python: process.env.HAMARTIA_PYTHON,
+  }, args)
+  return spawn(command.command, command.args, {
     cwd: path.resolve(__dirname, '..'),
-    env,
+    env: backendEnvironment(port),
     stdio: 'ignore',
     windowsHide: true,
   })
+}
+
+function startBackend(port) {
+  return spawnBackend([], port)
 }
 
 async function waitUntilReady(child, url) {
@@ -83,6 +109,7 @@ async function openWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
 
@@ -92,6 +119,106 @@ async function openWindow() {
   })
   await window.loadURL(backendUrl)
 }
+
+function waitForExit(child, timeoutMs = 0) {
+  return new Promise((resolve, reject) => {
+    if (child.exitCode !== null) return resolve(child.exitCode)
+    const timer = timeoutMs > 0 ? setTimeout(() => {
+      cleanup()
+      reject(new Error('The backend process did not exit in time'))
+    }, timeoutMs) : null
+    const onExit = (code) => {
+      cleanup()
+      resolve(code)
+    }
+    const onError = (error) => {
+      cleanup()
+      reject(error)
+    }
+    const cleanup = () => {
+      if (timer) clearTimeout(timer)
+      child.removeListener('exit', onExit)
+      child.removeListener('error', onError)
+    }
+    child.once('exit', onExit)
+    child.once('error', onError)
+  })
+}
+
+async function stopBackend() {
+  const child = backend
+  if (!child || child.exitCode !== null) return
+  const exited = waitForExit(child, 10_000)
+  child.kill()
+  await exited
+  if (backend === child) backend = null
+}
+
+async function restartBackend(port) {
+  if (backend && backend.exitCode === null) {
+    try {
+      await waitUntilReady(backend, backendUrl)
+      return
+    } catch (error) {
+      if (backend.exitCode === null) throw error
+    }
+  }
+  backend = startBackend(port)
+  await waitUntilReady(backend, backendUrl)
+}
+
+function isTrustedSender(event) {
+  try {
+    return Boolean(backendUrl && event.senderFrame && new URL(event.senderFrame.url).origin === backendUrl)
+  } catch {
+    return false
+  }
+}
+
+ipcMain.handle(RESTORE_CHANNEL, async (event, language) => {
+  if (!isTrustedSender(event)) return { status: 'failed' }
+  const locale = language === 'tr' ? 'tr' : 'en'
+  const copy = restoreCopy[locale]
+  const window = BrowserWindow.fromWebContents(event.sender)
+  const selected = await dialog.showOpenDialog(window, {
+    title: copy.pickerTitle,
+    buttonLabel: copy.pickerButton,
+    properties: ['openFile'],
+    filters: [{ name: 'ZIP backup', extensions: ['zip'] }],
+  })
+  if (selected.canceled || selected.filePaths.length !== 1) return { status: 'cancelled' }
+
+  const archivePath = selected.filePaths[0]
+  if (path.extname(archivePath).toLowerCase() !== '.zip') return { status: 'failed' }
+  const confirmation = await dialog.showMessageBox(window, {
+    type: 'warning',
+    title: copy.confirmTitle,
+    message: copy.confirmMessage,
+    detail: copy.confirmDetail,
+    buttons: [copy.cancel, copy.restore],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  })
+  if (confirmation.response !== 1) return { status: 'cancelled' }
+
+  const port = Number(new URL(backendUrl).port)
+  const status = await restoreWithRestart({
+    stop: stopBackend,
+    restore: async () => {
+      const child = spawnBackend(['--restore-backup', archivePath], port)
+      return (await waitForExit(child)) === 0 ? 'success' : 'failed'
+    },
+    restart: () => restartBackend(port),
+  })
+
+  if (status !== 'restartFailed') {
+    setTimeout(() => {
+      if (!event.sender.isDestroyed()) event.sender.reload()
+    }, 3000).unref()
+  }
+  return { status }
+})
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()

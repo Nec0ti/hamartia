@@ -389,6 +389,8 @@ async function main() {
     const questionManageMs = Math.round(performance.now() - questionManageStarted)
     const backupStarted = performance.now()
     await page.getByRole('button', { name: 'Ayarları aç' }).click()
+    assert.equal(await page.getByRole('button', { name: 'Yedeği geri yükle' }).count(), 0)
+    assert.equal(await page.getByText('python scripts/restore_backup.py hamartia-backup.zip').count(), 1)
     const settingsGet = await page.context().request.get(`${apiUrl}/settings`)
     assert.equal(settingsGet.status(), 200)
     assert.deepEqual(await settingsGet.json(), {

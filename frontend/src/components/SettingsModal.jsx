@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Save, X } from 'lucide-react'
+import { Download, RotateCcw, Save, X } from 'lucide-react'
 import Modal from './Modal.jsx'
 import { API_BASE, handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
@@ -19,6 +19,11 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
   const [clearApiKey, setClearApiKey] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreRefreshPending, setRestoreRefreshPending] = useState(false)
+  const [restoreState, setRestoreState] = useState('')
+  const desktopRestoreAvailable = typeof window !== 'undefined'
+    && typeof window.hamartiaDesktop?.restoreBackup === 'function'
 
   useEffect(() => {
     if (open && settings) setDraft({ ...settings, api_key: '' })
@@ -41,13 +46,33 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
     }
   }
 
+  const restoreBackup = async () => {
+    setRestoring(true)
+    setRestoreState('')
+    try {
+      const { status } = await window.hamartiaDesktop.restoreBackup(language)
+      if (status === 'success') {
+        setRestoreState('settings.restoreSuccess')
+        setRestoreRefreshPending(true)
+      } else if (status === 'failed') {
+        setRestoreState('settings.restoreFailed')
+        setRestoreRefreshPending(true)
+      }
+      else if (status === 'restartFailed') setRestoreState('settings.restoreRestartFailed')
+    } catch {
+      setRestoreState('settings.restoreFailed')
+    } finally {
+      setRestoring(false)
+    }
+  }
+
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={restoring || restoreRefreshPending ? undefined : onClose}
         aria-hidden="true"
       />
       <div
@@ -60,6 +85,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           <button
             type="button"
             onClick={onClose}
+            disabled={restoring || restoreRefreshPending}
             aria-label={t('settings.close')}
             className="rounded-md p-1 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
           >
@@ -140,15 +166,25 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             >
               <Download size={15} /> {t('settings.downloadBackup')}
             </a>
-            <p className="mt-2 text-xs leading-relaxed text-canvas-muted">
-              {t('settings.restoreBefore')} <code>python scripts/restore_backup.py hamartia-backup.zip</code> {t('settings.restoreAfter')}
-            </p>
+            {desktopRestoreAvailable ? (
+              <div className="mt-2">
+                <button type="button" onClick={restoreBackup} disabled={restoring || restoreRefreshPending} className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent disabled:opacity-50">
+                  <RotateCcw size={15} /> {restoring ? t('settings.restoring') : t('settings.restoreButton')}
+                </button>
+                {restoreState && <p role="status" aria-live="polite" className="mt-2 text-xs text-canvas-muted">{t(restoreState)}</p>}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs leading-relaxed text-canvas-muted">
+                {t('settings.restoreBefore')} <code>python scripts/restore_backup.py hamartia-backup.zip</code> {t('settings.restoreAfter')}
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
+            disabled={restoring || restoreRefreshPending}
             className="rounded-lg border border-canvas-line bg-canvas-base px-4 py-2 text-sm font-medium text-canvas-muted transition hover:bg-canvas-raise"
           >
             {t('settings.cancel')}
@@ -156,7 +192,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           <button
             type="button"
             onClick={save}
-            disabled={saving}
+            disabled={saving || restoring || restoreRefreshPending}
             className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />

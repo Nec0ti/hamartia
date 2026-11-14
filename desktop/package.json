@@ -2,11 +2,13 @@
   "name": "hamartia-desktop",
   "version": "0.1.0",
   "private": true,
+  "author": "Nec0ti",
   "description": "Desktop shell for the local-first Hamartia study app",
   "main": "main.cjs",
   "scripts": {
     "build:ui": "npm --prefix ../frontend run build",
     "build:backend": "python ../backend/build_desktop.py",
+    "test": "node --test",
     "start": "npm run build:ui && electron .",
     "pack:dir": "npm run build:ui && npm run build:backend && electron-builder --dir",
     "dist:win": "npm run build:ui && npm run build:backend && electron-builder --win nsis",
@@ -21,6 +23,9 @@
     },
     "files": [
       "main.cjs",
+      "preload.cjs",
+      "backendInvocation.cjs",
+      "restoreFlow.cjs",
       "package.json"
     ],
     "extraResources": [

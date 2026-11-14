@@ -123,6 +123,7 @@ class QuestionFlowTests(unittest.TestCase):
             sections=[
                 {"subject": "Matematik", "correct": 10, "incorrect": 2, "blank": 8},
                 {"subject": "Fen", "correct": 20, "incorrect": 2, "blank": 8},
+                {"subject": "Din", "correct": 0, "incorrect": 0, "blank": 0},
             ],
         )
         self.storage.save_list("exams.json", [exam])
@@ -142,8 +143,13 @@ class QuestionFlowTests(unittest.TestCase):
             asyncio.run(question_api.upload_question(
                 None, "Soru", "Fizik", "", self.storage, exam_id="mock",
             ))
+        with self.assertRaises(HTTPException) as empty_section:
+            asyncio.run(question_api.upload_question(
+                None, "Soru", "Din", "", self.storage, exam_id="mock",
+            ))
         self.assertEqual(out_of_section.exception.status_code, 422)
         self.assertEqual(unknown_subject.exception.status_code, 422)
+        self.assertEqual(empty_section.exception.status_code, 422)
 
     def test_invalid_exam_reference_does_not_leave_uploaded_image(self):
         with self.assertRaises(HTTPException):

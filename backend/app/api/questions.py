@@ -67,6 +67,8 @@ async def upload_question(
             if section is None:
                 raise HTTPException(status_code=422, detail="Choose a subject section from this mock exam")
             total_questions = section.correct + section.incorrect + section.blank
+            if total_questions == 0:
+                raise HTTPException(status_code=422, detail="Cannot link a question to an empty exam section")
             exam_section_total = total_questions
             size_label = "selected section size"
         if any(value is not None and value > total_questions for value in (question_number, solve_order)):

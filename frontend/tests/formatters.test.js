@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtInt, fmtNet } from '../src/utils/formatters.js'
+import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtInt, fmtNet, subjectLabel } from '../src/utils/formatters.js'
 
 test('net score applies the YKS quarter penalty', () => {
   assert.equal(netScore(3, 2), 2.5)
@@ -35,4 +35,10 @@ test('display formatters follow the selected locale without changing values', ()
   assert.equal(fmtNet(1.25, 'en-US'), '1.25')
   assert.equal(fmtNet(1.25, 'tr-TR'), '1,25')
   assert.equal(fmtNet(0, 'tr-TR'), '0,0')
+})
+
+test('subject display fallback can follow the selected language', () => {
+  assert.equal(subjectLabel('', 'Unlabelled'), 'Unlabelled')
+  assert.equal(subjectLabel('', 'Etiketsiz'), 'Etiketsiz')
+  assert.equal(subjectLabel('Matematik', 'Unlabelled'), 'Matematik')
 })

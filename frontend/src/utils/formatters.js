@@ -60,5 +60,5 @@ export const fmtDuration = (minutes, seconds) => {
 }
 
 /** Human-readable subject/emoji tag for a subject string. */
-export const subjectLabel = (subject) =>
-  (subject || 'Unlabelled').slice(0, 24)
+export const subjectLabel = (subject, fallback = 'Unlabelled') =>
+  (subject || fallback).slice(0, 24)

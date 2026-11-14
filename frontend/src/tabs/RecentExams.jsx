@@ -2,8 +2,7 @@ import { useMemo } from 'react'
 import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
 import { fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
-
-const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
+import { useI18n } from '../i18n.jsx'
 
 /**
  * Recent-exams table. Each row shows the derived net and XP. Double-clicking
@@ -11,14 +10,16 @@ const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
  * "double-click Incorrect to upload" behaviour from the spec.
  */
 export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onDelete, recentError }) {
+  const { t, locale } = useI18n()
   const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)), [exams])
+  const formatDate = (date) => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
 
   if (recent.length === 0) {
     return (
       <Panel>
-        <Header title="Deneme geçmişi" />
+        <Header title={t('exams.history')} />
         <p className="py-10 text-center text-sm text-canvas-muted">
-          Henüz deneme kaydı yok. İlk denemeni eklemek için “Deneme ekle”ye tıkla.
+          {t('exams.noExams')}
         </p>
       </Panel>
     )
@@ -26,20 +27,20 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
 
   return (
     <Panel>
-      <Header title="Deneme geçmişi" />
+      <Header title={t('exams.history')} />
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-canvas-line text-xs uppercase tracking-wider text-canvas-muted">
-              <th className="py-3 pr-4">Tarih</th>
-              <th className="py-3 pr-4">Ders</th>
-              <th className="py-3 pr-4">Tür</th>
-              <th className="py-3 pr-4">Doğru</th>
-              <th className="py-3 pr-4">Yanlış</th>
-              <th className="py-3 pr-4">Boş</th>
-              <th className="py-3 pr-4">Süre</th>
-              <th className="py-3 pr-4 text-right">Net</th>
-              <th className="py-3 pr-4 text-right">XP</th>
+              <th className="py-3 pr-4">{t('exams.date')}</th>
+              <th className="py-3 pr-4">{t('exams.subject')}</th>
+              <th className="py-3 pr-4">{t('exams.type')}</th>
+              <th className="py-3 pr-4">{t('exams.correct')}</th>
+              <th className="py-3 pr-4">{t('exams.incorrect')}</th>
+              <th className="py-3 pr-4">{t('exams.blank')}</th>
+              <th className="py-3 pr-4">{t('exams.duration')}</th>
+              <th className="py-3 pr-4 text-right">{t('exams.net')}</th>
+              <th className="py-3 pr-4 text-right">{t('exams.xp')}</th>
               <th className="py-3 pr-1" />
             </tr>
           </thead>
@@ -53,37 +54,37 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                   onDoubleClick={ex.sections?.length ? undefined : () => onDoubleClickIncorrect(ex)}
                   className={`${ex.sections?.length ? '' : 'cursor-pointer '}transition hover:bg-canvas-raise/50`}
                 >
-                  <td className="py-3 pr-4 text-canvas-text">{ex.date}</td>
+                  <td className="py-3 pr-4 text-canvas-text">{formatDate(ex.date)}</td>
                   <td className="py-3 pr-4 text-canvas-text">
                     {ex.sections?.length ? (
                       <details>
-                        <summary className="cursor-pointer">{subjectLabel(ex.subject)} · {ex.sections.length} ders</summary>
+                        <summary className="cursor-pointer">{subjectLabel(ex.subject, t('common.unlabelled'))} · {t('exams.subjectCount', { count: fmtInt(ex.sections.length, locale) })}</summary>
                         <div className="mt-2 space-y-2 text-xs">
                           {ex.sections.map((section) => (
                             <div key={section.subject} className="flex items-center justify-between gap-2">
-                              <span>{section.subject}: {section.correct}D / {section.incorrect}Y / {section.blank}B · net {fmtNet(section.correct - section.incorrect / 4)}</span>
-                              <button type="button" aria-label={`Yanlış ekle ${section.subject} ${ex.date}`} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">Yanlış ekle</button>
+                              <span>{section.subject}: {fmtInt(section.correct, locale)} {t('exams.correctShort')} / {fmtInt(section.incorrect, locale)} {t('exams.incorrectShort')} / {fmtInt(section.blank, locale)} {t('exams.blankShort')} · {t('exams.net')} {fmtNet(section.correct - section.incorrect / 4, locale)}</span>
+                              <button type="button" aria-label={t('exams.addMissedQuestionFor', { subject: section.subject, date: formatDate(ex.date) })} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">{t('exams.addMissedQuestion')}</button>
                             </div>
                           ))}
                         </div>
                       </details>
-                    ) : subjectLabel(ex.subject)}
+                    ) : subjectLabel(ex.subject, t('common.unlabelled'))}
                   </td>
-                  <td className="py-3 pr-4 text-canvas-muted">{EXAM_TYPES[ex.exam_type || 'branch']}</td>
-                  <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct)}</td>
+                  <td className="py-3 pr-4 text-canvas-muted">{t(`exams.type.${ex.exam_type || 'branch'}`)}</td>
+                  <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct, locale)}</td>
                   <td
                     className="py-3 pr-4 text-accent font-semibold transition hover:underline"
-                    title="Yanlış soruyu eklemek için satıra çift tıkla"
+                    title={t('exams.doubleClickToAdd')}
                   >
                       <span className="inline-flex items-center gap-1">
-                        {fmtInt(ex.incorrect)}
+                        {fmtInt(ex.incorrect, locale)}
                         {net < 0 && <ArrowDownRight size={12} />}
                       </span>
                     </td>
-                  <td className="py-3 pr-4 text-canvas-muted">{fmtInt(ex.blank)}</td>
+                  <td className="py-3 pr-4 text-canvas-muted">{fmtInt(ex.blank, locale)}</td>
                   <td className="py-3 pr-4 text-canvas-muted">
                     <span className="inline-flex items-center gap-1">
-                      <Clock size={12} />
+                      <Clock size={12} aria-label={t('exams.duration')} />
                       {fmtDuration(ex.duration_minutes, ex.duration_seconds)}
                     </span>
                   </td>
@@ -94,15 +95,15 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                         net > 0 ? 'text-emerald-400' : net < 0 ? 'text-accent' : 'text-canvas-text',
                       ].join(' ')}
                     >
-                      {fmtNet(net)}
+                      {fmtNet(net, locale)}
                     </span>
                   </td>
-                  <td className="py-3 pr-4 text-right text-canvas-cyan">{fmtInt(xp)}</td>
+                  <td className="py-3 pr-4 text-right text-canvas-cyan">{fmtInt(xp, locale)}</td>
                   <td className="py-3 pr-1 text-right">
                     <div className="inline-flex gap-1">
                       <button
                         type="button"
-                        aria-label={`Denemeyi düzenle ${ex.subject} ${ex.date}`}
+                        aria-label={t('exams.editNamed', { subject: ex.subject, date: formatDate(ex.date) })}
                         onClick={() => onEdit(ex)}
                         className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text"
                       >
@@ -110,7 +111,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                       </button>
                       <button
                         type="button"
-                        aria-label={`Denemeyi sil ${ex.subject} ${ex.date}`}
+                        aria-label={t('exams.deleteNamed', { subject: ex.subject, date: formatDate(ex.date) })}
                         onClick={() => onDelete(ex)}
                         className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-accent"
                       >

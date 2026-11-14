@@ -63,6 +63,70 @@ jobs:
         run: xvfb-run -a node desktop/smoke_electron.cjs desktop/dist/linux-unpacked
       - if: matrix.target == 'windows'
         run: node desktop/smoke_electron.cjs desktop/dist/win-unpacked
+      - name: Install, launch, and uninstall the NSIS installer
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem desktop/dist -Filter '*.exe' -File | Select-Object -First 1
+          if (-not $installer) { throw 'Windows NSIS installer was not generated.' }
+          $installDir = Join-Path $env:RUNNER_TEMP 'hamartia-nsis-smoke'
+          $installAttempted = $false
+          try {
+            $installAttempted = $true
+            $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDir") -Wait -PassThru
+            if ($install.ExitCode -ne 0) { throw "NSIS installer exited with $($install.ExitCode)." }
+            $app = Get-ChildItem $installDir -Filter 'Hamartia.exe' -File -Recurse | Select-Object -First 1
+            if (-not $app) { throw 'Installed Hamartia.exe was not found.' }
+            node desktop/smoke_electron.cjs $app.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Installed Electron smoke exited with $LASTEXITCODE." }
+          } finally {
+            if ($installAttempted -and (Test-Path $installDir)) {
+              $uninstaller = Get-ChildItem $installDir -Filter 'Uninstall Hamartia.exe' -File -Recurse | Select-Object -First 1
+              if ($uninstaller) {
+                $remove = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
+                if ($remove.ExitCode -ne 0) { throw "NSIS uninstaller exited with $($remove.ExitCode)." }
+                if (Test-Path $installDir) { throw 'NSIS uninstaller left files in the installation directory.' }
+              } else {
+                Remove-Item $installDir -Recurse -Force
+                if (Test-Path $installDir) { throw 'Could not clean up the partial NSIS installation.' }
+              }
+            }
+          }
+      - name: Install, launch, and remove the Debian package
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_file="$(find desktop/dist -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$package_file"
+          package_name="$(dpkg-deb --field "$package_file" Package)"
+          cleanup() {
+            status="$(dpkg-query -W -f='${Status}' "$package_name" 2>/dev/null || true)"
+            if [[ "$status" == install\ ok\ * ]]; then
+              sudo apt-get remove -y "$package_name"
+              status="$(dpkg-query -W -f='${Status}' "$package_name" 2>/dev/null || true)"
+              if [[ "$status" == install\ ok\ * ]]; then
+                echo "Debian package $package_name remains installed after removal." >&2
+                return 1
+              fi
+            fi
+          }
+          trap cleanup EXIT
+          sudo apt-get install -y "$GITHUB_WORKSPACE/$package_file"
+          executable="$(dpkg-query -L "$package_name" | grep -E '/(hamartia-desktop|Hamartia)$' | head -n 1 || true)"
+          test -n "$executable"
+          test -x "$executable"
+          xvfb-run -a node desktop/smoke_electron.cjs "$executable"
+      - name: Launch the AppImage
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          appimage="$(find desktop/dist -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          test -n "$appimage"
+          test -x "$appimage"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a node desktop/smoke_electron.cjs "$GITHUB_WORKSPACE/$appimage"
       - if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
         with:

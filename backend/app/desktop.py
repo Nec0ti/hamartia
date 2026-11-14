@@ -1,11 +1,12 @@
 """Desktop-only frontend serving and backend process settings."""
 
 import ipaddress
+import hmac
 import os
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
 
@@ -101,6 +102,20 @@ def mount_frontend(app: FastAPI, directory: Path):
 
 def configure_frontend(app: FastAPI):
     app.add_middleware(DesktopOriginGuard, allowed_origins=desktop_allowed_origins())
+
+    @app.post("/desktop/shutdown", include_in_schema=False)
+    async def shutdown_desktop_backend(x_hamartia_control_token: str | None = Header(default=None)):
+        expected = os.environ.get("HAMARTIA_CONTROL_TOKEN", "")
+        if not expected or not x_hamartia_control_token or not hmac.compare_digest(
+            expected, x_hamartia_control_token
+        ):
+            raise HTTPException(status_code=403, detail="Invalid desktop control token")
+        callback = getattr(app.state, "desktop_shutdown_callback", None)
+        if callback is None:
+            raise HTTPException(status_code=503, detail="Desktop shutdown is unavailable")
+        callback()
+        return {"status": "shutting_down"}
+
     directory = frontend_directory()
     if directory is not None:
         mount_frontend(app, directory)

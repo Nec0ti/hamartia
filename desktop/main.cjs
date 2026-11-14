@@ -1,11 +1,14 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
+const { randomBytes } = require('node:crypto')
 const { spawn } = require('node:child_process')
 const net = require('node:net')
 const path = require('node:path')
 const { backendInvocation } = require('./backendInvocation.cjs')
 const { restoreWithRestart } = require('./restoreFlow.cjs')
+const { gracefulStop } = require('./shutdownFlow.cjs')
 
 const HOST = '127.0.0.1'
+const CONTROL_TOKEN = randomBytes(32).toString('hex')
 const RESTORE_CHANNEL = 'hamartia:restore-backup'
 const restoreCopy = {
   en: {
@@ -48,6 +51,7 @@ function backendEnvironment(port) {
     HAMARTIA_HOST: HOST,
     HAMARTIA_PORT: String(port),
     HAMARTIA_DATA_DIR: path.join(app.getPath('userData'), 'data'),
+    HAMARTIA_CONTROL_TOKEN: CONTROL_TOKEN,
   }
   if (!app.isPackaged) env.HAMARTIA_STATIC_DIR = path.resolve(__dirname, '../frontend/dist')
   return env
@@ -148,9 +152,14 @@ function waitForExit(child, timeoutMs = 0) {
 async function stopBackend() {
   const child = backend
   if (!child || child.exitCode !== null) return
-  const exited = waitForExit(child, 10_000)
-  child.kill()
-  await exited
+  await gracefulStop({
+    requestShutdown: async () => fetch(`${backendUrl}/desktop/shutdown`, {
+      method: 'POST',
+      headers: { 'X-Hamartia-Control-Token': CONTROL_TOKEN },
+      signal: AbortSignal.timeout(10_000),
+    }),
+    waitForExit: () => waitForExit(child),
+  })
   if (backend === child) backend = null
 }
 
@@ -251,12 +260,20 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   if (stoppingBackend) return
   stoppingBackend = true
-  backend.kill()
-  backend.once('exit', () => app.quit())
-  setTimeout(() => app.exit(1), 3000).unref()
+  const child = backend
+  gracefulStop({
+    requestShutdown: async () => fetch(`${backendUrl}/desktop/shutdown`, {
+      method: 'POST',
+      headers: { 'X-Hamartia-Control-Token': CONTROL_TOKEN },
+      signal: AbortSignal.timeout(10_000),
+    }),
+    waitForExit: () => waitForExit(child, 30_000),
+  }).then(() => app.quit()).catch(() => {
+    // Forced termination is only a last resort when the user is closing the app.
+    if (child.exitCode === null) child.kill()
+    app.exit(1)
+  })
 })
-
-process.on('exit', () => backend?.kill())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

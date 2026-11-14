@@ -26,6 +26,7 @@
       "preload.cjs",
       "backendInvocation.cjs",
       "restoreFlow.cjs",
+      "shutdownFlow.cjs",
       "package.json"
     ],
     "extraResources": [

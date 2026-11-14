@@ -41,7 +41,9 @@ def main(argv=None):
     except ValueError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(2) from error
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))
+    app.state.desktop_shutdown_callback = lambda: setattr(server, "should_exit", True)
+    server.run()
     return 0
 
 

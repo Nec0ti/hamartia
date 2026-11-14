@@ -142,6 +142,39 @@ class DesktopServerTests(unittest.TestCase):
         self.assertEqual(allowed.status_code, 200)
         client.close()
 
+    def test_desktop_shutdown_rejects_missing_and_wrong_control_tokens(self):
+        app = FastAPI()
+        configure_frontend(app)
+        stopped = []
+        app.state.desktop_shutdown_callback = lambda: stopped.append(True)
+        client = TestClient(app)
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "correct-token"}, clear=True):
+            missing = client.post("/desktop/shutdown")
+            wrong = client.post(
+                "/desktop/shutdown",
+                headers={"X-Hamartia-Control-Token": "wrong-token"},
+            )
+        self.assertEqual(missing.status_code, 403)
+        self.assertEqual(wrong.status_code, 403)
+        self.assertEqual(stopped, [])
+        client.close()
+
+    def test_desktop_shutdown_accepts_valid_control_token_and_requests_graceful_exit(self):
+        app = FastAPI()
+        configure_frontend(app)
+        stopped = []
+        app.state.desktop_shutdown_callback = lambda: stopped.append(True)
+        client = TestClient(app)
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "correct-token"}, clear=True):
+            response = client.post(
+                "/desktop/shutdown",
+                headers={"X-Hamartia-Control-Token": "correct-token"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "shutting_down"})
+        self.assertEqual(stopped, [True])
+        client.close()
+
     def test_frontend_directory_uses_override_or_pyinstaller_bundle(self):
         with patch.dict("os.environ", {}, clear=True), patch.object(sys, "frozen", False, create=True):
             self.assertIsNone(frontend_directory())

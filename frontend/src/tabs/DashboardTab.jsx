@@ -16,7 +16,7 @@ import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
 
 const EMPTY_FORM = {
-  date: '2026-10-07',
+  date: new Date().toLocaleDateString('en-CA'),
   subject: 'Math',
   duration_minutes: 30,
   duration_seconds: 0,

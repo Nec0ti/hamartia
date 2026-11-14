@@ -20,7 +20,7 @@ export const previewXp = (correct, incorrect, durationMinutes) => {
   const net = netScore(correct, incorrect)
   const minutes = Math.max(1, Math.round(durationMinutes))
   const raw = net * correct * 1.5 - minutes * incorrect * 0.25
-  return Math.max(0, Math.round(raw))
+  return Math.max(0, Math.trunc(raw))
 }
 
 /** Cumulative XP to next level: level N needs N * 500 total XP. */

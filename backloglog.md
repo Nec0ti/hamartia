@@ -1,5 +1,14 @@
 # Backlog log
 
+## 2026-11-15 — desktop delivery and ARETE-001
+
+- PR [#5](https://github.com/Nec0ti/hamartia/pull/5) merged to `master` as `26ee65afc0d986ac170e7eb9f366f450327a5f36`. Native Windows Server 2022 and Ubuntu 22.04 package jobs passed: NSIS install/launch/uninstall, Debian install/launch/remove, AppImage launch, unpacked Electron smoke, and frozen backend persistence smoke.
+- GitHub Actions run [#43639428627](https://github.com/Nec0ti/hamartia/actions/runs/43639428627) passed backend/frontend suites, five AI-free benchmarks, production build, docs smoke, and real-browser smoke. Local final counts: backend 93/93, frontend 16/16, desktop 10/10, release metadata 4/4. The local Chromium docs smoke is blocked by this host's missing `libglib-2.0.so.0`; hosted browser CI passed.
+- The merged-PR release workflow [#43639863750](https://github.com/Nec0ti/hamartia/actions/runs/43639863750) passed and published [ARETE-001](https://github.com/Nec0ti/hamartia/releases/tag/ARETE-001). The release has `Hamartia-win-x64.exe` (138,224,352 bytes), `Hamartia-linux-amd64.deb` (132,542,556 bytes), and `Hamartia-linux-x86_64.AppImage` (164,616,159 bytes), with English and Turkish notes. The automatic Contents API update appended the same notes to `RELEASES.md`; only one release workflow run was observed for this merge.
+- Pages deployment [#43639863699](https://github.com/Nec0ti/hamartia/actions/runs/43639863699) passed. The live guide at `https://nec0ti.github.io/hamartia/` returned the Hamartia page title.
+- Local AI and hosted model calls were not used. Physical consumer Windows 10/11 and separate Debian desktop installations, signed Windows distribution, FUSE-based AppImage launch on other distributions, and a second ARETE allocation remain unverified.
+- Full measurements, asset links, and remaining limitations: `reports/2026-11-14-desktop-delivery-plan.md`.
+
 - 2026-11-14: Desktop-delivery prototype: FastAPI now has a loopback-only PyInstaller entry point, serves the bundled Vite app on the same origin, and validates configurable host/port. Electron uses an isolated renderer, single-instance lock, ephemeral loopback port, and per-user `userData/data`. Linux onedir backend bundle built successfully (63 MB); packaged smoke validated readiness, SPA and JS/CSS asset serving, exam creation, restart persistence, and measured 4,755.4 ms startup (`ai_included: false`). Frontend 16/16, backend 84/84 at the sidecar checkpoint. Windows, installer builds, and release automation are not yet verified. Report: `reports/2026-11-14-desktop-backend-bundle.md`.
 
 - 2026-11-14: PR #4 merged to `master` as `4453abb`; the GitHub Pages workflow deployed the updated English/Turkish guide successfully in run #43634470636. Both `/hamartia/` and `/hamartia/tr/` returned HTTP 200. No desktop packages or automated GitHub Releases exist yet; next is native Windows/Linux desktop packaging and merged-PR release automation.

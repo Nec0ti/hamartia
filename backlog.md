@@ -18,6 +18,7 @@
 - [x] Görsel zorunluluğunu kaldırıp metin tabanlı yanlış yakalama ve görünür kayıt formu sağlama.
 - [x] TYT/AYT/branş deneme türünü saklama, türe göre filtreleme ve toplamları ayırma.
 - [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
+- [ ] TYT/AYT genel denemesini tek oturumda ders bazında kaydet; toplam net ve XP'yi bir kez say, ders trendi ve yanlış soru bağlamını koru.
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 - [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
 - [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
@@ -47,4 +48,4 @@
 
 ## Sonraki küçük iş
 
-Diğer bilgisayarda text-only ve görselli soruyla endpoint/model ve multimodal aktarımı manuel doğrula.
+TYT/AYT deneme oturumlarını ders bazlı sonuçlara ayırmadan tek kayıt içinde destekle; plan `reports/2026-11-14-full-mock-plan.md`.

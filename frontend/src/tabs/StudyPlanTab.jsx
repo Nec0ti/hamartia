@@ -48,6 +48,11 @@ export default function StudyPlanTab() {
         <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<Tags size={18} />} />
       </div>
 
+      <section aria-label="Bugünkü çalışma" className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+        <h2 className="font-semibold text-canvas-text">Bugün</h2>
+        <p className="mt-1 text-sm text-canvas-muted"><strong className="text-canvas-text">{plan.today_questions}</strong> farklı soru denedin · {plan.today_correct} doğru, {plan.today_incorrect} yanlış yanıt</p>
+      </section>
+
       <section className="space-y-3">
         <div>
           <h2 className="text-lg font-semibold text-canvas-text">Şimdi çöz</h2>

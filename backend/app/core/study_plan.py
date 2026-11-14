@@ -3,7 +3,7 @@
 from collections import Counter
 from datetime import date
 
-from app.core.review_schedule import review_state
+from app.core.review_schedule import attempt_day, review_state
 
 
 def topic_priorities(questions, today=None):
@@ -13,7 +13,17 @@ def topic_priorities(questions, today=None):
     scheduled_questions = 0
     unclassified_questions = 0
     reviews = []
+    today_question_ids = set()
+    today_correct = 0
+    today_incorrect = 0
     for question in questions:
+        for attempt in question.review_attempts:
+            if attempt_day(attempt.attempted_at) == today:
+                today_question_ids.add(question.id)
+                if attempt.correct:
+                    today_correct += 1
+                else:
+                    today_incorrect += 1
         state = review_state(question, today=today)
         if not state["due"]:
             if state["due_date"]:
@@ -55,6 +65,9 @@ def topic_priorities(questions, today=None):
         "pending_questions": pending_questions,
         "scheduled_questions": scheduled_questions,
         "unclassified_questions": unclassified_questions,
+        "today_questions": len(today_question_ids),
+        "today_correct": today_correct,
+        "today_incorrect": today_incorrect,
         "topics": topics,
         "reviews": reviews,
     }

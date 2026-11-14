@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 REVIEW_INTERVALS = (1, 3, 7, 14, 30)
 
 
-def _attempt_day(value):
+def attempt_day(value):
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
     except (AttributeError, ValueError):
@@ -22,7 +22,7 @@ def review_state(question, today=None):
         return {"due_date": today.isoformat(), "due": True, "streak": 0, "last_correct": None}
 
     last = attempts[-1]
-    last_day = _attempt_day(last.attempted_at)
+    last_day = attempt_day(last.attempted_at)
     if last_day is None:
         return {"due_date": today.isoformat(), "due": True, "streak": 0, "last_correct": last.correct}
 

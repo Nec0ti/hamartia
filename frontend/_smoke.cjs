@@ -113,6 +113,7 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     await page.getByText('2 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    await page.getByText('2 farklı soru denedin · 1 doğru, 1 yanlış yanıt').waitFor()
     const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()

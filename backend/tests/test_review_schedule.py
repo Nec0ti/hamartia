@@ -78,6 +78,33 @@ class ReviewScheduleTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in plan["reviews"]], ["q1"])
         self.assertEqual(plan["topics"][0]["pending_count"], 1)
 
+    def test_insights_count_distinct_questions_and_each_todays_outcome(self):
+        today = date(2026, 11, 14)
+        first = question(
+            ReviewAttempt(attempted_at="2026-11-14T09:00:00Z", correct=False),
+            ReviewAttempt(attempted_at="2026-11-14T09:05:00Z", correct=True),
+        )
+        second = Question(
+            id="q2", subject="Fizik", topic="Vektör",
+            review_attempts=[ReviewAttempt(attempted_at="2026-11-14T10:00:00Z", correct=False)],
+        )
+        old = Question(
+            id="q3", review_attempts=[ReviewAttempt(attempted_at="2026-11-13T23:59:00Z", correct=True)],
+        )
+
+        plan = topic_priorities([first, second, old], today=today)
+
+        self.assertEqual(plan["today_questions"], 2)
+        self.assertEqual(plan["today_correct"], 1)
+        self.assertEqual(plan["today_incorrect"], 2)
+
+    def test_insights_ignore_invalid_attempt_dates_for_todays_activity(self):
+        plan = topic_priorities([question(
+            ReviewAttempt(attempted_at="invalid", correct=True),
+        )], today=date(2026, 11, 14))
+
+        self.assertEqual((plan["today_questions"], plan["today_correct"], plan["today_incorrect"]), (0, 0, 0))
+
 
 if __name__ == "__main__":
     unittest.main()

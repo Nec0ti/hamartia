@@ -1,6 +1,7 @@
 # Backlog günlüğü
 
 - 2026-11-14: `/settings` GET/PATCH artık API anahtarını döndürmüyor; yalnızca ayarlı olup olmadığı görünür. Boş kaydetme anahtarı koruyor, Ayarlar ekranında açıkça silinebilir. 3 yeni API testiyle backend 76/76, frontend 4/4, production build ve Chromium smoke geçti. Smoke anahtar ekle/sil döngüsünü doğruladı ve 1.269 ms ölçtü. Beş mevcut backend benchmarkı AI'siz geçti. Gerçek model çalıştırılmadı. Rapor: `reports/2026-11-14-settings-key-redaction.md`.
+- 2026-11-14: CI #73 smoke testinde asenkron response listener eski çalışma setini yarış koşuluyla okudu. Test artık mutation response body'lerini doğrudan await ediyor; yerel smoke ve GitHub Actions #74 geçti. Ayar anahtarı akışı son smoke'ta 1.014 ms ölçüldü.
 
 - 2026-11-14: Ayarlar GET/PATCH yanıtlarının API anahtarını tarayıcıya döndürdüğü bulundu. Loopback-only çalışma bağlamı riski daraltsa da sır yanıt sözleşmesinden çıkarılacak; boş güncelleme anahtarı koruyacak ve açık temizleme eklenecek. Plan: `reports/2026-11-14-settings-key-redaction-plan.md`.
 

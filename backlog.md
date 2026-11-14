@@ -5,6 +5,7 @@
 - [x] Liste okuma bozuk/kısmi JSON'ı sessizce boş veri gibi göstermesin.
 - [x] Etiketleme, analiz sonucu kaydetme ve silme işlemleri atomik read-modify-write olsun.
 - [x] Rakip güncellemelerde hiçbir kayıt kaybolmadığını test et.
+- [ ] Yerel model/endpoint hatası sahte bir Council teşhisi veya hata etiketi olarak kaydedilmesin; hatayı görünür kıl ve kayıtları koru.
 
 ## P1 — öğrenci döngüsü
 
@@ -45,4 +46,4 @@
 
 ## Sonraki küçük iş
 
-Diğer bilgisayardaki OpenAI uyumlu endpoint/model ve multimodal görsel aktarımını doğrula.
+Model çağrısı hatasında teşhisi/etiketi koru ve hatayı kullanıcıya göster: [uygulama planı](reports/2026-11-14-ai-failure-handling-plan.md). Ardından diğer bilgisayarda text-only ve görselli soruyla manuel doğrula.

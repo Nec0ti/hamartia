@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "test:docs": "node _docs_smoke.cjs",
     "test:browser": "node _smoke.cjs"
   },
   "dependencies": {

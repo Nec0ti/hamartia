@@ -16,13 +16,14 @@
 - Çalışma Planı ekranı bu sonuçları gösteriyor. Hiçbir endpoint gerçek modele bağlanmıyor.
 - Vite `^5.4.8` yerine `^6.4.6` oldu. Resmi [GHSA-p4f5-76q4-ffq7](https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7) duyurusunda <=6.4.5 etkileniyor; [6.4.6 release](https://github.com/vitejs/vite/releases) yamalı sürüm.
 - Soru dosyası uzantı/MIME denetimine PNG/JPEG/WebP imza doğrulaması eklendi; yanlış başlıklı PNG 415 alıyor.
+- Yanlışlar için tekrar edildi durumu eklendi; plan yalnızca bekleyen kayıtları sıralıyor ve kullanıcı durumu geri alabiliyor.
 - AI endpoint'i kaydedilmiş ayarları okuyacak async OpenAI client'ı kullanıyor ve görseli data URI ile isteğe ekliyor. Kullanıcı isteği gereği bu yol test/benchmark edilmedi; ayrı bilgisayarda doğrulanması gerekiyor.
 
 ## Doğrulama
 
 | İş | Sonuç |
 | --- | ---: |
-| Backend testleri | 14/14 geçti |
+| Backend testleri | 16/16 geçti |
 | Frontend formatter testleri | 3/3 geçti |
 | Frontend production build | geçti, 21.38 sn |
 | Build ana JS | 659.95 KB minified / 190.16 KB gzip |
@@ -31,6 +32,8 @@
 | 100 kayıtlı çalışma önceliği hesabı | 0.0031 sn |
 | Görsel imzası sonrası 100 soru upload | 0.5873 sn / 170.28 kayıt/sn |
 | Aynı tekrar testinde liste/öncelik hesabı | 0.0010 sn / 0.0020 sn |
+| Tekrar döngüsü benchmarkı: 100 soru upload | 0.4798 sn / 208.43 kayıt/sn |
+| Tekrar listesi / review update | 0.0031 sn / 0.0036 sn |
 | 1.000 JSON denemesi append | 15.8939 sn / 62.92 kayıt/sn |
 | 1.000 JSON denemesi okuma | 0.0132 sn |
 | `npm audit --offline` | cache'de 0 bulgu |
@@ -57,7 +60,7 @@ npm run build
 - Görsel başlığı doğrulanır, piksel akışı decode edilmez; bozuk ama imza taşıyan dosya kabul edilebilir.
 - JSON append her eklemede tüm dosyayı yeniden yazıyor. 1.000 kayıt ölçümü bu maliyeti gösteriyor; eşzamanlı process/çok worker veya büyüyen geçmiş için SQLite'a geçiş gerekir.
 - Bundle 500 KB eşiğini aşıyor. Bu çalışma diliminde code-splitting yapılmadı.
-- GitHub Actions workflow dosyası var; branch API commit'lerinden sonra CI run henüz doğrulanmadı. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
+- GitHub Actions `feat: add a local mistake review loop` commit'inde frontend ve backend job'larını başarıyla tamamladı. Review undo follow-up commit'inin CI sonucu bekliyor. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
 
 ## Model sınırı
 

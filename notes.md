@@ -20,6 +20,7 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `backend/app/core/formulas.py`: YKS neti, XP, seviye ve ortalama net formülleri.
 - `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit. `update_list` kilit altında read-modify-write yapar; bozuk/uyumsuz listeler `StorageError` üretir. Çok worker/multi-process kullanımda SQLite gerekir.
 - `backend/app/core/study_plan.py` ve `/questions/insights`: yanlış soru kayıtlarından AI çağırmadan ders/konu tekrar sıklığı, etiket dağılımı ve son kayıt gününü çıkarır.
+- `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
 - Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
 - `AIService.default()` `backend/data/settings.json` ayarlarını okur; soru görselini ve OCR metnini OpenAI uyumlu multimodal chat isteğine ekler. Bu kod yolu başka bilgisayardaki modelle doğrulanmadı ve test/benchmark dışında tutuldu.
@@ -58,11 +59,12 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - 14 backend testi geçti. Python 3.14 Nix paket yolları kullanıldı; yerelde eksik `openai` ve `python_multipart` importları test harness'inde stub edildi. Gerçek AI çağrısı yapılmadı.
 - Soru akışı benchmarkı: 100 yükleme 0.8692 sn (115.04/s), listeleme 0.0017 sn, çalışma önceliği 0.0031 sn. JSON depolama benchmarkı: 1.000 append 15.8939 sn (62.92/s), okuma 0.0132 sn.
 - PNG imzası sınırı eklendikten sonraki 100 soru tekrarı: upload 0.5873 sn (170.28/s), listeleme 0.0010 sn, öncelik hesabı 0.0020 sn; 14/14 backend testi geçti.
+- Tekrar döngüsü sonrasında backend 16/16, frontend 3/3 test geçti. 100 kayıt: upload 0.4798 sn (208.43/s), listeleme 0.0022 sn, öncelik 0.0031 sn, tekrar durumu 0.0036 sn.
 - Frontend: 3 test geçti; Vite 6.4.6 build'i 21.38 sn, ana bundle 659.95 KB minified ve 190.16 KB gzip. Rollup büyük bundle uyarısı devam ediyor.
 - `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
 - Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.
 - `README.md` yerel çalıştırma, veri dizini, AI endpoint ayarı ve AI dışı doğrulama komutlarını açıklar. Remote model davranışı başka bilgisayarda hâlâ doğrulanmalı.
-- GitHub CI için workflow mevcut, ancak branch güncellemesinden sonra GitHub Actions çalışması doğrulanmadı. Normal `git push/fetch` DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
+- GitHub Actions `feat: add a local mistake review loop` commit'inde frontend ve backend işlerindeki tüm adımları başarıyla bitirdi; işaret geri alma follow-up commit'i sırada. Normal `git push/fetch` DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
 
 ## Açık kararlar
 

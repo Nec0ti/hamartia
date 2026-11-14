@@ -15,4 +15,7 @@
 - 2026-11-14: Vite 6.4.6 yamalı sürüme alındı; offline temiz kurulum/test/build/audit cache kontrolü geçti. Bundle 659.95 KB; tarayıcı smoke ve GitHub Actions sonucu hâlâ bekliyor.
 - 2026-11-14: Görsel yüklemeye PNG/JPEG/WebP imza kontrolü eklendi. 14 backend testi geçti, 100 soru benchmarkı 0.5873 sn upload ölçtü; GitHub Actions yeni commit için sırada.
 - 2026-11-14: Yerel kurulum ve model endpoint ayarı README'ye eklendi; AI istemcisi kayıtlı ayarı kullanıp görseli payload'a alıyor. Gerçek local model başka bilgisayarda doğrulanmadı.
+- 2026-11-14: Deneme girişi ISO tarih ve 0-59 saniye aralığıyla sınırlandı; 14 backend testi, frontend test/build ve GitHub Actions geçti.
+- 2026-11-14: Yanlış soru tekrar edildi durumu, geri alma ve bekleyen konu önceliği eklendi. 16 backend, 3 frontend testi ve model çağrısız benchmark geçti; ilk yeni CI akışı başarılı.
+- Yeni AI dışı soru-flow ölçümü: `reports/2026-11-14-storage-and-study-plan.md`.
 - Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.

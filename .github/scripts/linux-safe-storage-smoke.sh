@@ -37,12 +37,13 @@ dbus-run-session -- bash -euo pipefail -c '
   keyring_password="$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")"
   keyring_environment="$(printf "%s" "$keyring_password" | gnome-keyring-daemon --unlock --components=secrets)"
   unset keyring_password
-  while IFS= read -r assignment; do
-    case "$assignment" in
-      GNOME_KEYRING_CONTROL=*) export "$assignment" ;;
-    esac
-  done <<< "$keyring_environment"
+  eval "$keyring_environment"
   unset keyring_environment
+  case "${GNOME_KEYRING_CONTROL:-}" in
+    "$XDG_RUNTIME_DIR"/*) ;;
+    *) echo 'GNOME keyring control path is outside the temporary runtime directory.' >&2; exit 1 ;;
+  esac
+  test -d "$GNOME_KEYRING_CONTROL"
 
   export XDG_CURRENT_DESKTOP=GNOME
   export HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND="$1"

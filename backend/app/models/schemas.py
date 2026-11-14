@@ -6,7 +6,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
@@ -153,6 +153,7 @@ class Exam(BaseModel):
 
     id: str
     date: str = Field(description="ISO date, e.g. 2026-10-07")
+    exam_type: Literal["tyt", "ayt", "branch"] = "branch"
     subject: str
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)
@@ -188,6 +189,7 @@ class ExamCreate(BaseModel):
     """Raw inputs accepted when recording an exam."""
 
     date: str
+    exam_type: Literal["tyt", "ayt", "branch"] = "branch"
     subject: str
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)

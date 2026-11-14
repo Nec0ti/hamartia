@@ -35,6 +35,7 @@ async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get
     exam = Exam(
         id=f"exam_{uuid4().hex}",
         date=payload.date,
+        exam_type=payload.exam_type,
         subject=payload.subject,
         correct=payload.correct,
         incorrect=payload.incorrect,
@@ -45,6 +46,25 @@ async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get
     )
     storage.append_list("exams.json", exam, Exam)
     return exam
+
+
+@router.put("/{exam_id}", response_model=Exam)
+async def update_exam(exam_id: str, payload: ExamCreate, storage: StorageService = Depends(get_storage)):
+    updated = []
+
+    def replace(exams):
+        for index, exam in enumerate(exams):
+            if exam.id == exam_id:
+                data = payload.model_dump()
+                data.update(id=exam.id, created_at=exam.created_at)
+                exams[index] = Exam(**data)
+                updated.append(exams[index])
+                return True
+        return False
+
+    if not storage.update_list("exams.json", Exam, replace):
+        raise HTTPException(status_code=404, detail="Exam not found")
+    return updated[0]
 
 
 @router.get("/{exam_id}", response_model=Exam)

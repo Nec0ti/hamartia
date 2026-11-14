@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.api.exams import create_exam
+from app.api.exams import create_exam, delete_exam, update_exam
 from app.models.schemas import Exam, ExamCreate, Settings
 from app.services.storage import StorageError, StorageService
 
@@ -24,7 +24,7 @@ class ExamFlowTests(unittest.TestCase):
         original = Exam(id="old", date="2026-11-01", subject="Math", correct=8, incorrect=2, blank=1)
         self.storage.save_list("exams.json", [original])
         payload = ExamCreate(
-            date="2026-11-14", subject="Physics", correct=6, incorrect=3, blank=2,
+            date="2026-11-14", exam_type="ayt", subject="Physics", correct=6, incorrect=3, blank=2,
             duration_minutes=35, duration_seconds=12,
         )
 
@@ -37,6 +37,41 @@ class ExamFlowTests(unittest.TestCase):
         self.assertTrue(created.id.startswith("exam_"))
         self.assertTrue(created.created_at.endswith("Z"))
         self.assertEqual(created.subject, "Physics")
+        self.assertEqual(created.exam_type, "ayt")
+
+    def test_legacy_exam_defaults_to_branch_and_update_preserves_identity(self):
+        original = Exam(id="old", date="2026-11-01", subject="Math", correct=8, incorrect=2, blank=1, created_at="old-time")
+        self.storage.save_list("exams.json", [original])
+        payload = ExamCreate(date="2026-11-14", exam_type="tyt", subject="Türkçe", correct=30, incorrect=2, blank=8)
+
+        updated = asyncio.run(update_exam("old", payload, self.storage))
+
+        self.assertEqual(updated.exam_type, "tyt")
+        self.assertEqual(updated.subject, "Türkçe")
+        self.assertEqual(updated.id, "old")
+        self.assertEqual(updated.created_at, "old-time")
+        raw = (Path(self.temp_dir.name) / "exams.json").read_text()
+        self.assertEqual(Exam.model_validate_json(raw[1:-1]).exam_type, "tyt")
+
+    def test_update_and_delete_missing_exam_return_404(self):
+        payload = ExamCreate(date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)
+        with self.assertRaises(Exception) as update_error:
+            asyncio.run(update_exam("missing", payload, self.storage))
+        with self.assertRaises(Exception) as delete_error:
+            asyncio.run(delete_exam("missing", self.storage))
+        self.assertEqual(update_error.exception.status_code, 404)
+        self.assertEqual(delete_error.exception.status_code, 404)
+
+    def test_delete_exam_removes_only_selected_record(self):
+        self.storage.save_list("exams.json", [
+            Exam(id="one", date="2026-11-01", subject="Math", correct=8, incorrect=2, blank=1),
+            Exam(id="two", date="2026-11-02", subject="Physics", correct=6, incorrect=3, blank=2),
+        ])
+
+        result = asyncio.run(delete_exam("one", self.storage))
+
+        self.assertEqual(result, {"deleted": "one"})
+        self.assertEqual([exam.id for exam in self.storage.load_list("exams.json", Exam)], ["two"])
 
     def test_concurrent_appends_keep_all_records(self):
         def append(index):

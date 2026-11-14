@@ -215,6 +215,7 @@ async def delete_question(question_id: str, storage: StorageService = Depends(ge
     if not storage.update_list("questions.json", Question, remove):
         raise HTTPException(status_code=404, detail="Question not found")
 
+    # shortcut: JSON and file deletion cannot share a transaction; use transactional blob storage for crash-proof cleanup.
     image_path = (DATA_DIR / deleted[0].image_path).resolve() if deleted[0].image_path else None
     if image_path and image_path.is_relative_to(UPLOAD_DIR.resolve()) and image_path.is_file():
         try:

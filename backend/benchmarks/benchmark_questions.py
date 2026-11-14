@@ -53,6 +53,11 @@ async def run(count=100):
             assert Path(image.path).is_file()
             await questions.tag_question(saved[0].id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
             started = time.perf_counter()
+            await questions.record_question_attempt(
+                saved[0].id, questions.AttemptRequest(correct=False), storage,
+            )
+            attempt_seconds = time.perf_counter() - started
+            started = time.perf_counter()
             await questions.review_question(saved[0].id, questions.ReviewRequest(), storage)
             review_seconds = time.perf_counter() - started
 
@@ -63,6 +68,7 @@ async def run(count=100):
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),
             "insight_seconds": round(insight_seconds, 4),
+            "attempt_seconds": round(attempt_seconds, 4),
             "review_seconds": round(review_seconds, 4),
             "ai_included": False,
         }))

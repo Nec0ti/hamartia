@@ -141,6 +141,28 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(restored.reviewed_at, "")
         self.assertEqual(asyncio.run(question_api.question_insights(self.storage))["pending_questions"], 2)
 
+    def test_solve_attempt_is_persisted_and_reopens_legacy_review(self):
+        self.storage.save_list("questions.json", [Question(
+            id="q1", image_name="1.png", image_path="uploads/1.png", reviewed_at="old-review",
+        )])
+
+        with patch.object(question_api, "_utcnow", return_value="2026-11-14T10:00:00Z"):
+            result = asyncio.run(question_api.record_question_attempt(
+                "q1", question_api.AttemptRequest(correct=False), self.storage,
+            ))
+
+        saved = self.storage.load_list("questions.json", Question)[0]
+        self.assertEqual(result.review_attempts[0].attempted_at, "2026-11-14T10:00:00Z")
+        self.assertFalse(saved.review_attempts[0].correct)
+        self.assertEqual(saved.reviewed_at, "")
+
+    def test_solve_attempt_returns_404_for_missing_question(self):
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(question_api.record_question_attempt(
+                "missing", question_api.AttemptRequest(correct=True), self.storage,
+            ))
+        self.assertEqual(error.exception.status_code, 404)
+
     def test_council_schema_reads_old_and_new_envelopes(self):
         legacy = CouncilAnalysis.model_validate({
             "dissenter": "old", "first_principles": "base", "verdict": {"difficulty": 3},

@@ -124,6 +124,11 @@ class CouncilAnalysis(BaseModel):
         return value
 
 
+class ReviewAttempt(BaseModel):
+    attempted_at: str
+    correct: bool
+
+
 class Question(BaseModel):
     id: str
     image_name: str
@@ -135,6 +140,7 @@ class Question(BaseModel):
     hamartia_tag: str = "[Knowledge Gap]"
     created_at: str = ""
     reviewed_at: str = ""
+    review_attempts: list[ReviewAttempt] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

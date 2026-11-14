@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import Question
+from app.models.schemas import Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
 from app.services.storage import StorageError, StorageService
 
@@ -160,6 +160,10 @@ class ReviewRequest(BaseModel):
     reviewed: bool = True
 
 
+class AttemptRequest(BaseModel):
+    correct: bool
+
+
 @router.patch("/{question_id}/tag", response_model=Question)
 async def tag_question(
     question_id: str,
@@ -206,5 +210,29 @@ async def review_question(
         return False
 
     if not storage.update_list("questions.json", Question, mark_reviewed):
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated[0]
+
+
+@router.post("/{question_id}/attempt", response_model=Question)
+async def record_question_attempt(
+    question_id: str,
+    payload: AttemptRequest,
+    storage: StorageService = Depends(get_storage),
+):
+    """Record a manual solve result and reopen the question for spaced review."""
+    attempt = ReviewAttempt(attempted_at=_utcnow(), correct=payload.correct)
+    updated = []
+
+    def save_attempt(questions):
+        for question in questions:
+            if question.id == question_id:
+                question.review_attempts.append(attempt)
+                question.reviewed_at = ""
+                updated.append(question)
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, save_attempt):
         raise HTTPException(status_code=404, detail="Question not found")
     return updated[0]

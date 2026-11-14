@@ -16,6 +16,7 @@
 - Çalışma Planı ekranı bu sonuçları gösteriyor. Hiçbir endpoint gerçek modele bağlanmıyor.
 - Vite `^5.4.8` yerine `^6.4.6` oldu. Resmi [GHSA-p4f5-76q4-ffq7](https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7) duyurusunda <=6.4.5 etkileniyor; [6.4.6 release](https://github.com/vitejs/vite/releases) yamalı sürüm.
 - Soru dosyası uzantı/MIME denetimine PNG/JPEG/WebP imza doğrulaması eklendi; yanlış başlıklı PNG 415 alıyor.
+- AI endpoint'i kaydedilmiş ayarları okuyacak async OpenAI client'ı kullanıyor ve görseli data URI ile isteğe ekliyor. Kullanıcı isteği gereği bu yol test/benchmark edilmedi; ayrı bilgisayarda doğrulanması gerekiyor.
 
 ## Doğrulama
 

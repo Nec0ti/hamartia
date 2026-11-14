@@ -21,6 +21,11 @@
 - [x] Vite güvenlik yamasını ve frontend bağımlılık kurulum/build'ini doğrulama.
 - [x] Bozuk JSON ve eski CouncilAnalysis biçimi davranışlarını doğrulama.
 
+## P3 — diğer bilgisayarda doğrulama
+
+- [ ] Uygulamanın kaydettiği OpenAI uyumlu endpoint/model ayarını ayrı bilgisayarda doğrula.
+- [ ] Multimodal endpoint'e görsel gidişini gerçek modelle doğrula; yerel AI testi ve benchmarkını bu depoda çalıştırma.
+
 ## Sonraki küçük iş
 
 Cosmos XP kurallarını ve yarış-safe state güncellemelerini test edip sonra UI'ya bağlama; tarayıcı smoke imkanını doğrulama.

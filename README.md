@@ -22,6 +22,8 @@ Başlatıcı API'nin hazır olduğunu kontrol eder ve iki süreci birlikte kapat
 
 Deneme, yanlış soru ve ayarlar `backend/data/` altında saklanır. Soru görselleri de bu dizinin `uploads/` klasöründedir. Ayarlar'dan ZIP yedeği indirebilirsin. Yedekte kişisel API anahtarı bulunmaz; geri yükleme mevcut bilgisayarın anahtarını korur.
 
+TYT/AYT genel denemesi tek oturum olarak kaydedilir; ders başına doğru/yanlış/boş girilir, toplam net ve XP bir kez hesaplanır. Geçmiş ve trend ders filtresi seçili bölümün netini gösterir. Her bölümden yanlış soru eklenirken soru no ve çözüm sırası o bölümün soru sayısıyla sınırlandırılır. Branş denemeleri tek dersli biçimde devam eder.
+
 Geri yükleme sırasında uygulamayı kapat ve repo kökünde çalıştır:
 
 ```sh
@@ -61,6 +63,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; yanlış soru/deneme CRUD ve tekrar akışlarını, konu net/doğruluk grafiklerini ve tam geçmiş yönetimini, odaklı oturum sayaç/duraklatma/yenileme/tamamlama döngüsünü ve backup indirmeyi kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; yanlış soru/deneme CRUD ve tekrar akışlarını, TYT/AYT bölüm kaydetme/düzenleme, reload ve bölümden yanlış yakalama akışlarını, konu net/doğruluk grafiklerini ve tam geçmiş yönetimini, odaklı oturum sayaç/duraklatma/yenileme/tamamlama döngüsünü ve backup indirmeyi kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
 
 Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.

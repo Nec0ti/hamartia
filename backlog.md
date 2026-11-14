@@ -18,7 +18,7 @@
 - [x] Görsel zorunluluğunu kaldırıp metin tabanlı yanlış yakalama ve görünür kayıt formu sağlama.
 - [x] TYT/AYT/branş deneme türünü saklama, türe göre filtreleme ve toplamları ayırma.
 - [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
-- [ ] TYT/AYT genel denemesini tek oturumda ders bazında kaydet; toplam net ve XP'yi bir kez say, ders trendi ve yanlış soru bağlamını koru.
+- [x] TYT/AYT genel denemesini tek oturumda ders bazında kaydet; toplam net ve XP'yi bir kez say, ders trendi ve yanlış soru bağlamını koru.
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 - [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
 - [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
@@ -40,6 +40,7 @@
 - [x] Ayarlar'dan API anahtarı hariç ZIP yedeği indirme ve uygulama kapalıyken doğrulamalı geri yükleme.
 - [x] Geri yüklemeden önce mevcut veri klasörünü snapshot olarak tutma ve dizin değişimini process lock ile koruma.
 - [x] Temsilî veri boyutunda yedek oluşturma, doğrulama ve geri yüklemeyi AI'siz benchmarka alma.
+- [x] Ders bölümlü TYT/AYT oturumu için eski kayıt/yedek uyumu, arayüz ve bölüm boyutunda yanlış soru sınırını doğrula.
 
 ## P3 — diğer bilgisayarda doğrulama
 
@@ -48,4 +49,4 @@
 
 ## Sonraki küçük iş
 
-TYT/AYT deneme oturumlarını ders bazlı sonuçlara ayırmadan tek kayıt içinde destekle; plan `reports/2026-11-14-full-mock-plan.md`.
+Tam deneme ilk dilimi tamamlandı. Sonraki kapsamı mevcut P1/P2 açık maddeleri ve diğer bilgisayarda yapılacak P3 AI doğrulaması arasından seç.

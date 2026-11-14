@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: TYT/AYT genel denemesi tek kayıtta ders bölümleriyle giriliyor; bölüm toplamları üst sonucu belirliyor, oturum XP/seri/deneme sayısını bir kez etkiliyor. Eski tek dersli kayıtlar ve backup biçimi uyumlu. Bölüm trendi ve bölüm soru sınırları eklendi. Backend 81/81, frontend 7/7, production build ve Chromium browser smoke geçti; beş AI'siz benchmark da çalıştı. Sonuç/ölçüler: `reports/2026-11-14-full-mock-results.md`. Commitler GitHub `codex/hamartia-rebuild` dalına tree SHA eşleşmesiyle aktarıldı. Açık PR yok ve commit status boş; bu dilim için Actions sonucu yok.
+
 - 2026-11-14: Ürün incelemesi, TYT/AYT genel denemesinin şu an tek dersli `Exam` formuyla kaydedildiğini buldu. Yeni dilim tek oturum/tek XP ve alt ders sonuçlarını aynı kayıtta tutacak, legacy/branch biçimini koruyacak; bölüm yanlışlarının sınırı ve sırası doğru derse bağlanacak. Tasarım: `reports/2026-11-14-full-mock-plan.md`.
 
 - 2026-11-14: `/settings` GET/PATCH artık API anahtarını döndürmüyor; yalnızca ayarlı olup olmadığı görünür. Boş kaydetme anahtarı koruyor, Ayarlar ekranında açıkça silinebilir. 3 yeni API testiyle backend 76/76, frontend 4/4, production build ve Chromium smoke geçti. Smoke anahtar ekle/sil döngüsünü doğruladı ve 1.269 ms ölçtü. Beş mevcut backend benchmarkı AI'siz geçti. Gerçek model çalıştırılmadı. Rapor: `reports/2026-11-14-settings-key-redaction.md`.

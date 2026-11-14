@@ -11,7 +11,7 @@
 - [x] Deneme girme, geçmişi koruma, yanlış görselini yerel kaydetme ve etiketleme.
 - [x] Ana sayfa ve Yanlışlarım sekmesini gerçek akışa bağlama.
 - [x] Ders/konu hata örüntülerinden deterministik çalışma önceliği çıkarma.
-- [ ] Cosmos ve Çalışma Koçu yer tutucularını amaca uygun ekranlara dönüştürme.
+- [ ] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 
 ## P2 — doğrulama ve sağlamlaştırma
 
@@ -23,4 +23,4 @@
 
 ## Sonraki küçük iş
 
-Cosmos sekmesini AI'siz yerel ilerleme ekranına dönüştürme; tarayıcı smoke imkanını doğrulama.
+Cosmos XP kurallarını ve yarış-safe state güncellemelerini test edip sonra UI'ya bağlama; tarayıcı smoke imkanını doğrulama.

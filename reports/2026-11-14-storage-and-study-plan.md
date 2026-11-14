@@ -15,6 +15,7 @@
 - `/questions/insights` yanlış kayıtlarını ders/konu bazında birleştiriyor; tekrar sayısı yüksek konu üstte, eşitlikte ad alfabetik. Hata etiketleri ve en son kayıt günü de dönüyor.
 - Çalışma Planı ekranı bu sonuçları gösteriyor. Hiçbir endpoint gerçek modele bağlanmıyor.
 - Vite `^5.4.8` yerine `^6.4.6` oldu. Resmi [GHSA-p4f5-76q4-ffq7](https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7) duyurusunda <=6.4.5 etkileniyor; [6.4.6 release](https://github.com/vitejs/vite/releases) yamalı sürüm.
+- Soru dosyası uzantı/MIME denetimine PNG/JPEG/WebP imza doğrulaması eklendi; yanlış başlıklı PNG 415 alıyor.
 
 ## Doğrulama
 
@@ -27,6 +28,8 @@
 | 100 yanlış yükleme benchmarkı | 0.8692 sn / 115.04 kayıt/sn |
 | 100 soru listeleme | 0.0017 sn |
 | 100 kayıtlı çalışma önceliği hesabı | 0.0031 sn |
+| Görsel imzası sonrası 100 soru upload | 0.5873 sn / 170.28 kayıt/sn |
+| Aynı tekrar testinde liste/öncelik hesabı | 0.0010 sn / 0.0020 sn |
 | 1.000 JSON denemesi append | 15.8939 sn / 62.92 kayıt/sn |
 | 1.000 JSON denemesi okuma | 0.0132 sn |
 | `npm audit --offline` | cache'de 0 bulgu |
@@ -50,6 +53,7 @@ npm run build
 - Python testleri sistem Python 3.14/Nix FastAPI ve Pydantic paketlerini kullandı; eksik `openai` ve `python_multipart` importları test harness'inde stub edildi. Model yüklenmedi veya çağrılmadı.
 - Frontend bağımlılıkları `npm ci --offline --ignore-scripts` ile kuruldu. Sandbox ortamında kurulum script'leri çalıştırılmadı; Vite build ve test yine de geçti.
 - `npm audit --offline` yalnızca yerel npm cache'ini temsil eder, güncel internet audit'i değildir.
+- Görsel başlığı doğrulanır, piksel akışı decode edilmez; bozuk ama imza taşıyan dosya kabul edilebilir.
 - JSON append her eklemede tüm dosyayı yeniden yazıyor. 1.000 kayıt ölçümü bu maliyeti gösteriyor; eşzamanlı process/çok worker veya büyüyen geçmiş için SQLite'a geçiş gerekir.
 - Bundle 500 KB eşiğini aşıyor. Bu çalışma diliminde code-splitting yapılmadı.
 - GitHub Actions workflow dosyası var; branch API commit'lerinden sonra CI run henüz doğrulanmadı. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.

@@ -1,38 +1,38 @@
-# TYT/AYT ders bölümlü deneme — sonuç
+# TYT/AYT sectioned mock exam — results
 
-## Uygulama
+## Implementation
 
-- TYT/AYT denemesi tek `Exam` kaydında bölüm adı ve doğru/yanlış/boş sayılarıyla tutulur. Backend toplamları doğrular; süre oturum süresi olarak kalır. XP, seri ve deneme sayımı aynı oturum için bir kez yapılır.
-- Branş denemeleri ile eski bölüm içermeyen TYT/AYT kayıtları çalışmaya devam eder. Eski tam deneme düzenleme formuna açıldığında mevcut sayıları tek bölüm olarak korur.
-- Geçmiş tek satırda toplamı gösterir ve ders sonuçlarını açar. Ders filtresi istatistik/net trendini o bölüm üzerinden hesaplar.
-- Bölümden yanlış ekleme ders adını taşır; soru no/çözüm sırası bölüm soru sayısına göre doğrulanır. Soru, kayıt anındaki bölüm büyüklüğünü snapshot olarak saklar.
-- Backup restore yeni `sections` alanını round-trip eder; eski JSON/backup alanları için varsayılanlar korunur.
+- A TYT/AYT mock exam is stored in one `Exam` record with section names and correct/incorrect/blank counts. The backend validates totals; duration remains the session duration. XP, streak, and exam count are each calculated once for the same session.
+- Branch exams and old TYT/AYT records without sections continue to work. When an old full exam is opened in the edit form, its existing counts are preserved as a single section.
+- History shows totals in one row and expands to show subject results. The subject filter calculates statistics/net trend from that section.
+- Adding a wrong question from a section carries over the subject name; question number/solve order are validated against the section's question count. The question stores the section size as a snapshot at the time of entry.
+- Backup restore round-trips the new `sections` field; defaults are preserved for old JSON/backup fields.
 
-## Doğrulama
+## Verification
 
-- Backend: `PYTHONPATH=backend .venv/bin/python -m unittest discover -s backend/tests -q` — 81 test geçti.
-- Frontend: `npm test` — 7 test geçti.
-- Frontend production: `npm run build` — başarılı. Mevcut büyük bundle uyarısı var: 699.82 KB minified / 199.51 KB gzip.
-- Chromium smoke: `npm run test:browser` — başarılı. İçinde branş ve TYT/AYT oluşturma, TYT reload, bölümden yanlış soru ekleme, düzenleme, ders filtresi ve silme var. Toplam `exam_crud_ms`: 10,840 ms; diğer adımlar komut çıktısında ölçüldü.
-- `git diff --check` — temiz.
+- Backend: `PYTHONPATH=backend .venv/bin/python -m unittest discover -s backend/tests -q` — 81 tests passed.
+- Frontend: `npm test` — 7 tests passed.
+- Frontend production: `npm run build` — succeeded. Existing large bundle warning: 699.82 KB minified / 199.51 KB gzip.
+- Chromium smoke: `npm run test:browser` — succeeded. Includes branch and TYT/AYT creation, TYT reload, adding a wrong question from a section, editing, subject filter, and deletion. Total `exam_crud_ms`: 10,840 ms; other steps were measured in command output.
+- `git diff --check` — clean.
 
-## AI dışı benchmark ölçümleri
+## AI-free benchmark measurements
 
-Yerel geliştirme makinesinde tekil çalıştırma; her betik başarı assert'leriyle bitti. Ölçüler makine/yük bağımlıdır, CI performans eşiği değildir.
+Single runs on the local development machine; each script ended with success assertions. Measurements depend on machine/load and are not CI performance thresholds.
 
-| Akış | Veri | Sonuç |
+| Flow | Data | Result |
 | --- | --- | --- |
-| JSON sınav depolama | 1.000 kayıt, 10 tam deneme | append 19.2337 sn (51.99 kayıt/sn), read 0.0206 sn, update 0.0489 sn, delete 0.0374 sn, progression 0.0051 sn |
-| Soru yakalama/içgörü | 100 görselli + 100 metin, 40 bölüme bağlı | upload 0.8938 sn, text capture 1.2757 sn, bölüm sorusu upload 0.6774 sn, bölüm sırası özeti 0.0091 sn |
-| Backup/restore | 50 x 2 MiB upload, ZIP 104,900,284 bayt | export 6.8527 sn, validation 1.0435 sn, restore 1.1368 sn |
-| Soru çözüm sırası özeti | 1.000 / 10.000 kayıt | 0.016647 / 0.178777 sn |
-| Konu çalışma seti | 1.000 / 10.000 oturum | summary 0.009912 / 0.076962 sn; write 0.022863 / 0.172899 sn; read 0.049215 / 0.400616 sn |
+| JSON exam storage | 1,000 records, 10 full exams | append 19.2337 sec (51.99 records/sec), read 0.0206 sec, update 0.0489 sec, delete 0.0374 sec, progression 0.0051 sec |
+| Question capture/insights | 100 with images + 100 text-only, 40 section-linked | upload 0.8938 sec, text capture 1.2757 sec, section-question upload 0.6774 sec, section solve-order summary 0.0091 sec |
+| Backup/restore | 50 x 2 MiB uploads, ZIP 104,900,284 bytes | export 6.8527 sec, validation 1.0435 sec, restore 1.1368 sec |
+| Question solve-order summary | 1,000 / 10,000 records | 0.016647 / 0.178777 sec |
+| Topic study set | 1,000 / 10,000 sessions | summary 0.009912 / 0.076962 sec; write 0.022863 / 0.172899 sec; read 0.049215 / 0.400616 sec |
 
-`ai_included:false` bütün benchmark çıktılarında yer aldı. Gerçek model yüklenmedi, endpoint çağrılmadı.
+`ai_included:false` appeared in all benchmark outputs. No real model was loaded or endpoint called.
 
-## Git aktarımı ve kalanlar
+## Git transfer and remaining work
 
-- Yerel UI commit `040462e2bf9a73271d622741b63c9cd616c1ceb4`; remote karşılığı `de19c4f56883d460eac80649e18b54468135dbcf`. İki ağacın SHA'sı `8bed8506808519c6812b31fc9528e130fc172c74`.
-- Yerel backup/benchmark commit `a7f7b556488418857d86ad812217a63157586960`; remote karşılığı `7c8b57a87447540484bb64259d7b5876e2d11e5b`. Ağaç SHA'sı `9cc28a65ae406a2915be33dd7ee7618e9274144f`.
-- GitHub `codex/hamartia-rebuild` ref'i fast-forward güncellendi ve PR #1 `master` hedefine açıldı. PR head commit `a2746a104ad61f8857a405aa7a7ce599c3344696` için GitHub Actions run #84 başarıyla tamamlandı; backend ve frontend job'ları geçti.
-- Checkout'ta canlı `backend/data` olmadığı için kullanıcının gerçek JSON kayıtları sınanmadı. P3'teki endpoint/model ve görsel analiz doğrulaması ayrı bilgisayarda elle yapılacak.
+- Local UI commit `040462e2bf9a73271d622741b63c9cd616c1ceb4`; remote counterpart `de19c4f56883d460eac80649e18b54468135dbcf`. The tree SHA of both is `8bed8506808519c6812b31fc9528e130fc172c74`.
+- Local backup/benchmark commit `a7f7b556488418857d86ad812217a63157586960`; remote counterpart `7c8b57a87447540484bb64259d7b5876e2d11e5b`. Tree SHA is `9cc28a65ae406a2915be33dd7ee7618e9274144f`.
+- The GitHub `codex/hamartia-rebuild` ref was fast-forward updated and PR #1 was opened against `master`. GitHub Actions run #84 for PR head commit `a2746a104ad61f8857a405aa7a7ce599c3344696` completed successfully; backend and frontend jobs passed.
+- Since the checkout has no live `backend/data`, the user's real JSON records were not tested. Endpoint/model and image-analysis verification in P3 will be done manually on another computer.

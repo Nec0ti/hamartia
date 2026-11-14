@@ -1,17 +1,17 @@
-# 2026-11-14 yerel model hata işleme — uygulama ve doğrulama
+# 2026-11-14 local model error handling — implementation and verification
 
-## Değişiklik
+## Change
 
-`AIService._completions()` provider hatalarını boş cevaba çevirmek yerine yukarı taşır. Soru analiz API'si `OpenAIError` için 502 döndürür; frontend'in mevcut HTTP hata akışı mesajı gösterir. Hata durumunda mevcut Council analizi ve manuel etiket değişmez. Böylece erişim/model hatası başarılı analizmiş gibi saklanmaz.
+`AIService._completions()` propagates provider errors instead of converting them into empty responses. The question analysis API returns 502 for `OpenAIError`; the frontend's existing HTTP error flow displays the message. On error, the existing Council analysis and manual tag remain unchanged. This prevents access/model errors from being stored as if they were successful analyses.
 
-## Doğrulama
+## Verification
 
-- Backend: `PYTHONPATH=. python -m unittest discover -s tests -q` — 73 test geçti. Yeni sınır testi fake `OpenAIError` üretir ve 502 ile kayıt/etiket korumasını doğrular; gerçek model veya endpoint çağrısı yapmaz.
-- Frontend: `npm test` — 4/4 geçti; production build başarılı, JS 695.22 KB / 198.14 KB gzip. 500 KB chunk uyarısı sürüyor.
-- Chromium browser smoke başarıyla geçti; UI, practice, grafik ve backup akışları devam ediyor. Smoke `ai_included: false` ve `/agent`/`analyze` istekleri olmadığını doğrular.
-- Gerçek AI isteği veya AI benchmarkı çalıştırılmadı.
-- GitHub Actions run #69, backend ve frontend işleriyle başarılı.
+- Backend: `PYTHONPATH=. python -m unittest discover -s tests -q` — 73 tests passed. The new boundary test produces a fake `OpenAIError` and verifies 502 plus preservation of the record/tag; it does not call a real model or endpoint.
+- Frontend: `npm test` — 4/4 passed; production build succeeded, JS 695.22 KB / 198.14 KB gzip. The 500 KB chunk warning remains.
+- Chromium browser smoke passed; UI, practice, chart, and backup flows continue to work. Smoke confirms `ai_included: false` and no `/agent` or `/analyze` requests.
+- No real AI request or AI benchmark was run.
+- GitHub Actions run #69 succeeded with backend and frontend jobs.
 
-## Başka bilgisayarda elle doğrulama
+## Manual verification on another computer
 
-README'deki manuel sırayı uygula: text-only bir soruda analiz, ardından görselli bir soruda analiz. İkinci kontrol multimodal endpoint/model desteğini gerçek kullanımda doğrular. Bu doğrulama yapılana kadar bağlantı/model/görsel aktarımı tamamlanmış sayılmaz.
+Follow the manual sequence in the README: analyze a text-only question, then analyze an image question. The second check verifies multimodal endpoint/model support in actual use. Until this is done, connection/model/image transfer should not be considered complete.

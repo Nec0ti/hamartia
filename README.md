@@ -1,10 +1,10 @@
 # Hamartia
 
-YKS denemelerini ve yanlış soruları bu bilgisayarda tutan, çalışma önceliğini kayıtlı hata tekrarlarından çıkaran yerel çalışma alanı. Hamartia'nın özgün bir uygulamasıdır; dış platformların içeriklerini kullanmaz.
+A local workspace that stores YKS practice exams and missed questions on this computer, and derives study priorities from recorded review attempts. Hamartia is an original application; it does not use content from external platforms.
 
-## Yerelde çalıştırma
+## Run locally
 
-Python 3.12 ve Node.js 22 gerekir. İlk kurulumda:
+Python 3.12 and Node.js 22 are required. For the initial setup:
 
 ```sh
 python3.12 -m venv .venv
@@ -12,37 +12,37 @@ python3.12 -m venv .venv
 cd frontend && npm ci
 ```
 
-Günlük kullanımda repo kökünde tek terminal aç:
+For daily use, open one terminal at the repository root:
 
 ```sh
 .venv/bin/python scripts/dev.py
 ```
 
-Başlatıcı API'nin hazır olduğunu kontrol eder ve iki süreci birlikte kapatır; durdurmak için Ctrl+C kullan. Arayüz `http://127.0.0.1:5173`, API dokümanı `http://127.0.0.1:8000/docs` adresindedir. 5173 başka bir uygulamada açıksa `HAMARTIA_FRONTEND_PORT=5174 .venv/bin/python scripts/dev.py` ile boş bir port seç.
+The launcher checks that the API is ready and stops both processes together; press Ctrl+C to stop it. The UI is at `http://127.0.0.1:5173`, and the API documentation is at `http://127.0.0.1:8000/docs`. If another app is using 5173, choose an available port with `HAMARTIA_FRONTEND_PORT=5174 .venv/bin/python scripts/dev.py`.
 
-Deneme, yanlış soru ve ayarlar `backend/data/` altında saklanır. Soru görselleri de bu dizinin `uploads/` klasöründedir. Ayarlar'dan ZIP yedeği indirebilirsin. Yedekte kişisel API anahtarı bulunmaz; geri yükleme mevcut bilgisayarın anahtarını korur.
+Exams, missed questions, and settings are stored under `backend/data/`. Question images are in that directory's `uploads/` folder. You can download a ZIP backup from Settings. The backup does not contain the personal API key; restoring preserves the key on the current computer.
 
-TYT/AYT genel denemesi tek oturum olarak kaydedilir; ders başına doğru/yanlış/boş girilir, toplam net ve XP bir kez hesaplanır. Geçmiş ve trend ders filtresi seçili bölümün netini gösterir. Her bölümden yanlış soru eklenirken soru no ve çözüm sırası o bölümün soru sayısıyla sınırlandırılır. Branş denemeleri tek dersli biçimde devam eder.
+A full TYT/AYT practice exam is saved as one session, with correct/incorrect/blank counts entered per subject; total net and XP are calculated once. History and trend subject filters show the selected section's net score. When adding a missed question from a section, the question number and solve order are limited by that section's question count. Branch exams remain single-subject.
 
-Geri yükleme sırasında uygulamayı kapat ve repo kökünde çalıştır:
+Close the app before restoring, and run this from the repository root:
 
 ```sh
 .venv/bin/python scripts/restore_backup.py hamartia-backup.zip
 ```
 
-Geri yükleme tüm arşivi ve kayıt şemalarını doğrular, sonra mevcut `backend/data/` klasörünü `backend/data.before-restore-.../` adıyla saklar. Windows'ta `.venv\\Scripts\\python.exe` kullan. Hamartia çalışırken işlem güvenli şekilde reddedilir.
+Restore validates the full archive and record schemas, then preserves the current `backend/data/` directory as `backend/data.before-restore-.../`. On Windows, use `.venv\\Scripts\\python.exe`. The operation is safely rejected while Hamartia is running.
 
-## Yerel AI bağlantısı
+## Local AI connection
 
-AI test ve benchmarklarda çalıştırılmaz. Soru görseli analizi başka bilgisayardaki OpenAI uyumlu chat-completions sunucusuna bağlanmak için hazırlanmıştır. Uygulamadaki ayarlarda sunucu adresini, sunucunun beklediği model adını ve anahtarı gir. Aynı bilgisayardaki varsayılan adres `http://localhost:4000/v1`; diğer bilgisayar için güvenilir yerel ağdaki adresini ve portunu kullan. Bağlanan modelin görsel içerik kabul etmesi gerekir. API anahtarı API yanıtlarında gösterilmez; alanı boş bırakmak mevcut anahtarı korur, silmek için ayarlardaki açık seçeneği kullan.
+AI is not run in tests or benchmarks. Question-image analysis is designed to connect to an OpenAI-compatible chat-completions server on another computer. In the app's Settings, enter the server address, the model name expected by the server, and the key. The default address on the same computer is `http://localhost:4000/v1`; for another computer, use its address and port on a trusted local network. The connected model must accept image content. The API key is not shown in API responses; leaving the field empty preserves the current key, and you can remove it with the explicit option in Settings.
 
-Soru metni ve görsel baytları ayarlarda yazan sunucuya gönderilir. İnternete açık veya güvenmediğin bir endpoint kullanma. Bağlantı ve model yanıtı henüz başka bilgisayarda doğrulanmadı.
+Question text and image bytes are sent to the server shown in Settings. Do not use an endpoint exposed to the internet or one you do not trust. The connection and model response have not yet been verified on another computer.
 
-Başka bilgisayarda elle doğrularken sunucu adresi/model/anahtarını kaydet; sonra bir metin sorusunda **Yerel AI ile incele**, ardından görselli bir soruda aynı eylemi dene. Başarılı çalışmada Council sonucu kaydedilir. Endpoint/model hatası görünür hata üretir ve mevcut soru etiketi/analizini değiştirmez. Bu manuel akış otomatik test/benchmarkta çalıştırılmaz.
+For manual verification on another computer, save the server address/model/key; then choose **Review with Local AI** for a text question, followed by the same action on a question with an image. On success, the Council result is saved. An endpoint/model error produces a visible error and leaves the current question label/analysis unchanged. This manual flow is not run by automated tests or benchmarks.
 
-## AI dışı doğrulama
+## Non-AI verification
 
-Repo kökünde backend testleri:
+Backend tests from the repository root:
 
 ```sh
 PYTHONPATH=backend python -m unittest discover -s backend/tests -v
@@ -63,6 +63,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; yanlış soru/deneme CRUD ve tekrar akışlarını, TYT/AYT bölüm kaydetme/düzenleme, reload ve bölümden yanlış yakalama akışlarını, konu net/doğruluk grafiklerini ve tam geçmiş yönetimini, odaklı oturum sayaç/duraklatma/yenileme/tamamlama döngüsünü ve backup indirmeyi kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+The browser smoke test uses the `scripts/dev.py` launcher to start real FastAPI and Vite servers with a temporary data directory. It checks missed-question/exam CRUD and review flows; TYT/AYT section create/edit, reload, and capture-missed-question flows; topic net/accuracy charts and full history management; the focused-session counter/pause/reload/complete loop; and backup download. Python backend dependencies must be installed for the test; use the active virtual environment or set `HAMARTIA_PYTHON` to the Python executable path.
 
-Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.
+These commands do not load a model or send requests to a model endpoint. GitHub Actions runs frontend test/build/browser smoke and backend test/benchmark workflows.

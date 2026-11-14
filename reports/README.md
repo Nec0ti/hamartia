@@ -1,21 +1,23 @@
-# Hamartia raporları
+# Hamartia reports
 
-Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak buraya ekle. Komutları, kapsanan alanları, sonuçları ve sınırlamaları yaz. Local AI çalıştırması ya da model performansı bu ölçümlere giremez.
+Add each review, test, or benchmark report here as a dated Markdown file. Include the commands, scope, results, and limitations. Local AI runs and model performance must not be included in these measurements.
 
-- [2026-11-14 aralıklı yanlış tekrar döngüsü](2026-11-14-spaced-review-loop.md)
-- [2026-11-14 deneme türü ve geçmiş CRUD](2026-11-14-exam-context-crud.md)
-- [2026-11-14 Cosmos tek belge mutasyonu ve XP rotasının kapatılması](2026-11-14-cosmos-storage-safety.md)
-- [2026-11-14 yanlış soru kaydı düzenleme ve güvenli silme](2026-11-14-question-record-crud.md)
-- [2026-11-14 bugünkü çalışma etkinliği](2026-11-14-todays-study-activity.md)
-- [2026-11-14 yerel uygulama başlatıcısı](2026-11-14-local-launcher.md)
-- [2026-11-14 veri yedeği ve geri yükleme](2026-11-14-backup-restore.md)
-- [2026-11-14 deneme-soru sırası uygulama planı](2026-11-14-question-order-plan.md)
-- [2026-11-14 deneme sırası ve yanlış soru süresi](2026-11-14-question-order-insights.md)
-- [2026-11-14 konu çalışma setleri uygulama planı](2026-11-14-practice-sessions-plan.md)
-- [2026-11-14 konu çalışma seti metriği doğrulaması](2026-11-14-practice-sessions.md)
-- [2026-11-14 odaklı konu çalışma oturumu uygulama planı](2026-11-14-focused-practice-plan.md)
-- [2026-11-14 odaklı konu çalışma oturumu doğrulaması](2026-11-14-focused-practice.md)
-- [2026-11-14 konu çalışma grafiği ve tam geçmiş uygulama planı](2026-11-14-practice-trend-chart-plan.md)
-- [2026-11-14 konu çalışma net/doğruluk grafikleri ve tam geçmiş](2026-11-14-practice-trend-chart.md)
-- [2026-11-14 yerel model hata işleme uygulama planı](2026-11-14-ai-failure-handling-plan.md)
-- [2026-11-14 yerel model hata işleme doğrulaması](2026-11-14-ai-failure-handling.md)
+- [2026-11-14 product language, GitHub Pages, desktop delivery, and ChatGPT study agent plan](2026-11-14-language-and-chatgpt-agent-plan.md)
+
+- [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
+- [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)
+- [2026-11-14 Cosmos single-document mutations and closing the XP route](2026-11-14-cosmos-storage-safety.md)
+- [2026-11-14 missed-question record editing and safe deletion](2026-11-14-question-record-crud.md)
+- [2026-11-14 today's study activity](2026-11-14-todays-study-activity.md)
+- [2026-11-14 local app launcher](2026-11-14-local-launcher.md)
+- [2026-11-14 data backup and restore](2026-11-14-backup-restore.md)
+- [2026-11-14 exam-question order implementation plan](2026-11-14-question-order-plan.md)
+- [2026-11-14 exam order and missed-question time](2026-11-14-question-order-insights.md)
+- [2026-11-14 topic practice set implementation plan](2026-11-14-practice-sessions-plan.md)
+- [2026-11-14 topic practice set metric verification](2026-11-14-practice-sessions.md)
+- [2026-11-14 focused topic practice session implementation plan](2026-11-14-focused-practice-plan.md)
+- [2026-11-14 focused topic practice session verification](2026-11-14-focused-practice.md)
+- [2026-11-14 topic practice chart and full history implementation plan](2026-11-14-practice-trend-chart-plan.md)
+- [2026-11-14 topic practice net/accuracy charts and full history](2026-11-14-practice-trend-chart.md)
+- [2026-11-14 local model error handling implementation plan](2026-11-14-ai-failure-handling-plan.md)
+- [2026-11-14 local model error handling verification](2026-11-14-ai-failure-handling.md)

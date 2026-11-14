@@ -1,52 +1,65 @@
 # Backlog
 
-## P0 — veri bütünlüğü
+## P0 — data integrity
 
-- [x] Liste okuma bozuk/kısmi JSON'ı sessizce boş veri gibi göstermesin.
-- [x] Etiketleme, analiz sonucu kaydetme ve silme işlemleri atomik read-modify-write olsun.
-- [x] Rakip güncellemelerde hiçbir kayıt kaybolmadığını test et.
-- [x] Yerel model/endpoint hatası sahte bir Council teşhisi veya hata etiketi olarak kaydedilmesin; hatayı görünür kıl ve kayıtları koru.
-- [x] Ayarlar API'si kayıtlı API anahtarını yanıtlarla sızdırmasın; boş kaydetme korusun, açık temizleme desteklensin.
+- [x] Reading a list must not silently present malformed/partial JSON as empty data.
+- [x] Labeling, saving analysis results, and deletion must use atomic read-modify-write.
+- [x] Test that no records are lost during competing updates.
+- [x] A local model/endpoint error must not be saved as a fake Council diagnosis or error label; show the error and preserve records.
+- [x] The Settings API must not leak a stored API key in responses; saving an empty value must preserve it, and explicit clearing must be supported.
 
-## P1 — öğrenci döngüsü
+## P1 — student workflow
 
-- [x] Deneme girme, geçmişi koruma, yanlış görselini yerel kaydetme ve etiketleme.
-- [x] Ana sayfa ve Yanlışlarım sekmesini gerçek akışa bağlama.
-- [x] Ders/konu hata örüntülerinden deterministik çalışma önceliği çıkarma.
-- [x] Yanlış soruyu tekrar edildi diye işaretleyip planı güncelleme ve işareti geri alma.
-- [x] Doğru/yanlış çözüm denemelerini tarihle saklayıp tekrar aralığını yerelde hesaplama.
-- [x] Görsel zorunluluğunu kaldırıp metin tabanlı yanlış yakalama ve görünür kayıt formu sağlama.
-- [x] TYT/AYT/branş deneme türünü saklama, türe göre filtreleme ve toplamları ayırma.
-- [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
-- [x] TYT/AYT genel denemesini tek oturumda ders bazında kaydet; toplam net ve XP'yi bir kez say, ders trendi ve yanlış soru bağlamını koru.
-- [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
-- [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
-- [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
-- [x] Çalışma planında bugün denenmiş farklı soruları ve tüm doğru/yanlış yanıtlarını göster.
-- [x] Deneme bağlamından yanlış eklerken soru numarası, çözüm sırası ve soru süresini sakla; kaydedilen yanlışların sıra ve süre dağılımını göster.
-- [x] Tamamlanan konu çalışma setlerini ayrı kayıt et; yalnızca bu setlerden net, cevaplanan soru doğruluğu ve konu trendi üret.
-- [x] Öncelikli konudan odaklı çalışma oturumu başlat; süre ve doğru/yanlış/boş sayaçlarını takip edip bitince mevcut set kaydına dönüştür.
-- [x] Konu çalışma setlerinde net ve doğruluk eğilimlerini grafikle göster; son altı kaydın öncesindeki setler için de düzenle/sil erişimi sağla.
-- [x] Yerel API ve frontend'i tek komutla başlat; readiness ve port çakışmasını kontrol et.
+- [x] Enter practice exams, preserve history, save missed-question images locally, and label them.
+- [x] Connect the home page and My Mistakes tab to real flows.
+- [x] Derive deterministic study priorities from subject/topic error patterns.
+- [x] Mark a missed question as reviewed, update the plan, and allow undo.
+- [x] Store correct/incorrect attempts with dates and calculate review intervals locally.
+- [x] Remove the image requirement and provide text-based missed-question capture with a visible entry form.
+- [x] Store TYT/AYT/branch exam types, filter by type, and separate totals.
+- [x] Edit and confirmed-delete existing records throughout exam history.
+- [x] Save a full TYT/AYT practice exam by subject in one session; count total net and XP once, preserving subject trends and missed-question context.
+- [x] Turn the Cosmos placeholder into a safe, local, AI-free progress flow.
+- [x] Close the legacy Cosmos attack/reward route, whose rules are unclear, with 410; safely write node/sector mutations under one document lock.
+- [x] Edit text/subject/topic in missed-question records; use a deletion flow that preserves images and does not delete files outside uploads.
+- [x] Show different questions attempted today and all correct/incorrect answers in the study plan.
+- [x] When capturing a missed question from an exam, store question number, solve order, and time spent; show the order and time distributions of saved missed questions.
+- [x] Record completed topic practice sets separately; derive net, answered-question accuracy, and topic trends only from these sets.
+- [x] Start a focused study session from a priority topic; track time and correct/incorrect/blank counts, then convert it to the existing set record when finished.
+- [x] Show net and accuracy trends as charts for topic practice sets; provide edit/delete access to sets older than the last six records.
+- [x] Start the local API and frontend with one command; check readiness and port conflicts.
 
-## P2 — doğrulama ve sağlamlaştırma
+## P2 — verification and hardening
 
-- [x] Formül, sınır doğrulama, kayıt ve görsel rotası için AI dışı backend testleri.
-- [x] Depolama ve soru iş akışı benchmarkları; frontend test/build baseline'ı.
-- [x] Gerçek tarayıcı akışında uçtan uca smoke ve temel erişilebilirlik kontrolü.
-- [x] Frontend bağımlılıklarını güncel advisory'lere karşı online audit et.
-- [x] Vite güvenlik yamasını ve frontend bağımlılık kurulum/build'ini doğrulama.
-- [x] Bozuk JSON ve eski CouncilAnalysis biçimi davranışlarını doğrulama.
-- [x] Ayarlar'dan API anahtarı hariç ZIP yedeği indirme ve uygulama kapalıyken doğrulamalı geri yükleme.
-- [x] Geri yüklemeden önce mevcut veri klasörünü snapshot olarak tutma ve dizin değişimini process lock ile koruma.
-- [x] Temsilî veri boyutunda yedek oluşturma, doğrulama ve geri yüklemeyi AI'siz benchmarka alma.
-- [x] Ders bölümlü TYT/AYT oturumu için eski kayıt/yedek uyumu, arayüz ve bölüm boyutunda yanlış soru sınırını doğrula.
+- [x] Non-AI backend tests for formulas, boundary validation, records, and the image route.
+- [x] Storage and question workflow benchmarks; frontend test/build baseline.
+- [x] End-to-end smoke test of the real browser flow and a basic accessibility check.
+- [x] Audit frontend dependencies online against current advisories.
+- [x] Verify the Vite security patch and frontend dependency installation/build.
+- [x] Verify behavior for malformed JSON and the legacy CouncilAnalysis format.
+- [x] Download a ZIP backup without the API key from Settings and validate restore while the app is closed.
+- [x] Preserve the current data directory as a snapshot before restore and protect directory swap with a process lock.
+- [x] Benchmark backup creation, validation, and restore using representative data, without AI.
+- [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
 
-## P3 — diğer bilgisayarda doğrulama
+## P3 — verification on another computer
 
-- [ ] Uygulamanın kaydettiği OpenAI uyumlu endpoint/model ayarını ayrı bilgisayarda doğrula.
-- [ ] Multimodal endpoint'e görsel gidişini gerçek modelle doğrula; yerel AI testi ve benchmarkını bu depoda çalıştırma.
+- [ ] Verify on a separate computer the OpenAI-compatible endpoint/model settings saved by the app.
+- [ ] Verify image transfer to a multimodal endpoint with a real model; do not run local AI tests or benchmarks in this repository.
 
-## Sonraki küçük iş
+## P4 — product language and delivery
 
-Tam deneme ilk dilimi tamamlandı. Sonraki kapsamı mevcut P1/P2 açık maddeleri ve diğer bilgisayarda yapılacak P3 AI doğrulaması arasından seç.
+- [ ] Provide English (default) and Turkish application UI, with a persistent language selector.
+- [ ] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
+- [ ] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory.
+- [ ] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...).
+- [ ] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
+
+## P5 — study agent
+
+- [ ] Add explicit-consent Sign in with ChatGPT subscription usage as the primary study-agent provider; keep local AI as a separate optional provider for a later manual check on another computer.
+- [ ] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
+
+## Next small task
+
+The local-first study workflow is merged in PR #1. Next: deliver the English-default EN/TR interface and documentation plan, then implement bilingual Pages, desktop packaging/release automation, and the ChatGPT-backed study agent in separate PRs.

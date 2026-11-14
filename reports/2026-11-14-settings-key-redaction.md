@@ -1,24 +1,24 @@
-# Ayarlar API anahtarı gizleme
+# Settings API key redaction
 
-## Sonuç
+## Result
 
-`GET /settings` ve `PATCH /settings` artık kayıtlı API anahtarını tarayıcıya göndermez. Yanıt yalnızca `has_api_key` boolean alanını taşır. Boş anahtar güncellemesi kayıtlı anahtarı korur; yeni değer anahtarı değiştirir, açık `clear_api_key` isteği temizler. Arayüz anahtar alanını sunucu yanıtından doldurmaz ve modal kapanınca yazılmış anahtarı React state'inden boşaltır.
+`GET /settings` and `PATCH /settings` no longer send the saved API key to the browser. Responses contain only the `has_api_key` boolean field. Updating with an empty key preserves the saved key; a new value replaces it, and an explicit `clear_api_key` request clears it. The UI does not fill the key field from the server response and clears a typed key from React state when the modal closes.
 
-## Kontroller
+## Checks
 
-- Backend: Python 3.14 `.venv` ortamında `PYTHONPATH=backend .venv/bin/python -m unittest discover -s backend/tests -q` — **76/76 geçti**. Yeni testler GET/PATCH redaksiyonu, koruma, değiştirme ve temizlemeyi kapsar.
-- Frontend: `npm test` — **4/4 geçti**.
-- Production build başarılı: JS **695.72 KB / 198.31 KB gzip**. Vite'ın 500 KB chunk uyarısı sürüyor.
-- Gerçek Chromium browser smoke: geçti. Ayar anahtarı ekle/sil turu yanıtlarda API key olmadığını, diskte temizlendiğini doğruladı; son koşuda **1.014 ms**.
-- Son başarılı tam browser smoke ölçümleri (ms): navigasyon **3806**, konu seti persistence **2080**, odaklı oturum **7537**, trend/tam geçmiş **2801**, yanlış kaydetme+tekrar persistence **4134**, deneme CRUD **4307**, yanlış düzenle/sil **901**, yedek indirme **309**. `ai_included: false`.
-- Backend AI'siz benchmarkları: 1.000 deneme JSON append **23.4282 s** (42.68 kayıt/s), read **0.0087 s**; 100 yanlış akışında görsel upload **0.4985 s**, metin yakalama **0.7865 s**, liste **0.0021 s**, insight **0.0063 s**; 50 x 2 MiB yedek export/validation/restore **5.6322 / 0.9249 / 0.9199 s**; soru sıra özeti 1.000/10.000 kayıtta **0.013671 / 0.139487 s**; konu seti özeti 1.000/10.000 kayıtta **0.013875 / 0.074794 s**.
-- Her benchmark model çağrısı olmadan çalıştı. Bu kod yalnızca ayar saklama/yanıt yolunu değiştiriyor; benchmark sayıları makine yükü ve dosya sistemi performansına bağlı.
-- GitHub Actions #73 frontend smoke'unda test harness'i eşzamanlı değişen practice yanıtını Promise callback'iyle okuyordu ve eski kaydı assertion'a taşıdı. Assertion, endpoint'in doğrudan awaited yanıtına bağlandı; düzeltme sonrası workflow #74 başarıyla geçti.
+- Backend: Python 3.14 `.venv` environment, `PYTHONPATH=backend .venv/bin/python -m unittest discover -s backend/tests -q` — **76/76 passed**. New tests cover GET/PATCH redaction, preservation, replacement, and clearing.
+- Frontend: `npm test` — **4/4 passed**.
+- Production build succeeded: JS **695.72 KB / 198.31 KB gzip**. Vite's 500 KB chunk warning remains.
+- Real Chromium browser smoke passed. The add/remove API key flow verified that responses contain no API key and that it was cleared on disk; **1.014 ms** in the last run.
+- Last successful full browser smoke timings (ms): navigation **3806**, topic set persistence **2080**, focused session **7537**, trend/full history **2801**, wrong-question save+review persistence **4134**, exam CRUD **4307**, wrong-question edit/delete **901**, backup download **309**. `ai_included: false`.
+- Backend AI-free benchmarks: 1,000 exam JSON append **23.4282 sec** (42.68 records/sec), read **0.0087 sec**; 100 wrong-question flow image upload **0.4985 sec**, text capture **0.7865 sec**, list **0.0021 sec**, insight **0.0063 sec**; 50 x 2 MiB backup export/validation/restore **5.6322 / 0.9249 / 0.9199 sec**; question solve-order summary at 1,000/10,000 records **0.013671 / 0.139487 sec**; topic set summary at 1,000/10,000 records **0.013875 / 0.074794 sec**.
+- No benchmark called a model. This code changes only the settings storage/response path; benchmark numbers depend on machine load and filesystem performance.
+- GitHub Actions #73: the frontend smoke harness read a concurrently changing practice response through a Promise callback and asserted an old record. The assertion was attached to the endpoint's directly awaited response; after the fix, workflow #74 passed.
 
-## Uygulama notu
+## Implementation note
 
-Testler ilk kez sistem Python'ıyla çalıştırıldığında o ortamda FastAPI/Pydantic bulunmadığı için import aşamasında durdu. Repo içindeki yok sayılan `.venv` oluşturulup `backend/requirements.txt` kuruldu ve tam backend suite başarıyla tekrarlandı. İlk Playwright Chromium ikilisi sistem `glib` kitaplığını bulamadı; smoke Nix Chromium ikilisiyle geçti.
+When tests were first run with system Python, they stopped during import because FastAPI/Pydantic were unavailable in that environment. The ignored repo `.venv` was created, `backend/requirements.txt` was installed, and the full backend suite was run successfully again. The first Playwright Chromium binary could not find the system `glib` library; smoke passed with the Nix Chromium binary.
 
-## Sınır
+## Limit
 
-API anahtarı artık HTTP yanıtlarından ve modal state'inden çıkmıyor. Tek kullanıcılı localhost uygulaması aynı makinedeki yetkisiz yerel süreçleri engellemez; bunun için OS secret store veya ayrı kullanıcı sınırı gerekir. Gerçek local model çağrısı yapılmadı ve backlog'da ayrı bilgisayar doğrulamasında kalıyor.
+The API key is no longer in HTTP responses or modal state. The single-user localhost app does not prevent unauthorized local processes on the same machine; that would require an OS secret store or a separate user boundary. No real local model call was made; this remains in the backlog for verification on another computer.

@@ -41,3 +41,7 @@
 - Browser smoke: navigasyon 2.362 sn, capture+review persistence 2.335 sn, deneme CRUD 1.301 sn, soru düzenle+sil 0.423 sn; 390 px taşma, API/JS/console hatası yok. Build 23.50 sn, ana bundle 679.05 KB minified / 193.94 KB gzip; 500 KB chunk uyarısı sürüyor.
 - GitHub Actions run #47 (`f372b2f4`) frontend test/build/browser smoke ile backend test ve iki benchmark işini başarıyla tamamladı.
 - Rapor: `reports/2026-11-14-question-record-crud.md`.
+- 2026-11-14: Çalışma planına bugünkü ilerleme kartı eklendi. Tekrar denenen soru bir kez sayılıyor; doğru/yanlış sayaçları her yanıtı sayıyor. Kayıtlı attempt geçmişinden hesaplanıyor, yeni JSON alanı/ayar/AI çağrısı yok. 45 backend testi, 4 frontend testi, production build ve browser smoke geçti.
+- Browser smoke: navigasyon 2.157 sn, capture+review sonrası yenileme 2.335 sn, deneme CRUD 1.234 sn, soru düzenle+sil 0.409 sn; bugünkü sayıların reload sonrası 2 soru, 1 doğru, 1 yanlış kaldığı doğrulandı.
+- 100 soru benchmarkı: insight 0.0053 sn; upload 0.604 sn, list 0.0008 sn, attempt 0.0034 sn, review 0.0038 sn, edit/delete 0.0045/0.0030 sn, text capture 0.4463 sn. Hepsi AI'siz.
+- Build 22.12 sn, bundle 679.49 KB minified / 194.02 KB gzip (500 KB chunk uyarısı sürüyor). Rapor: `reports/2026-11-14-todays-study-activity.md`; GitHub Actions bu kod commitinde çalışıyor.

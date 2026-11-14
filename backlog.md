@@ -19,6 +19,7 @@
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 - [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
 - [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
+- [x] Çalışma planında bugün denenmiş farklı soruları ve tüm doğru/yanlış yanıtlarını göster.
 
 ## P2 — doğrulama ve sağlamlaştırma
 
@@ -36,4 +37,4 @@
 
 ## Sonraki küçük iş
 
-Çalışma planında günlük hedef/gerçekleşme görünümünü öğrenci akışına eklemeden önce kapsamını ve ölçülebilir başarı ölçütünü belirle.
+Yerel uygulamayı tek komutla başlatma ve backend healthcheck'ini görünür kılma akışını belirle.

@@ -9,7 +9,7 @@
 
 ## Doğrulama
 
-- `PYTHONPATH=backend /tmp/hamartia-venv/bin/python -m unittest discover -s backend/tests -v` — 58/58 geçti.
+- `PYTHONPATH=backend /tmp/hamartia-venv/bin/python -m unittest discover -s backend/tests -v` — 59/59 geçti.
 - `npm test` — 4/4 geçti.
 - `npm run build` — başarılı; 680.48 KB minified JS ve Vite'ın 500 KB chunk uyarısı.
 - `HAMARTIA_PYTHON=/tmp/hamartia-venv/bin/python PLAYWRIGHT_CHROMIUM_EXECUTABLE=/nix/store/r0f9i35n3r7rng8162xih4c1dag0s1vw-chromium-156.0.8078.47/bin/chromium npm run test:browser` — geçti; gerçek ZIP indirme 285 ms, ekran navigasyonu 2.293 sn, capture/review kalıcılığı 2.336 sn, deneme CRUD 1.344 sn, yanlış düzenle/sil 0.417 sn. 390 px taşma ve tarayıcı hatası yok.

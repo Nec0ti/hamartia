@@ -172,6 +172,15 @@ class BackupTests(unittest.TestCase):
         with self.assertRaises(BackupError):
             create_backup(self.source, self.root / "symlink.zip")
 
+    def test_symlink_upload_directory_prevents_backup(self):
+        uploads = self.source / "uploads"
+        original = self.source / "uploads-original"
+        uploads.rename(original)
+        uploads.symlink_to(original, target_is_directory=True)
+
+        with self.assertRaises(BackupError):
+            create_backup(self.source, self.root / "symlink-directory.zip")
+
     def test_restore_refuses_to_run_while_api_owns_data_directory(self):
         target = self.root / "locked"
         make_data(target, "keep-me", "local-key")

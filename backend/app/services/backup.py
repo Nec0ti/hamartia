@@ -119,6 +119,8 @@ def create_backup(data_dir, destination):
     json_files = _json_sources(data_dir)
     upload_root = data_dir / "uploads"
     upload_paths = []
+    if upload_root.is_symlink():
+        raise BackupError("Cannot back up a symbolic-link uploads directory")
     if upload_root.exists():
         for path in upload_root.rglob("*"):
             if path.is_symlink():

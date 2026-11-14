@@ -16,8 +16,8 @@ from benchmark_common import emit, measure
 SEED = 20261114
 
 def main(count=1000, repeats=7, json_output=None):
-    if not 1 <= count <= 1000 or not 3 <= repeats <= 31:
-        raise ValueError("count must be 1..1000 and repeats 3..31")
+    if not repeats + 2 <= count <= 1000 or not 3 <= repeats <= 11:
+        raise ValueError("count must be repeats+2..1000 and repeats 3..11")
     rng = random.Random(SEED)
     with tempfile.TemporaryDirectory() as directory:
         storage = StorageService(Path(directory))
@@ -47,34 +47,29 @@ def main(count=1000, repeats=7, json_output=None):
         sectioned_count = sum(bool(exam.sections) for exam in loaded)
         assert sectioned_count == (count + 99) // 100
         warm_read = measure(lambda: _assert_count(storage, count), repeats)
-        started = time.perf_counter()
         def update_first(exams):
             exam = next((item for item in exams if item.id == "exam-0"), None)
             if exam is None:
                 return False
             exam.duration_minutes += 1
             return True
-        assert storage.update_list("exams.json", Exam, update_first)
-        update_seconds = time.perf_counter() - started
-        assert storage.load_list("exams.json", Exam)[0].duration_minutes == 41
+        update_stats = measure(lambda: _assert_updated(storage, update_first), repeats)
+        assert storage.load_list("exams.json", Exam)[0].duration_minutes == 41 + repeats
 
-        started = time.perf_counter()
-        assert storage.update_list("exams.json", Exam, lambda exams: exams.pop() is not None)
-        delete_seconds = time.perf_counter() - started
-        assert len(storage.load_list("exams.json", Exam)) == count - 1
+        delete_ids = [f"exam-{index}" for index in range(count - 1, count - repeats - 2, -1)]
+        delete_stats = measure(lambda: _delete_one(storage, delete_ids.pop()), repeats)
+        assert len(storage.load_list("exams.json", Exam)) == count - repeats - 1
 
-        started = time.perf_counter()
         def add_xp(user):
             user.total_xp += 1
             return True
 
-        storage.update_doc("user.json", UserStats, add_xp)
-        document_update_seconds = time.perf_counter() - started
-        assert storage.load_doc("user.json", UserStats).total_xp == 1
+        document_stats = measure(lambda: _assert_doc_updated(storage, add_xp), repeats)
+        assert storage.load_doc("user.json", UserStats).total_xp == repeats + 1
 
-        started = time.perf_counter()
+        progression_stats = measure(lambda: progression_summary(
+            storage.load_list("exams.json", Exam), today=date(2026, 11, 14)), repeats)
         progression = progression_summary(loaded, today=date(2026, 11, 14))
-        progression_seconds = time.perf_counter() - started
         assert progression["streak_days"] == 1
         emit({
             "benchmark": "json_exam_storage_sequential_append_stress",
@@ -86,10 +81,10 @@ def main(count=1000, repeats=7, json_output=None):
             "append_records_per_second": round(count / append_seconds, 2),
             "read_seconds": round(read_seconds, 4),
             "warm_read": warm_read,
-            "update_one_seconds": round(update_seconds, 4),
-            "delete_one_seconds": round(delete_seconds, 4),
-            "document_update_seconds": round(document_update_seconds, 4),
-            "progression_seconds": round(progression_seconds, 4),
+            "update_one": update_stats,
+            "delete_one": delete_stats,
+            "document_update": document_stats,
+            "progression_full_history": progression_stats,
             "correctness": "append/read/update/delete and progression assertions passed",
             "limitations": "Sequential append rewrites the full growing JSON list (O(n^2)); this is a stress case, not the mixed daily-flow workload.",
         }, json_output)
@@ -97,6 +92,24 @@ def main(count=1000, repeats=7, json_output=None):
 
 def _assert_count(storage, count):
     assert len(storage.load_list("exams.json", Exam)) == count
+
+
+def _assert_updated(storage, update):
+    assert storage.update_list("exams.json", Exam, update)
+
+
+def _delete_one(storage, question_id):
+    def delete(exams):
+        for index, exam in enumerate(exams):
+            if exam.id == question_id:
+                exams.pop(index)
+                return True
+        return False
+    assert storage.update_list("exams.json", Exam, delete)
+
+
+def _assert_doc_updated(storage, update):
+    assert storage.update_doc("user.json", UserStats, update)
 
 
 if __name__ == "__main__":

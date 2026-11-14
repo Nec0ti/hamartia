@@ -3,8 +3,10 @@
 import json
 import os
 import platform
+import struct
 import statistics
 import time
+import zlib
 from pathlib import Path
 
 
@@ -30,6 +32,16 @@ def metadata(seed=None):
         "processor": platform.processor() or "not reported",
         "logical_cpus": os.cpu_count(), "seed": seed,
     }
+
+
+def seeded_png(width, height, rng):
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    pixels = b"".join(b"\0" + rng.randbytes(width * 3) for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">2I5B", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(pixels, 1)) + chunk(b"IEND", b""))
 
 
 def emit(result, json_output=None):

@@ -15,14 +15,15 @@ from app.api import questions
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
-from benchmark_common import emit
+from benchmark_common import emit, seeded_png
 
 SEED = 20261114
 RNG = random.Random(SEED)
 
 def make_upload(index):
     file = tempfile.SpooledTemporaryFile()
-    file.write(b"\x89PNG\r\n\x1a\n" + RNG.randbytes(4096 * (1 + index % 12)))
+    width, height = ((256, 256), (512, 384), (1024, 768))[index % 3]
+    file.write(seeded_png(width, height, RNG))
     file.seek(0)
     return UploadFile(
         filename=f"question-{index}.png",
@@ -31,24 +32,31 @@ def make_upload(index):
     )
 
 
-async def run(count=100, repeats=7, json_output=None):
-    if not 1 <= count <= 200 or not 3 <= repeats <= 31:
-        raise ValueError("count must be 1..200 and repeats 3..31")
+async def run(count=24, repeats=7, json_output=None):
+    if not 2 * repeats + 3 <= count <= 30 or not 3 <= repeats <= 11:
+        raise ValueError("count must be 2*repeats+3..30 and repeats 3..11")
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         storage = StorageService(root)
         sectioned_exam = Exam(
             id="benchmark-tyt", date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
-            correct=30, incorrect=5, blank=5,
-            sections=[{"subject": "Türkçe", "correct": 30, "incorrect": 5, "blank": 5}],
+            correct=85, incorrect=22, blank=13,
+            sections=[
+                {"subject": "Türkçe", "correct": 30, "incorrect": 7, "blank": 3},
+                {"subject": "Matematik", "correct": 27, "incorrect": 8, "blank": 5},
+                {"subject": "Fen", "correct": 13, "incorrect": 4, "blank": 3},
+                {"subject": "Sosyal", "correct": 15, "incorrect": 3, "blank": 2},
+            ],
         )
         storage.save_list("exams.json", [sectioned_exam])
         with patch.object(questions, "DATA_DIR", root), patch.object(questions, "UPLOAD_DIR", root / "uploads"):
             started = time.perf_counter()
             for index in range(count):
-                await questions.upload_question(
-                    make_upload(index), "Soru metni", "Matematik", "Fonksiyonlar", storage,
-                )
+                upload = make_upload(index)
+                try:
+                    await questions.upload_question(upload, "Soru metni", "Matematik", "Fonksiyonlar", storage)
+                finally:
+                    await upload.close()
             upload_seconds = time.perf_counter() - started
 
             started = time.perf_counter()
@@ -85,10 +93,22 @@ async def run(count=100, repeats=7, json_output=None):
                 storage,
             )
             update_seconds = time.perf_counter() - started
+            update_target_ids = [item.id for item in saved[1:repeats + 2]]
+            update_ids = list(update_target_ids)
+            update_samples = await _measure_async(lambda: _update_one(questions, storage, update_ids.pop()), repeats)
+            assert update_samples.pop("last_result_count") == 1
             started = time.perf_counter()
             await questions.delete_question(saved[0].id, storage)
             delete_seconds = time.perf_counter() - started
             assert not (root / "uploads" / saved[0].image_name).exists()
+            delete_ids = [item.id for item in saved[repeats + 2:2 * repeats + 3]]
+            delete_samples = await _measure_async(lambda: questions.delete_question(delete_ids.pop(), storage), repeats)
+            assert delete_samples.pop("last_result_count") == 1
+            saved_after_mutations = storage.load_list("questions.json", Question)
+            assert all(next(item for item in saved_after_mutations if item.id == question_id).ocr_text == "Updated seeded question"
+                       for question_id in update_target_ids)
+            deleted_ids = {saved[index].id for index in range(repeats + 2, 2 * repeats + 3)}
+            assert not any(item.id in deleted_ids for item in saved_after_mutations)
 
             started = time.perf_counter()
             for index in range(count):
@@ -96,6 +116,9 @@ async def run(count=100, repeats=7, json_output=None):
                     None, f"Metin sorusu {index}", "Türkçe", "Paragraf", storage,
                 )
             text_capture_seconds = time.perf_counter() - started
+            saved_after_text = storage.load_list("questions.json", Question)
+            assert len(saved_after_text) == 2 * count - repeats - 2
+            assert sum(not item.image_path and item.ocr_text.startswith("Metin sorusu ") for item in saved_after_text) == count
 
             section_count = min(count, 40)
             started = time.perf_counter()
@@ -106,6 +129,10 @@ async def run(count=100, repeats=7, json_output=None):
                     solve_order=index + 1, time_spent_seconds=30,
                 )
             section_question_upload_seconds = time.perf_counter() - started
+            saved_after_sections = storage.load_list("questions.json", Question)
+            section_questions = [item for item in saved_after_sections if item.exam_id == sectioned_exam.id]
+            assert len(section_questions) == section_count
+            assert all(1 <= item.question_number <= 40 and 1 <= item.solve_order <= 40 for item in section_questions)
             started = time.perf_counter()
             section_insights = topic_priorities(
                 storage.load_list("questions.json", Question), exams=[sectioned_exam],
@@ -117,8 +144,8 @@ async def run(count=100, repeats=7, json_output=None):
             "benchmark": "local_question_flow",
             "seed": SEED,
             "questions": count,
-            "synthetic_image_bytes_min": 4096,
-            "synthetic_image_bytes_max": 12 * 4096,
+            "valid_png_dimensions": ["256x256", "512x384", "1024x768"],
+            "image_bytes": sum(path.stat().st_size for path in (root / "uploads").iterdir()),
             "upload_seconds": round(upload_seconds, 4),
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),
@@ -128,14 +155,16 @@ async def run(count=100, repeats=7, json_output=None):
             "attempt_seconds": round(attempt_seconds, 4),
             "review_seconds": round(review_seconds, 4),
             "update_seconds": round(update_seconds, 4),
+            "repeated_updates": update_samples,
             "delete_seconds": round(delete_seconds, 4),
+            "repeated_deletes": delete_samples,
             "text_capture_seconds": round(text_capture_seconds, 4),
             "text_captures_per_second": round(count / text_capture_seconds, 2),
             "section_questions": section_count,
             "section_question_upload_seconds": round(section_question_upload_seconds, 4),
             "section_question_insight_seconds": round(section_insight_seconds, 4),
             "correctness": "upload, query, edit, attempt, review, and deletion assertions passed",
-            "limitations": "Signature-valid deterministic payloads approximate image sizes; pixels are not decoded or AI analyzed.",
+            "limitations": "PNG pixels are deterministic synthetic noise; no AI or image-understanding path is called.",
         }, json_output)
 
 
@@ -152,13 +181,22 @@ async def _measure_async(operation, repeats):
     from statistics import median
     return {"samples": repeats, "p50_seconds": round(median(samples), 6),
             "p95_seconds": round(ordered[max(0, (repeats * 95 + 99) // 100 - 1)], 6),
-            "last_result_count": len(result) if isinstance(result, list) else result["total_questions"]}
+            "last_result_count": len(result) if isinstance(result, list) else
+            result.get("total_questions", 1) if isinstance(result, dict) else 1}
+
+
+async def _update_one(api, storage, question_id):
+    return await api.update_question(
+        question_id,
+        api.QuestionUpdate(subject="Matematik", topic="Denklemler", ocr_text="Updated seeded question"),
+        storage,
+    )
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--count", type=int, default=100)
+    parser.add_argument("--count", type=int, default=24)
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--json-output")
     args = parser.parse_args()

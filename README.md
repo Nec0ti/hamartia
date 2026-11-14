@@ -55,6 +55,10 @@ Frontend:
 cd frontend
 npm test
 npm run build
+npx playwright install chromium
+npm run test:browser
 ```
 
-Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions aynı frontend test/build ve backend test/benchmark akışlarını çalıştırır.
+Browser smoke gerçek yerel FastAPI ve Vite sunucularını geçici bir veri diziniyle açar; tekrar sonucunun kaydını ve sayfa yenilendikten sonra korunmasını kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+
+Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.

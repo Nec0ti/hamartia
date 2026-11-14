@@ -10,9 +10,8 @@ import api from './services/api'
 import { handleApiError } from './services/api'
 
 /**
- * App root. Owns the active-tab selection and renders the shared Navbar above
- * the selected tab panel. Only the Dashboard is fully built in Phase 5; the
- * other tabs surface a placeholder that is fleshed out in later phases.
+ * App root. Owns active-tab selection and renders the shared navigation above
+ * the selected study workflow.
  *
  * The Settings modal is rendered as a sibling portal so it never collapses the
  * Navbar — the Navbar must keep rendering regardless of the modal state.

@@ -81,6 +81,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               <button
                 key={tab.id}
                 type="button"
+                aria-label={tab.label}
                 onClick={() => onSelectTab(tab.id)}
                 className={[
                   'relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition',

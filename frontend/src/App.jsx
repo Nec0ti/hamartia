@@ -8,6 +8,7 @@ import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import api from './services/api'
 import { handleApiError } from './services/api'
+import { useI18n } from './i18n.jsx'
 
 /**
  * App root. Owns active-tab selection and renders the shared navigation above
@@ -17,6 +18,7 @@ import { handleApiError } from './services/api'
  * Navbar — the Navbar must keep rendering regardless of the modal state.
  */
 export default function App() {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [questionExam, setQuestionExam] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -29,14 +31,13 @@ export default function App() {
       const data = await api.settings.get()
       setSettings(data)
     } catch (e) {
-      setSettingsError(handleApiError(e).detail)
+      setSettingsError(handleApiError(e, t).detail)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadSettings()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadSettings])
 
   const saveSettings = useCallback(async (draft) => {
     setSettingsError(null)
@@ -44,10 +45,10 @@ export default function App() {
       const saved = await api.settings.update(draft)
       setSettings(saved)
     } catch (e) {
-      setSettingsError(handleApiError(e).detail)
+      setSettingsError(handleApiError(e, t).detail)
       throw e
     }
-  }, [])
+  }, [t])
 
   const panel = useMemo(() => {
     if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {

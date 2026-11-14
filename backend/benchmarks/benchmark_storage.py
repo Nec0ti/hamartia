@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from app.core.progression import progression_summary
-from app.models.schemas import Exam
+from app.models.schemas import Exam, UserStats
 from app.services.storage import StorageService
 
 
@@ -48,6 +48,15 @@ def main(count=1000):
         assert len(storage.load_list("exams.json", Exam)) == count - 1
 
         started = time.perf_counter()
+        def add_xp(user):
+            user.total_xp += 1
+            return True
+
+        storage.update_doc("user.json", UserStats, add_xp)
+        document_update_seconds = time.perf_counter() - started
+        assert storage.load_doc("user.json", UserStats).total_xp == 1
+
+        started = time.perf_counter()
         progression = progression_summary(loaded, today=date(2026, 11, 14))
         progression_seconds = time.perf_counter() - started
         assert progression["streak_days"] == 1
@@ -59,6 +68,7 @@ def main(count=1000):
             "read_seconds": round(read_seconds, 4),
             "update_one_seconds": round(update_seconds, 4),
             "delete_one_seconds": round(delete_seconds, 4),
+            "document_update_seconds": round(document_update_seconds, 4),
             "progression_seconds": round(progression_seconds, 4),
             "ai_included": False,
         }))

@@ -1,14 +1,11 @@
-"""Cosmos gamification endpoints.
+"""Cosmos progress endpoints. Mutations update the single cosmos document.
 
-Mistake tags seed planetary nodes, which live inside `cosmos.json` alongside
-the unlocked-sectors list (see the Phase 1 seed). Assaulting a node wagers XP:
-success clears it and awards reward XP; failure refunds the wager and applies a
-small penalty. Sectors are hidden (fog-of-war) until explicitly unlocked.
+The legacy random XP assault is retired until it can be tied to a verifiable
+study outcome and a single-file reward rule.
 """
 
 import math
-import random
-from datetime import datetime
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -26,10 +23,6 @@ def get_storage():
         return StorageService(DATA_DIR)
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail=f"Storage unavailable: {exc}")
-
-
-def _utcnow() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
 
 def _warp_pos(index: int, total: int, width: float = 1000.0, height: float = 700.0) -> tuple:
@@ -65,38 +58,37 @@ async def create_node(
     if not subject:
         raise HTTPException(status_code=422, detail="subject is required")
 
-    cosmos = storage.load_doc("cosmos.json", CosmosData) or CosmosData()
-    nodes = cosmos.nodes
-    existing = next((n for n in nodes if n.subject == subject and n.tag == tag), None)
-    if existing:
-        existing.error_count += 1
-        storage.save_doc("cosmos.json", cosmos)
-        return existing
+    result = []
 
-    error_xp = 100
-    is_boss = False
-    # Subjects with many repeated failures become Boss planets.
-    if payload.get("error_count", 0) >= 5:
-        error_xp = 500
-        is_boss = True
+    def upsert(cosmos):
+        existing = next((n for n in cosmos.nodes if n.subject == subject and n.tag == tag), None)
+        if existing:
+            existing.error_count += 1
+            result.append(existing)
+            return True
 
-    node = CosmosNode(
-        id=f"node_{_utcnow().replace(':', '')}",
-        name=f"{subject.replace(' ', '')}",
-        subject=subject,
-        tag=tag,
-        error_count=payload.get("error_count", 0),
-        error_xp=error_xp,
-        reward_xp=error_xp * 2 + 50,
-        sector=payload.get("sector", "sector_0"),
-        is_boss=is_boss,
-        x=_warp_pos(len(nodes), len(nodes) + 1)[0],
-        y=_warp_pos(len(nodes), len(nodes) + 1)[1],
-        radius=20 if is_boss else 12,
-    )
-    nodes.append(node)
-    storage.save_doc("cosmos.json", cosmos)
-    return node
+        error_xp = 500 if payload.get("error_count", 0) >= 5 else 100
+        is_boss = error_xp == 500
+        node = CosmosNode(
+            id=f"node_{uuid4().hex}",
+            name=subject.replace(" ", ""),
+            subject=subject,
+            tag=tag,
+            error_count=payload.get("error_count", 0),
+            error_xp=error_xp,
+            reward_xp=error_xp * 2 + 50,
+            sector=payload.get("sector", "sector_0"),
+            is_boss=is_boss,
+            x=_warp_pos(len(cosmos.nodes), len(cosmos.nodes) + 1)[0],
+            y=_warp_pos(len(cosmos.nodes), len(cosmos.nodes) + 1)[1],
+            radius=20 if is_boss else 12,
+        )
+        cosmos.nodes.append(node)
+        result.append(node)
+        return True
+
+    storage.update_doc("cosmos.json", CosmosData, upsert)
+    return result[0]
 
 
 @router.get("/nodes", response_model=list[CosmosNode])
@@ -105,38 +97,10 @@ async def list_nodes(storage: StorageService = Depends(get_storage)):
     return cosmos.nodes
 
 
-@router.post("/nodes/{node_id}/assault", response_model=CosmosNode)
-async def assault_node(
-    node_id: str,
-    storage: StorageService = Depends(get_storage),
-):
-    """Wager XP to cleanse a node. Success clears it and awards reward XP."""
-    cosmos = storage.load_doc("cosmos.json", CosmosData) or CosmosData()
-    nodes = list(cosmos.nodes)
-    target = next((n for n in nodes if n.id == node_id), None)
-    if target is None:
-        raise HTTPException(status_code=404, detail="Node not found")
-
-    user = storage.load_doc("user.json", UserStats) or UserStats()
-    wager = target.error_xp
-
-    # Roll success. Boss nodes are harder to cleanse.
-    difficulty = 0.70 if target.is_boss else 0.75
-    success = random.random() < difficulty
-
-    if not success:
-        # Failure: refund partial, apply a 10% penalty on the wager.
-        user.total_xp = max(0, user.total_xp - int(wager * 0.10))
-        storage.save_doc("user.json", user)
-        return target
-
-    # Success: remove node, award reward XP.
-    reward = target.reward_xp
-    cosmos.nodes = [n for n in nodes if n.id != node_id]
-    storage.save_doc("cosmos.json", cosmos)
-    user.total_xp = user.total_xp + reward
-    storage.save_doc("user.json", user)
-    return CosmosNode.model_validate_json(target.model_dump_json()).copy(update={"cleansed": True})
+@router.post("/nodes/{node_id}/assault", status_code=410)
+async def assault_node(node_id: str):
+    """Disabled until a user-verifiable, single-file reward rule exists."""
+    raise HTTPException(status_code=410, detail="Cosmos rewards are disabled pending a safe study-completion rule")
 
 
 @router.post("/sectors/{sector}", status_code=201)
@@ -147,9 +111,15 @@ async def unlock_sector(
     """Reveal a new sector on the fog-of-war map."""
     if sector not in COSMOS_SECTORS:
         raise HTTPException(status_code=422, detail=f"Unknown sector. Allowed: {', '.join(COSMOS_SECTORS)}")
-    cosmos = storage.load_doc("cosmos.json", CosmosData) or CosmosData()
-    if sector in cosmos.unlocked_sectors:
-        return cosmos
-    cosmos.unlocked_sectors.append(sector)
-    storage.save_doc("cosmos.json", cosmos)
-    return cosmos
+    result = []
+
+    def unlock(cosmos):
+        if sector in cosmos.unlocked_sectors:
+            result.append(cosmos)
+            return False
+        cosmos.unlocked_sectors.append(sector)
+        result.append(cosmos)
+        return True
+
+    storage.update_doc("cosmos.json", CosmosData, unlock)
+    return result[0]

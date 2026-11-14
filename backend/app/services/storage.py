@@ -132,8 +132,7 @@ class StorageService:
 
     # -- typed scalar documents --------------------------------------------
 
-    def load_doc(self, filename: str, model_cls: type):
-        """Load a single JSON object, validating against model_cls."""
+    def _load_doc_unlocked(self, filename: str, model_cls: type):
         raw = self._read_raw(filename)
         if not raw:
             return None
@@ -142,6 +141,20 @@ class StorageService:
             return model_cls.model_validate(data)
         except (ValueError, TypeError) as exc:
             raise StorageError(f"Cannot read invalid {filename}") from exc
+
+    def load_doc(self, filename: str, model_cls: type):
+        """Load a single JSON object, validating against model_cls."""
+        with self._lock_for(filename):
+            return self._load_doc_unlocked(filename, model_cls)
+
+    def update_doc(self, filename: str, model_cls: type, update: Callable[[Any], bool]) -> bool:
+        """Apply and persist a document mutation while holding its file lock."""
+        with self._lock_for(filename):
+            model = self._load_doc_unlocked(filename, model_cls) or model_cls()
+            if not update(model):
+                return False
+            self._write_atomic(filename, json.dumps(self._dump_record(model), indent=2, ensure_ascii=False))
+            return True
 
     def save_doc(self, filename: str, model: Any) -> None:
         lock = self._lock_for(filename)

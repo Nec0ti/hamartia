@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.api.exams import create_exam, delete_exam, update_exam
-from app.models.schemas import Exam, ExamCreate, Settings
+from app.models.schemas import Exam, ExamCreate, Settings, UserStats
 from app.services.storage import StorageError, StorageService
 
 
@@ -120,6 +120,18 @@ class ExamFlowTests(unittest.TestCase):
         self.storage.append_list("agent_documents.json", document, dict)
 
         self.assertEqual(self.storage.load_list("agent_documents.json", dict), [document])
+
+    def test_concurrent_document_updates_keep_every_increment(self):
+        def increment(_):
+            def add(stats):
+                stats.total_xp += 1
+                return True
+            self.storage.update_doc("user.json", UserStats, add)
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(increment, range(32)))
+
+        self.assertEqual(self.storage.load_doc("user.json", UserStats).total_xp, 32)
 
     def test_invalid_json_document_is_not_treated_as_missing(self):
         path = Path(self.temp_dir.name) / "settings.json"

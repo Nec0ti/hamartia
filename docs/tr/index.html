@@ -23,7 +23,7 @@
         <p class="eyebrow"><span class="status-dot"></span> Çalışma geçmişin için sakin bir alan</p>
         <h1>Daha net bir tabloyla çalış.</h1>
         <p class="hero-copy">Hamartia, YKS denemelerini, yanlış sorularını ve konu ilerlemeni bilgisayarında bir arada tutar.</p>
-        <a class="button" href="#guide">Kılavuza göz at <span aria-hidden="true">↓</span></a>
+        <a class="button" href="https://github.com/Nec0ti/hamartia/releases/latest">Hamartia'yı indir <span aria-hidden="true">↗</span></a>
         <div class="hero-note"><span>YEREL ÖNCELİKLİ</span><span>YKS ÇALIŞMA ALANI</span><span>AÇIK KAYNAK</span></div>
       </section>
 
@@ -37,27 +37,26 @@
       </section>
 
       <section class="section guide-layout" id="guide">
-        <div class="section-heading"><p class="eyebrow">BAŞLANGIÇ</p><h2>Geliştirme sürümünü çalıştır.</h2><p class="muted">Windows ve Linux kurulum paketleri planlanıyor. Şimdilik Hamartia kaynak kodundan çalışıyor.</p></div>
+        <div class="section-heading"><p class="eyebrow">BAŞLANGIÇ</p><h2>Masaüstü uygulamasını yükle.</h2><p class="muted">Windows 10/11 veya Linux x64 için en son sürümü <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a> sayfasından indir.</p></div>
         <div class="steps" id="setup">
-          <div class="step"><span>1</span><div><h3>Gerekli araçları kur</h3><p>Python 3.12 ve Node.js 22 kullan. Depo kök dizininde Python ve arayüz bağımlılıklarını yükle:</p><pre><code>python3.12 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements.txt
-cd frontend &amp;&amp; npm ci</code></pre></div></div>
-          <div class="step"><span>2</span><div><h3>Hamartia'yı başlat</h3><p>Depo kök dizininden başlatıcıyı çalıştır. Tarayıcıda yerel adresi aç. Arayüz İngilizce açılır; Ayarlar'dan İngilizce veya Türkçe seçebilirsin. Tercihin bu bilgisayarda saklanır.</p><pre><code>.venv/bin/python scripts/dev.py</code></pre><p>İki sunucuyu da durdurmak için <kbd>Ctrl</kbd> + <kbd>C</kbd> tuşlarına bas. Varsayılan olarak uygulama bu bilgisayarda 5173 ve 8000 portlarını kullanır.</p></div></div>
-          <div class="step"><span>3</span><div><h3>Verilerini koru</h3><p>Denemeler, sorular, görseller ve ayarlar <code>backend/data/</code> altında tutulur. Kayıtlarını taşımadan veya geri yüklemeden önce Ayarlar'dan ZIP yedeği indir.</p></div></div>
+          <div class="step"><span>1</span><div><h3>Paketi seç</h3><p>Windows 10/11: Windows yükleyicisini (.exe) indirip çalıştır. Debian: <code>.deb</code> paketini yazılım yükleyicisiyle yükle veya şu komutu çalıştır:</p><pre><code>sudo apt install ./Hamartia-*.deb</code></pre><p>Linux AppImage: İndirdiğin dosyayı çalıştırılabilir yap ve aç:</p><pre><code>chmod +x Hamartia-*.AppImage
+./Hamartia-*.AppImage</code></pre></div></div>
+          <div class="step"><span>2</span><div><h3>Dilini seç</h3><p>Hamartia İngilizce açılır. Ayarlar'dan İngilizce veya Türkçe seç; tercihin bu bilgisayarda saklanır.</p></div></div>
+          <div class="step"><span>3</span><div><h3>Verilerinin konumu</h3><p>Denemeler, sorular, görseller, ayarlar ve çalışma geçmişi işletim sisteminin kullanıcıya özel uygulama verisi klasöründe saklanır. Yedek oluşturup taşımadığın sürece bu bilgisayarda kalır.</p></div></div>
         </div>
       </section>
 
       <section class="section split" id="privacy">
         <div><p class="eyebrow">VERİLERİN</p><h2>Varsayılan olarak yerel. AI kullanırken açıkça belirtir.</h2></div>
-        <div class="prose"><p>Geliştirme sürümü çalışma kayıtlarını ve yüklenen görselleri bu bilgisayardaki <code>backend/data/</code> klasöründe tutar. Henüz hesap eşitleme veya ChatGPT ile giriş özelliği yoktur.</p><p>İsteğe bağlı soru analizi, soru metnini ve görselini Ayarlar'da yapılandırdığın OpenAI uyumlu uç noktaya gönderebilir. Yalnızca güvendiğin bir uç noktaya bağlan. API anahtarı API yanıtlarına ve yedeklere eklenmez; yerel ayar dosyasında saklanır ve mevcut geliştirme sürümünde şifrelenmez.</p><p>Yerel API bu bilgisayarda kullanım içindir. İnternete açık hale getirme.</p></div>
+        <div class="prose"><p>Hamartia çalışma kayıtlarını ve yüklenen görselleri bu bilgisayardaki kullanıcıya özel uygulama verisi klasöründe saklar. Hesap eşitlemesi yoktur. Çalışma ajanı için ChatGPT ile giriş henüz kullanılamıyor.</p><p>İsteğe bağlı soru analizi, soru metnini ve görselleri Ayarlar'da yapılandırdığın OpenAI uyumlu uç noktaya gönderebilir. Yalnızca güvendiğin bir uç noktaya bağlan. API anahtarı API yanıtlarına ve yedeklere eklenmez; uygulama anahtarı yerel ayar verisinde şifrelemeden saklar.</p><p>Yerel API yalnızca bu bilgisayarda kullanılmak üzere bağlanır. İnternete açık hale getirme.</p></div>
       </section>
 
       <section class="section backup" id="backup">
-        <div class="backup-copy"><p class="eyebrow">YEDEKLEME VE GERİ YÜKLEME</p><h2>Yanında götürebileceğin bir yedek.</h2><p>Ayarlar'dan ZIP yedeği indir. Arşiv çalışma kayıtlarını ve soru görsellerini içerir; kayıtlı API anahtarını içermez.</p><p>Geri yüklemeden önce Hamartia'yı kapat. Depo kök dizininde şu komutu çalıştır:</p><pre><code>.venv/bin/python scripts/restore_backup.py hamartia-backup.zip</code></pre><p>Geri yükleme arşivi doğrular ve değiştirmeden önce mevcut veri klasörünü tarihli bir yedek olarak saklar. Windows'ta <code>.venv\Scripts\python.exe</code> yolunu kullan.</p></div>
+        <div class="backup-copy"><p class="eyebrow">YEDEKLEME VE GERİ YÜKLEME</p><h2>Yanında götürebileceğin bir yedek.</h2><p>ZIP yedeğini Ayarlar'daki <strong>Yedeği indir</strong> seçeneğiyle kaydet. Yedek çalışma kayıtlarını ve soru görsellerini içerir, yerel API anahtarını içermez.</p><p>Geri yüklemek için Ayarlar'dan <strong>Yedeği geri yükle</strong> seçeneğini aç, ZIP dosyasını seç ve işlemi onayla. Hamartia arşivi doğrular, mevcut veri klasörünün tarihli kopyasını saklar, bu bilgisayardaki API anahtarını korur ve ardından yeniden başlar.</p><p>Yedeği yalnızca Hamartia içinden geri yükle; sonuç mesajı görünene kadar uygulamayı açık tut.</p></div>
         <div class="backup-mark" aria-hidden="true"><span>H</span><i></i><i></i><i></i></div>
       </section>
     </main>
 
-    <footer><a class="brand" href="#top">H<span>.</span></a><p>Her oturumda, istikrarlı ilerleme için.</p><a href="https://github.com/Nec0ti/hamartia">Kaynak kodunu gör ↗</a></footer>
+    <footer><a class="brand" href="#top">H<span>.</span></a><p>Her oturumda, istikrarlı ilerleme için.</p><a href="https://github.com/Nec0ti/hamartia">Kaynak kodunu gör ↗</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">En son sürüm ↗</a></footer>
   </body>
 </html>

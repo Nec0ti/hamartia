@@ -24,3 +24,7 @@
 - 2026-11-14: Cosmos yer tutucusu salt okunur yerel ilerleme görünümüne çevrildi; XP/seviye/seri ve en çok dokuz bekleyen konu yer alıyor. İlk build 18.49 sn sürdü. Browser smoke ortamda browser/Playwright olmadığı için yapılmadı. Eski random assault endpointinin çok dosyalı XP yazımı ve ödül semantiği incelenip UI kapsamı dışında bırakıldı.
 - 2026-11-14: XP çubuğunun 500 XP ilk seviye eşiği backend ile hizalandı; navbar ve Cosmos ortak yardımcıyı kullanıyor. 4 frontend testi ve 17.64 sn build geçti.
 - GitHub Actions run `43603845596`: frontend test/build, backend unittest, JSON storage benchmarkı ve soru akışı benchmarkı başarılı.
+- 2026-11-14: Soru bazında doğru/yanlış attempt history ve deterministik 1/3/7/14/30 gün tekrar aralıkları eklendi. Text-only capture da API/form/tekrar listesine bağlandı. 29 backend, 4 frontend testi geçti.
+- 2026-11-14: Chromium smoke gerçek FastAPI+Vite ile temp veride görselsiz soru ekleme, çözüm persistence, AI route dışılığı, erişilebilir adlar ve 390 px taşmama kontrolünü geçti. 2.715 sn navigasyon, 2.432 sn capture+review persistence. `npm audit` online 0 bulgu.
+- 100 görselli soru upload 0.4674 sn; 100 text-only capture 0.6439 sn; iki workflow da AI'siz benchmark.
+- Rapor: `reports/2026-11-14-spaced-review-loop.md`. `test:browser` CI'a bağlandı; son Actions çalışması bekleniyor.

@@ -23,6 +23,11 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `backend/app/core/progression.py`: kullanıcıya görünen XP'yi kayıtlı deneme XP'leriyle korunan profil bonusunu toplayarak, seviyeyi bu toplamdan, aktif seriyi deneme günlerinden hesaplar. Aynı özet Cosmos XP projeksiyonunda da kullanılır.
 - `frontend/src/utils/formatters.js`: seviye barı XP eşiği backend ile eşleşir; seviye N, `(N-1)*500` XP'de başlar ve sonraki seviye N*500 XP'dir.
 - `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
+- `Question.review_attempts` eski kayıtlarda varsayılan boş listedir; her yeni deneme `{attempted_at, correct}` saklar. `reviewed_at` varsa soru arşivli sayılır; yeni çözüm denemesi arşivi açar.
+- Soru görseli artık isteğe bağlıdır; boş görüntü yolları eski JSON biçimini bozmaz. Görselsiz kaydın metin alanı boşsa upload 422 verir. AI prompt'u görseli ancak güvenli dosya bulunduğunda ekler; AI çalışma zamanı doğrulaması yapılmaz.
+- `backend/app/core/review_schedule.py` deterministik tekrar tarihi çıkarır: ilk/yanlış denemeden 1 gün sonra; ardışık doğru denemelerde 1, 3, 7, 14, 30 gün (30 gün üst sınır). Geçersiz tarihli eski deneme bugüne düşer.
+- `POST /questions/{id}/attempt` kilitli liste mutation ile sonucu ekler. `/questions/insights` due soru kuyruğunu (`reviews`) ve ileride açılacak sayıyı (`scheduled_questions`) döndürür.
+- `StudyPlanTab` gerçek sorunun görsel/metnini sunar; doğru/yanlış sonucunu kaydedip kuyruğu tazeler. Soru yanıtı XP üretmez; XP deneme geçmişinden türetilir.
 - Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
 - `AIService.default()` `backend/data/settings.json` ayarlarını okur; soru görselini ve OCR metnini OpenAI uyumlu multimodal chat isteğine ekler. Bu kod yolu başka bilgisayardaki modelle doğrulanmadı ve test/benchmark dışında tutuldu.
@@ -31,6 +36,7 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - Cosmos'taki mevcut `assault` ve `unlock_sector` POST akışları UI'da kullanılmıyor. Özellikle `assault`, user/cosmos JSON'larını ayrı yazar ve başarı/başarısızlık XP semantiği tutarsız; atomik ve kuralları netleşmeden bağlama.
 - `frontend/package.json`: Node test scripti ve AI çağrısı içermeyen formatter testleri var.
 - Backend testleri `backend/tests/` altında Git'te izleniyor; AI dışı benchmarklar `backend/benchmarks/` altında.
+- `frontend/_smoke.cjs` gerçek FastAPI+Vite uygulamasını temp veri diziniyle başlatır; text-only soru ekler, çözüm sonucunu yazar ve reload sonrası korunduğunu doğrular. Bu akış AI endpoint'lerine istek çıkarmaz.
 
 ## Eski tanı tasarımı
 

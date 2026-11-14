@@ -12,7 +12,8 @@
 - [x] Ana sayfa ve Yanlışlarım sekmesini gerçek akışa bağlama.
 - [x] Ders/konu hata örüntülerinden deterministik çalışma önceliği çıkarma.
 - [x] Yanlış soruyu tekrar edildi diye işaretleyip planı güncelleme ve işareti geri alma.
-- [ ] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
+- [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
+- [ ] Eski Cosmos saldırı/ödül API'sini UI'ya bağlamadan önce XP bahis kurallarını ve çok dosyalı yazım atomikliğini düzelt.
 
 ## P2 — doğrulama ve sağlamlaştırma
 
@@ -29,4 +30,4 @@
 
 ## Sonraki küçük iş
 
-Cosmos XP kurallarını ve yarış-safe state güncellemelerini test edip sonra UI'ya bağlama; tarayıcı smoke imkanını doğrulama.
+Gerçek tarayıcı smoke ve erişilebilirlik kontrolü için tarayıcı/Playwright ortamını kur; Cosmos saldırı/ödül API'sini ayrı ve testli bir iş olarak güvenli hale getir.

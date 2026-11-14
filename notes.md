@@ -25,7 +25,9 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
 - `AIService.default()` `backend/data/settings.json` ayarlarını okur; soru görselini ve OCR metnini OpenAI uyumlu multimodal chat isteğine ekler. Bu kod yolu başka bilgisayardaki modelle doğrulanmadı ve test/benchmark dışında tutuldu.
-- `frontend/src/App.jsx`: Dashboard, Yanlışlarım ve deterministik Çalışma Planı gerçek ekran; Cosmos hâlâ yer tutucu.
+- `frontend/src/App.jsx`: Dashboard, Yanlışlarım, deterministik Çalışma Planı ve salt okunur Cosmos ekranı gerçek akışa bağlı. Çalışma Koçu yer tutucu.
+- `frontend/src/tabs/CosmosTab.jsx`: deneme geçmişinden türetilen XP/seviye/seri ile bekleyen konu önceliklerini kartlar halinde gösterir; yalnızca GET uçlarını çağırır ve yeni durum yazmaz.
+- Cosmos'taki mevcut `assault` ve `unlock_sector` POST akışları UI'da kullanılmıyor. Özellikle `assault`, user/cosmos JSON'larını ayrı yazar ve başarı/başarısızlık XP semantiği tutarsız; atomik ve kuralları netleşmeden bağlama.
 - `frontend/package.json`: Node test scripti ve AI çağrısı içermeyen formatter testleri var.
 - Backend testleri `backend/tests/` altında Git'te izleniyor; AI dışı benchmarklar `backend/benchmarks/` altında.
 
@@ -66,6 +68,7 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
 - Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.
 - `README.md` yerel çalıştırma, veri dizini, AI endpoint ayarı ve AI dışı doğrulama komutlarını açıklar. Remote model davranışı başka bilgisayarda hâlâ doğrulanmalı.
+- Cosmos ekranının ilerleme çubuğu erişilebilir progressbar değerlerini taşır; üretim derlemesi bunu doğrular ancak gerçek tarayıcı/ekran okuyucu kontrolü yapılmadı.
 - GitHub Actions `feat: add a local mistake review loop` ve review geri alma commit'lerinde frontend/backend işleri başarıyla bitti. Yerel Git tree ile GitHub `codex/hamartia-rebuild` tree SHA'sı eşleşiyor; kaynak `master` `c5642d0` olarak kaldı. Normal Git taşıması DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
 
 ## Açık kararlar

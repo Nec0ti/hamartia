@@ -35,13 +35,19 @@ def wait_for(url, process, name):
 def stop(processes):
     for process in processes:
         if process.poll() is None:
-            process.terminate()
+            try:
+                os.killpg(process.pid, signal.SIGTERM) if os.name == "posix" else process.terminate()
+            except ProcessLookupError:
+                pass
     for process in processes:
         if process.poll() is None:
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                process.kill()
+                try:
+                    os.killpg(process.pid, signal.SIGKILL) if os.name == "posix" else process.kill()
+                except ProcessLookupError:
+                    pass
                 process.wait()
 
 
@@ -65,10 +71,12 @@ def main():
         processes.append(subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", "8000"],
             cwd=ROOT,
+            start_new_session=os.name == "posix",
         ))
         processes.append(subprocess.Popen(
             [npm, "run", "dev", "--", "--host", "127.0.0.1", "--port", str(frontend_port), "--strictPort"],
             cwd=ROOT / "frontend",
+            start_new_session=os.name == "posix",
         ))
         wait_for("http://127.0.0.1:8000/healthcheck/ready", processes[0], "API")
         frontend_url = f"http://127.0.0.1:{frontend_port}"

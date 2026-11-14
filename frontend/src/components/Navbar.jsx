@@ -63,11 +63,11 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
     <header className="sticky top-0 z-40 border-b border-canvas-line bg-canvas-panel/90 backdrop-blur">
       <div className="flex items-center gap-1 px-4 py-3">
         {/* Brand mark + title. */}
-        <div className="flex items-center gap-2 mr-6">
+        <div className="mr-2 flex items-center gap-2 sm:mr-6">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-canvas-accent text-white shadow-crimson">
             <Sparkles size={16} />
           </div>
-          <span className="text-lg font-bold tracking-tight text-canvas-text">
+          <span className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
             Hamartia
           </span>
         </div>
@@ -84,7 +84,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
                 aria-label={tab.label}
                 onClick={() => onSelectTab(tab.id)}
                 className={[
-                  'relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition',
+                  'relative flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition sm:px-3',
                   isActive
                     ? 'text-white'
                     : 'text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text',
@@ -107,7 +107,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               title={`Seviye ${badge.level} • ${fmtInt(badge.xp)} XP`}
               className="flex items-center gap-2 rounded-full border border-canvas-line bg-canvas-base px-3 py-1.5"
             >
-              <div className="relative h-2 w-16 overflow-hidden rounded-full bg-canvas-line">
+              <div className="relative hidden h-2 w-16 overflow-hidden rounded-full bg-canvas-line sm:block">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-canvas-indigo to-canvas-cyan transition-all duration-500"
                   style={{ width: `${Math.round(badge.progress * 100)}%` }}

@@ -8,7 +8,7 @@ import { fmtNet, fmtInt, fmtDuration, previewXp, netScore } from '../utils/forma
  * correct/incorrect/blank split. Computes the YKS net score and XP live from
  * the canonical formulas so the user can preview the reward before saving.
  */
-export default function AddExamModal({ open, form, setForm, onClose, onSubmit }) {
+export default function AddExamModal({ open, form, setForm, onClose, onSubmit, editing = false }) {
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }))
 
   const net = netScore(form.correct, form.incorrect)
@@ -18,7 +18,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit })
     <Modal
       open={open}
       onClose={onClose}
-      title="Deneme ekle"
+      title={editing ? 'Denemeyi düzenle' : 'Deneme ekle'}
       footer={
         <>
           <button
@@ -33,7 +33,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit })
             onClick={onSubmit}
             className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
           >
-            Denemeyi kaydet
+            {editing ? 'Değişiklikleri kaydet' : 'Denemeyi kaydet'}
           </button>
         </>
       }
@@ -47,6 +47,13 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit })
               onChange={(e) => set('date', e.target.value)}
               className={inputCls}
             />
+          </Field>
+          <Field label="Deneme türü">
+            <select value={form.exam_type} onChange={(e) => set('exam_type', e.target.value)} className={inputCls}>
+              <option value="tyt">TYT</option>
+              <option value="ayt">AYT</option>
+              <option value="branch">Branş</option>
+            </select>
           </Field>
           <Field label="Ders">
             <input

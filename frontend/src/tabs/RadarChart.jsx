@@ -40,14 +40,13 @@ export default function RadarChart({ radar }) {
         <ResponsiveContainer width="100%" height="100%">
           <RechartsRadarChart data={data} cx="50%" cy="50%" outerRadius={90}>
             <PolarAngleAxis
-              type="number"
               dataKey="axis"
               tick={{ fill: '#a1a1aa', fontSize: 12 }}
             />
             <PolarRadiusAxis
               angle={90}
               domain={[0, 100]}
-              tick={false}
+              tick={{ fill: '#52525b', fontSize: 10 }}
               axisLine={false}
             />
             {/* Faint concentric grid ring. */}
@@ -65,11 +64,6 @@ export default function RadarChart({ radar }) {
               stroke="#22d3ee"
               strokeWidth={2}
               polygon={{ fill: '#22d3ee', fillOpacity: 0.35 }}
-            />
-            <PolarRadiusAxis
-              angle={90}
-              domain={[0, 100]}
-              tick={{ fill: '#52525b', fontSize: 10 }}
             />
           </RechartsRadarChart>
         </ResponsiveContainer>

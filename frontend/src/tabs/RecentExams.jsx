@@ -1,14 +1,16 @@
 import { useMemo } from 'react'
-import { ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
+import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
 import { fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
+
+const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
 
 /**
  * Recent-exams table. Each row shows the derived net and XP. Double-clicking
  * the Incorrect cell (or the row) opens the question-upload modal, matching the
  * "double-click Incorrect to upload" behaviour from the spec.
  */
-export default function RecentExams({ exams, onDoubleClickIncorrect, recentError, setRecentError }) {
+export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onDelete, recentError }) {
   const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)).slice(0, 8), [exams])
 
   if (recent.length === 0) {
@@ -31,12 +33,14 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
             <tr className="border-b border-canvas-line text-xs uppercase tracking-wider text-canvas-muted">
               <th className="py-3 pr-4">Tarih</th>
               <th className="py-3 pr-4">Ders</th>
+              <th className="py-3 pr-4">Tür</th>
               <th className="py-3 pr-4">Doğru</th>
               <th className="py-3 pr-4">Yanlış</th>
               <th className="py-3 pr-4">Boş</th>
               <th className="py-3 pr-4">Süre</th>
               <th className="py-3 pr-4 text-right">Net</th>
               <th className="py-3 pr-4 text-right">XP</th>
+              <th className="py-3 pr-1" />
             </tr>
           </thead>
           <tbody>
@@ -51,6 +55,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
                 >
                   <td className="py-3 pr-4 text-canvas-text">{ex.date}</td>
                   <td className="py-3 pr-4 text-canvas-text">{subjectLabel(ex.subject)}</td>
+                  <td className="py-3 pr-4 text-canvas-muted">{EXAM_TYPES[ex.exam_type || 'branch']}</td>
                   <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct)}</td>
                   <td
                     className="py-3 pr-4 text-accent font-semibold transition hover:underline"
@@ -79,6 +84,26 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
                     </span>
                   </td>
                   <td className="py-3 pr-4 text-right text-canvas-cyan">{fmtInt(xp)}</td>
+                  <td className="py-3 pr-1 text-right">
+                    <div className="inline-flex gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Denemeyi düzenle ${ex.subject} ${ex.date}`}
+                        onClick={() => onEdit(ex)}
+                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Denemeyi sil ${ex.subject} ${ex.date}`}
+                        onClick={() => onDelete(ex)}
+                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-accent"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )
             })}

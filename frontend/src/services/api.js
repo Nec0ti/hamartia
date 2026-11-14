@@ -25,6 +25,7 @@ export const exams = {
   get: (id) => client.get(`/exams/${id}`).then((r) => r.data),
   create: (payload) =>
     client.post('/exams', payload).then((r) => r.data),
+  update: (id, payload) => client.put(`/exams/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/exams/${id}`).then((r) => r.data),
 }
 
@@ -115,4 +116,4 @@ export const handleApiError = (error) => {
   return { ok: false, status, detail }
 }
 
-export default { exams, questions, cosmos, agent, settings, health }
+export default { exams, questions, cosmos, agent, user, settings, health }

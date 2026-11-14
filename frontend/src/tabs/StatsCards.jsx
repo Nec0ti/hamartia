@@ -16,7 +16,13 @@ const CARDS = [
 ]
 
 /** Five stat cards across the top of the dashboard. */
-export default function StatsCards({ profile, stats }) {
+export default function StatsCards({ profile, stats, examType = 'all' }) {
+  const examLabel = {
+    all: 'Deneme sayısı',
+    tyt: 'Deneme sayısı · TYT',
+    ayt: 'Deneme sayısı · AYT',
+    branch: 'Deneme sayısı · Branş',
+  }[examType]
   const values = {
     ...stats,
     totalXp: profile?.totalXp ?? 0,
@@ -35,7 +41,7 @@ export default function StatsCards({ profile, stats }) {
             <div className="flex items-center gap-2 text-canvas-muted">
               <Icon size={14} />
               <span className="text-xs font-medium uppercase tracking-wider">
-                {card.label}
+                {card.label === 'Deneme sayısı' ? examLabel : card.label}
               </span>
             </div>
             <div className="mt-2 text-2xl font-bold text-canvas-text">

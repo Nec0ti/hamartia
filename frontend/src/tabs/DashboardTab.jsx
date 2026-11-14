@@ -5,8 +5,6 @@ import { handleApiError } from '../services/api'
 import {
   fmtInt,
   fmtNet,
-  netScore,
-  previewXp,
   levelForXp,
 } from '../utils/formatters'
 import StatsCards from './StatsCards.jsx'
@@ -17,6 +15,7 @@ import AddExamModal from './AddExamModal.jsx'
 
 const EMPTY_FORM = {
   date: new Date().toLocaleDateString('en-CA'),
+  exam_type: 'branch',
   subject: 'Matematik',
   duration_minutes: 30,
   duration_seconds: 0,
@@ -39,9 +38,11 @@ export default function DashboardTab({ onUploadQuestion }) {
 
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [editingExam, setEditingExam] = useState(null)
 
   const [toggle, setToggle] = useState('bar') // 'bar' | 'line'
   const [subjectFilter, setSubjectFilter] = useState('all')
+  const [examTypeFilter, setExamTypeFilter] = useState('all')
   const [recentError, setRecentError] = useState(null)
 
   const load = async () => {
@@ -74,33 +75,57 @@ export default function DashboardTab({ onUploadQuestion }) {
   )
 
   const filtered = useMemo(() => {
-    if (subjectFilter === 'all') return exams
-    return exams.filter((e) => e.subject === subjectFilter)
-  }, [exams, subjectFilter])
+    return exams.filter(
+      (exam) => (examTypeFilter === 'all' || (exam.exam_type || 'branch') === examTypeFilter)
+        && (subjectFilter === 'all' || exam.subject === subjectFilter),
+    )
+  }, [exams, examTypeFilter, subjectFilter])
 
   const stats = useMemo(() => {
-    const total = exams.length
-    const answered = exams.filter((e) => e.correct + e.incorrect > 0)
+    const total = filtered.length
+    const answered = filtered.filter((e) => e.correct + e.incorrect > 0)
     const avgNet =
       answered.length > 0
         ? answered.reduce((s, e) => s + e.net, 0) / answered.length
         : 0
     return { total, avgNet }
-  }, [exams])
+  }, [filtered])
 
   const submitExam = (e) => {
     e.preventDefault()
     setRecentError(null)
-    api
-      .exams.create({ ...form, created_at: '' })
-      .then(load)
-      .then(() => {
-        setShowAdd(false)
-        setForm(EMPTY_FORM)
-      })
-      .catch((err) => {
-        setRecentError(handleApiError(err).detail)
-      })
+    const save = editingExam ? api.exams.update(editingExam.id, form) : api.exams.create(form)
+    save.then(load).then(() => {
+      setShowAdd(false)
+      setEditingExam(null)
+      setForm(EMPTY_FORM)
+    }).catch((err) => setRecentError(handleApiError(err).detail))
+  }
+
+  const editExam = (exam) => {
+    setEditingExam(exam)
+    setForm({
+      date: exam.date,
+      exam_type: exam.exam_type || 'branch',
+      subject: exam.subject,
+      duration_minutes: exam.duration_minutes,
+      duration_seconds: exam.duration_seconds,
+      correct: exam.correct,
+      incorrect: exam.incorrect,
+      blank: exam.blank,
+    })
+    setShowAdd(true)
+  }
+
+  const deleteExam = async (exam) => {
+    if (!window.confirm(`${exam.date} · ${exam.subject} denemesi silinsin mi?`)) return
+    setRecentError(null)
+    try {
+      await api.exams.remove(exam.id)
+      await load()
+    } catch (err) {
+      setRecentError(handleApiError(err).detail)
+    }
   }
 
   if (loading)
@@ -118,7 +143,11 @@ export default function DashboardTab({ onUploadQuestion }) {
         </h1>
         <button
           type="button"
-          onClick={() => setShowAdd(true)}
+          onClick={() => {
+            setEditingExam(null)
+            setForm(EMPTY_FORM)
+            setShowAdd(true)
+          }}
           className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
         >
           <Plus size={16} />
@@ -132,7 +161,22 @@ export default function DashboardTab({ onUploadQuestion }) {
         </div>
       )}
 
-      <StatsCards profile={profile} stats={stats} />
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="exam-type-filter" className="text-xs text-canvas-muted">Deneme türü</label>
+        <select
+          id="exam-type-filter"
+          aria-label="Deneme türü filtresi"
+          value={examTypeFilter}
+          onChange={(e) => setExamTypeFilter(e.target.value)}
+          className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-1.5 text-xs text-canvas-text"
+        >
+          <option value="all">Tüm türler</option>
+          <option value="tyt">TYT</option>
+          <option value="ayt">AYT</option>
+          <option value="branch">Branş</option>
+        </select>
+      </div>
+      <StatsCards profile={profile} stats={stats} examType={examTypeFilter} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RadarChart radar={profile?.radar} />
@@ -144,8 +188,9 @@ export default function DashboardTab({ onUploadQuestion }) {
         onDoubleClickIncorrect={(q) => {
           onUploadQuestion(q)
         }}
+        onEdit={editExam}
+        onDelete={deleteExam}
         recentError={recentError}
-        setRecentError={setRecentError}
       />
 
       {/* Add Exam modal. */}
@@ -155,9 +200,11 @@ export default function DashboardTab({ onUploadQuestion }) {
         setForm={setForm}
         onClose={() => {
           setShowAdd(false)
+          setEditingExam(null)
           setForm(EMPTY_FORM)
         }}
         onSubmit={submitExam}
+        editing={Boolean(editingExam)}
       />
     </div>
   )

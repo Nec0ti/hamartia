@@ -32,7 +32,10 @@ async function main() {
   try {
     const base = `http://127.0.0.1:${port}/`
     await waitForServer(base, server)
-    browser = await chromium.launch({ headless: true })
+    browser = await chromium.launch({
+      headless: true,
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
+    })
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
     const externalRequests = []
     page.on('request', request => {
@@ -43,7 +46,7 @@ async function main() {
     await page.getByRole('heading', { name: 'Study with a clearer picture.' }).waitFor()
     assert.equal(await page.getByRole('link', { name: 'Download Hamartia' }).getAttribute('href'), 'https://github.com/Nec0ti/hamartia/releases/latest')
     await page.getByText(/Windows 10\/11 or Linux x64/).waitFor()
-    await page.getByText(/ChatGPT sign-in for the study agent is not available yet/).waitFor()
+    await page.getByText(/ChatGPT sign-in is available in the packaged desktop app/).waitFor()
     await page.getByText('Restore backup', { exact: true }).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, await page.evaluate(() => [...document.querySelectorAll('*')].filter(node => node.getBoundingClientRect().right > innerWidth).map(node => `${node.tagName}.${node.className}=${Math.round(node.getBoundingClientRect().right)}`).slice(0, 5).join(', ')))
     await page.getByRole('link', { name: /Türkçe/ }).click()
@@ -51,7 +54,7 @@ async function main() {
     await page.getByRole('heading', { name: 'Daha net bir tabloyla çalış.' }).waitFor()
     assert.equal(await page.getByRole('link', { name: "Hamartia'yı indir" }).getAttribute('href'), 'https://github.com/Nec0ti/hamartia/releases/latest')
     await page.getByText(/Windows 10\/11 veya Linux x64/).waitFor()
-    await page.getByText(/ChatGPT ile giriş henüz kullanılamıyor/).waitFor()
+    await page.getByText(/ChatGPT ile giriş, masaüstü uygulamasında kullanılabilir/).waitFor()
     await page.getByText('Yedeği geri yükle', { exact: true }).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, await page.evaluate(() => [...document.querySelectorAll('*')].filter(node => node.getBoundingClientRect().right > innerWidth).map(node => `${node.tagName}.${node.className}=${Math.round(node.getBoundingClientRect().right)}`).slice(0, 5).join(', ')))
     await page.getByRole('link', { name: /English/ }).click()

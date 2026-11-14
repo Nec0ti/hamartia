@@ -223,11 +223,14 @@ async function main() {
     const focusedSessionMs = Math.round(performance.now() - focusStarted)
 
     const attempted = performance.now()
-    await page.getByRole('button', { name: 'Yanlış çözdüm' }).click()
-    await page.getByText('1 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    const [wrongAttemptResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/questions/q1/attempt' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Yanlış çözdüm' }).click(),
+    ])
+    assert.equal((await wrongAttemptResponse.json()).review_attempts.at(-1).correct, false)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByText('1 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    assert.equal((await (await fetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
     assert.equal(await page.getByRole('region', { name: 'Odaklı çalışma oturumu' }).count(), 0)
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
@@ -243,13 +246,16 @@ async function main() {
     assert.equal(createdQuestion.ocr_text, 'Metin tabanlı deneme sorusu')
 
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }).waitFor()
-    await page.getByRole('button', { name: 'Doğru çözdüm' }).click()
-    await page.getByText('2 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    const savedTextQuestion = page.locator('article').filter({ has: page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }) })
+    await savedTextQuestion.waitFor()
+    const [correctAttemptResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === `/questions/${createdQuestion.id}/attempt` && response.request().method() === 'POST'),
+      savedTextQuestion.getByRole('button', { name: 'Doğru çözdüm' }).click(),
+    ])
+    assert.equal((await correctAttemptResponse.json()).review_attempts.at(-1).correct, true)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByText('2 soru aralıklı tekrar için ileride açılacak.').waitFor()
-    await page.getByText('2 farklı soru denedin · 1 doğru, 1 yanlış yanıt').waitFor()
+    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
     const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
@@ -423,6 +429,84 @@ async function main() {
     assert.equal(backupDownload.suggestedFilename(), 'hamartia-backup.zip')
     assert.deepEqual((await fs.readFile(await backupDownload.path())).subarray(0, 2), Buffer.from('PK'))
     const backupDownloadMs = Math.round(performance.now() - backupStarted - settingsKeyManagementMs)
+    await page.addInitScript(() => {
+      const profileKey = 'hamartia.smoke.chatgpt'
+      window.hamartiaDesktop = {
+        restoreBackup: async () => ({ status: 'cancelled' }),
+        chatgpt: {
+          status: async () => JSON.parse(localStorage.getItem(profileKey) || '{"connected":false}'),
+          signIn: async () => {
+            const profile = { connected: true, email: 'student@example.test', planUse: true }
+            localStorage.setItem(profileKey, JSON.stringify(profile))
+            return profile
+          },
+          signOut: async () => {
+            const profile = { connected: false, savedAccount: true, email: 'student@example.test', revocationConfirmed: false }
+            localStorage.setItem(profileKey, JSON.stringify(profile))
+            return profile
+          },
+          forgetAccount: async () => {
+            const profile = { connected: false }
+            localStorage.setItem(profileKey, JSON.stringify(profile))
+            return profile
+          },
+          models: async () => [{ slug: 'mock-model', display_name: 'Mock model' }],
+          openUsage: async () => {},
+          onDelta: (callback) => {
+            window.__mockAgentDelta = callback
+            return () => { window.__mockAgentDelta = null }
+          },
+          chat: async (payload) => {
+            window.__mockAgentPayload = payload
+            if (payload.message === 'cancel me') return new Promise((resolve) => { window.__mockCancel = resolve })
+            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
+            return { status: 'completed' }
+          },
+          cancel: async () => {
+            window.__mockCancel?.({ status: 'cancelled' })
+            return { cancelled: true }
+          },
+        },
+      }
+    })
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Agent' }).click()
+    await page.getByRole('heading', { name: 'Study Agent' }).waitFor()
+    await page.getByRole('button', { name: 'Continue with ChatGPT' }).click()
+    await page.getByText('student@example.test').waitFor()
+    const sendButton = page.getByRole('button', { name: 'Send to OpenAI' })
+    await page.getByLabel('Your question').fill('What should I review next?')
+    await page.getByText(/up to 8 topic practice aggregates/).waitFor()
+    assert.equal(await sendButton.isDisabled(), true)
+    await page.getByRole('checkbox').check()
+    await sendButton.click()
+    await page.getByText('A mocked study response.').waitFor()
+    assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
+      message: 'What should I review next?', model: 'mock-model', language: 'en-US', consent: true, requestId: undefined,
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Agent' }).click()
+    await page.getByText('student@example.test').waitFor()
+    assert.equal(await page.getByText('A mocked study response.').count(), 0)
+    await page.getByLabel('Your question').fill('cancel me')
+    await page.getByRole('checkbox').check()
+    await page.getByRole('button', { name: 'Send to OpenAI' }).click()
+    await page.getByRole('button', { name: 'Cancel request' }).waitFor()
+    await page.getByRole('button', { name: 'Cancel request' }).click()
+    await page.getByText('Request cancelled.').waitFor()
+    await page.getByRole('button', { name: 'Sign out' }).click()
+    await page.getByText(/OpenAI did not confirm remote revocation/).waitFor()
+    page.on('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Use a different account' }).click()
+    await page.getByText(/The local account link was removed/).waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Asistanı' }).click()
+    await page.getByRole('heading', { name: 'Çalışma Asistanı' }).waitFor()
+    await page.getByRole('button', { name: 'ChatGPT ile devam et' }).click()
+    await page.getByText(/Bu istek için yazdığım sorunun/).waitFor()
+    await page.getByText(/en fazla 8 konu çalışma özeti/).waitFor()
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))

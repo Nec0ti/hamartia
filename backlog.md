@@ -58,9 +58,10 @@
 
 ## P5 — study agent
 
-- [ ] Add explicit-consent Sign in with ChatGPT subscription usage as the primary study-agent provider; keep local AI as a separate optional provider for a later manual check on another computer.
-- [ ] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
+- [x] Add explicit-consent Sign in with ChatGPT subscription usage as the Study Agent provider. The existing local question-analysis feature stays separate; a local Study Agent provider is a future phase.
+- [x] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
+- [ ] Verify native OS secure-storage behavior and complete a real SIWC login/inference/sign-out on supported desktop platforms; never include account tokens in test data or reports.
 
 ## Next small task
 
-Next: implement explicit-consent Sign in with ChatGPT subscription usage as the primary study agent, retaining local AI as a separate option for later testing on another computer. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete native safeStorage and real SIWC manual checks on supported desktop platforms. A local Study Agent provider is a later phase; the existing local question-analysis flow remains separate. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.

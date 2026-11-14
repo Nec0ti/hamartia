@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: Odaklı konu oturumu eklendi. Öncelik kartı aynı konu için çalışmayı başlatıyor; süre ve doğru/yanlış/boş sayaçları duraklatma/sürdürme ile izleniyor. Aktif taslak yenilemede tarayıcı `localStorage` alanından döner; bitince mevcut `POST /practice` ile bir kez saklanır. Frontend 4/4, backend 72/72, build ve browser smoke geçti; AI çağrısı yok. Rapor: `reports/2026-11-14-focused-practice.md`.
+
 - 2026-11-14: Sonraki dilim planlandı: öncelikli konuya bağlı süreli odaklı oturum, doğru/yanlış/boş sayaçları ve bitince mevcut çalışma seti API'sine kayıt. Oturum taslağının sekme yenilenince geri gelmesi ve model çağrısı içermemesi kabul ölçütlerine eklendi.
 
 - 2026-11-14: Konu çalışma seti kaydı tamamlandı. Doğru/yanlış/boş, süre, net ve yalnızca cevaplanan sorular üzerinden doğruluk saklanıyor; konu özeti set kayıtlarından hesaplanıyor. Yedekleme eski ZIP biçimiyle uyumlu. 72 backend testi, frontend 4/4, build ve gerçek tarayıcı smoke geçti. AI'siz 1k/10k benchmarkı eklendi. GitHub Actions run #63 (`c1da9aa`) backend/frontend ve tüm benchmark adımlarıyla başarılı.

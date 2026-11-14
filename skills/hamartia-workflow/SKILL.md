@@ -14,6 +14,7 @@ description: Hamartia YKS takip uygulamasında değişiklik, yerel AI sınırı 
 7. Veri export/restore değişikliklerinde tüm kayıt türlerini ve `uploads/` dizinini say; secret alanlarını dışarıda tut, arşivi staging'de tamamen doğrula ve eski veriyi swap öncesi koru. Restore'u uygulama process lock'u ile çakışmaya karşı denetle.
 8. Sınav bağlamlı yanlış analizlerinde ölçüm paydasını açık belirt; yalnızca yanlış kaydı olan sorulardan doğruluk oranı türetme. Eski soru JSON'ları geriye uyumlu okunmalı ve silinmiş sınav ilişkileri özetleri kirletmemeli.
 9. Konu başarı ölçüsünü yalnızca tamamlanmış `practice_sessions.json` kayıtlarından üret; doğruluk paydasında boş soruları çıkar ve eski backup arşivlerini yeni liste dosyası olmadan da kabul et.
+10. Odaklı oturum taslağı yalnızca aynı tarayıcı profilinde geçici saklanır; tamamlanan sonuçları mevcut practice API'sine bir kez yaz ve gerçek model çağırma.
 
 ## Ölçüm kuralı
 

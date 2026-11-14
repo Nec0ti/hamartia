@@ -27,10 +27,11 @@ test('authorization uses fresh PKCE-bound OSS plan-use scopes and exact loopback
 })
 
 test('local study context is summarized and bounded without question text', () => {
-  const result = summarizeStudyContext({ pending_questions: 9, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: { gap: 1 }, ocr_text: 'secret question text' }] }, [])
+  const result = summarizeStudyContext({ pending_questions: 9, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: { gap: 1 }, ocr_text: 'secret question text' }] }, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
   assert.ok(result.length <= MAX_CONTEXT_LENGTH)
   assert.match(result, /Functions/)
   assert.doesNotMatch(result, /secret question text/)
+  assert.deepEqual(JSON.parse(result).topic_practice, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
 })
 
 async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true } = {}) {
@@ -157,6 +158,22 @@ test('mocked sign-in stores only encrypted credentials and streams direct Respon
   assert.equal(testApp.calls.some(({ url }) => url.includes('backend-api')), false)
 })
 
+test('newly issued client registration is retained when code exchange fails and reused on retry', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  testApp.setTokenResponse(async () => { throw new Error('temporary token endpoint failure') })
+  await assert.rejects(testApp.client.signIn(), /temporary token endpoint failure/)
+
+  const saved = JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))))
+  assert.deepEqual(saved, { client_id: 'oaiapp_test' })
+  assert.equal(new URL(testApp.getAuthorizationUrls()[0]).searchParams.get('client_id'), 'dynamic_agent_client')
+
+  testApp.setTokenResponse(null)
+  assert.deepEqual(await testApp.client.signIn(), { connected: true, email: 'student@example.test', planUse: true })
+  assert.equal(new URL(testApp.getAuthorizationUrls()[1]).searchParams.get('client_id'), 'oaiapp_test')
+  assert.equal(testApp.tokenBodies[1].get('client_id'), 'oaiapp_test')
+})
+
 test('plan-use cannot proceed when secure storage is unavailable or Linux falls back to basic_text', async (t) => {
   const testApp = await setup({ backend: 'basic_text' })
   t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
@@ -186,13 +203,13 @@ test('sign-in rejects callback state mismatch, denied consent, missing scope, an
     id_token: await new SignJWT({ nonce }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://auth.openai.com').setAudience('oaiapp_test').setSubject('student-123').setIssuedAt().setExpirationTime('1h').sign(privateKey),
   }))
   await assert.rejects(testApp.client.signIn(), /did not grant the required/)
-  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  assert.deepEqual(JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin')))), { client_id: 'oaiapp_test' })
   testApp.setTokenResponse(async (_body, { privateKey }) => ({
     access_token: 'access', refresh_token: 'refresh', expires_in: 3600, scope: SCOPES.join(' '),
     id_token: await new SignJWT({ nonce: 'wrong-nonce' }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://auth.openai.com').setAudience('oaiapp_test').setSubject('student-123').setIssuedAt().setExpirationTime('1h').sign(privateKey),
   }))
   await assert.rejects(testApp.client.signIn(), /nonce did not match|identity validation failed/)
-  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  assert.deepEqual(JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin')))), { client_id: 'oaiapp_test' })
 })
 
 test('rotating refresh credentials are serialized across concurrent model requests', async (t) => {

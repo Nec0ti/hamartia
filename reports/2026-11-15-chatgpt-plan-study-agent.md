@@ -4,7 +4,7 @@
 
 This slice adds a ChatGPT-plan Study Agent to the packaged Electron app. The existing local question-analysis flow remains separate. A local Study Agent provider is deferred. The old `/agent` route and its unused frontend caller were removed because the route had a mismatched request contract and returned success-shaped errors; existing question-analysis routes and data remain intact.
 
-The Study Agent has no file ingestion, remote proxy, hosted tools, or saved chat history. Each inference requires a checked consent box. The consent text states that the typed message and bounded local summary are sent to OpenAI. The summary contains pending/scheduled counts, up to eight subject/topic/tag summaries, and up to eight recent practice aggregates (set count, net, accuracy); it omits saved question-record text/images and prior chats. Responses use the selected model discovered from the signed-in account, the Responses API, `store: false`, streaming, and no previous-response/history parameter. Errors and cancellation stay visible; there is no provider fallback.
+The Study Agent has no file ingestion, remote proxy, hosted tools, or saved chat history. Each inference requires a checked consent box. The consent text states that the typed message and bounded local summary are sent to OpenAI. The summary contains pending/scheduled counts, up to eight subject/topic/tag summaries, and up to eight topic practice aggregates (set count, net, accuracy); it omits saved question-record text/images and prior chats. Responses use the selected model discovered from the signed-in account, the Responses API, `store: false`, streaming, and no previous-response/history parameter. Errors and cancellation stay visible; there is no provider fallback.
 
 ## OpenAI protocol sources
 
@@ -22,7 +22,7 @@ The OAuth flow runs in Electron's main process. It binds a temporary callback to
 
 ## Token lifecycle and account behavior
 
-Tokens are encrypted with Electron `safeStorage` in a user-owned application data file written atomically with owner-only permissions. Linux storage is accepted only when Electron reports a supported system-backed store (`gnome_libsecret`, `kwallet`, `kwallet5`, or `kwallet6`); `basic_text` and unavailable encryption fail closed. Refresh is serialized and rotated credentials are persisted. Sign-out attempts the OIDC revocation endpoint with the refresh token and issued client ID, clears local token fields, and retains the non-secret account/client mapping and stable host ID for the next authorization. The UI reports when remote revocation was not confirmed. “Use a different account” explicitly removes the saved mapping after tokens have been cleared.
+Tokens are encrypted with Electron `safeStorage` in a user-owned application data file written atomically with owner-only permissions. Linux storage is accepted only when Electron reports a supported system-backed store (`gnome_libsecret`, `kwallet`, `kwallet5`, or `kwallet6`); `basic_text` and unavailable encryption fail closed. After first registration, the newly issued client ID is persisted as soon as the loopback callback state/client ID checks pass, before exchanging the one-time code; a failed exchange can then retry with the issued ID. Refresh is serialized and rotated credentials are persisted. Sign-out attempts the OIDC revocation endpoint with the refresh token and issued client ID, clears local token fields, and retains the non-secret account/client mapping and stable host ID for the next authorization. The UI reports when remote revocation was not confirmed. “Use a different account” explicitly removes the saved mapping after tokens have been cleared.
 
 Automated tests mock Electron secure storage and all OpenAI endpoints. Native safeStorage behavior, a real subscription sign-in/inference/revocation, and installation checks on physical Windows/Linux desktops remain manual verification items.
 
@@ -30,7 +30,7 @@ Automated tests mock Electron secure storage and all OpenAI endpoints. Native sa
 
 All automated work used mocks or local deterministic study fixtures; no ChatGPT or local model call was made.
 
-- Desktop: `npm test` — 21/21 passed. Covers PKCE/state/nonce, scopes, consent, token validation/redaction, storage failure, refresh rotation/races, model filtering, Responses streaming/completion, error and quota handling, cancellation, revocation success/failure, and account mapping reuse.
+- Desktop: `npm test` — 22/22 passed. Covers PKCE/state/nonce, scopes, consent, token validation/redaction, storage failure, failed code exchange and issued-client-ID reuse, refresh rotation/races, model filtering, Responses streaming/completion, error and quota handling, cancellation, revocation success/failure, and account mapping reuse.
 - Frontend: `npm test` — 16/16 passed.
 - Backend: `PYTHONPATH=backend /tmp/hamartia-siwc-venv/bin/python -m unittest discover -s backend/tests -v` — 93/93 passed.
 - Production UI: `npm run build` — passed.
@@ -38,7 +38,7 @@ All automated work used mocks or local deterministic study fixtures; no ChatGPT 
 - Browser smoke: `npm run test:browser` with the same Chromium path and the temporary backend venv — passed, including mocked Study Agent consent, streaming, cancellation, revocation warning, account-reset flow, and Turkish UI. Reported `ai_included: false`.
 - `git diff --check` — passed.
 
-The smoke fixture uses a fixed November 14 date. On this host the app's local date was November 15, so the review had become due instead of future-scheduled. The smoke now verifies the persisted per-question result across reload, independent of current date. The browser run uses the host's Nix Chromium because Playwright's bundled Chromium could not load the system library `libglib-2.0.so.0`.
+The smoke fixture uses a fixed November 14 date. On the first PR CI run the app date was November 14, so the question became scheduled and the due-only review card was hidden; the smoke incorrectly required that card. On this host the app date was November 15, so the same question was due and the old scheduled-summary assertion also failed. The smoke now verifies the persisted per-question attempt API result across reload, independent of current date. The browser run uses the host's Nix Chromium because Playwright's bundled Chromium could not load the system library `libglib-2.0.so.0`.
 
 ## AI-free benchmarks
 

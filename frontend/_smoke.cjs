@@ -223,11 +223,14 @@ async function main() {
     const focusedSessionMs = Math.round(performance.now() - focusStarted)
 
     const attempted = performance.now()
-    await page.getByRole('button', { name: 'Yanlış çözdüm' }).click()
-    await page.getByText('Son denemede yanlış çözüldü.').waitFor()
+    const [wrongAttemptResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/questions/q1/attempt' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Yanlış çözdüm' }).click(),
+    ])
+    assert.equal((await wrongAttemptResponse.json()).review_attempts.at(-1).correct, false)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByText('Son denemede yanlış çözüldü.').waitFor()
+    assert.equal((await (await fetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
     assert.equal(await page.getByRole('region', { name: 'Odaklı çalışma oturumu' }).count(), 0)
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
@@ -245,11 +248,14 @@ async function main() {
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     const savedTextQuestion = page.locator('article').filter({ has: page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }) })
     await savedTextQuestion.waitFor()
-    await savedTextQuestion.getByRole('button', { name: 'Doğru çözdüm' }).click()
-    await page.getByText('Arka arkaya 1 doğru deneme.').waitFor()
+    const [correctAttemptResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === `/questions/${createdQuestion.id}/attempt` && response.request().method() === 'POST'),
+      savedTextQuestion.getByRole('button', { name: 'Doğru çözdüm' }).click(),
+    ])
+    assert.equal((await correctAttemptResponse.json()).review_attempts.at(-1).correct, true)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByText('Arka arkaya 1 doğru deneme.').waitFor()
+    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
     const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
@@ -471,6 +477,7 @@ async function main() {
     await page.getByText('student@example.test').waitFor()
     const sendButton = page.getByRole('button', { name: 'Send to OpenAI' })
     await page.getByLabel('Your question').fill('What should I review next?')
+    await page.getByText(/up to 8 topic practice aggregates/).waitFor()
     assert.equal(await sendButton.isDisabled(), true)
     await page.getByRole('checkbox').check()
     await sendButton.click()
@@ -499,6 +506,7 @@ async function main() {
     await page.getByRole('heading', { name: 'Çalışma Asistanı' }).waitFor()
     await page.getByRole('button', { name: 'ChatGPT ile devam et' }).click()
     await page.getByText(/Bu istek için yazdığım sorunun/).waitFor()
+    await page.getByText(/en fazla 8 konu çalışma özeti/).waitFor()
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))

@@ -52,7 +52,7 @@ function summarizeStudyContext(insights, sessions) {
     pending_questions: insights?.pending_questions ?? 0,
     scheduled_questions: insights?.scheduled_questions ?? 0,
     topics: topics.map(({ subject, topic, pending_count, tags }) => ({ subject, topic, pending_count, tags })),
-    recent_practice: practice.map(({ subject, topic, session_count, net, accuracy }) => ({ subject, topic, session_count, net, accuracy })),
+    topic_practice: practice.map(({ subject, topic, session_count, net, accuracy }) => ({ subject, topic, session_count, net, accuracy })),
   })
   return context.slice(0, MAX_CONTEXT_LENGTH)
 }
@@ -210,6 +210,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       const url = buildAuthorizationUrl({ clientId, redirectUri: listener.redirectUri, state, nonce, verifier, hostId: await hostId(), email: previous?.email, idToken: previous?.id_token })
       await shell.openExternal(url)
       const callback = await id.promise
+      if (!previous?.client_id) await writeCredentials({ client_id: callback.clientId })
       const tokens = await exchange({
         grant_type: 'authorization_code',
         client_id: callback.clientId,
@@ -222,7 +223,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       const identity = await verifyIdentity(tokens.id_token, callback.clientId, nonce)
       const scopes = [...grantedScopes(tokens.scope)]
       if (!REQUIRED_SCOPES.every((scope) => scopes.includes(scope))) throw new Error('ChatGPT did not grant the required identity and plan-use permissions. No ChatGPT request was sent.')
-      if (previous && (previous.client_id !== callback.clientId || previous.subject !== identity.sub)) throw new Error('The ChatGPT account changed during sign-in. Existing credentials were kept.')
+      if (previous?.subject && (previous.client_id !== callback.clientId || previous.subject !== identity.sub)) throw new Error('The ChatGPT account changed during sign-in. Existing credentials were kept.')
       const credentials = {
         client_id: callback.clientId,
         subject: identity.sub,

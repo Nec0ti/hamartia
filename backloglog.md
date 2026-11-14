@@ -32,3 +32,7 @@
 - Browser: 390 px taşma yok, dashboard JS/API hatası yok, Recharts NaN/duplicate-key hatası yok. Deneme CRUD döngüsü 1.039 sn; arayüz navigasyonu 2.266 sn; capture+review persistence 3.483 sn.
 - 1.000 JSON denemede append 19.178 sn (52.14/s), read 0.0078 sn, update 0.0272 sn, delete 0.0237 sn, progression 0.0017 sn. 100 görselli yanlış 0.3149 sn (317.57/s), 100 text-only yanlış 0.4523 sn (221.11/s); hepsi AI'siz.
 - Rapor: `reports/2026-11-14-exam-context-crud.md`. Kod commitleri GitHub dalına ağaç SHA eşleşmesiyle aktarıldı. Actions run `43608878405` (#41) frontend test/build/browser smoke ile backend test ve benchmarklarını başarıyla tamamladı.
+- 2026-11-14: `StorageService.update_doc` ile Cosmos node upsert/sector unlock tek belge kilidine taşındı; legacy XP assault 410 ile kapandı. 38 backend testi geçiyor; 24 eşzamanlı node ve 3 paralel sector güncellemesinde kayıt kaybı yok.
+- 1.000 exam append 19.8911 sn (50.27/s), read 0.0135 sn, exam update/delete 0.0325/0.0305 sn, tek user document update 0.0013 sn, progression 0.0021 sn. Q-flow 100 görsel 0.3414 sn, 100 text capture 0.4828 sn. Local AI dışarıda.
+- Browser smoke (regresyon): navigasyon 3.035 sn, capture+review persistence 3.615 sn, exam CRUD 1.045 sn; frontend 4/4, build başarılı.
+- Rapor: `reports/2026-11-14-cosmos-storage-safety.md`; CI doğrulaması bu değişiklikten sonra bekliyor.

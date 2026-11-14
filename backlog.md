@@ -17,7 +17,7 @@
 - [x] TYT/AYT/branş deneme türünü saklama, türe göre filtreleme ve toplamları ayırma.
 - [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
-- [ ] Eski Cosmos saldırı/ödül API'sini UI'ya bağlamadan önce XP bahis kurallarını ve çok dosyalı yazım atomikliğini düzelt.
+- [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
 
 ## P2 — doğrulama ve sağlamlaştırma
 
@@ -35,4 +35,4 @@
 
 ## Sonraki küçük iş
 
-Cosmos ödül API'sinin kurallarını netleştirip tek dosya veya gerçek transaction ile tutarlı hâle getir; bağlantıdan önce kayıp güncelleme ve XP suistimal testlerini yaz.
+Yanlış soru kayıtlarında metin/ders/konu/etiket düzeltme ve görseli koruyan güvenli silme akışı ekle.

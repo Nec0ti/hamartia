@@ -25,6 +25,8 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
 - `Question.review_attempts` eski kayıtlarda varsayılan boş listedir; her yeni deneme `{attempted_at, correct}` saklar. `reviewed_at` varsa soru arşivli sayılır; yeni çözüm denemesi arşivi açar.
 - `Exam.exam_type` `tyt`, `ayt` veya `branch` değeridir; eski sınav JSON kayıtları varsayılan `branch` ile yüklenir. `PUT /exams/{id}` tüm ham alanları yeniler fakat `id` ve `created_at` değerini korur; DELETE kilitli liste güncellemesidir.
+- `StorageService.update_doc(filename, model, callback)` tek JSON nesnesini read-modify-write kilidi altında günceller; `load_doc` aynı dosya kilidini kullanır. Kilitler tek process içindir; çok worker gerekirse SQLite/process lock gerekir.
+- Cosmos node upsert ve sector unlock `update_doc` kullanır; paralel tekrar/sector değişikliklerini korur. `/cosmos/nodes/{id}/assault` 410 döndürür, çünkü eski random XP saldırısı dosyalar arası tutarsız yazım ve tanımsız oyun kuralı taşıyordu. UI bağlamadı; var olan `cosmos.json`/`user.json` verisine dokunmaz.
 - Ana sayfa deneme geçmişinin tüm kayıtlarını türe göre filtreleyip tür/ders filtresini trend ve net toplamlarına uygular. Her satırda düzenle ve onaylı sil eylemleri vardır.
 - `frontend/src/services/api.js` varsayılan export `user` servisini de içermelidir; dashboard ve navbar ikisi de `api.user.get()` çağırır.
 - `RadarChart` kategorik eksen kullanır. Numeric `PolarAngleAxis` ve iki aynı yarıçap ekseni Recharts'ta duplicate tick key / NaN SVG hatası veriyordu.

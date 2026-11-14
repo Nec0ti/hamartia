@@ -4,3 +4,4 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 
 - [2026-11-14 aralıklı yanlış tekrar döngüsü](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 deneme türü ve geçmiş CRUD](2026-11-14-exam-context-crud.md)
+- [2026-11-14 Cosmos tek belge mutasyonu ve XP rotasının kapatılması](2026-11-14-cosmos-storage-safety.md)

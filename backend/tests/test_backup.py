@@ -87,6 +87,27 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(read_json(target / "settings.json")["api_key"], "")
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
 
+    def test_full_mock_sections_survive_backup_restore(self):
+        mock = Exam(
+            id="full-tyt", date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
+            correct=55, incorrect=13, blank=12,
+            sections=[
+                {"subject": "Türkçe", "correct": 30, "incorrect": 5, "blank": 5},
+                {"subject": "Matematik", "correct": 25, "incorrect": 8, "blank": 7},
+            ],
+        )
+        StorageService(self.source).save_list("exams.json", [mock])
+        archive_path = self.root / "full-mock.zip"
+        create_backup(self.source, archive_path)
+        target = self.root / "full-mock-restored"
+
+        restore_backup(archive_path, target)
+
+        restored = StorageService(target).load_list("exams.json", Exam)
+        self.assertEqual(len(restored), 1)
+        self.assertEqual([section.subject for section in restored[0].sections], ["Türkçe", "Matematik"])
+        self.assertEqual((restored[0].correct, restored[0].incorrect, restored[0].blank), (55, 13, 12))
+
     def test_restore_accepts_legacy_backup_without_practice_sessions(self):
         legacy = self.root / "legacy.zip"
         with zipfile.ZipFile(self.archive) as source:

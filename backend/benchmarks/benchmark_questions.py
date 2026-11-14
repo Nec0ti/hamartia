@@ -11,7 +11,8 @@ from fastapi import UploadFile
 from starlette.datastructures import Headers
 
 from app.api import questions
-from app.models.schemas import Question
+from app.core.study_plan import topic_priorities
+from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
 
 
@@ -30,6 +31,12 @@ async def run(count=100):
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         storage = StorageService(root)
+        sectioned_exam = Exam(
+            id="benchmark-tyt", date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
+            correct=30, incorrect=5, blank=5,
+            sections=[{"subject": "Türkçe", "correct": 30, "incorrect": 5, "blank": 5}],
+        )
+        storage.save_list("exams.json", [sectioned_exam])
         with patch.object(questions, "DATA_DIR", root), patch.object(questions, "UPLOAD_DIR", root / "uploads"):
             started = time.perf_counter()
             for index in range(count):
@@ -80,6 +87,22 @@ async def run(count=100):
                 )
             text_capture_seconds = time.perf_counter() - started
 
+            section_count = min(count, 40)
+            started = time.perf_counter()
+            for index in range(section_count):
+                await questions.upload_question(
+                    None, f"TYT Türkçe {index}", "Türkçe", "Paragraf", storage,
+                    exam_id=sectioned_exam.id, question_number=index + 1,
+                    solve_order=index + 1, time_spent_seconds=30,
+                )
+            section_question_upload_seconds = time.perf_counter() - started
+            started = time.perf_counter()
+            section_insights = topic_priorities(
+                storage.load_list("questions.json", Question), exams=[sectioned_exam],
+            )["question_order"]
+            section_insight_seconds = time.perf_counter() - started
+            assert len(section_insights) == 1 and section_insights[0]["subject"] == "Türkçe"
+
         print(json.dumps({
             "benchmark": "local_question_flow",
             "questions": count,
@@ -93,6 +116,9 @@ async def run(count=100):
             "delete_seconds": round(delete_seconds, 4),
             "text_capture_seconds": round(text_capture_seconds, 4),
             "text_captures_per_second": round(count / text_capture_seconds, 2),
+            "section_questions": section_count,
+            "section_question_upload_seconds": round(section_question_upload_seconds, 4),
+            "section_question_insight_seconds": round(section_insight_seconds, 4),
             "ai_included": False,
         }))
 

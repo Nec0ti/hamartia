@@ -16,12 +16,18 @@ def main(count=1000):
         storage = StorageService(Path(directory))
         started = time.perf_counter()
         for index in range(count):
+            sectioned = index % 100 == 0
             storage.append_list(
                 "exams.json",
                 Exam(
-                    id=f"exam-{index}", date="2026-11-14", subject="Matematik",
-                    exam_type="branch",
+                    id=f"exam-{index}", date="2026-11-14",
+                    subject="TYT Geneli" if sectioned else "Matematik",
+                    exam_type="tyt" if sectioned else "branch",
                     correct=25, incorrect=5, blank=0, duration_minutes=40,
+                    sections=[
+                        {"subject": "Türkçe", "correct": 12, "incorrect": 2, "blank": 0},
+                        {"subject": "Matematik", "correct": 13, "incorrect": 3, "blank": 0},
+                    ] if sectioned else [],
                 ),
                 Exam,
             )
@@ -31,16 +37,18 @@ def main(count=1000):
         loaded = storage.load_list("exams.json", Exam)
         read_seconds = time.perf_counter() - started
         assert len(loaded) == count
+        sectioned_count = sum(bool(exam.sections) for exam in loaded)
+        assert sectioned_count == (count + 99) // 100
         started = time.perf_counter()
         def update_first(exams):
             exam = next((item for item in exams if item.id == "exam-0"), None)
             if exam is None:
                 return False
-            exam.subject = "Fizik"
+            exam.duration_minutes += 1
             return True
         assert storage.update_list("exams.json", Exam, update_first)
         update_seconds = time.perf_counter() - started
-        assert storage.load_list("exams.json", Exam)[0].subject == "Fizik"
+        assert storage.load_list("exams.json", Exam)[0].duration_minutes == 41
 
         started = time.perf_counter()
         assert storage.update_list("exams.json", Exam, lambda exams: exams.pop() is not None)
@@ -63,6 +71,7 @@ def main(count=1000):
         print(json.dumps({
             "benchmark": "json_exam_storage",
             "records": count,
+            "sectioned_full_mocks": sectioned_count,
             "append_seconds": round(append_seconds, 4),
             "append_records_per_second": round(count / append_seconds, 2),
             "read_seconds": round(read_seconds, 4),

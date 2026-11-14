@@ -6,6 +6,7 @@
 - Çalışma Planı, mevcut denemelere bağlı kaydedilmiş yanlışları çözüm sırasının erken/orta/geç üçte birlik bölümlerinde sayıp sürelerin medyanını gösteriyor. Doğru/boş sonuçlar soru kaydı olmadığı için doğruluk yüzdesi üretilmiyor.
 - 65 backend testi, 4 frontend testi, üretim build'i ve browser smoke geçti. Smoke veriyi yenileme sonrası okudu ve deneme silinince yanlış kaydının korunduğunu, sıra özetinin ilişkisiz kaldığını doğruladı.
 - Sıra özeti benchmarkı (yalnızca hesaplama): 1.000 kayıt 0.0146 sn; 10.000 kayıt 0.1379 sn; AI dahil değil.
+- Var olan 100 soruluk akış benchmarkı da yeni alanlarla geçti: upload 0.6005 sn, liste 0.0008 sn, içgörü 0.0015 sn, text capture 1.1541 sn; AI dahil değil.
 - Rapor: `reports/2026-11-14-question-order-insights.md`.
 
 - 2026-11-14: Sonraki dikey dilim olarak denemeye bağlı yanlış soru sırası ve soru başı süre takibi planlandı. Sıra özeti yalnızca açıkça kaydedilen yanlışları sayacak; doğruluk yüzdesi hesaplamayacak. Kabul ölçütleri `reports/2026-11-14-question-order-plan.md` içinde.

@@ -23,7 +23,7 @@
 - [x] Deneme bağlamından yanlış eklerken soru numarası, çözüm sırası ve soru süresini sakla; kaydedilen yanlışların sıra ve süre dağılımını göster.
 - [x] Tamamlanan konu çalışma setlerini ayrı kayıt et; yalnızca bu setlerden net, cevaplanan soru doğruluğu ve konu trendi üret.
 - [x] Öncelikli konudan odaklı çalışma oturumu başlat; süre ve doğru/yanlış/boş sayaçlarını takip edip bitince mevcut set kaydına dönüştür.
-- [ ] Konu çalışma setlerinde net ve doğruluk eğilimlerini grafikle göster; son altı kaydın öncesindeki setler için de düzenle/sil erişimi sağla.
+- [x] Konu çalışma setlerinde net ve doğruluk eğilimlerini grafikle göster; son altı kaydın öncesindeki setler için de düzenle/sil erişimi sağla.
 - [x] Yerel API ve frontend'i tek komutla başlat; readiness ve port çakışmasını kontrol et.
 
 ## P2 — doğrulama ve sağlamlaştırma
@@ -45,4 +45,4 @@
 
 ## Sonraki küçük iş
 
-Konu seti net/doğruluk grafiği ve tam geçmiş yönetimi: [uygulama planı](reports/2026-11-14-practice-trend-chart-plan.md). Diğer bilgisayardaki AI doğrulaması ayrıca bekliyor.
+Diğer bilgisayardaki OpenAI uyumlu endpoint/model ve multimodal görsel aktarımını doğrula.

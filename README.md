@@ -59,6 +59,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; yanlış soru/deneme CRUD ve tekrar akışlarını, konu seti kaydını, odaklı oturum sayaç/duraklatma/yenileme/tamamlama döngüsünü ve backup indirmeyi kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; yanlış soru/deneme CRUD ve tekrar akışlarını, konu net/doğruluk grafiklerini ve tam geçmiş yönetimini, odaklı oturum sayaç/duraklatma/yenileme/tamamlama döngüsünü ve backup indirmeyi kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
 
 Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.

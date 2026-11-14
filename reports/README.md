@@ -16,3 +16,4 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 - [2026-11-14 odaklı konu çalışma oturumu uygulama planı](2026-11-14-focused-practice-plan.md)
 - [2026-11-14 odaklı konu çalışma oturumu doğrulaması](2026-11-14-focused-practice.md)
 - [2026-11-14 konu çalışma grafiği ve tam geçmiş uygulama planı](2026-11-14-practice-trend-chart-plan.md)
+- [2026-11-14 konu çalışma net/doğruluk grafikleri ve tam geçmiş](2026-11-14-practice-trend-chart.md)

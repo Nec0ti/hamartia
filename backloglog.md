@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: Konu seti kartlarına tüm kayıtlı noktaları kullanan net ve cevaplanan doğruluk çizgileri eklendi. Son altıdan eski kayıtlar açılır geçmişte düzenlenip/silinebiliyor; eşzamanlı liste/özet farkında görünmeyen kayıt eylemleri güvenli biçimde saklanıyor. 390 px smoke, tek nokta ve boş-yanıt grafiği dahil geçti. Frontend 4/4, backend 72/72 ve build geçti; AI çağrısı yok. Rapor: `reports/2026-11-14-practice-trend-chart.md`.
+
 - 2026-11-14: Konu çalışma grafiği planlandı. Var olan sıralı set eğilimi yalnızca metin olarak gösteriliyor ve altıdan eski kayıtlar düzenlenemiyor/silinemiyor. Plan, net ve doğruluk için ayrı okunabilir grafikler ile açılır tam geçmiş yönetimini kapsar; AI veya backend/API değişikliği yok.
 
 - 2026-11-14: Odaklı konu oturumu eklendi. Öncelik kartı aynı konu için çalışmayı başlatıyor; süre ve doğru/yanlış/boş sayaçları duraklatma/sürdürme ile izleniyor. Aktif taslak yenilemede tarayıcı `localStorage` alanından döner; bitince mevcut `POST /practice` ile bir kez saklanır. Frontend 4/4, backend 72/72, build ve browser smoke geçti; AI çağrısı yok. GitHub Actions run #65 başarılı. Rapor: `reports/2026-11-14-focused-practice.md`.

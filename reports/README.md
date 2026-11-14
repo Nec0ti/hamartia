@@ -4,6 +4,8 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 
 - [2026-11-14 product language, GitHub Pages, desktop delivery, and ChatGPT study agent plan](2026-11-14-language-and-chatgpt-agent-plan.md)
 - [2026-11-14 English and Turkish application interface](2026-11-14-english-turkish-interface.md)
+- [2026-11-14 desktop packaging and release automation plan](2026-11-14-desktop-delivery-plan.md)
+- [2026-11-14 frozen Linux backend bundle verification](2026-11-14-desktop-backend-bundle.md)
 - [2026-11-15 repeatable AI-free benchmark hardening](2026-11-15-benchmark-hardening.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)

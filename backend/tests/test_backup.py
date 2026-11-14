@@ -13,6 +13,7 @@ from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Sett
 from app.services.backup import BackupError, JSON_MODELS, create_backup, extract_backup, restore_backup
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService
+from desktop_server import restore_backup_command
 
 
 def make_data(data_dir, exam_id, api_key):
@@ -138,6 +139,45 @@ class BackupTests(unittest.TestCase):
 
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
         self.assertIn("Yedek geri yüklendi.", result.stdout)
+
+    def test_desktop_restore_command_preserves_key_and_snapshot(self):
+        target = self.root / "desktop-data"
+        make_data(target, "current-exam", "current-local-key")
+
+        code, status = restore_backup_command(self.archive, target)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(status, "Backup restored successfully.")
+        self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
+        self.assertEqual(read_json(target / "settings.json")["api_key"], "current-local-key")
+        snapshots = list(self.root.glob("desktop-data.before-restore-*"))
+        self.assertEqual(len(snapshots), 1)
+        self.assertEqual(read_json(snapshots[0] / "exams.json")[0]["id"], "current-exam")
+
+    def test_desktop_restore_command_rejects_invalid_backup_without_changes(self):
+        target = self.root / "desktop-invalid-data"
+        make_data(target, "keep-me", "local-key")
+        invalid = self.root / "invalid.zip"
+        invalid.write_bytes(b"not a zip")
+
+        code, status = restore_backup_command(invalid, target)
+
+        self.assertNotEqual(code, 0)
+        self.assertEqual(status, "Restore failed: the backup is invalid or could not be applied.")
+        self.assertEqual(read_json(target / "exams.json")[0]["id"], "keep-me")
+        self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
+        self.assertFalse(list(self.root.glob("desktop-invalid-data.before-restore-*")))
+
+    def test_desktop_restore_command_rejects_active_data_lock(self):
+        target = self.root / "desktop-locked-data"
+        make_data(target, "keep-me", "local-key")
+
+        with DataDirectoryLock(target):
+            code, status = restore_backup_command(self.archive, target)
+
+        self.assertEqual(code, 2)
+        self.assertEqual(status, "Restore failed: the data directory is in use.")
+        self.assertEqual(read_json(target / "exams.json")[0]["id"], "keep-me")
 
     def test_export_materializes_defaults_when_data_files_are_missing(self):
         empty = self.root / "empty"

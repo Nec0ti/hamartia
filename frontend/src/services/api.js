@@ -9,8 +9,9 @@
  */
 import axios from 'axios'
 import { handleApiError } from './apiError.js'
+import { getApiBase } from './apiBase.js'
 
-export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
+export const API_BASE = getApiBase(import.meta.env)
 
 const client = axios.create({
   baseURL: API_BASE,

@@ -5,37 +5,54 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 
-const unpackedDir = path.resolve(process.argv[2] || '')
+const appTarget = path.resolve(process.argv[2] || '')
 const timeoutMs = Number(process.env.HAMARTIA_ELECTRON_SMOKE_TIMEOUT_MS || 90_000)
 
-function executablePath(directory) {
+async function resolveAppTarget(target) {
+  const stat = await fs.stat(target)
+  if (stat.isFile()) return { executable: target, cwd: path.dirname(target) }
+  assert.ok(stat.isDirectory(), `Expected an unpacked directory or executable file: ${target}`)
+  await fs.access(path.join(target, 'resources', 'app.asar'))
   const names = process.platform === 'win32'
     ? ['Hamartia.exe', 'hamartia-desktop.exe']
     : process.platform === 'linux'
       ? ['hamartia-desktop', 'Hamartia']
       : []
   for (const name of names) {
-    const candidate = path.join(directory, name)
+    const candidate = path.join(target, name)
     try {
       fsSync.accessSync(candidate, process.platform === 'win32' ? undefined : fsSync.constants.X_OK)
-      return candidate
+      return { executable: candidate, cwd: target }
     } catch {}
   }
-  throw new Error(`No unpacked Electron executable found in ${directory}`)
+  throw new Error(`No unpacked Electron executable found in ${target}`)
+}
+
+async function assertBackendStopped(backendUrl) {
+  const deadline = Date.now() + 10_000
+  let lastResponse
+  while (Date.now() < deadline) {
+    try {
+      lastResponse = await fetch(`${backendUrl}/healthcheck/ready`, { signal: AbortSignal.timeout(1000) })
+    } catch {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  throw new Error(`Backend still responds after Electron exit (HTTP ${lastResponse?.status})`)
 }
 
 async function main() {
   assert.ok(process.platform === 'win32' || process.platform === 'linux', 'Run this smoke on native Windows or Linux')
-  assert.ok(process.argv[2], 'Usage: node desktop/smoke_electron.cjs <unpacked-directory>')
-  await fs.access(path.join(unpackedDir, 'resources', 'app.asar'))
-  const executable = executablePath(unpackedDir)
+  assert.ok(process.argv[2], 'Usage: node desktop/smoke_electron.cjs <unpacked-directory|installed-executable|appimage>')
+  const { executable, cwd } = await resolveAppTarget(appTarget)
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-electron-smoke-'))
   const markerPath = path.join(tempDir, 'ready.json')
   const userDataPath = path.join(tempDir, 'user-data')
   let stdout = ''
   let stderr = ''
   const child = spawn(executable, [], {
-    cwd: unpackedDir,
+    cwd,
     env: {
       ...process.env,
       HAMARTIA_ELECTRON_SMOKE_MARKER: markerPath,
@@ -73,6 +90,7 @@ async function main() {
     assert.equal(readiness.overviewVisible, true, 'The Overview screen should be rendered')
     assert.equal(readiness.healthStatus, 200, 'The same-origin readiness API should return HTTP 200')
     assert.match(readiness.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
+    assert.equal(readiness.backendUrl, readiness.origin, 'The marker should identify the backend origin')
 
     const remaining = timeoutMs - (Date.now() - startedAt)
     await Promise.race([
@@ -84,6 +102,7 @@ async function main() {
     ])
     clearTimeout(shutdownTimer)
     assert.equal(exitCode, 0, `Electron exited with code ${exitCode}\n${stderr}`)
+    await assertBackendStopped(readiness.backendUrl)
     process.stdout.write(`Electron smoke passed: ${JSON.stringify(readiness)}\n`)
   } catch (error) {
     if (child.exitCode === null) child.kill()

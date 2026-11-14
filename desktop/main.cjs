@@ -136,6 +136,7 @@ async function writeSmokeReadiness(window) {
       const headings = [...document.querySelectorAll('h1, h2')].map((item) => item.textContent.trim())
       return {
         origin: location.origin,
+        backendUrl: location.origin,
         language: document.documentElement.lang,
         overviewVisible: headings.includes('Overview'),
         healthStatus: health.status,

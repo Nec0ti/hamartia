@@ -61,6 +61,13 @@ async def upload_question(
         raise HTTPException(status_code=422, detail="Image is empty")
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Image exceeds 10 MB")
+    valid_signature = (
+        contents.startswith(b"\x89PNG\r\n\x1a\n") if ext == ".png" else
+        contents.startswith(b"\xff\xd8\xff") if ext in (".jpg", ".jpeg") else
+        contents.startswith(b"RIFF") and contents[8:12] == b"WEBP"
+    )
+    if not valid_signature:
+        raise HTTPException(status_code=415, detail="Image contents do not match PNG, JPEG, or WebP")
     try:
         path.write_bytes(contents)
     except OSError as exc:

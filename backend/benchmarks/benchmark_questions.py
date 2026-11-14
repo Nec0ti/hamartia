@@ -17,7 +17,7 @@ from app.services.storage import StorageService
 
 def make_upload(index):
     file = tempfile.SpooledTemporaryFile()
-    file.write(b"local image fixture" * 128)
+    file.write(b"\x89PNG\r\n\x1a\n" + b"local image fixture" * 128)
     file.seek(0)
     return UploadFile(
         filename=f"question-{index}.png",

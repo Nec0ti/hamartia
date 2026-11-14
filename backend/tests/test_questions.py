@@ -31,7 +31,7 @@ class QuestionFlowTests(unittest.TestCase):
             item.stop()
         self.temp_dir.cleanup()
 
-    def upload(self, filename="question.png", content=b"png", content_type="image/png"):
+    def upload(self, filename="question.png", content=b"\x89PNG\r\n\x1a\nfixture", content_type="image/png"):
         file = tempfile.SpooledTemporaryFile()
         file.write(content)
         file.seek(0)
@@ -53,7 +53,7 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual([item.id for item in saved], ["old", created.id])
         self.assertEqual(created.subject, "Matematik")
         self.assertEqual(created.topic, "Denklemler")
-        self.assertEqual((self.uploads / created.image_name).read_bytes(), b"png")
+        self.assertEqual((self.uploads / created.image_name).read_bytes(), b"\x89PNG\r\n\x1a\nfixture")
         self.assertTrue(created.image_name.startswith("q_"))
 
     def test_image_route_serves_only_files_inside_upload_directory(self):
@@ -86,6 +86,12 @@ class QuestionFlowTests(unittest.TestCase):
                 self.upload(content=b""), "", "", "", self.storage,
             ))
         self.assertEqual(empty.exception.status_code, 422)
+
+        with self.assertRaises(HTTPException) as mismatched:
+            asyncio.run(question_api.upload_question(
+                self.upload(content=b"not an image"), "", "", "", self.storage,
+            ))
+        self.assertEqual(mismatched.exception.status_code, 415)
 
     def test_manual_tag_is_persisted_without_ai(self):
         self.storage.save_list("questions.json", [Question(

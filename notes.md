@@ -18,11 +18,12 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - Frontend: React 18, Vite, Tailwind, Recharts, Axios (`frontend`).
 - Var olan API alanları: denemeler, sorular, kullanıcı/progres, Cosmos oyunlaştırması, AI chat/analiz, ayarlar, healthcheck.
 - `backend/app/core/formulas.py`: YKS neti, XP, seviye ve ortalama net formülleri.
-- `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit; çok worker/multi-process kullanımda SQLite'a geçiş gerekir.
+- `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit. `update_list` kilit altında read-modify-write yapar; bozuk/uyumsuz listeler `StorageError` üretir. Çok worker/multi-process kullanımda SQLite gerekir.
+- `backend/app/core/study_plan.py` ve `/questions/insights`: yanlış soru kayıtlarından AI çağırmadan ders/konu tekrar sıklığı, etiket dağılımı ve son kayıt gününü çıkarır.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
-- `frontend/src/App.jsx`: yalnızca Dashboard gerçek ekran, diğer sekmeler yer tutucu.
-- `frontend/_smoke.cjs` var; `frontend/package.json` içinde test scripti yok.
-- `.gitignore`, `backend/tests/*.py` dosyalarını ignore ediyor; test eklemeden önce kapsam ve mevcut kullanım gözden geçirilmeli.
+- `frontend/src/App.jsx`: Dashboard, Yanlışlarım ve deterministik Çalışma Planı gerçek ekran; Cosmos hâlâ yer tutucu.
+- `frontend/package.json`: Node test scripti ve AI çağrısı içermeyen formatter testleri var.
+- Backend testleri `backend/tests/` altında Git'te izleniyor; AI dışı benchmarklar `backend/benchmarks/` altında.
 
 ## Eski tanı tasarımı
 
@@ -48,6 +49,16 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - Ortamda `github.com` DNS çözümlemesi başarısız olduğundan normal `git clone/fetch/push` yapılamıyor. İlerleme dalı GitHub API üzerinden açıldı; yayın/commit aktarımı aynı araçla yapılmalı ve her remote SHA ayrıca doğrulanmalı.
 - İzole yerel checkout'un başlangıç commit'i `8255e39` kaynak commit'in kendisi değildir; yalnızca kaynak ağaç aynıdır. Bu farkı remote ile senkron kanıtı diye sunma.
 - Yerel docs commit'i `6b48813`, deneme kaydı commit'i `513ce14`; GitHub branch eş ağaçları sırasıyla `a6ac8d0` ve `24c8fbef` commitlerinde. Yerel başlangıç commit'i `8255e39` kaynak `master` commit'iyle aynı SHA değil. SHA farkı, yerel kaynağın API üzerinden yeniden kurulmuş olmasından kaynaklanıyor.
+
+## 2026-11-14 doğrulama güncellemesi
+
+- Liste okuma bozuk/şema dışı JSON'ı boş veri gibi göstermiyor; etiketleme, analiz sonucu yazımı, deneme silme ve belge ekleme kilitli koleksiyon mutasyonlarını kullanıyor.
+- 14 backend testi geçti. Python 3.14 Nix paket yolları kullanıldı; yerelde eksik `openai` ve `python_multipart` importları test harness'inde stub edildi. Gerçek AI çağrısı yapılmadı.
+- Soru akışı benchmarkı: 100 yükleme 0.8692 sn (115.04/s), listeleme 0.0017 sn, çalışma önceliği 0.0031 sn. JSON depolama benchmarkı: 1.000 append 15.8939 sn (62.92/s), okuma 0.0132 sn.
+- Frontend: 3 test geçti; Vite 6.4.6 build'i 21.38 sn, ana bundle 659.95 KB minified ve 190.16 KB gzip. Rollup büyük bundle uyarısı devam ediyor.
+- `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
+- Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.
+- GitHub CI için workflow mevcut, ancak branch güncellemesinden sonra GitHub Actions çalışması doğrulanmadı. Normal `git push/fetch` DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
 
 ## Açık kararlar
 

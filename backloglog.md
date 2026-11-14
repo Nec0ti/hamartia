@@ -9,3 +9,8 @@
 - Deneme POST akışındaki zorunlu-id sözleşmesi ve geçmişi silen kayıt davranışı düzeltildi; path-paylaşımlı kilit altında append eklendi.
 - Dört backend kontrolü geçti; 1.000 JSON kayıt benchmarkı 12.4065 sn append (80.60 kayıt/sn), 0.0091 sn read ölçtü.
 - `npm ci --offline`, Vite paketi npm önbelleğinde olmadığı için tamamlanamadı; frontend build ve browser smoke henüz doğrulanmadı.
+- 2026-11-14: Backlog, gerçekleşen UI/test/build adımlarıyla güncellendi; sıradaki hedef veri bütünlüğü yarışlarını çözmek oldu.
+- 2026-11-14: Kilitli `update_list`, katı JSON liste okuma ve eşzamanlı silme/append testleri eklendi; 13 backend testi geçti. Hamartia'nın doküman listesi için dict koleksiyon round-trip'i sağlandı.
+- 2026-11-14: Yerel, AI'siz Çalışma Planı ekranı ve `/questions/insights` eklendi. 14 backend testi, 3 frontend testi geçti; 100 yanlış için öncelik hesabı 0.0031 sn.
+- 2026-11-14: Vite 6.4.6 yamalı sürüme alındı; offline temiz kurulum/test/build/audit cache kontrolü geçti. Bundle 659.95 KB; tarayıcı smoke ve GitHub Actions sonucu hâlâ bekliyor.
+- Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.

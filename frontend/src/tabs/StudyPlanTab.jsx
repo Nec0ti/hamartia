@@ -132,7 +132,11 @@ export default function StudyPlanTab() {
               </div>
               <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{t('study.pendingWrongCount', { count: formatInt(topic.pending_count, locale) })}</span>
             </div>
-            <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">{t('study.focusOnTopic', { subject: labelOr(topic.subject, t('common.subjectNotSpecified')), topic: labelOr(topic.topic, t('common.topicNotSpecified')) })}</button>
+            {topic.subject.trim() && topic.topic.trim() ? (
+              <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">{t('study.focusOnTopic', { subject: topic.subject, topic: topic.topic })}</button>
+            ) : (
+              <p className="mt-3 text-sm text-canvas-muted">{t('study.focusNeedsLabels')}</p>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(topic.tags).map(([tag, count]) => (
                 <span key={tag} className="rounded-md bg-canvas-base px-2 py-1 text-xs text-canvas-muted">{tagLabel(tag, t)}: {formatInt(count, locale)}</span>

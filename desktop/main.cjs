@@ -9,10 +9,12 @@ const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
 const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
+const { probeSafeStorage } = require('./safeStorageSmoke.cjs')
 
 const HOST = '127.0.0.1'
 const CONTROL_TOKEN = randomBytes(32).toString('hex')
 const RESTORE_CHANNEL = 'hamartia:restore-backup'
+let safeStorageSmokeMetadata = null
 const restoreCopy = {
   en: {
     pickerTitle: 'Select a Hamartia backup',
@@ -157,6 +159,7 @@ async function writeSmokeReadiness(window) {
       }
       throw new Error('Timed out waiting for English Overview and HTTP 200 readiness: ' + JSON.stringify(last))
     })()`)
+    if (safeStorageSmokeMetadata) result.safeStorage = safeStorageSmokeMetadata
   } catch (error) {
     result = { error: error.message }
   }
@@ -283,6 +286,20 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     try {
       chatgpt = createChatGPT({ app, safeStorage, shell, getBackendUrl: () => backendUrl })
+      if (process.env.HAMARTIA_ELECTRON_SMOKE_MARKER) {
+        try {
+          safeStorageSmokeMetadata = await probeSafeStorage({
+            safeStorage,
+            chatgpt,
+            mode: process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected',
+            expectedBackend: process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND,
+          })
+        } catch (error) {
+          fs.writeFileSync(process.env.HAMARTIA_ELECTRON_SMOKE_MARKER, JSON.stringify({ error: error.message }), 'utf8')
+          app.quit()
+          return
+        }
+      }
       await openWindow()
     } catch (error) {
       dialog.showErrorBox('Hamartia could not start', error.message)

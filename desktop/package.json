@@ -30,6 +30,7 @@
       "chatgptIpc.cjs",
       "preload.cjs",
       "chatgpt.cjs",
+      "safeStorageSmoke.cjs",
       "backendInvocation.cjs",
       "restoreFlow.cjs",
       "shutdownFlow.cjs",

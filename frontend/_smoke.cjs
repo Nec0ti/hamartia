@@ -296,13 +296,13 @@ async function main() {
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Türkçe')
-    await page.getByLabel('Doğru · 1. ders').fill('30')
-    await page.getByLabel('Yanlış · 1. ders').fill('5')
-    await page.getByLabel('Boş · 1. ders').fill('5')
+    await page.getByLabel('1. ders Doğru').fill('30')
+    await page.getByLabel('1. ders Yanlış').fill('5')
+    await page.getByLabel('1. ders Boş').fill('5')
     await page.getByLabel('Ders adı 2').fill('Matematik')
-    await page.getByLabel('Doğru · 2. ders').fill('25')
-    await page.getByLabel('Yanlış · 2. ders').fill('8')
-    await page.getByLabel('Boş · 2. ders').fill('7')
+    await page.getByLabel('2. ders Doğru').fill('25')
+    await page.getByLabel('2. ders Yanlış').fill('8')
+    await page.getByLabel('2. ders Boş').fill('7')
     const [tytResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
@@ -330,7 +330,7 @@ async function main() {
     assert.deepEqual([sectionQuestion.subject, sectionQuestion.exam_section_total, sectionQuestion.question_number], ['Türkçe', 40, 40])
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
     await page.getByRole('button', { name: /Denemeyi düzenle TYT Geneli/ }).click()
-    await page.getByLabel('Boş · 1. ders').fill('4')
+    await page.getByLabel('1. ders Boş').fill('4')
     const [tytUpdateResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname.startsWith('/exams/') && response.request().method() === 'PUT'),
       page.getByRole('button', { name: 'Değişiklikleri kaydet' }).click(),
@@ -350,9 +350,9 @@ async function main() {
     await page.getByRole('dialog').locator('select').selectOption('ayt')
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Fizik')
-    await page.getByLabel('Doğru · 1. ders').fill('10')
-    await page.getByLabel('Yanlış · 1. ders').fill('3')
-    await page.getByLabel('Boş · 1. ders').fill('1')
+    await page.getByLabel('1. ders Doğru').fill('10')
+    await page.getByLabel('1. ders Yanlış').fill('3')
+    await page.getByLabel('1. ders Boş').fill('1')
     await page.getByPlaceholder('Dakika').fill('45')
     const [aytResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),

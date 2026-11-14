@@ -314,7 +314,7 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     const tytDetails = page.locator('details').filter({ has: page.locator('summary', { hasText: 'TYT Geneli · 2 ders' }) })
     await tytDetails.locator('summary').click()
-    await tytDetails.getByText('Türkçe: 30D / 5Y / 5B').waitFor()
+    await tytDetails.getByText('Türkçe: 30 D / 5 Y / 5 B').waitFor()
     await tytDetails.getByRole('button', { name: /Yanlış ekle Türkçe/ }).click()
     await page.getByText(/Bağlı deneme: .*Türkçe \(TYT\)/).waitFor()
     await page.getByText('Bu bölümde 40 soru var.').waitFor()

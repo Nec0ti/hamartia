@@ -51,7 +51,7 @@
 
 - [x] Provide English (default) and Turkish application UI, with a persistent language selector.
 - [x] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
-- [x] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory. Native install, launch, persistence, and cleanup smokes passed on Windows Server 2022 and Ubuntu 22.04. Consumer Windows 10/11 and separate Debian desktop installs remain manual checks.
+- [x] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory. NSIS and `.deb` install, app launch, and cleanup checks passed on Windows Server 2022 and Ubuntu 22.04; a separate frozen-backend smoke verified persistence on both. Consumer Windows 10/11 and separate Debian desktop installs remain manual checks.
 - [x] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...). PR #5 produced ARETE-001 automatically; later sequential allocation still needs another merged PR to exercise it again.
 - [x] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
 

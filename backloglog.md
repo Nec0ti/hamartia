@@ -1,5 +1,7 @@
 # Backlog log
 
+- 2026-11-14: Published the English-default user guide and Turkish translation on GitHub Pages at `https://nec0ti.github.io/hamartia/`. The workflow deploys the static `docs/` directory from `master`; CI browser smoke covers both locales and narrow screens. Pages workflow publishing is enabled. Deployment run #43629532206 succeeded.
+
 - 2026-11-14: Delivery direction recorded: English-default English/Turkish app and public GitHub Pages guide; Windows 10/11, `.deb`, and AppImage packages; an automatic bilingual GitHub Release after each merged PR with sequential `ARETE-###` codes; and explicit-consent ChatGPT plan usage as the primary study agent, with local AI retained for later manual verification. Internal development notes stay off Pages. Plan: `reports/2026-11-14-language-and-chatgpt-agent-plan.md`.
 
 - 2026-11-14: Full TYT/AYT practice exams are entered with subject sections in one record; section totals determine the overall result, while the session affects XP/streak/exam count once. Legacy single-subject records and backup format remain compatible. Section trends and section question limits were added. Backend 81/81, frontend 7/7, production build, and Chromium browser smoke passed; all five AI-free benchmarks also ran. Results/measurements: `reports/2026-11-14-full-mock-results.md`. PR #1 was opened against the `master` branch; Actions run #84 succeeded (backend/frontend).

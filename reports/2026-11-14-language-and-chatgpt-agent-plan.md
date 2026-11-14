@@ -51,11 +51,12 @@
 
 ## Sequence and completion gate
 
-1. Finish and merge the current local-first study workflow PR (already merged as PR #1).
-2. Implement Phase 1 in its own PR; merge only after CI passes.
-3. Implement public bilingual docs, GitHub Pages, desktop packages, and the automatic release pipeline in a delivery PR; merge only after the relevant CI checks pass and the Pages source is configured.
-4. Implement Phase 2 in its own PR; merge only after mocked checks and CI pass.
-5. Keep real account/model checks manual. The project is not ready to claim account integration works until the user completes that manual verification.
+1. Finish and merge the local-first study workflow (PR #1).
+2. Publish the public bilingual guide with GitHub Pages (PR #3, deployed).
+3. Implement the English-default bilingual application UI in its own PR; merge only after CI passes.
+4. Implement desktop packages and automatic sequential releases in their own delivery PR; merge only after platform builds and CI pass.
+5. Implement Phase 2 in its own PR; merge only after mocked checks and CI pass.
+6. Keep real account/model checks manual. The project is not ready to claim account integration works until the user completes that manual verification.
 
 ## Main risks
 

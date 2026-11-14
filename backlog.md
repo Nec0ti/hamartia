@@ -50,7 +50,7 @@
 ## P4 — product language and delivery
 
 - [ ] Provide English (default) and Turkish application UI, with a persistent language selector.
-- [ ] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
+- [x] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
 - [ ] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory.
 - [ ] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...).
 - [ ] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.

@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
-import { fmtDate } from '../utils/formatters.js'
+import { fmtDate, fmtPercent } from '../utils/formatters.js'
 
 const dateToday = () => {
   const date = new Date()
@@ -204,7 +204,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         return <article key={`${group.subject}-${group.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{t('study.savedSetCount', { count: new Intl.NumberFormat(locale).format(group.session_count) })}</p></div>
-            <div className="text-right text-sm text-canvas-text">{formatNumber(group.net, locale)} {t('study.totalNet')}<p className="text-xs text-canvas-muted">{group.accuracy == null ? t('study.noAnsweredQuestions') : t('study.answeredAccuracy', { accuracy: formatNumber(group.accuracy * 100, locale) })}</p></div>
+            <div className="text-right text-sm text-canvas-text">{formatNumber(group.net, locale)} {t('study.totalNet')}<p className="text-xs text-canvas-muted">{group.accuracy == null ? t('study.noAnsweredQuestions') : t('study.answeredAccuracy', { accuracy: fmtPercent(group.accuracy * 100, locale) })}</p></div>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="net" t={t} locale={locale} />
@@ -235,7 +235,7 @@ function PracticeTrendChart({ subject, topic, data, metric, t, locale }) {
           <Tooltip
             contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#d4d4d8', fontSize: '12px' }}
             labelFormatter={(date) => fmtDate(date, locale)}
-            formatter={(value) => [value == null ? t('study.noAccuracy') : accuracy ? `${formatNumber(value, locale)}%` : formatNumber(value, locale, 2), label]}
+            formatter={(value) => [value == null ? t('study.noAccuracy') : accuracy ? `${fmtPercent(value, locale)}%` : formatNumber(value, locale, 2), label]}
           />
           <Line type="monotone" dataKey={metric} name={label} stroke={accuracy ? '#22d3ee' : '#10b981'} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
         </LineChart>

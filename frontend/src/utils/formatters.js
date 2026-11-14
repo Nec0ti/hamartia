@@ -43,6 +43,9 @@ export const xpProgress = (totalXp, level) => {
 /** Compact numeric formatter for stat labels (e.g. 127 -> "127"). */
 export const fmtInt = (n, locale = 'en-US') => Math.round(Number(n) || 0).toLocaleString(locale)
 
+export const fmtPercent = (value, locale = 'en-US') =>
+  new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)
+
 /** Present positive nets in green, negative in crimson, zero neutral. */
 export const fmtNet = (net, locale = 'en-US') => {
   const rounded = Math.round(net * 100) / 100

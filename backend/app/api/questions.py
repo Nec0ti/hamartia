@@ -18,7 +18,8 @@ from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
-from app.services.storage import StorageError, StorageService
+from app.services.storage import StorageError, StorageService, data_mutation_lock
+from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 UPLOAD_DIR = DATA_DIR / "uploads"
@@ -51,33 +52,12 @@ async def upload_question(
 ):
     """Store an uploaded question image, OCR text, and study labels."""
     exam_id = exam_id.strip()
-    exam_section_total = None
-    size_label = "exam size"
-    if exam_id:
-        exams = storage.load_list("exams.json", Exam)
-        exam = next((item for item in exams if item.id == exam_id), None)
-        if exam is None:
-            raise HTTPException(status_code=404, detail="Exam not found")
-        total_questions = exam.correct + exam.incorrect + exam.blank
-        if exam.sections:
-            section = next((
-                item for item in exam.sections
-                if item.subject.casefold() == subject.strip().casefold()
-            ), None)
-            if section is None:
-                raise HTTPException(status_code=422, detail="Choose a subject section from this mock exam")
-            total_questions = section.correct + section.incorrect + section.blank
-            if total_questions == 0:
-                raise HTTPException(status_code=422, detail="Cannot link a question to an empty exam section")
-            exam_section_total = total_questions
-            size_label = "selected section size"
-        if any(value is not None and value > total_questions for value in (question_number, solve_order)):
-            raise HTTPException(status_code=422, detail=f"Question number and solve order cannot exceed the {size_label}")
-    elif any(value is not None for value in (question_number, solve_order, time_spent_seconds)):
+    if not exam_id and any(value is not None for value in (question_number, solve_order, time_spent_seconds)):
         raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
 
     safe_name = ""
     path = None
+    contents = None
     if file:
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
@@ -85,8 +65,6 @@ async def upload_question(
         if ext not in IMAGE_TYPES or file.content_type not in (None, "", IMAGE_TYPES[ext]):
             raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WebP image")
         safe_name = f"q_{uuid4().hex}{ext}"
-        path = UPLOAD_DIR / safe_name
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
         try:
             contents = await file.read(MAX_UPLOAD_BYTES + 1)
@@ -103,33 +81,71 @@ async def upload_question(
         )
         if not valid_signature:
             raise HTTPException(status_code=415, detail="Image contents do not match PNG, JPEG, or WebP")
-        try:
-            path.write_bytes(contents)
-        except OSError as exc:
-            raise HTTPException(status_code=500, detail=f"Could not save upload: {exc}")
     elif not (ocr_text or "").strip():
         raise HTTPException(status_code=422, detail="Add an image or question text")
 
-    question = Question(
-        id=f"q_{uuid4().hex}",
-        image_name=safe_name,
-        image_path=(Path("uploads") / safe_name).as_posix() if safe_name else "",
-        ocr_text=ocr_text or "",
-        subject=subject.strip(),
-        topic=topic.strip(),
-        created_at=_utcnow(),
-        exam_id=exam_id,
-        question_number=question_number,
-        solve_order=solve_order,
-        time_spent_seconds=time_spent_seconds,
-        exam_section_total=exam_section_total,
-    )
-    try:
-        storage.append_list("questions.json", question, Question)
-    except Exception:
-        if path:
-            path.unlink(missing_ok=True)
-        raise
+    with data_mutation_lock(DATA_DIR):
+        try:
+            exam_section_total = None
+            if exam_id:
+                exams = storage.load_list("exams.json", Exam)
+                exam = next((item for item in exams if item.id == exam_id), None)
+                if exam is None:
+                    raise HTTPException(status_code=404, detail="Exam not found")
+                total_questions = exam.correct + exam.incorrect + exam.blank
+                if exam.sections:
+                    section = next((
+                        item for item in exam.sections
+                        if item.subject.casefold() == subject.strip().casefold()
+                    ), None)
+                    if section is None:
+                        raise HTTPException(status_code=422, detail="Choose a subject section from this mock exam")
+                    total_questions = section.correct + section.incorrect + section.blank
+                    if total_questions == 0:
+                        raise HTTPException(status_code=422, detail="Cannot link a question to an empty exam section")
+                    exam_section_total = total_questions
+                    size_label = "selected section size"
+                else:
+                    size_label = "exam size"
+                if any(value is not None and value > total_questions for value in (question_number, solve_order)):
+                    raise HTTPException(status_code=422, detail=f"Question number and solve order cannot exceed the {size_label}")
+
+            question = Question(
+                id=f"q_{uuid4().hex}",
+                image_name=safe_name,
+                image_path=(Path("uploads") / safe_name).as_posix() if safe_name else "",
+                ocr_text=ocr_text or "",
+                subject=subject.strip(),
+                topic=topic.strip(),
+                created_at=_utcnow(),
+                exam_id=exam_id,
+                question_number=question_number,
+                solve_order=solve_order,
+                time_spent_seconds=time_spent_seconds,
+                exam_section_total=exam_section_total,
+            )
+            if safe_name:
+                try:
+                    path = resolve_upload_root(DATA_DIR, create=True) / safe_name
+                except UnsafeUploadPath as exc:
+                    raise HTTPException(status_code=500, detail=str(exc)) from exc
+                with path.open("xb") as image_file:
+                    image_file.write(contents)
+            storage.append_list("questions.json", question, Question)
+        except OSError as exc:
+            if path:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise HTTPException(status_code=500, detail=f"Could not save upload: {exc}") from exc
+        except Exception:
+            if path:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise
     return question
 
 
@@ -165,8 +181,11 @@ async def get_question_image(question_id: str, storage: StorageService = Depends
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    path = (DATA_DIR / question.image_path).resolve()
-    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():
+    try:
+        path = resolve_question_image(DATA_DIR, question.image_path)
+    except UnsafeUploadPath:
+        raise HTTPException(status_code=404, detail="Question image not found")
+    if not path.is_file():
         raise HTTPException(status_code=404, detail="Question image not found")
     return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})
 
@@ -253,24 +272,35 @@ async def update_question(
 @router.delete("/{question_id}", status_code=200)
 async def delete_question(question_id: str, storage: StorageService = Depends(get_storage)):
     deleted = []
+    image_path = None
 
-    def remove(questions):
-        for index, question in enumerate(questions):
-            if question.id == question_id:
-                deleted.append(questions.pop(index))
-                return True
-        return False
+    with data_mutation_lock(DATA_DIR):
+        def remove(questions):
+            nonlocal image_path
+            for index, question in enumerate(questions):
+                if question.id == question_id:
+                    if question.image_path:
+                        try:
+                            resolve_upload_root(DATA_DIR)
+                        except UnsafeUploadPath as exc:
+                            raise HTTPException(status_code=500, detail=str(exc)) from exc
+                        try:
+                            image_path = resolve_question_image(DATA_DIR, question.image_path)
+                        except UnsafeUploadPath:
+                            image_path = None
+                    deleted.append(questions.pop(index))
+                    return True
+            return False
 
-    if not storage.update_list("questions.json", Question, remove):
-        raise HTTPException(status_code=404, detail="Question not found")
+        if not storage.update_list("questions.json", Question, remove):
+            raise HTTPException(status_code=404, detail="Question not found")
 
-    # shortcut: JSON and file deletion cannot share a transaction; use transactional blob storage for crash-proof cleanup.
-    image_path = (DATA_DIR / deleted[0].image_path).resolve() if deleted[0].image_path else None
-    if image_path and image_path.is_relative_to(UPLOAD_DIR.resolve()) and image_path.is_file():
-        try:
-            image_path.unlink()
-        except OSError as exc:
-            raise HTTPException(status_code=500, detail=f"Question deleted but its image could not be removed: {exc}") from exc
+        # shortcut: JSON and file deletion cannot share a transaction; use transactional blob storage for crash-proof cleanup.
+        if image_path and image_path.is_file():
+            try:
+                image_path.unlink()
+            except OSError as exc:
+                raise HTTPException(status_code=500, detail=f"Question deleted but its image could not be removed: {exc}") from exc
     return {"deleted": question_id}
 
 

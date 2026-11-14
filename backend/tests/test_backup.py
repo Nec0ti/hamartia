@@ -1,4 +1,6 @@
 import json
+import asyncio
+import io
 import tempfile
 import unittest
 import zipfile
@@ -6,13 +8,19 @@ import hashlib
 import os
 import subprocess
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
+from fastapi import UploadFile
+from starlette.datastructures import Headers
+
+from app.api import questions as question_api
 from app.models.schemas import CosmosData, Exam, PracticeSession, Question, ReviewAttempt, Settings, UserStats
 from app.services.backup import BackupError, JSON_MODELS, create_backup, extract_backup, restore_backup
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
-from app.services.storage import StorageService
+from app.services.storage import StorageService, data_mutation_lock
 from desktop_server import restore_backup_command
 
 
@@ -208,6 +216,76 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(read_json(restored / "questions.json"), [])
         self.assertEqual(read_json(restored / "agent_documents.json"), [])
         self.assertEqual(read_json(restored / "settings.json")["api_key"], "")
+
+    def test_export_is_a_point_in_time_snapshot_while_live_writes_wait(self):
+        data_dir = self.root / "snapshot-race"
+        make_data(data_dir, "old-exam", "local-key")
+        destination = self.root / "snapshot-race.zip"
+        snapshot_reading_questions = threading.Event()
+        continue_snapshot = threading.Event()
+        writer_started = threading.Event()
+        mutation_reached_write = threading.Event()
+        original_read_bytes = Path.read_bytes
+        original_write_atomic = StorageService._write_atomic
+
+        def pause_before_questions(path):
+            if path == data_dir / "questions.json":
+                snapshot_reading_questions.set()
+                if not continue_snapshot.wait(5):
+                    raise TimeoutError("snapshot test did not resume")
+            return original_read_bytes(path)
+
+        def observe_mutation(storage, filename, payload):
+            if storage.data_dir.resolve() == data_dir.resolve() and filename == "exams.json":
+                mutation_reached_write.set()
+            return original_write_atomic(storage, filename, payload)
+
+        def add_exam_and_linked_question():
+            writer_started.set()
+            storage = StorageService(data_dir)
+            storage.append_list("exams.json", Exam(
+                id="new-exam", date="2026-11-15", subject="Physics", correct=1, incorrect=0, blank=0,
+            ), Exam)
+            upload = UploadFile(
+                filename="question.png", file=io.BytesIO(b"\x89PNG\r\n\x1a\nfixture"),
+                headers=Headers({"content-type": "image/png"}),
+            )
+            with patch.object(question_api, "DATA_DIR", data_dir), patch.object(
+                question_api, "UPLOAD_DIR", data_dir / "uploads",
+            ):
+                return asyncio.run(question_api.upload_question(
+                    upload, "linked question", "Physics", "Optics", storage, exam_id="new-exam",
+                ))
+
+        with patch.object(Path, "read_bytes", pause_before_questions), patch.object(
+            StorageService, "_write_atomic", observe_mutation,
+        ), ThreadPoolExecutor(max_workers=2) as pool:
+            backup_future = pool.submit(create_backup, data_dir, destination)
+            self.assertTrue(snapshot_reading_questions.wait(5))
+            lock = data_mutation_lock(data_dir)
+            lock_acquired = lock.acquire(blocking=False)
+            if lock_acquired:
+                lock.release()
+            self.assertFalse(lock_acquired, "backup did not hold the snapshot lock")
+
+            writer_future = pool.submit(add_exam_and_linked_question)
+            self.assertTrue(writer_started.wait(5))
+            self.assertFalse(mutation_reached_write.wait(0.1), "a live mutation crossed the snapshot lock")
+            continue_snapshot.set()
+            backup_future.result(timeout=5)
+            new_question = writer_future.result(timeout=5)
+
+        with zipfile.ZipFile(destination) as archive:
+            archived_exams = json.loads(archive.read("exams.json"))
+            archived_questions = json.loads(archive.read("questions.json"))
+            archived_paths = archive.namelist()
+        self.assertNotIn("new-exam", [item["id"] for item in archived_exams])
+        self.assertNotIn(new_question.id, [item["id"] for item in archived_questions])
+        self.assertNotIn(f"uploads/{new_question.image_name}", archived_paths)
+        live_exams = StorageService(data_dir).load_list("exams.json", Exam)
+        live_questions = StorageService(data_dir).load_list("questions.json", Question)
+        self.assertIn("new-exam", [item.id for item in live_exams])
+        self.assertIn(new_question.id, [item.id for item in live_questions])
 
     def test_invalid_schema_is_rejected_even_when_checksum_matches(self):
         invalid = self.root / "invalid-schema.zip"

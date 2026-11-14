@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
+from app.services.storage import data_mutation_lock
 
 BACKUP_FORMAT = "hamartia-local-backup"
 BACKUP_VERSION = 1
@@ -115,11 +116,12 @@ def _upload_references(json_files):
     return paths
 
 
-def create_backup(data_dir, destination):
-    """Write a ZIP containing all persisted JSON records and upload files."""
-    data_dir = Path(data_dir)
-    destination = Path(destination)
+def _capture_backup_snapshot(data_dir, snapshot_dir):
+    """Copy a stable, secret-filtered snapshot while writes are paused."""
     json_files = _json_sources(data_dir)
+    for name, raw in json_files.items():
+        (snapshot_dir / name).write_bytes(raw)
+
     upload_root = data_dir / "uploads"
     upload_paths = []
     if upload_root.is_symlink():
@@ -143,6 +145,25 @@ def create_backup(data_dir, destination):
     if not expected_uploads.issubset(found_uploads):
         missing = sorted(expected_uploads - found_uploads)
         raise BackupError(f"A referenced upload is missing: {missing[0]}")
+
+    total_size = sum(map(len, json_files.values()))
+    for source in upload_paths:
+        target = snapshot_dir / source.relative_to(data_dir)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with source.open("rb") as input_file, target.open("xb") as output_file:
+            while chunk := input_file.read(CHUNK_SIZE):
+                total_size += len(chunk)
+                if total_size > MAX_UNPACKED_BYTES:
+                    raise BackupError("Backup data exceeds the 1 GiB limit")
+                output_file.write(chunk)
+
+
+def _write_backup_archive(data_dir, destination):
+    """Write a ZIP from a stable snapshot directory."""
+    json_files = _json_sources(data_dir)
+    upload_root = data_dir / "uploads"
+    upload_paths = [path for path in upload_root.rglob("*") if path.is_file()] if upload_root.exists() else []
+    upload_paths.sort(key=lambda path: path.relative_to(data_dir).as_posix())
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     manifest_files = []
@@ -184,6 +205,17 @@ def create_backup(data_dir, destination):
         destination.unlink(missing_ok=True)
         raise BackupError("Compressed backup exceeds the 512 MiB limit")
     return destination
+
+
+def create_backup(data_dir, destination):
+    """Write a point-in-time ZIP of persisted JSON and upload files."""
+    data_dir = Path(data_dir)
+    destination = Path(destination)
+    with tempfile.TemporaryDirectory(prefix="hamartia-backup-snapshot-") as temp_root:
+        snapshot_dir = Path(temp_root)
+        with data_mutation_lock(data_dir):
+            _capture_backup_snapshot(data_dir, snapshot_dir)
+        return _write_backup_archive(snapshot_dir, destination)
 
 
 def _archive_name(name):

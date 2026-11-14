@@ -20,6 +20,18 @@ T = TypeVar("T", bound=object)
 # shortcut: locks are process-local, use SQLite before enabling multiple workers.
 _FILE_LOCKS: dict[str, threading.Lock] = {}
 _FILE_LOCKS_GUARD = threading.Lock()
+_DATA_MUTATION_LOCKS: dict[str, threading.RLock] = {}
+
+
+def data_mutation_lock(data_dir: Path) -> threading.RLock:
+    """Return the process-wide mutation lock shared by a data directory."""
+    key = str(Path(data_dir).resolve())
+    with _FILE_LOCKS_GUARD:
+        lock = _DATA_MUTATION_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _DATA_MUTATION_LOCKS[key] = lock
+        return lock
 
 
 class StorageError(RuntimeError):
@@ -103,14 +115,13 @@ class StorageService:
             return self._load_list_unlocked(filename, model_cls)
 
     def save_list(self, filename: str, items: List[Any]) -> None:
-        lock = self._lock_for(filename)
-        with lock:
+        with data_mutation_lock(self.data_dir), self._lock_for(filename):
             serialized = [self._dump_record(item) for item in items]
             self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
 
     def update_list(self, filename: str, model_cls: type, update: Callable[[List[Any]], bool]) -> bool:
         """Apply and persist a list mutation while holding its file lock."""
-        with self._lock_for(filename):
+        with data_mutation_lock(self.data_dir), self._lock_for(filename):
             items = self._load_list_unlocked(filename, model_cls)
             if not update(items):
                 return False
@@ -120,8 +131,7 @@ class StorageService:
 
     def append_list(self, filename: str, item: Any, model_cls: type) -> None:
         """Append one validated record without losing concurrent updates."""
-        lock = self._lock_for(filename)
-        with lock:
+        with data_mutation_lock(self.data_dir), self._lock_for(filename):
             try:
                 items = self._load_list_unlocked(filename, model_cls)
             except StorageError as exc:
@@ -149,7 +159,7 @@ class StorageService:
 
     def update_doc(self, filename: str, model_cls: type, update: Callable[[Any], bool]) -> bool:
         """Apply and persist a document mutation while holding its file lock."""
-        with self._lock_for(filename):
+        with data_mutation_lock(self.data_dir), self._lock_for(filename):
             model = self._load_doc_unlocked(filename, model_cls) or model_cls()
             if not update(model):
                 return False
@@ -157,6 +167,5 @@ class StorageService:
             return True
 
     def save_doc(self, filename: str, model: Any) -> None:
-        lock = self._lock_for(filename)
-        with lock:
+        with data_mutation_lock(self.data_dir), self._lock_for(filename):
             self._write_atomic(filename, json.dumps(model.model_dump(mode="json"), indent=2, ensure_ascii=False))

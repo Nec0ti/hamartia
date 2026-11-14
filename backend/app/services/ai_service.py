@@ -17,6 +17,7 @@ from app.core.config import DATA_DIR
 from app.core.formulas import net_score
 from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
 from app.services.storage import StorageService
+from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
 IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
@@ -94,10 +95,12 @@ class AIService:
                 f"Image filename: {question.image_name}"
             ),
         }]
-        image_path = (DATA_DIR / question.image_path).resolve()
-        uploads_dir = (DATA_DIR / "uploads").resolve()
+        try:
+            image_path = resolve_question_image(DATA_DIR, question.image_path)
+        except UnsafeUploadPath:
+            image_path = None
         mime_type = IMAGE_MIME_TYPES.get(Path(question.image_name).suffix.lower())
-        if mime_type and image_path.is_relative_to(uploads_dir) and image_path.is_file():
+        if mime_type and image_path and image_path.is_file():
             encoded = b64encode(image_path.read_bytes()).decode("ascii")
             content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}})
         return [

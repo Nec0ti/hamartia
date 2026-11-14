@@ -17,6 +17,12 @@ const CARDS = [
 
 /** Five stat cards across the top of the dashboard. */
 export default function StatsCards({ profile, stats }) {
+  const values = {
+    ...stats,
+    totalXp: profile?.totalXp ?? 0,
+    level: profile?.level ?? 1,
+    streakDays: profile?.streakDays ?? 0,
+  }
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {CARDS.map((card) => {
@@ -33,7 +39,7 @@ export default function StatsCards({ profile, stats }) {
               </span>
             </div>
             <div className="mt-2 text-2xl font-bold text-canvas-text">
-              {card.value(profile ?? stats)}
+              {card.value(values)}
             </div>
           </div>
         )

@@ -52,6 +52,8 @@ export default function DashboardTab({ onUploadQuestion }) {
       setExams(ex)
       setProfile({
         level: prof.level ?? levelForXp(prof.total_xp ?? 0),
+        totalXp: prof.total_xp ?? 0,
+        streakDays: prof.streak_days ?? 0,
         radar: prof.radar_stats ?? { speed: 50, focus: 50, precision: 50, stamina: 50 },
       })
     } catch (e) {

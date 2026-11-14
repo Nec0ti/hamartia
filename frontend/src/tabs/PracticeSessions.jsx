@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import api, { handleApiError } from '../services/api'
 
 const dateToday = () => {
@@ -193,28 +194,67 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         </div>
       </form>
       {error && <p role="alert" className="rounded-lg border border-accent/50 bg-canvas-panel p-3 text-sm text-accent">{error}</p>}
-      {summaries.length === 0 ? <p className="rounded-lg border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">Henüz kayıtlı çalışma seti yok.</p> : summaries.map((group) => (
-        <article key={`${group.subject}-${group.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+      {summaries.length === 0 ? <p className="rounded-lg border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">Henüz kayıtlı çalışma seti yok.</p> : summaries.map((group) => {
+        const chartData = group.trend.map((item) => ({ ...item, accuracy_percent: item.accuracy == null ? null : item.accuracy * 100 }))
+        const recent = group.trend.slice(-6).reverse()
+        const older = group.trend.slice(0, -6).reverse()
+        return <article key={`${group.subject}-${group.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{group.session_count} kayıtlı set</p></div>
             <div className="text-right text-sm text-canvas-text">{group.net.toFixed(2)} toplam net<p className="text-xs text-canvas-muted">{group.accuracy == null ? 'Cevaplanan soru yok' : `${(group.accuracy * 100).toFixed(1)}% cevaplanan doğruluğu`}</p></div>
           </div>
-          <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {group.trend.slice(-6).reverse().map((item) => {
-              const session = sessions.find((record) => record.id === item.id)
-              return <li key={item.id} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2 text-xs">
-                <span className="text-canvas-muted">{item.date} · net {item.net.toFixed(2)}</span>
-                <span className="inline-flex gap-1">
-                  <button type="button" aria-label={`Seti düzenle ${item.date} ${group.topic}`} onClick={() => edit(session)} className="rounded p-1 text-canvas-muted hover:text-canvas-text"><Pencil size={13} /></button>
-                  <button type="button" aria-label={`Seti sil ${item.date} ${group.topic}`} onClick={() => remove(session)} className="rounded p-1 text-canvas-muted hover:text-accent"><Trash2 size={13} /></button>
-                </span>
-              </li>
-            })}
-          </ol>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="net" />
+            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="accuracy_percent" />
+          </div>
+          <SessionRows items={recent} sessions={sessions} topic={group.topic} onEdit={edit} onRemove={remove} />
+          {older.length > 0 && <details className="mt-2 rounded-lg border border-canvas-line px-3 py-2">
+            <summary className="cursor-pointer text-sm text-canvas-muted">Önceki setler ({older.length})</summary>
+            <SessionRows items={older} sessions={sessions} topic={group.topic} onEdit={edit} onRemove={remove} />
+          </details>}
         </article>
-      ))}
+      })}
     </section>
   )
+}
+
+function PracticeTrendChart({ subject, topic, data, metric }) {
+  const accuracy = metric === 'accuracy_percent'
+  const label = accuracy ? 'Doğruluk' : 'Net'
+  return <section aria-label={`${subject} · ${topic} ${label.toLowerCase()} grafiği`} className="min-w-0 rounded-lg bg-canvas-base p-2">
+    <h4 className="mb-1 text-xs font-medium text-canvas-muted">Set başına {label.toLowerCase()}</h4>
+    <div role="img" aria-label={`${subject} · ${topic} ${label.toLowerCase()} değişimi`} className="h-36 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -18 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+          <XAxis dataKey="date" tick={{ fill: '#a1a1aa', fontSize: 10 }} tickFormatter={(date) => date.slice(5)} />
+          <YAxis tick={{ fill: '#a1a1aa', fontSize: 10 }} width={32} domain={accuracy ? [0, 100] : ['auto', 'auto']} />
+          <Tooltip
+            contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#d4d4d8', fontSize: '12px' }}
+            labelFormatter={(date) => date}
+            formatter={(value) => [value == null ? 'Doğruluk yok' : accuracy ? `${value.toFixed(1)}%` : value.toFixed(2), label]}
+          />
+          <Line type="monotone" dataKey={metric} name={label} stroke={accuracy ? '#22d3ee' : '#10b981'} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+    {accuracy && data.every((item) => item.accuracy_percent == null) && <p className="text-center text-xs text-canvas-muted">Cevaplanan soru yok</p>}
+  </section>
+}
+
+function SessionRows({ items, sessions, topic, onEdit, onRemove }) {
+  return <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    {items.map((item) => {
+      const session = sessions.find((record) => record.id === item.id)
+      return <li key={item.id} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2 text-xs">
+        <span className="text-canvas-muted">{item.date} · net {item.net.toFixed(2)}</span>
+        {session && <span className="inline-flex gap-1">
+          <button type="button" aria-label={`Seti düzenle ${item.date} ${topic}`} onClick={() => onEdit(session)} className="rounded p-1 text-canvas-muted hover:text-canvas-text"><Pencil size={13} /></button>
+          <button type="button" aria-label={`Seti sil ${item.date} ${topic}`} onClick={() => onRemove(session)} className="rounded p-1 text-canvas-muted hover:text-accent"><Trash2 size={13} /></button>
+        </span>}
+      </li>
+    })}
+  </ol>
 }
 
 const inputClass = 'mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text outline-none focus:border-canvas-accent'

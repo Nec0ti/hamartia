@@ -96,7 +96,7 @@ async function main() {
     const practiceStarted = performance.now()
     const practiceSection = page.getByRole('region', { name: 'Konu çalışma setleri' })
     await practiceSection.getByLabel('Ders').fill('Matematik')
-    await practiceSection.getByLabel('Konu').fill('Fonksiyonlar')
+    await practiceSection.getByLabel('Konu').fill('Fonksiyon')
     await practiceSection.getByLabel('Doğru').fill('8')
     await practiceSection.getByLabel('Yanlış').fill('2')
     await practiceSection.getByLabel('Boş').fill('1')
@@ -146,6 +146,48 @@ async function main() {
     assert.equal(practiceSession.topic, 'Fonksiyon')
     assert.deepEqual([practiceSession.correct, practiceSession.incorrect, practiceSession.blank], [1, 0, 1])
     assert(practiceSession.duration_seconds >= elapsedAtFinish)
+    await practiceSection.getByText('81.8% cevaplanan doğruluğu').waitFor()
+
+    for (let index = 1; index <= 6; index += 1) {
+      const response = await page.context().request.post(`${apiUrl}/practice`, { data: {
+        date: `2026-11-0${index}`, subject: 'Matematik', topic: 'Fonksiyon',
+        correct: 1, incorrect: 0, blank: 0, duration_minutes: 2, duration_seconds: index,
+      } })
+      assert.equal(response.status(), 201)
+    }
+    const blankResponse = await page.context().request.post(`${apiUrl}/practice`, { data: {
+      date: '2026-11-14', subject: 'Biyoloji', topic: 'Hücre',
+      correct: 0, incorrect: 0, blank: 4, duration_minutes: 1, duration_seconds: 0,
+    } })
+    assert.equal(blankResponse.status(), 201)
+    const chartStarted = performance.now()
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    const netChart = page.getByRole('img', { name: 'Matematik · Fonksiyon net değişimi' })
+    const accuracyChart = page.getByRole('img', { name: 'Matematik · Fonksiyon doğruluk değişimi' })
+    await netChart.waitFor()
+    await accuracyChart.waitFor()
+    assert.equal(await netChart.locator('.recharts-line-curve').count(), 1)
+    assert.equal(await accuracyChart.locator('.recharts-line-curve').count(), 1)
+    const blankAccuracy = page.getByRole('img', { name: 'Biyoloji · Hücre doğruluk değişimi' })
+    await blankAccuracy.waitFor()
+    await page.getByText('Cevaplanan soru yok').first().waitFor()
+    assert.equal(await blankAccuracy.locator('.recharts-line-curve').count(), 0)
+    await page.getByText('88.2% cevaplanan doğruluğu').waitFor()
+    assert.equal(await page.locator('details > summary').filter({ hasText: 'Önceki setler (2)' }).count(), 1)
+    const chartPageWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+    assert(chartPageWidth <= 390, `390 px chart view overflows to ${chartPageWidth} px`)
+    const oldHistory = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Önceki setler (2)' }) })
+    if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
+    await page.getByRole('button', { name: 'Seti düzenle 2026-11-01 Fonksiyon' }).click()
+    await practiceSection.locator('form').getByLabel('Doğru').fill('10')
+    await practiceSection.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
+    await practiceSection.getByText('92.3% cevaplanan doğruluğu').waitFor()
+    if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Seti sil 2026-11-02 Fonksiyon' }).click()
+    await page.locator('details > summary').filter({ hasText: 'Önceki setler (1)' }).waitFor()
+    const practiceTrendAndHistoryMs = Math.round(performance.now() - chartStarted)
     const focusedSessionMs = Math.round(performance.now() - focusStarted)
 
     const attempted = performance.now()
@@ -252,8 +294,9 @@ async function main() {
     assert.deepEqual(consoleErrors, [])
     const saved = JSON.parse(await fs.readFile(path.join(dataDir, 'questions.json'), 'utf8'))
     const savedPractice = JSON.parse(await fs.readFile(path.join(dataDir, 'practice_sessions.json'), 'utf8'))
-    assert.equal(savedPractice.find((session) => session.correct === 8 && session.topic === 'Fonksiyonlar').id.length > 0, true)
-    assert.equal(savedPractice.find((session) => session.topic === 'Fonksiyon').duration_seconds >= elapsedAtFinish, true)
+    assert(savedPractice.some((session) => session.correct === 8 && session.topic === 'Fonksiyon'))
+    assert(savedPractice.find((session) => session.id === practiceSession.id).duration_seconds >= elapsedAtFinish)
+    assert.equal(savedPractice.filter((session) => session.topic === 'Fonksiyon').length, 7)
     assert.deepEqual(saved.find((question) => question.id === createdQuestion.id).review_attempts.map((item) => item.correct), [true])
     assert.equal(saved.find((question) => question.id === createdQuestion.id).subject, 'Edebiyat')
     assert.equal(saved.find((question) => question.id === createdQuestion.id).ocr_text, 'Güncellenmiş soru metni')
@@ -262,7 +305,7 @@ async function main() {
     assert.equal(saved.find((question) => question.id === linkedQuestion.id).solve_order, 1)
     assert.equal(await fs.access(path.join(uploads, 'q1.png')).then(() => true).catch(() => false), false)
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'exams.json'), 'utf8')), [])
-    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
+    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, practice_trend_and_history_ms: practiceTrendAndHistoryMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error

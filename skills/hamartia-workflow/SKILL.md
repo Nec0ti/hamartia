@@ -16,6 +16,7 @@ description: Hamartia YKS takip uygulamasında değişiklik, yerel AI sınırı 
 9. Konu başarı ölçüsünü yalnızca tamamlanmış `practice_sessions.json` kayıtlarından üret; doğruluk paydasında boş soruları çıkar ve eski backup arşivlerini yeni liste dosyası olmadan da kabul et.
 10. Odaklı oturum taslağı yalnızca aynı tarayıcı profilinde geçici saklanır; tamamlanan sonuçları mevcut practice API'sine bir kez yaz ve gerçek model çağırma.
 11. Konu trend grafikleri yalnızca kayıtlı çalışma setlerinden üret; null doğruluğu sıfır gibi çizme ve son altıdan eski setler için de yönetim eylemi bırak.
+12. Provider `OpenAIError` hatasını analiz başarısı gibi kaydetme; soru analizinde görünür HTTP hatası ver, testte yalnızca fake provider exception kullan ve gerçek modeli otomatik doğrulama/benchmark kapsamına alma.
 
 ## Ölçüm kuralı
 

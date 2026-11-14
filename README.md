@@ -36,6 +36,8 @@ AI test ve benchmarklarda çalıştırılmaz. Soru görseli analizi başka bilgi
 
 Soru metni ve görsel baytları ayarlarda yazan sunucuya gönderilir. İnternete açık veya güvenmediğin bir endpoint kullanma. Bağlantı ve model yanıtı henüz başka bilgisayarda doğrulanmadı.
 
+Başka bilgisayarda elle doğrularken sunucu adresi/model/anahtarını kaydet; sonra bir metin sorusunda **Yerel AI ile incele**, ardından görselli bir soruda aynı eylemi dene. Başarılı çalışmada Council sonucu kaydedilir. Endpoint/model hatası görünür hata üretir ve mevcut soru etiketi/analizini değiştirmez. Bu manuel akış otomatik test/benchmarkta çalıştırılmaz.
+
 ## AI dışı doğrulama
 
 Repo kökünde backend testleri:

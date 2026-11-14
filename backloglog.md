@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: Provider `OpenAIError` artık sahte analiz/etiket olarak kaydedilmiyor; analiz rotası 502 döndürüyor ve kaydı koruyor. Hata sınırı fake `OpenAIError` ile test edildi; 73 backend testi, frontend 4/4, build ve AI'siz browser smoke geçti. Gerçek model çağrısı ve AI benchmarkı çalıştırılmadı. Rapor: `reports/2026-11-14-ai-failure-handling.md`.
+
 - 2026-11-14: Yerel model hatası incelemesi, `_completions()` boş yanıtının varsayılan teşhise dönüşüp kaydedilebildiğini buldu. Plan: gerçek model kullanmadan sahte provider hatasıyla API error boundary'yi doğrula; gerçek endpoint/model ve görseli daha sonra ayrı bilgisayarda elle dene.
 
 - 2026-11-14: Konu seti kartlarına tüm kayıtlı noktaları kullanan net ve cevaplanan doğruluk çizgileri eklendi. Son altıdan eski kayıtlar açılır geçmişte düzenlenip/silinebiliyor; eşzamanlı liste/özet farkında görünmeyen kayıt eylemleri güvenli biçimde saklanıyor. 390 px smoke, tek nokta ve boş-yanıt grafiği dahil geçti. Frontend 4/4, backend 72/72 ve build geçti; AI çağrısı yok. GitHub Actions run #67 başarılı. Rapor: `reports/2026-11-14-practice-trend-chart.md`.

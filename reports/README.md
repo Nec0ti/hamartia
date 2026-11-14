@@ -18,3 +18,4 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 - [2026-11-14 konu çalışma grafiği ve tam geçmiş uygulama planı](2026-11-14-practice-trend-chart-plan.md)
 - [2026-11-14 konu çalışma net/doğruluk grafikleri ve tam geçmiş](2026-11-14-practice-trend-chart.md)
 - [2026-11-14 yerel model hata işleme uygulama planı](2026-11-14-ai-failure-handling-plan.md)
+- [2026-11-14 yerel model hata işleme doğrulaması](2026-11-14-ai-failure-handling.md)

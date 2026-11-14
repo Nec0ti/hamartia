@@ -8,7 +8,8 @@ the LiteLLM proxy configuration, never progression data.
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import DATA_DIR
-from app.models.schemas import UserStats
+from app.core.progression import progression_summary
+from app.models.schemas import Exam, UserStats
 from app.services.storage import StorageError, StorageService
 
 router = APIRouter(prefix="/user", tags=["profile"])
@@ -25,6 +26,9 @@ def get_storage():
 @router.get("", response_model=UserStats)
 async def get_user(storage: StorageService = Depends(get_storage)):
     stats = storage.load_doc("user.json", UserStats) or UserStats()
+    exams = storage.load_list("exams.json", Exam)
+    for key, value in progression_summary(exams, bonus_xp=stats.total_xp).items():
+        setattr(stats, key, value)
     return stats
 
 

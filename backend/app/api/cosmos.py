@@ -13,7 +13,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import COSMOS_SECTORS, DATA_DIR
-from app.models.schemas import CosmosData, CosmosNode, UserStats
+from app.core.progression import progression_summary
+from app.models.schemas import CosmosData, CosmosNode, Exam, UserStats
 from app.services.storage import StorageService
 
 router = APIRouter(prefix="/cosmos", tags=["cosmos"])
@@ -46,7 +47,8 @@ async def get_cosmos(storage: StorageService = Depends(get_storage)):
     cosmos = storage.load_doc("cosmos.json", CosmosData) or CosmosData()
     user = storage.load_doc("user.json", UserStats) or UserStats()
     # Read-only projection so the frontend can gate assaultability by XP.
-    cosmos.user_xp = user.total_xp
+    exams = storage.load_list("exams.json", Exam)
+    cosmos.user_xp = progression_summary(exams, bonus_xp=user.total_xp)["total_xp"]
     return cosmos
 
 

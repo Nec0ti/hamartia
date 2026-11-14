@@ -3,8 +3,10 @@
 import json
 import tempfile
 import time
+from datetime import date
 from pathlib import Path
 
+from app.core.progression import progression_summary
 from app.models.schemas import Exam
 from app.services.storage import StorageService
 
@@ -28,12 +30,17 @@ def main(count=1000):
         loaded = storage.load_list("exams.json", Exam)
         read_seconds = time.perf_counter() - started
         assert len(loaded) == count
+        started = time.perf_counter()
+        progression = progression_summary(loaded, today=date(2026, 11, 14))
+        progression_seconds = time.perf_counter() - started
+        assert progression["streak_days"] == 1
         print(json.dumps({
             "benchmark": "json_exam_storage",
             "records": count,
             "append_seconds": round(append_seconds, 4),
             "append_records_per_second": round(count / append_seconds, 2),
             "read_seconds": round(read_seconds, 4),
+            "progression_seconds": round(progression_seconds, 4),
             "ai_included": False,
         }))
 

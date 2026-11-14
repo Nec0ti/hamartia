@@ -67,9 +67,9 @@ export default function QuestionsTab({ initialSubject = '' }) {
     }
   }
 
-  const review = async (question) => {
+  const review = async (question, reviewed) => {
     try {
-      await api.questions.review(question.id)
+      await api.questions.review(question.id, reviewed)
       await load()
     } catch (e) {
       setError(handleApiError(e).detail)
@@ -134,8 +134,8 @@ export default function QuestionsTab({ initialSubject = '' }) {
                   {TAGS.map((item) => <option key={item} value={item}>{tagLabel(item)}</option>)}
                 </select>
                 {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> Yerel AI ile incele</button>}
-                {!question.reviewed_at && <button type="button" onClick={() => review(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> Tekrar ettim</button>}
-                {question.reviewed_at && <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><CheckCircle2 size={14} /> Tekrarlandı · {question.reviewed_at.slice(0, 10)}</span>}
+                {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> Tekrar ettim</button>}
+                {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><CheckCircle2 size={14} /> Tekrarlandı · {question.reviewed_at.slice(0, 10)}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">Tekrarı geri al</button></>}
               </div>
               {question.analysis && (
                 <div className="rounded-lg bg-canvas-base p-3 text-sm">

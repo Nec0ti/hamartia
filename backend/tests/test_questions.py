@@ -127,13 +127,19 @@ class QuestionFlowTests(unittest.TestCase):
             Question(id="q2", image_name="2.png", image_path="uploads/2.png", subject="Matematik", topic="Fonksiyon"),
         ])
 
-        reviewed = asyncio.run(question_api.review_question("q1", self.storage))
+        reviewed = asyncio.run(question_api.review_question("q1", question_api.ReviewRequest(), self.storage))
         plan = asyncio.run(question_api.question_insights(self.storage))
 
         self.assertTrue(reviewed.reviewed_at.endswith("Z"))
         self.assertEqual(plan["total_questions"], 2)
         self.assertEqual(plan["pending_questions"], 1)
         self.assertEqual(plan["topics"][0]["pending_count"], 1)
+
+        restored = asyncio.run(question_api.review_question(
+            "q1", question_api.ReviewRequest(reviewed=False), self.storage,
+        ))
+        self.assertEqual(restored.reviewed_at, "")
+        self.assertEqual(asyncio.run(question_api.question_insights(self.storage))["pending_questions"], 2)
 
     def test_council_schema_reads_old_and_new_envelopes(self):
         legacy = CouncilAnalysis.model_validate({

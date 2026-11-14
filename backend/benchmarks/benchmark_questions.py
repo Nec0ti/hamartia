@@ -53,7 +53,7 @@ async def run(count=100):
             assert Path(image.path).is_file()
             await questions.tag_question(saved[0].id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
             started = time.perf_counter()
-            await questions.review_question(saved[0].id, storage)
+            await questions.review_question(saved[0].id, questions.ReviewRequest(), storage)
             review_seconds = time.perf_counter() - started
 
         print(json.dumps({

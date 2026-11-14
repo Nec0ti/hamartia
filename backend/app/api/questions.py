@@ -156,6 +156,10 @@ class TagRequest(BaseModel):
     hamartia_tag: str
 
 
+class ReviewRequest(BaseModel):
+    reviewed: bool = True
+
+
 @router.patch("/{question_id}/tag", response_model=Question)
 async def tag_question(
     question_id: str,
@@ -184,18 +188,19 @@ async def tag_question(
     return updated[0]
 
 
-@router.post("/{question_id}/review", response_model=Question)
+@router.patch("/{question_id}/review", response_model=Question)
 async def review_question(
     question_id: str,
+    payload: ReviewRequest,
     storage: StorageService = Depends(get_storage),
 ):
-    """Mark a question as reviewed so it leaves the pending study plan."""
+    """Set or clear review status without removing the saved question."""
     updated = []
 
     def mark_reviewed(questions):
         for question in questions:
             if question.id == question_id:
-                question.reviewed_at = _utcnow()
+                question.reviewed_at = _utcnow() if payload.reviewed else ""
                 updated.append(question)
                 return True
         return False

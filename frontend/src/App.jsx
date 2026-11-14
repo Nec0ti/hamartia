@@ -20,17 +20,13 @@ export default function App() {
   const [questionSubject, setQuestionSubject] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState(null)
-  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [settingsError, setSettingsError] = useState(null)
-  const [settingsSaved, setSettingsSaved] = useState(false)
 
   const loadSettings = useCallback(async () => {
-    setSettingsLoaded(true)
     setSettingsError(null)
     try {
       const data = await api.settings.get()
       setSettings(data)
-      setSettingsSaved(false)
     } catch (e) {
       setSettingsError(handleApiError(e).detail)
     }
@@ -42,14 +38,13 @@ export default function App() {
   }, [])
 
   const saveSettings = useCallback(async (draft) => {
-    setSettingsSaved(true)
     setSettingsError(null)
     try {
       const saved = await api.settings.update(draft)
       setSettings(saved)
-      setSettingsSaved(false)
     } catch (e) {
       setSettingsError(handleApiError(e).detail)
+      throw e
     }
   }, [])
 
@@ -72,8 +67,6 @@ export default function App() {
         }}
         onOpenSettings={() => {
           setSettingsOpen(true)
-          setSettingsSaved(false)
-          setSettingsError(null)
         }}
       />
       <main className="min-h-[calc(100vh-57px)] flex-1 overflow-y-auto px-4 py-6 sm:px-6">
@@ -84,6 +77,7 @@ export default function App() {
         settings={settings}
         onSave={saveSettings}
         onClose={() => setSettingsOpen(false)}
+        loadError={settingsError}
       />
     </div>
   )

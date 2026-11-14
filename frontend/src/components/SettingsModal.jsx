@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Save, X } from 'lucide-react'
 import Modal from './Modal.jsx'
 import { handleApiError } from '../services/api'
@@ -9,13 +9,31 @@ import { handleApiError } from '../services/api'
  * (XP / level / streak) is intentionally NOT editable here — it lives in
  * backend/data/user.json and is served read-only via /user.
  */
-export default function SettingsModal({ open, settings, onSave, onClose }) {
+export default function SettingsModal({ open, settings, onSave, onClose, loadError }) {
   const [draft, setDraft] = useState(
     settings ?? { litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', api_key: '' },
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (settings) setDraft(settings)
+  }, [settings])
+
+  const save = async () => {
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      await onSave(draft)
+      setSaved(true)
+    } catch (e) {
+      setError(handleApiError(e).detail)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (!open) return null
 
@@ -78,7 +96,7 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
             />
           </div>
           {saved && <p className="text-xs text-emerald-400">Settings saved.</p>}
-          {error && <p className="text-xs text-accent">{error}</p>}
+          {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -101,20 +119,6 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
       </div>
     </div>
   )
-}
-
-async function save() {
-  setSaving(true)
-  setSaved(false)
-  setError(null)
-  try {
-    await onSave(draft)
-    setSaved(true)
-  } catch (e) {
-    setError(handleApiError(e).detail)
-  } finally {
-    setSaving(false)
-  }
 }
 
 const inputCls =

@@ -40,6 +40,7 @@ def topic_priorities(questions, today=None):
             "topic": topic,
             "hamartia_tag": question.hamartia_tag,
             "ocr_text": question.ocr_text,
+            "has_image": bool(question.image_path),
             **state,
         })
 

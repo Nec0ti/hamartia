@@ -61,6 +61,13 @@ async def run(count=100):
             await questions.review_question(saved[0].id, questions.ReviewRequest(), storage)
             review_seconds = time.perf_counter() - started
 
+            started = time.perf_counter()
+            for index in range(count):
+                await questions.upload_question(
+                    None, f"Metin sorusu {index}", "Türkçe", "Paragraf", storage,
+                )
+            text_capture_seconds = time.perf_counter() - started
+
         print(json.dumps({
             "benchmark": "local_question_flow",
             "questions": count,
@@ -70,6 +77,8 @@ async def run(count=100):
             "insight_seconds": round(insight_seconds, 4),
             "attempt_seconds": round(attempt_seconds, 4),
             "review_seconds": round(review_seconds, 4),
+            "text_capture_seconds": round(text_capture_seconds, 4),
+            "text_captures_per_second": round(count / text_capture_seconds, 2),
             "ai_included": False,
         }))
 

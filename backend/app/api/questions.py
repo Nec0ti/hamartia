@@ -37,46 +37,51 @@ def _utcnow() -> str:
 
 @router.post("", status_code=201)
 async def upload_question(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
     ocr_text: str = Form(""),
     subject: str = Form(""),
     topic: str = Form(""),
     storage: StorageService = Depends(get_storage),
 ):
     """Store an uploaded question image, OCR text, and study labels."""
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
-    ext = Path(file.filename).suffix.lower()
-    if ext not in IMAGE_TYPES or file.content_type not in (None, "", IMAGE_TYPES[ext]):
-        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WebP image")
-    safe_name = f"q_{uuid4().hex}{ext}"
-    path = UPLOAD_DIR / safe_name
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = ""
+    path = None
+    if file:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        ext = Path(file.filename).suffix.lower()
+        if ext not in IMAGE_TYPES or file.content_type not in (None, "", IMAGE_TYPES[ext]):
+            raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WebP image")
+        safe_name = f"q_{uuid4().hex}{ext}"
+        path = UPLOAD_DIR / safe_name
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    try:
-        contents = await file.read(MAX_UPLOAD_BYTES + 1)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Could not read upload: {exc}")
-    if not contents:
-        raise HTTPException(status_code=422, detail="Image is empty")
-    if len(contents) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Image exceeds 10 MB")
-    valid_signature = (
-        contents.startswith(b"\x89PNG\r\n\x1a\n") if ext == ".png" else
-        contents.startswith(b"\xff\xd8\xff") if ext in (".jpg", ".jpeg") else
-        contents.startswith(b"RIFF") and contents[8:12] == b"WEBP"
-    )
-    if not valid_signature:
-        raise HTTPException(status_code=415, detail="Image contents do not match PNG, JPEG, or WebP")
-    try:
-        path.write_bytes(contents)
-    except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Could not save upload: {exc}")
+        try:
+            contents = await file.read(MAX_UPLOAD_BYTES + 1)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not read upload: {exc}")
+        if not contents:
+            raise HTTPException(status_code=422, detail="Image is empty")
+        if len(contents) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Image exceeds 10 MB")
+        valid_signature = (
+            contents.startswith(b"\x89PNG\r\n\x1a\n") if ext == ".png" else
+            contents.startswith(b"\xff\xd8\xff") if ext in (".jpg", ".jpeg") else
+            contents.startswith(b"RIFF") and contents[8:12] == b"WEBP"
+        )
+        if not valid_signature:
+            raise HTTPException(status_code=415, detail="Image contents do not match PNG, JPEG, or WebP")
+        try:
+            path.write_bytes(contents)
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"Could not save upload: {exc}")
+    elif not (ocr_text or "").strip():
+        raise HTTPException(status_code=422, detail="Add an image or question text")
 
     question = Question(
         id=f"q_{uuid4().hex}",
         image_name=safe_name,
-        image_path=(Path("uploads") / safe_name).as_posix(),
+        image_path=(Path("uploads") / safe_name).as_posix() if safe_name else "",
         ocr_text=ocr_text or "",
         subject=subject.strip(),
         topic=topic.strip(),
@@ -85,7 +90,8 @@ async def upload_question(
     try:
         storage.append_list("questions.json", question, Question)
     except Exception:
-        path.unlink(missing_ok=True)
+        if path:
+            path.unlink(missing_ok=True)
         raise
     return question
 

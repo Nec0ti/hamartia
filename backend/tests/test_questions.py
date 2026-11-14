@@ -56,6 +56,22 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual((self.uploads / created.image_name).read_bytes(), b"\x89PNG\r\n\x1a\nfixture")
         self.assertTrue(created.image_name.startswith("q_"))
 
+    def test_text_only_question_is_saved_without_an_image(self):
+        created = asyncio.run(question_api.upload_question(
+            None, "f(x) = 2x + 1", "Matematik", "Fonksiyon", self.storage,
+        ))
+
+        saved = self.storage.load_list("questions.json", Question)
+        self.assertEqual(created.ocr_text, "f(x) = 2x + 1")
+        self.assertEqual(created.image_path, "")
+        self.assertEqual(saved[0].id, created.id)
+        self.assertFalse(self.uploads.exists())
+
+    def test_upload_requires_either_an_image_or_text(self):
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(question_api.upload_question(None, "  ", "Matematik", "", self.storage))
+        self.assertEqual(error.exception.status_code, 422)
+
     def test_image_route_serves_only_files_inside_upload_directory(self):
         self.uploads.mkdir()
         image = self.uploads / "q_test.png"
@@ -120,6 +136,7 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(result["topics"][0]["pending_count"], 2)
         self.assertEqual(result["topics"][0]["last_seen"], "2026-11-05")
         self.assertEqual(result["topics"][0]["tags"], {"[Knowledge Gap]": 1, "[Reading Slip]": 1})
+        self.assertTrue(result["reviews"][0]["has_image"])
 
     def test_review_action_removes_question_from_pending_plan(self):
         self.storage.save_list("questions.json", [

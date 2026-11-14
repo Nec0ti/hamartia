@@ -131,8 +131,8 @@ class ReviewAttempt(BaseModel):
 
 class Question(BaseModel):
     id: str
-    image_name: str
-    image_path: str
+    image_name: str = ""
+    image_path: str = ""
     ocr_text: str = ""
     subject: str = ""
     topic: str = ""

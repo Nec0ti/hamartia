@@ -34,5 +34,5 @@ Yerel geliştirme makinesinde tekil çalıştırma; her betik başarı assert'le
 
 - Yerel UI commit `040462e2bf9a73271d622741b63c9cd616c1ceb4`; remote karşılığı `de19c4f56883d460eac80649e18b54468135dbcf`. İki ağacın SHA'sı `8bed8506808519c6812b31fc9528e130fc172c74`.
 - Yerel backup/benchmark commit `a7f7b556488418857d86ad812217a63157586960`; remote karşılığı `7c8b57a87447540484bb64259d7b5876e2d11e5b`. Ağaç SHA'sı `9cc28a65ae406a2915be33dd7ee7618e9274144f`.
-- GitHub `codex/hamartia-rebuild` ref'i bu sırayla fast-forward güncellendi. Son commit için GitHub combined status boş döndü ve açık PR bulunmadı; dolayısıyla bu dilim için Actions sonucu oluşmuş/doğrulanmış değil.
+- GitHub `codex/hamartia-rebuild` ref'i fast-forward güncellendi ve PR #1 `master` hedefine açıldı. PR head commit `a2746a104ad61f8857a405aa7a7ce599c3344696` için GitHub Actions run #84 başarıyla tamamlandı; backend ve frontend job'ları geçti.
 - Checkout'ta canlı `backend/data` olmadığı için kullanıcının gerçek JSON kayıtları sınanmadı. P3'teki endpoint/model ve görsel analiz doğrulaması ayrı bilgisayarda elle yapılacak.

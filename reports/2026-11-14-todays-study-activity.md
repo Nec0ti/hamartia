@@ -21,4 +21,4 @@
 - Model yüklenmedi ve AI çağrılmadı; local AI başka bilgisayarda doğrulanacak.
 - Gün hesabı var olan scheduler gibi kayıtlı ISO zaman damgasının tarih bileşenini ve backend'in `date.today()` değerini kullanır. Backend başka saat dilimindeki bir bilgisayara taşınırsa gün sınırında kullanıcı yereliyle fark görülebilir.
 - Benchmark tek yerel çalışmadır, donanımlar arası performans iddiası değildir.
-- Kod commitinin GitHub Actions sonucu bu rapor yazılırken çalışıyordu.
+- Kod commitinin GitHub Actions run #49 (`d0cd18ff`) frontend test/build/browser smoke ile backend test ve benchmark adımlarını başarıyla tamamladı. Bu rapor güncellemesini içeren docs-only run henüz çalışıyor.

@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: `/settings` GET/PATCH artık API anahtarını döndürmüyor; yalnızca ayarlı olup olmadığı görünür. Boş kaydetme anahtarı koruyor, Ayarlar ekranında açıkça silinebilir. 3 yeni API testiyle backend 76/76, frontend 4/4, production build ve Chromium smoke geçti. Smoke anahtar ekle/sil döngüsünü doğruladı ve 1.269 ms ölçtü. Beş mevcut backend benchmarkı AI'siz geçti. Gerçek model çalıştırılmadı. Rapor: `reports/2026-11-14-settings-key-redaction.md`.
+
 - 2026-11-14: Ayarlar GET/PATCH yanıtlarının API anahtarını tarayıcıya döndürdüğü bulundu. Loopback-only çalışma bağlamı riski daraltsa da sır yanıt sözleşmesinden çıkarılacak; boş güncelleme anahtarı koruyacak ve açık temizleme eklenecek. Plan: `reports/2026-11-14-settings-key-redaction-plan.md`.
 
 - 2026-11-14: Provider `OpenAIError` artık sahte analiz/etiket olarak kaydedilmiyor; analiz rotası 502 döndürüyor ve kaydı koruyor. Hata sınırı fake `OpenAIError` ile test edildi; 73 backend testi, frontend 4/4, build ve AI'siz browser smoke geçti. GitHub Actions run #69 başarılı. Gerçek model çağrısı ve AI benchmarkı çalıştırılmadı. Rapor: `reports/2026-11-14-ai-failure-handling.md`.

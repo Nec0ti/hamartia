@@ -6,7 +6,7 @@
 - [x] Etiketleme, analiz sonucu kaydetme ve silme işlemleri atomik read-modify-write olsun.
 - [x] Rakip güncellemelerde hiçbir kayıt kaybolmadığını test et.
 - [x] Yerel model/endpoint hatası sahte bir Council teşhisi veya hata etiketi olarak kaydedilmesin; hatayı görünür kıl ve kayıtları koru.
-- [ ] Ayarlar API'si kayıtlı API anahtarını yanıtlarla sızdırmasın; boş kaydetme korusun, açık temizleme desteklensin.
+- [x] Ayarlar API'si kayıtlı API anahtarını yanıtlarla sızdırmasın; boş kaydetme korusun, açık temizleme desteklensin.
 
 ## P1 — öğrenci döngüsü
 

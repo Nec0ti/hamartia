@@ -55,4 +55,4 @@ cd frontend && npm run test:browser
 - Browser smoke örnek kayıtla CRUD ve persistence'i sınar; çok büyük geçmişlerde gerçek kullanıcı veri hacmi benchmark edilmedi.
 - Local AI yüklenmedi, çağrılmadı veya benchmark edilmedi. Başka bilgisayardaki multimodal endpoint doğrulaması bekliyor.
 - Üretim JS paketi 500 KB tavsiye eşiğini aşıyor; mevcut build başarılı ancak Vite uyarısı sürüyor.
-- Son GitHub Actions koşusu, bu kod ve dokümantasyon commitleri aktarıldıktan sonra kontrol edilecek.
+- GitHub Actions run `43608878405` (#41), aynı kaynak kodu için frontend test/build/browser smoke ile backend test ve benchmark adımlarının ikisini de başarıyla tamamladı.

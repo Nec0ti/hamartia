@@ -77,4 +77,4 @@ Bu rapordaki tüm kontroller ve benchmarklar model çağrısı içermez. Yerel A
 - Ortak XP barı yardımcılarında ilk seviye hedefi 500 XP olacak şekilde backend formülüyle hizalandı; navbar ve Cosmos aynı hesaplamayı kullanıyor.
 - `chromium`, `firefox`, Playwright ve Puppeteer bu ortamda bulunmadığı için tarayıcı smoke/ekran okuyucu kontrolü yapılmadı. Erişilebilir progressbar semantiği derleme ve kaynak seviyesinde kontrol edildi.
 - Cosmos saldırı API'si ekrana bağlanmadı: XP ve cosmos JSON'ları ayrı yazılıyor, eşzamanlı çağrılarda tutarsızlık/kayıp olasılığı var; başarısız saldırı da beklenen bahis/refund akışını uygulamıyor. Önce ayrı bir backend işi ve testler gerekiyor.
-- Bu commit'in GitHub Actions workflow'u push sonrası başladı; sonucu ayrıca kontrol edilecek.
+- Son kod commit'i `0c72061` ve onu izleyen dokümantasyon commit'i için GitHub Actions frontend test/build, backend unittest ve iki AI'siz benchmark adımlarının tamamında başarılı oldu (run `43603845596`). Workflow model servisi çağırmıyor.

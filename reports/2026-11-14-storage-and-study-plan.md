@@ -72,8 +72,9 @@ Bu rapordaki tüm kontroller ve benchmarklar model çağrısı içermez. Yerel A
 ## 2026-11-14 Cosmos görünümü
 
 - `CosmosTab` artık `/user` ve `/questions/insights` GET uçlarından seviye/XP/seri ve en çok dokuz bekleyen konu yörüngesini gösteriyor. Veri yerelde türetiliyor; ekran Cosmos veya kullanıcı verisine yazmıyor ve AI çağırmıyor.
-- Frontend testleri 4/4 geçti; XP progress sınırları ve seviye eşiği assert edildi. `npm run build` 18.49 sn'de geçti.
+- Frontend testleri 4/4 geçti; XP progress sınırları ve seviye eşiği assert edildi. `npm run build` 17.64 sn'de geçti.
 - Üretim bundle: 668.34 KB minified / 191.82 KB gzip. 500 KB uyarısı devam ediyor.
+- Ortak XP barı yardımcılarında ilk seviye hedefi 500 XP olacak şekilde backend formülüyle hizalandı; navbar ve Cosmos aynı hesaplamayı kullanıyor.
 - `chromium`, `firefox`, Playwright ve Puppeteer bu ortamda bulunmadığı için tarayıcı smoke/ekran okuyucu kontrolü yapılmadı. Erişilebilir progressbar semantiği derleme ve kaynak seviyesinde kontrol edildi.
 - Cosmos saldırı API'si ekrana bağlanmadı: XP ve cosmos JSON'ları ayrı yazılıyor, eşzamanlı çağrılarda tutarsızlık/kayıp olasılığı var; başarısız saldırı da beklenen bahis/refund akışını uygulamıyor. Önce ayrı bir backend işi ve testler gerekiyor.
 - Bu commit'in GitHub Actions workflow'u push sonrası başladı; sonucu ayrıca kontrol edilecek.

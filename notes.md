@@ -21,6 +21,7 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit. `update_list` kilit altında read-modify-write yapar; bozuk/uyumsuz listeler `StorageError` üretir. Çok worker/multi-process kullanımda SQLite gerekir.
 - `backend/app/core/study_plan.py` ve `/questions/insights`: yanlış soru kayıtlarından AI çağırmadan ders/konu tekrar sıklığı, etiket dağılımı ve son kayıt gününü çıkarır.
 - `backend/app/core/progression.py`: kullanıcıya görünen XP'yi kayıtlı deneme XP'leriyle korunan profil bonusunu toplayarak, seviyeyi bu toplamdan, aktif seriyi deneme günlerinden hesaplar. Aynı özet Cosmos XP projeksiyonunda da kullanılır.
+- `frontend/src/utils/formatters.js`: seviye barı XP eşiği backend ile eşleşir; seviye N, `(N-1)*500` XP'de başlar ve sonraki seviye N*500 XP'dir.
 - `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
 - Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.

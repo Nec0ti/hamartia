@@ -21,4 +21,5 @@
 - 2026-11-14: Review undo ve docs commit'lerinde GitHub Actions frontend/backend işleri başarılı; local ve remote branch tree'leri eşleşti, `master` değişmedi.
 - 2026-11-14: XP toplamı/level/seri artık deneme geçmişinden hesaplanıyor ve profil bonusunu koruyor; 20 backend testi, 3 frontend testi ve 1000 deneme progression benchmarkı geçti. GitHub Actions çalışıyor.
 - Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.
-- 2026-11-14: Cosmos yer tutucusu salt okunur yerel ilerleme görünümüne çevrildi; XP/seviye/seri ve en çok dokuz bekleyen konu yer alıyor. 4 frontend testi ve 18.49 sn production build geçti. Browser smoke ortamda browser/Playwright olmadığı için yapılmadı. Eski random assault endpointinin çok dosyalı XP yazımı ve ödül semantiği incelenip UI kapsamı dışında bırakıldı.
+- 2026-11-14: Cosmos yer tutucusu salt okunur yerel ilerleme görünümüne çevrildi; XP/seviye/seri ve en çok dokuz bekleyen konu yer alıyor. İlk build 18.49 sn sürdü. Browser smoke ortamda browser/Playwright olmadığı için yapılmadı. Eski random assault endpointinin çok dosyalı XP yazımı ve ödül semantiği incelenip UI kapsamı dışında bırakıldı.
+- 2026-11-14: XP çubuğunun 500 XP ilk seviye eşiği backend ile hizalandı; navbar ve Cosmos ortak yardımcıyı kullanıyor. 4 frontend testi ve 17.64 sn build geçti.

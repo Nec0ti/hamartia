@@ -62,6 +62,18 @@ async def run(count=100):
             review_seconds = time.perf_counter() - started
 
             started = time.perf_counter()
+            await questions.update_question(
+                saved[0].id,
+                questions.QuestionUpdate(subject="Matematik", topic="Denklemler", ocr_text="Düzenlenmiş soru"),
+                storage,
+            )
+            update_seconds = time.perf_counter() - started
+            started = time.perf_counter()
+            await questions.delete_question(saved[0].id, storage)
+            delete_seconds = time.perf_counter() - started
+            assert not (root / "uploads" / saved[0].image_name).exists()
+
+            started = time.perf_counter()
             for index in range(count):
                 await questions.upload_question(
                     None, f"Metin sorusu {index}", "Türkçe", "Paragraf", storage,
@@ -77,6 +89,8 @@ async def run(count=100):
             "insight_seconds": round(insight_seconds, 4),
             "attempt_seconds": round(attempt_seconds, 4),
             "review_seconds": round(review_seconds, 4),
+            "update_seconds": round(update_seconds, 4),
+            "delete_seconds": round(delete_seconds, 4),
             "text_capture_seconds": round(text_capture_seconds, 4),
             "text_captures_per_second": round(count / text_capture_seconds, 2),
             "ai_included": False,

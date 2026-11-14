@@ -170,6 +170,60 @@ class AttemptRequest(BaseModel):
     correct: bool
 
 
+class QuestionUpdate(BaseModel):
+    subject: str
+    topic: str
+    ocr_text: str
+
+
+@router.patch("/{question_id}", response_model=Question)
+async def update_question(
+    question_id: str,
+    payload: QuestionUpdate,
+    storage: StorageService = Depends(get_storage),
+):
+    updated = []
+
+    def edit(questions):
+        for question in questions:
+            if question.id == question_id:
+                if not question.image_path and not payload.ocr_text.strip():
+                    raise HTTPException(status_code=422, detail="A text-only question must keep question text")
+                question.subject = payload.subject.strip()
+                question.topic = payload.topic.strip()
+                question.ocr_text = payload.ocr_text
+                updated.append(question)
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, edit):
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated[0]
+
+
+@router.delete("/{question_id}", status_code=200)
+async def delete_question(question_id: str, storage: StorageService = Depends(get_storage)):
+    deleted = []
+
+    def remove(questions):
+        for index, question in enumerate(questions):
+            if question.id == question_id:
+                deleted.append(questions.pop(index))
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, remove):
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    image_path = (DATA_DIR / deleted[0].image_path).resolve() if deleted[0].image_path else None
+    if image_path and image_path.is_relative_to(UPLOAD_DIR.resolve()) and image_path.is_file():
+        try:
+            image_path.unlink()
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"Question deleted but its image could not be removed: {exc}") from exc
+    return {"deleted": question_id}
+
+
 @router.patch("/{question_id}/tag", response_model=Question)
 async def tag_question(
     question_id: str,

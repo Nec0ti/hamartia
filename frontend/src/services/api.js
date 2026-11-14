@@ -46,6 +46,8 @@ export const questions = {
       transformRequest: [(d) => d],
     }).then((r) => r.data)
   },
+  update: (id, payload) => client.patch(`/questions/${id}`, payload).then((r) => r.data),
+  remove: (id) => client.delete(`/questions/${id}`).then((r) => r.data),
   analyze: (id) =>
     client.post(`/questions/${id}/analyze`).then((r) => r.data),
   tag: (id, hamartiaTag) =>

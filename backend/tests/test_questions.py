@@ -121,6 +121,68 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(result.hamartia_tag, "[Reading Slip]")
         self.assertEqual(self.storage.load_list("questions.json", Question)[0].hamartia_tag, "[Reading Slip]")
 
+    def test_edit_question_metadata_preserves_analysis_and_review_history(self):
+        original = Question(
+            id="q1", image_name="q.png", image_path="uploads/q.png", subject="Math", topic="Algebra",
+            ocr_text="old text", hamartia_tag="[Reading Slip]", reviewed_at="2026-11-01",
+            review_attempts=[{"attempted_at": "2026-11-01T00:00:00Z", "correct": False}],
+        )
+        self.storage.save_list("questions.json", [original])
+
+        updated = asyncio.run(question_api.update_question(
+            "q1", question_api.QuestionUpdate(subject=" Matematik ", topic=" Denklem ", ocr_text="new text"), self.storage,
+        ))
+
+        self.assertEqual((updated.subject, updated.topic, updated.ocr_text), ("Matematik", "Denklem", "new text"))
+        self.assertEqual(updated.image_path, "uploads/q.png")
+        self.assertEqual(updated.hamartia_tag, "[Reading Slip]")
+        self.assertEqual(updated.reviewed_at, "2026-11-01")
+        self.assertEqual(len(updated.review_attempts), 1)
+
+    def test_text_only_question_cannot_be_edited_to_empty_text(self):
+        question = Question(id="q1", ocr_text="keep me")
+        self.storage.save_list("questions.json", [question])
+
+        with self.assertRaises(HTTPException) as raised:
+            asyncio.run(question_api.update_question(
+                "q1", question_api.QuestionUpdate(subject="Math", topic="", ocr_text="  "), self.storage,
+            ))
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertEqual(self.storage.load_list("questions.json", Question)[0].ocr_text, "keep me")
+
+    def test_edit_missing_question_returns_404(self):
+        with self.assertRaises(HTTPException) as raised:
+            asyncio.run(question_api.update_question(
+                "missing", question_api.QuestionUpdate(subject="Math", topic="", ocr_text="text"), self.storage,
+            ))
+        self.assertEqual(raised.exception.status_code, 404)
+
+    def test_delete_question_removes_its_image_and_record(self):
+        self.uploads.mkdir()
+        image = self.uploads / "q1.png"
+        image.write_bytes(b"image")
+        self.storage.save_list("questions.json", [
+            Question(id="q1", image_name="q1.png", image_path="uploads/q1.png"),
+            Question(id="q2", ocr_text="keep"),
+        ])
+
+        result = asyncio.run(question_api.delete_question("q1", self.storage))
+
+        self.assertEqual(result, {"deleted": "q1"})
+        self.assertFalse(image.exists())
+        self.assertEqual([item.id for item in self.storage.load_list("questions.json", Question)], ["q2"])
+
+    def test_delete_question_does_not_remove_a_file_outside_uploads(self):
+        outside = self.root / "private.txt"
+        outside.write_text("keep")
+        self.storage.save_list("questions.json", [Question(id="q1", image_path="../private.txt")])
+
+        asyncio.run(question_api.delete_question("q1", self.storage))
+
+        self.assertEqual(outside.read_text(), "keep")
+        self.assertEqual(self.storage.load_list("questions.json", Question), [])
+
     def test_topic_insights_rank_repeated_mistakes_without_ai(self):
         self.storage.save_list("questions.json", [
             Question(id="q1", image_name="1.png", image_path="uploads/1.png", subject="Matematik", topic="Fonksiyon", hamartia_tag="[Knowledge Gap]", created_at="2026-11-01T12:00:00Z"),

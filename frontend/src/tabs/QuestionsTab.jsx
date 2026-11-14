@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle2, FileImage, FileText, Sparkles, Upload } from 'lucide-react'
+import { CheckCircle2, FileImage, FileText, Pencil, Save, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
 
 const TAGS = ['[Knowledge Gap]', '[Distractor Trap]', '[Reading Slip]', '[Time Panic]']
@@ -12,6 +12,7 @@ export default function QuestionsTab({ initialSubject = '' }) {
   const [file, setFile] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(null)
   const fileInput = useRef(null)
 
   const load = useCallback(async () => {
@@ -76,6 +77,29 @@ export default function QuestionsTab({ initialSubject = '' }) {
     }
   }
 
+  const edit = async (event) => {
+    event.preventDefault()
+    try {
+      const { id, ...payload } = editing
+      await api.questions.update(id, payload)
+      setEditing(null)
+      await load()
+    } catch (e) {
+      setError(handleApiError(e).detail)
+    }
+  }
+
+  const remove = async (question) => {
+    if (!window.confirm(`${question.subject || 'Bu'} soru kaydı silinsin mi?`)) return
+    try {
+      await api.questions.remove(question.id)
+      if (editing?.id === question.id) setEditing(null)
+      await load()
+    } catch (e) {
+      setError(handleApiError(e).detail)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
@@ -118,7 +142,7 @@ export default function QuestionsTab({ initialSubject = '' }) {
         {questions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">İlk yanlış sorunu ekleyince tekrar listende görünecek.</div>
         ) : questions.slice().reverse().map((question) => (
-          <article key={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[160px_1fr]">
+          <article key={question.id} data-question-id={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[160px_1fr]">
             {question.image_path ? (
               <a href={`${API_BASE}/questions/${question.id}/image`} target="_blank" rel="noreferrer" className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-canvas-base" aria-label="Soru görselini aç">
                 <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject || 'Derssiz'} ${question.topic || 'konusuz'} soru`} className="max-h-56 w-full object-contain" />
@@ -127,11 +151,25 @@ export default function QuestionsTab({ initialSubject = '' }) {
               <div role="img" aria-label="Görseli olmayan metin sorusu" className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />Metin sorusu</div>
             )}
             <div className="min-w-0 space-y-3">
-              <div>
-                <p className="font-semibold text-canvas-text">{question.subject || 'Ders belirtilmedi'}{question.topic ? ` · ${question.topic}` : ''}</p>
-                <p className="text-xs text-canvas-muted">{question.created_at?.slice(0, 10)}</p>
-              </div>
-              {question.ocr_text && <p className="whitespace-pre-wrap text-sm text-canvas-muted">{question.ocr_text}</p>}
+              {editing?.id === question.id ? (
+                <form onSubmit={edit} className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs text-canvas-muted">Ders<input aria-label="Düzenle · Ders" value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className={inputClass} /></label>
+                  <label className="text-xs text-canvas-muted">Konu<input aria-label="Düzenle · Konu" value={editing.topic} onChange={(e) => setEditing({ ...editing, topic: e.target.value })} className={inputClass} /></label>
+                  <label className="text-xs text-canvas-muted sm:col-span-2">Soru metni<textarea aria-label="Düzenle · Soru metni" value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /></label>
+                  <div className="flex gap-2 sm:col-span-2">
+                    <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-white"><Save size={14} /> Kaydet</button>
+                    <button type="button" onClick={() => setEditing(null)} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted"><X size={14} /> Vazgeç</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div>
+                    <p className="font-semibold text-canvas-text">{question.subject || 'Ders belirtilmedi'}{question.topic ? ` · ${question.topic}` : ''}</p>
+                    <p className="text-xs text-canvas-muted">{question.created_at?.slice(0, 10)}</p>
+                  </div>
+                  {question.ocr_text && <p className="whitespace-pre-wrap text-sm text-canvas-muted">{question.ocr_text}</p>}
+                </>
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 <label className="sr-only" htmlFor={`tag-${question.id}`}>Hata türü</label>
                 <select id={`tag-${question.id}`} value={question.hamartia_tag} onChange={(e) => tag(question, e.target.value)} className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text">
@@ -140,6 +178,8 @@ export default function QuestionsTab({ initialSubject = '' }) {
                 {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> Yerel AI ile incele</button>}
                 {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> Tekrar ettim</button>}
                 {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><CheckCircle2 size={14} /> Tekrarlandı · {question.reviewed_at.slice(0, 10)}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">Tekrarı geri al</button></>}
+                <button type="button" onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text })} aria-label={`Soruyu düzenle ${question.subject || question.id}`} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> Düzenle</button>
+                <button type="button" onClick={() => remove(question)} aria-label={`Soruyu sil ${question.subject || question.id}`} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-accent"><Trash2 size={14} /> Sil</button>
               </div>
               {question.analysis && (
                 <div className="rounded-lg bg-canvas-base p-3 text-sm">

@@ -60,15 +60,6 @@ async function main() {
     })
     page.on('response', (response) => {
       if (response.status() >= 400) failedResponses.push({ url: response.url(), status: response.status() })
-      if (new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST') {
-        response.json().then((question) => {
-          if (question.exam_id) linkedQuestion = question
-          else createdQuestion = question
-        })
-      }
-      if (new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST') {
-        response.json().then((session) => { practiceSession = session })
-      }
     })
     page.on('request', (request) => {
       if (request.url().startsWith(apiUrl)) {
@@ -108,6 +99,7 @@ async function main() {
       practiceSection.getByRole('button', { name: 'Seti kaydet' }).click(),
     ])
     if (!practiceResponse.ok()) throw new Error(`Practice save failed ${practiceResponse.status()}: ${await practiceResponse.text()}`)
+    practiceSession = await practiceResponse.json()
     await practiceSection.getByText('80.0% cevaplanan doğruluğu').waitFor()
     assert.equal(practiceSession.correct, 8)
     await page.reload({ waitUntil: 'networkidle' })
@@ -141,6 +133,7 @@ async function main() {
       resumedSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
     ])
     if (!focusResponse.ok()) throw new Error(`Focused practice save failed ${focusResponse.status()}: ${await focusResponse.text()}`)
+    practiceSession = await focusResponse.json()
     await resumedSection.waitFor({ state: 'detached' })
     assert.equal(practiceSession.subject, 'Matematik')
     assert.equal(practiceSession.topic, 'Fonksiyon')
@@ -201,7 +194,11 @@ async function main() {
     await page.getByLabel('Ders').fill('Türkçe')
     await page.getByLabel('Konu').fill('Paragraf')
     await page.locator('textarea').fill('Metin tabanlı deneme sorusu')
-    await page.getByRole('button', { name: 'Soruyu kaydet' }).click()
+    const [createdQuestionResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
+    ])
+    createdQuestion = await createdQuestionResponse.json()
     await page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }).waitFor()
     assert.equal(createdQuestion.image_path, '')
     assert.equal(createdQuestion.ocr_text, 'Metin tabanlı deneme sorusu')
@@ -228,7 +225,11 @@ async function main() {
     await page.getByLabel('Çözüm sırası').fill('1')
     await page.getByLabel('Soruda harcanan saniye').fill('32')
     await page.locator('textarea').fill('Denemeye bağlı yanlış soru')
-    await page.getByRole('button', { name: 'Soruyu kaydet' }).click()
+    const [linkedQuestionResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
+    ])
+    linkedQuestion = await linkedQuestionResponse.json()
     await page.getByText('Deneme sorusu 2 · çözüm sırası 1 · 32 sn').waitFor()
     assert.equal(linkedQuestion.exam_id.length > 0, true)
     await page.reload({ waitUntil: 'networkidle' })

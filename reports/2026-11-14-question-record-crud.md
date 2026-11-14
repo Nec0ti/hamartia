@@ -23,4 +23,4 @@
 - Tüm test ve benchmarklar model çağrısı yapmadı; local AI doğrulaması başka bilgisayarda yapılacak.
 - İki backend benchmarkı eşzamanlı çalıştırıldı; süreler makine yükünden etkilenmiş olabilir ve donanımlar arası karşılaştırma değildir.
 - JSON listesi ile dosya silme tek transaction oluşturamaz. Kayıt listeden çıkarıldıktan sonra süreç durursa yetim görsel kalabilir; silme rotası bu durumda hatayı bildirir. Dış dizindeki dosya silinmez.
-- GitHub Actions bu commitler için henüz tamamlanmadı.
+- GitHub Actions run #47 (`f372b2f4`) frontend test/build/browser smoke ile backend test ve iki benchmark işini başarıyla tamamladı.

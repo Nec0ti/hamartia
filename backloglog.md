@@ -39,4 +39,5 @@
 - 2026-11-14: Yanlış soru kartlarına ders/konu/metin düzenleme ve onaylı silme eklendi. Düzenleme görseli, analiz etiketini ve tekrar geçmişini koruyor; text-only soru boş metne çevrilemiyor. Silme kaydı atomik listeden çıkarıyor ve yalnızca `uploads/` altındaki görseli kaldırıyor. 43 backend testi, 4 frontend testi, build ve Chromium smoke geçti; AI çağrısı yok.
 - 100 soruluk akışta upload 0.3006 sn, text capture 0.4759 sn, tek soru düzenleme 0.0047 sn ve görsel silmeyle soru silme 0.0041 sn ölçüldü. 1.000 JSON denemede append 12.8297 sn (77.94/s), read 0.0077 sn, update/delete 0.0278/0.0241 sn; tüm benchmarklar AI'siz. Benchmark süreçleri eşzamanlı çalıştığı için sonuçlar makine gürültüsüne açık.
 - Browser smoke: navigasyon 2.362 sn, capture+review persistence 2.335 sn, deneme CRUD 1.301 sn, soru düzenle+sil 0.423 sn; 390 px taşma, API/JS/console hatası yok. Build 23.50 sn, ana bundle 679.05 KB minified / 193.94 KB gzip; 500 KB chunk uyarısı sürüyor.
-- Rapor: `reports/2026-11-14-question-record-crud.md`. Kod commiti GitHub dalına aktarıldı; CI sonucu henüz doğrulanmadı.
+- GitHub Actions run #47 (`f372b2f4`) frontend test/build/browser smoke ile backend test ve iki benchmark işini başarıyla tamamladı.
+- Rapor: `reports/2026-11-14-question-record-crud.md`.

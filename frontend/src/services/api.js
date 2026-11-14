@@ -29,6 +29,14 @@ export const exams = {
   remove: (id) => client.delete(`/exams/${id}`).then((r) => r.data),
 }
 
+export const practice = {
+  list: () => client.get('/practice').then((r) => r.data),
+  insights: () => client.get('/practice/insights').then((r) => r.data),
+  create: (payload) => client.post('/practice', payload).then((r) => r.data),
+  update: (id, payload) => client.put(`/practice/${id}`, payload).then((r) => r.data),
+  remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
+}
+
 /* ----------------------------- questions -------------------------------- */
 
 export const questions = {
@@ -122,4 +130,4 @@ export const handleApiError = (error) => {
   return { ok: false, status, detail }
 }
 
-export default { exams, questions, cosmos, agent, user, settings, health }
+export default { exams, practice, questions, cosmos, agent, user, settings, health }

@@ -221,6 +221,64 @@ class ExamCreate(BaseModel):
         return value
 
 
+class PracticeSessionData(BaseModel):
+    date: str
+    subject: str
+    topic: str
+    correct: int = Field(ge=0)
+    incorrect: int = Field(ge=0)
+    blank: int = Field(ge=0)
+    duration_minutes: int = Field(default=0, ge=0)
+    duration_seconds: int = Field(default=0, ge=0, lt=60)
+
+    @field_validator("date")
+    @classmethod
+    def require_iso_date(cls, value: str) -> str:
+        try:
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("date must use YYYY-MM-DD") from exc
+        if parsed.strftime("%Y-%m-%d") != value:
+            raise ValueError("date must use YYYY-MM-DD")
+        return value
+
+    @field_validator("subject", "topic")
+    @classmethod
+    def require_label(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("subject and topic are required")
+        return value
+
+    @model_validator(mode="after")
+    def require_questions(self):
+        if self.correct + self.incorrect + self.blank < 1:
+            raise ValueError("a completed set must contain at least one question")
+        return self
+
+
+class PracticeSession(PracticeSessionData):
+    """One completed, manually scored study set."""
+
+    id: str
+    created_at: str = ""
+
+    @computed_field
+    @property
+    def net(self) -> float:
+        return self.correct - self.incorrect / 4
+
+    @computed_field
+    @property
+    def accuracy(self) -> float | None:
+        answered = self.correct + self.incorrect
+        return self.correct / answered if answered else None
+
+
+class PracticeSessionCreate(PracticeSessionData):
+    pass
+
+
 def _utcnow_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 

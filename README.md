@@ -46,6 +46,7 @@ python backend/benchmarks/benchmark_storage.py
 python backend/benchmarks/benchmark_questions.py
 python backend/benchmarks/benchmark_backup.py
 python backend/benchmarks/benchmark_question_order.py
+python backend/benchmarks/benchmark_practice_sessions.py
 ```
 
 Frontend:
@@ -58,6 +59,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; görselsiz yanlış soru kaydı/tekrarını, bugünkü etkinlik özetini ve düzenleme-silme akışını, TYT/AYT/branş denemesi oluşturma-düzenleme-silme akışını ve yenileme sonrası saklamayı kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; görselsiz yanlış soru kaydı/tekrarını, bugünkü etkinlik özetini ve düzenleme-silme akışını, deneme CRUD'unu, konu çalışma seti kaydı ve yenileme sonrası saklamayı kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
 
 Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.

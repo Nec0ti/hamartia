@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from app.models.schemas import CosmosData, Exam, Question, Settings, UserStats
+from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
 
 BACKUP_FORMAT = "hamartia-local-backup"
@@ -24,7 +24,9 @@ JSON_MODELS = {
     "cosmos.json": ("doc", CosmosData),
     "agent_documents.json": ("dict_list", dict),
     "settings.json": ("doc", Settings),
+    "practice_sessions.json": ("list", PracticeSession),
 }
+OPTIONAL_BACKUP_JSON = {"practice_sessions.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -49,6 +51,7 @@ def _defaults():
         "cosmos.json": CosmosData().model_dump(mode="json"),
         "agent_documents.json": [],
         "settings.json": Settings().model_dump(mode="json"),
+        "practice_sessions.json": [],
     }
 
 
@@ -212,7 +215,8 @@ def extract_backup(archive_path, destination):
         names = [_archive_name(info.filename) for info in infos]
         if len(names) > MAX_FILES + 1 or len(set(names)) != len(names):
             raise BackupError("Backup contains too many or duplicate entries")
-        if "manifest.json" not in names or not set(JSON_MODELS).issubset(names):
+        required = set(JSON_MODELS) - OPTIONAL_BACKUP_JSON
+        if "manifest.json" not in names or not required.issubset(names):
             raise BackupError("Backup is incomplete")
         if any(info.is_dir() for info in infos):
             raise BackupError("Directory entries are not allowed in backups")
@@ -266,6 +270,9 @@ def extract_backup(archive_path, destination):
                         output.write(chunk)
                 if size != entry["size"] or digest.hexdigest() != entry["sha256"]:
                     raise BackupError(f"Checksum or size mismatch for {name}")
+
+            for name in OPTIONAL_BACKUP_JSON - set(expected):
+                (destination / name).write_bytes(_json_bytes(_defaults()[name]))
 
             json_files = {name: (destination / name).read_bytes() for name in JSON_MODELS}
             for name, raw in json_files.items():

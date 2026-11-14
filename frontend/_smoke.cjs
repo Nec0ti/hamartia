@@ -53,6 +53,7 @@ async function main() {
     const appRequests = []
     let createdQuestion
     let linkedQuestion
+    let practiceSession
     page.on('pageerror', (error) => pageErrors.push(error.message))
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push({ text: message.text(), location: message.location() })
@@ -64,6 +65,9 @@ async function main() {
           if (question.exam_id) linkedQuestion = question
           else createdQuestion = question
         })
+      }
+      if (new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST') {
+        response.json().then((session) => { practiceSession = session })
       }
     })
     page.on('request', (request) => {
@@ -88,6 +92,28 @@ async function main() {
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     assert(pageWidth <= 390, `390 px view overflows to ${pageWidth} px`)
     const navigationMs = Math.round(performance.now() - started)
+
+    const practiceStarted = performance.now()
+    const practiceSection = page.getByRole('region', { name: 'Konu çalışma setleri' })
+    await practiceSection.getByLabel('Ders').fill('Matematik')
+    await practiceSection.getByLabel('Konu').fill('Fonksiyonlar')
+    await practiceSection.getByLabel('Doğru').fill('8')
+    await practiceSection.getByLabel('Yanlış').fill('2')
+    await practiceSection.getByLabel('Boş').fill('1')
+    await practiceSection.getByLabel('Dakika').fill('25')
+    await practiceSection.getByLabel('Saniye').fill('10')
+    assert.equal(await practiceSection.locator('form').evaluate((form) => form.checkValidity()), true)
+    const [practiceResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
+      practiceSection.getByRole('button', { name: 'Seti kaydet' }).click(),
+    ])
+    if (!practiceResponse.ok()) throw new Error(`Practice save failed ${practiceResponse.status()}: ${await practiceResponse.text()}`)
+    await practiceSection.getByText('80.0% cevaplanan doğruluğu').waitFor()
+    assert.equal(practiceSession.correct, 8)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await page.getByRole('region', { name: 'Konu çalışma setleri' }).getByText('80.0% cevaplanan doğruluğu').waitFor()
+    const practiceSessionPersistenceMs = Math.round(performance.now() - practiceStarted)
 
     const attempted = performance.now()
     await page.getByRole('button', { name: 'Yanlış çözdüm' }).click()
@@ -185,11 +211,14 @@ async function main() {
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}` && request.method === 'PATCH' && request.body.subject === 'Edebiyat'))
     assert(appRequests.some((request) => request.path === '/questions/q1' && request.method === 'DELETE'))
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
+    assert(appRequests.some((request) => request.path === '/practice' && request.method === 'POST'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(consoleErrors, [])
     const saved = JSON.parse(await fs.readFile(path.join(dataDir, 'questions.json'), 'utf8'))
+    const savedPractice = JSON.parse(await fs.readFile(path.join(dataDir, 'practice_sessions.json'), 'utf8'))
+    assert.equal(savedPractice.find((session) => session.id === practiceSession.id).correct, 8)
     assert.deepEqual(saved.find((question) => question.id === createdQuestion.id).review_attempts.map((item) => item.correct), [true])
     assert.equal(saved.find((question) => question.id === createdQuestion.id).subject, 'Edebiyat')
     assert.equal(saved.find((question) => question.id === createdQuestion.id).ocr_text, 'Güncellenmiş soru metni')
@@ -198,7 +227,7 @@ async function main() {
     assert.equal(saved.find((question) => question.id === linkedQuestion.id).solve_order, 1)
     assert.equal(await fs.access(path.join(uploads, 'q1.png')).then(() => true).catch(() => false), false)
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'exams.json'), 'utf8')), [])
-    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
+    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error

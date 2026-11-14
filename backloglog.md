@@ -1,5 +1,9 @@
 # Backlog günlüğü
 
+- 2026-11-14: Konu çalışma seti kaydı tamamlandı. Doğru/yanlış/boş, süre, net ve yalnızca cevaplanan sorular üzerinden doğruluk saklanıyor; konu özeti set kayıtlarından hesaplanıyor. Yedekleme eski ZIP biçimiyle uyumlu. 72 backend testi, frontend 4/4, build ve gerçek tarayıcı smoke geçti. AI'siz 1k/10k benchmarkı eklendi; CI'a bağlandı.
+
+- 2026-11-14: Konu bazında gerçek çalışma ilerlemesi için doğru/yanlış/boş ve süreyle tamamlanmış set kaydı planlandı. Doğruluk yalnızca cevaplanan sorulara bölünecek; yanlış defteri sayısı payda yapılmayacak. Tasarım: `reports/2026-11-14-practice-sessions-plan.md`.
+
 ## 2026-11-14 — deneme sırası ve yanlış süresi
 
 - Yanlış soru denemeye bağlanabiliyor; soru no, gerçek çözüm sırası ve o soruda harcanan saniye kalıcı saklanıyor. Eski JSON kayıtları boş varsayılanlarla okunuyor.

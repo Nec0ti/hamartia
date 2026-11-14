@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from app.models.schemas import CosmosData, Exam, Question, Settings, UserStats
+from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Settings, UserStats
 from app.services.backup import BackupError, JSON_MODELS, create_backup, extract_backup, restore_backup
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService
@@ -27,6 +27,10 @@ def make_data(data_dir, exam_id, api_key):
     storage.save_doc("user.json", UserStats(total_xp=123))
     storage.save_doc("cosmos.json", CosmosData())
     storage.save_list("agent_documents.json", [{"id": "doc1.txt", "filename": "lesson.txt"}])
+    storage.save_list("practice_sessions.json", [PracticeSession(
+        id="practice1", date="2026-11-14", subject="Matematik", topic="Fonksiyon",
+        correct=6, incorrect=2, blank=1,
+    )])
     storage.save_doc("settings.json", Settings(
         litellm_base_url="http://local.test/v1", model_name="local-model", api_key=api_key,
     ))
@@ -56,6 +60,7 @@ class BackupTests(unittest.TestCase):
             self.assertTrue(set(JSON_MODELS).issubset(archive.namelist()))
             self.assertEqual(archive.read("uploads/q1.png"), b"image bytes")
             self.assertEqual(archive.read("uploads/doc1.txt"), b"study notes")
+            self.assertEqual(json.loads(archive.read("practice_sessions.json"))[0]["id"], "practice1")
             self.assertEqual(json.loads(archive.read("settings.json"))["api_key"], "")
             self.assertNotIn(b"must-not-be-exported", archive.read("settings.json"))
 
@@ -69,6 +74,7 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(read_json(target / "settings.json")["api_key"], "current-local-key")
         self.assertEqual((target / "uploads/q1.png").read_bytes(), b"image bytes")
         self.assertEqual((target / "uploads/doc1.txt").read_bytes(), b"study notes")
+        self.assertEqual(read_json(target / "practice_sessions.json")[0]["id"], "practice1")
         self.assertTrue(Path(result["snapshot"]).is_dir())
         self.assertEqual([exam["id"] for exam in read_json(Path(result["snapshot"]) / "exams.json")], ["current-exam"])
 
@@ -80,6 +86,23 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(result["snapshot"], "")
         self.assertEqual(read_json(target / "settings.json")["api_key"], "")
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
+
+    def test_restore_accepts_legacy_backup_without_practice_sessions(self):
+        legacy = self.root / "legacy.zip"
+        with zipfile.ZipFile(self.archive) as source:
+            files = {name: source.read(name) for name in source.namelist() if name != "manifest.json"}
+            manifest = json.loads(source.read("manifest.json"))
+        files.pop("practice_sessions.json")
+        manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != "practice_sessions.json"]
+        with zipfile.ZipFile(legacy, "w", compression=zipfile.ZIP_DEFLATED) as target:
+            for name, raw in files.items():
+                target.writestr(name, raw)
+            target.writestr("manifest.json", json.dumps(manifest))
+        restored = self.root / "legacy-restored"
+
+        restore_backup(legacy, restored)
+
+        self.assertEqual(read_json(restored / "practice_sessions.json"), [])
 
     def test_restore_command_uses_selected_data_directory(self):
         target = self.root / "cli-data"

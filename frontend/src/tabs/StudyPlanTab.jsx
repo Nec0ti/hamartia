@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BookOpenCheck, CheckCircle2, Clock3, FileText, Tags, ThumbsDown, ThumbsUp } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
+import PracticeSessions from './PracticeSessions.jsx'
 
 const TAG_LABELS = {
   '[Knowledge Gap]': 'Konu eksiği',
@@ -48,6 +49,8 @@ export default function StudyPlanTab() {
         <Stat label="Sonraki güne planlı" value={plan.scheduled_questions} icon={<Clock3 size={18} />} />
         <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<Tags size={18} />} />
       </div>
+
+      <PracticeSessions />
 
       <section aria-label="Bugünkü çalışma" className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
         <h2 className="font-semibold text-canvas-text">Bugün</h2>

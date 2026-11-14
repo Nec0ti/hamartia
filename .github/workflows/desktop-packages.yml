@@ -10,6 +10,7 @@ on:
       - 'desktop/smoke_backend.py'
       - '.github/scripts/release_metadata.py'
       - '.github/scripts/test_release_metadata.py'
+      - '.github/scripts/linux-safe-storage-smoke.sh'
       - '.github/workflows/desktop-packages.yml'
       - '.github/workflows/release.yml'
       - 'RELEASES.md'
@@ -51,16 +52,19 @@ jobs:
       - run: npm ci --prefix desktop
       - run: python -m pip install -r backend/requirements-build.txt
       - run: npm test --prefix frontend
+      - run: npm test --prefix desktop
       - run: python .github/scripts/test_release_metadata.py
       - if: matrix.target == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus-x11 dbus-daemon gnome-keyring
       - if: matrix.target == 'linux'
         run: npm run dist:linux --prefix desktop
       - if: matrix.target == 'windows'
         run: npm run dist:win --prefix desktop
       - run: python desktop/smoke_backend.py
       - if: matrix.target == 'linux'
-        run: xvfb-run -a node desktop/smoke_electron.cjs desktop/dist/linux-unpacked
+        run: bash .github/scripts/linux-safe-storage-smoke.sh protected desktop/dist/linux-unpacked
+      - if: matrix.target == 'linux'
+        run: bash .github/scripts/linux-safe-storage-smoke.sh rejected desktop/dist/linux-unpacked
       - if: matrix.target == 'windows'
         run: node desktop/smoke_electron.cjs desktop/dist/win-unpacked
       - name: Install, launch, and uninstall the NSIS installer
@@ -120,7 +124,7 @@ jobs:
           executable="$(readlink -f "$executable")"
           test -f "$executable"
           test -x "$executable"
-          xvfb-run -a node desktop/smoke_electron.cjs "$executable"
+          bash .github/scripts/linux-safe-storage-smoke.sh protected "$executable"
       - name: Launch the AppImage
         if: matrix.target == 'linux'
         shell: bash
@@ -129,7 +133,7 @@ jobs:
           appimage="$(find desktop/dist -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
           test -n "$appimage"
           test -x "$appimage"
-          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a node desktop/smoke_electron.cjs "$GITHUB_WORKSPACE/$appimage"
+          APPIMAGE_EXTRACT_AND_RUN=1 bash .github/scripts/linux-safe-storage-smoke.sh protected "$GITHUB_WORKSPACE/$appimage"
       - if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
         with:

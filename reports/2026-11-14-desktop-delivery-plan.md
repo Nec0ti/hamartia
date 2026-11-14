@@ -17,6 +17,8 @@
 - Serve `frontend/dist` from the FastAPI process in packaged mode so the UI and API share one local HTTP origin. Keep Vite and the existing `scripts/dev.py` flow for source development.
 - Preserve the existing JSON data and backup formats. Add a migration/preservation test for the per-user data-directory change.
 
+Use [electron-builder's multi-platform build guidance](https://www.electron.build/v26/docs/features/multi-platform-build/) and [PyInstaller's operating-mode guidance](https://pyinstaller.org/en/stable/operating-mode.html): build each native backend on its target OS and validate the onedir bundle before distributing it.
+
 ## Release workflow
 
 - Trigger a release only after a pull request has merged.

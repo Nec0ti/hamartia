@@ -110,14 +110,14 @@ def github_request(method, url, token, data=None):
         "X-GitHub-Api-Version": "2022-11-28",
     })
     with urllib.request.urlopen(request, timeout=20) as response:
-        return json.loads(response.read())
+        return json.loads(response.read().decode("utf-8"))
 
 
 def append_release_to_github(tag, notes, repository, token):
     url = f"https://api.github.com/repos/{repository}/contents/RELEASES.md"
     for attempt in range(8):
         current = github_request("GET", f"{url}?ref=master", token)
-        content = base64.b64decode(current["content"]).decode()
+        content = base64.b64decode(current["content"]).decode("utf-8")
         updated = append_release_content(content, tag, notes)
         if updated == content:
             return
@@ -152,14 +152,14 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
     release = existing_release_for_pull_request(existing, pull["html_url"])
     if release is not None:
         code = release["tag_name"]
-        notes_path.write_text(release["body"])
+        notes_path.write_text(release["body"], encoding="utf-8")
     else:
         release = None
         for _ in range(20):
             subprocess.run(["git", "fetch", "--tags", "origin"], check=True)
             tags = subprocess.check_output(["git", "tag", "--list", "ARETE-*"], text=True).splitlines()
             code = next_arete_code(tags)
-            notes_path.write_text(render_notes(code, pull))
+            notes_path.write_text(render_notes(code, pull), encoding="utf-8")
             command = [
                 "gh", "release", "create", code, *map(str, artifacts),
                 "--title", code, "--notes-file", str(notes_path), "--target", target_sha,
@@ -181,7 +181,7 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
                     continue
                 raise RuntimeError(result.stderr or result.stdout or f"Could not create {code}")
             if pull["html_url"] in body:
-                notes_path.write_text(body)
+                notes_path.write_text(body, encoding="utf-8")
                 break
             time.sleep(0.25)
         else:
@@ -190,7 +190,7 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
     if release is None or "tag_name" not in release:
         release = fetch_release(code)
     release = ensure_release_assets(code, release, artifacts)
-    notes_path.write_text(release["body"])
+    notes_path.write_text(release["body"], encoding="utf-8")
 
     with github_output.open("a") as output:
         output.write(f"tag={code}\npr_number={pull['number']}\n")
@@ -220,7 +220,7 @@ def main():
     elif args.command == "publish":
         publish_release(args.pulls_json, args.artifact_dir, args.target_sha, args.notes_file, args.github_output)
     else:
-        append_release_to_github(args.tag, args.notes_file.read_text(), args.repository, args.token)
+        append_release_to_github(args.tag, args.notes_file.read_text(encoding="utf-8"), args.repository, args.token)
 
 
 if __name__ == "__main__":

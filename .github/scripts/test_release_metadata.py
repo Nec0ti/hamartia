@@ -103,8 +103,9 @@ class ReleaseMetadataTests(unittest.TestCase):
             create_call = next(item for item in run.call_args_list if item.args[0][:3] == ["gh", "release", "create"])
             self.assertIn("ARETE-001", create_call.args[0])
             self.assertEqual(output_path.read_text(), "tag=ARETE-001\npr_number=42\n")
-            self.assertIn("## English", notes_path.read_text())
-            self.assertIn("## Türkçe", notes_path.read_text())
+            self.assertIn("## English", notes_path.read_text(encoding="utf-8"))
+            self.assertIn("## Türkçe", notes_path.read_text(encoding="utf-8"))
+            self.assertIn("numaralı", notes_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

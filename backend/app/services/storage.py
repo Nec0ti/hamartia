@@ -139,9 +139,9 @@ class StorageService:
             return None
         try:
             data = json.loads(raw)
-        except ValueError:
-            return None
-        return model_cls.model_validate(data)
+            return model_cls.model_validate(data)
+        except (ValueError, TypeError) as exc:
+            raise StorageError(f"Cannot read invalid {filename}") from exc
 
     def save_doc(self, filename: str, model: Any) -> None:
         lock = self._lock_for(filename)

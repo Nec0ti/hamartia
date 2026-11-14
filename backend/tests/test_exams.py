@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.api.exams import create_exam
-from app.models.schemas import Exam, ExamCreate
+from app.models.schemas import Exam, ExamCreate, Settings
 from app.services.storage import StorageError, StorageService
 
 
@@ -84,6 +84,15 @@ class ExamFlowTests(unittest.TestCase):
         self.storage.append_list("agent_documents.json", document, dict)
 
         self.assertEqual(self.storage.load_list("agent_documents.json", dict), [document])
+
+    def test_invalid_json_document_is_not_treated_as_missing(self):
+        path = Path(self.temp_dir.name) / "settings.json"
+        path.write_text("{")
+
+        with self.assertRaises(StorageError):
+            self.storage.load_doc("settings.json", Settings)
+
+        self.assertEqual(path.read_text(), "{")
 
     def test_delete_and_append_cannot_lose_the_new_record(self):
         old = Exam(id="old", date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)

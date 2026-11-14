@@ -23,6 +23,23 @@ class Settings(BaseModel):
     api_key: str = ""
 
 
+class SettingsResponse(BaseModel):
+    """Settings safe to send to the browser without revealing the API key."""
+
+    litellm_base_url: str
+    model_name: str
+    has_api_key: bool
+
+
+class SettingsUpdate(BaseModel):
+    """Settings changes; a blank key preserves the saved value by default."""
+
+    litellm_base_url: str = "http://localhost:4000/v1"
+    model_name: str = "ollama/qwen2.5"
+    api_key: str = ""
+    clear_api_key: bool = False
+
+
 # ---------------------------------------------------------------------------
 # User progression (backend/data/user.json)
 # ---------------------------------------------------------------------------

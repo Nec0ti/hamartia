@@ -270,6 +270,30 @@ async function main() {
     const questionManageMs = Math.round(performance.now() - questionManageStarted)
     const backupStarted = performance.now()
     await page.getByRole('button', { name: 'Ayarları aç' }).click()
+    const settingsGet = await page.context().request.get(`${apiUrl}/settings`)
+    assert.equal(settingsGet.status(), 200)
+    assert.deepEqual(await settingsGet.json(), {
+      litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', has_api_key: false,
+    })
+    const apiKeyInput = page.getByLabel('API anahtarı')
+    await apiKeyInput.fill('smoke-secret')
+    const [settingsSet] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/settings' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Kaydet', exact: true }).click(),
+    ])
+    assert.deepEqual(await settingsSet.json(), {
+      litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', has_api_key: true,
+    })
+    await page.getByText('Ayarlar kaydedildi.').waitFor()
+    await page.getByLabel('Kayıtlı API anahtarını sil').check()
+    const [settingsClear] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/settings' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Kaydet', exact: true }).click(),
+    ])
+    assert.equal((await settingsClear.json()).has_api_key, false)
+    const settingsKeyPath = path.join(dataDir, 'settings.json')
+    assert.equal(JSON.parse(await fs.readFile(settingsKeyPath, 'utf8')).api_key, '')
+    const settingsKeyManagementMs = Math.round(performance.now() - backupStarted)
     assert.match(await page.getByRole('link', { name: 'Yedeği indir' }).getAttribute('href'), /\/backup$/)
     const [backupDownload] = await Promise.all([
       page.waitForEvent('download'),
@@ -277,7 +301,7 @@ async function main() {
     ])
     assert.equal(backupDownload.suggestedFilename(), 'hamartia-backup.zip')
     assert.deepEqual((await fs.readFile(await backupDownload.path())).subarray(0, 2), Buffer.from('PK'))
-    const backupDownloadMs = Math.round(performance.now() - backupStarted)
+    const backupDownloadMs = Math.round(performance.now() - backupStarted - settingsKeyManagementMs)
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
@@ -305,7 +329,7 @@ async function main() {
     assert.equal(saved.find((question) => question.id === linkedQuestion.id).solve_order, 1)
     assert.equal(await fs.access(path.join(uploads, 'q1.png')).then(() => true).catch(() => false), false)
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'exams.json'), 'utf8')), [])
-    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, practice_trend_and_history_ms: practiceTrendAndHistoryMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
+    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, practice_trend_and_history_ms: practiceTrendAndHistoryMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, settings_key_management_ms: settingsKeyManagementMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error

@@ -16,17 +16,21 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [clearApiKey, setClearApiKey] = useState(false)
 
   useEffect(() => {
-    if (settings) setDraft(settings)
-  }, [settings])
+    if (open && settings) setDraft({ ...settings, api_key: '' })
+    if (!open) setDraft((current) => ({ ...current, api_key: '' }))
+    setClearApiKey(false)
+  }, [open, settings])
 
   const save = async () => {
     setSaving(true)
     setSaved(false)
     setError(null)
     try {
-      await onSave(draft)
+      const { has_api_key: _hasApiKey, ...config } = draft
+      await onSave({ ...config, clear_api_key: clearApiKey })
       setSaved(true)
     } catch (e) {
       setError(handleApiError(e).detail)
@@ -84,16 +88,30 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
+            <label htmlFor="settings-api-key" className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
               API anahtarı <span className="text-canvas-muted/60">(isteğe bağlı)</span>
             </label>
             <input
+              id="settings-api-key"
               type="password"
               className={inputCls}
               value={draft.api_key}
-              onChange={(e) => setDraft({ ...draft, api_key: e.target.value })}
-              placeholder="Yerel sunucu anahtar istemiyorsa boş bırak"
+              onChange={(e) => {
+                setDraft({ ...draft, api_key: e.target.value })
+                if (e.target.value) setClearApiKey(false)
+              }}
+              placeholder={settings?.has_api_key ? 'Boş bırakılırsa kayıtlı anahtar korunur' : 'Yerel sunucu anahtar istemiyorsa boş bırak'}
             />
+            {settings?.has_api_key && (
+              <label className="mt-2 flex items-center gap-2 text-xs text-canvas-muted">
+                <input
+                  type="checkbox"
+                  checked={clearApiKey}
+                  onChange={(e) => setClearApiKey(e.target.checked)}
+                />
+                Kayıtlı API anahtarını sil
+              </label>
+            )}
           </div>
           {saved && <p className="text-xs text-emerald-400">Ayarlar kaydedildi.</p>}
           {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}

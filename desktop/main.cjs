@@ -132,15 +132,27 @@ async function writeSmokeReadiness(window) {
   let result
   try {
     result = await window.webContents.executeJavaScript(`(async () => {
-      const health = await fetch('/healthcheck/ready')
-      const headings = [...document.querySelectorAll('h1, h2')].map((item) => item.textContent.trim())
-      return {
-        origin: location.origin,
-        backendUrl: location.origin,
-        language: document.documentElement.lang,
-        overviewVisible: headings.includes('Overview'),
-        healthStatus: health.status,
+      const deadline = Date.now() + 20_000
+      let last = {}
+      while (Date.now() < deadline) {
+        let healthStatus = null
+        try {
+          const health = await fetch('/healthcheck/ready', { signal: AbortSignal.timeout(1000) })
+          healthStatus = health.status
+        } catch {}
+        const headings = [...document.querySelectorAll('h1, h2, h3, h4')].map((item) => item.textContent.trim())
+        last = {
+          origin: location.origin,
+          backendUrl: location.origin,
+          language: document.documentElement.lang,
+          overviewVisible: headings.includes('Overview'),
+          headings,
+          healthStatus,
+        }
+        if (last.language === 'en' && last.overviewVisible && last.healthStatus === 200) return last
+        await new Promise((resolve) => setTimeout(resolve, 250))
       }
+      throw new Error('Timed out waiting for English Overview and HTTP 200 readiness: ' + JSON.stringify(last))
     })()`)
   } catch (error) {
     result = { error: error.message }

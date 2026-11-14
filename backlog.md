@@ -49,7 +49,7 @@
 
 ## P4 — product language and delivery
 
-- [ ] Provide English (default) and Turkish application UI, with a persistent language selector.
+- [x] Provide English (default) and Turkish application UI, with a persistent language selector.
 - [x] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
 - [ ] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory.
 - [ ] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...).
@@ -62,4 +62,4 @@
 
 ## Next small task
 
-The local-first study workflow is merged in PR #1. Next: deliver the English-default EN/TR interface and documentation plan, then implement bilingual Pages, desktop packaging/release automation, and the ChatGPT-backed study agent in separate PRs.
+The bilingual EN/TR interface is implemented on `codex/hamartia-ui-language`; run PR CI and merge it. Next: package Windows 10/11, `.deb`, and AppImage builds with merged-PR release automation, then implement the ChatGPT-backed study agent in a separate PR.

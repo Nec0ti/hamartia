@@ -3,6 +3,7 @@
 Add each review, test, or benchmark report here as a dated Markdown file. Include the commands, scope, results, and limitations. Local AI runs and model performance must not be included in these measurements.
 
 - [2026-11-14 product language, GitHub Pages, desktop delivery, and ChatGPT study agent plan](2026-11-14-language-and-chatgpt-agent-plan.md)
+- [2026-11-14 English and Turkish application interface](2026-11-14-english-turkish-interface.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)

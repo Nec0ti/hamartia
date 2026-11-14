@@ -53,7 +53,7 @@
 
 1. Finish and merge the local-first study workflow (PR #1).
 2. Publish the public bilingual guide with GitHub Pages (PR #3, deployed).
-3. Implement the English-default bilingual application UI in its own PR; merge only after CI passes.
+3. Implement the English-default bilingual application UI in its own PR (current branch; CI and merge pending).
 4. Implement desktop packages and automatic sequential releases in their own delivery PR; merge only after platform builds and CI pass.
 5. Implement Phase 2 in its own PR; merge only after mocked checks and CI pass.
 6. Keep real account/model checks manual. The project is not ready to claim account integration works until the user completes that manual verification.

@@ -1,0 +1,290 @@
+{
+  "backup": {
+    "ai_included": false,
+    "archive_bytes": 25200816,
+    "benchmark": "local_backup_restore",
+    "correctness": "upload hashes and restored exams/questions/settings matched expected values",
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "export": {
+      "p50_seconds": 0.92585,
+      "p95_seconds": 0.951665,
+      "samples": 3
+    },
+    "files": 24,
+    "limitations": "Synthetic seeded PNG pixels and metadata; no personal files or full live user corpus.",
+    "restore": {
+      "p50_seconds": 0.11255,
+      "p95_seconds": 0.121312,
+      "samples": 3
+    },
+    "restore_snapshot": "pre-existing data was snapshotted and preserved each run",
+    "seed": 20261114,
+    "upload_bytes": 25186280,
+    "validation": {
+      "p50_seconds": 0.108246,
+      "p95_seconds": 0.108444,
+      "samples": 3
+    }
+  },
+  "mixed": {
+    "ai_included": false,
+    "benchmark": "persisted_mixed_study_workloads",
+    "concurrent_appends": {
+      "records": 16,
+      "seconds": 0.779411,
+      "workers": 4
+    },
+    "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "first_service_load_seconds": {
+      "exams.json": 0.020762,
+      "practice_sessions.json": 0.112469,
+      "questions.json": 0.060701
+    },
+    "persisted_json_bytes": {
+      "exams.json": 537993,
+      "practice_sessions.json": 1148871,
+      "questions.json": 1842179
+    },
+    "practice_summaries_full_history": {
+      "p50_seconds": 0.131553,
+      "p95_seconds": 0.168004,
+      "samples": 21
+    },
+    "progression_full_history": {
+      "p50_seconds": 0.026107,
+      "p95_seconds": 0.028171,
+      "samples": 21
+    },
+    "question_delete_10_records": {
+      "p50_seconds": 0.097778,
+      "p95_seconds": 0.150779,
+      "samples": 10
+    },
+    "question_insights_full_history": {
+      "p50_seconds": 0.1173,
+      "p95_seconds": 0.160184,
+      "samples": 21
+    },
+    "question_review_activity": {
+      "pending_questions": 2145,
+      "scheduled_questions": 355,
+      "today_correct": 105,
+      "today_incorrect": 208,
+      "today_questions": 313
+    },
+    "question_update_10_records": {
+      "p50_seconds": 0.094465,
+      "p95_seconds": 0.144145,
+      "samples": 10
+    },
+    "records": {
+      "exams": 1500,
+      "practice_sessions": 4000,
+      "questions": 2500
+    },
+    "seed": 20261114,
+    "warm_load": {
+      "exams.json": {
+        "p50_seconds": 0.019844,
+        "p95_seconds": 0.034636,
+        "samples": 21
+      },
+      "practice_sessions.json": {
+        "p50_seconds": 0.112053,
+        "p95_seconds": 0.127379,
+        "samples": 21
+      },
+      "questions.json": {
+        "p50_seconds": 0.050161,
+        "p95_seconds": 0.087713,
+        "samples": 21
+      }
+    }
+  },
+  "order": {
+    "ai_included": false,
+    "benchmark": "question_order_summary",
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "runs": [
+      {
+        "correctness": "unique in-range positions and each stage count/median match oracle; unknown, missing-order, and out-of-range references are excluded",
+        "exams": 50,
+        "persisted_bytes": 413299,
+        "questions": 1000,
+        "warm_full_summary": {
+          "p50_seconds": 0.02341,
+          "p95_seconds": 0.026258,
+          "samples": 7
+        }
+      },
+      {
+        "correctness": "unique in-range positions and each stage count/median match oracle; unknown, missing-order, and out-of-range references are excluded",
+        "exams": 500,
+        "persisted_bytes": 4152380,
+        "questions": 10000,
+        "warm_full_summary": {
+          "p50_seconds": 0.283019,
+          "p95_seconds": 0.318193,
+          "samples": 7
+        }
+      }
+    ],
+    "seed": 20261114
+  },
+  "practice": {
+    "ai_included": false,
+    "benchmark": "topic_practice_sessions",
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "runs": [
+      {
+        "correctness": "all sessions and topic groups accounted for",
+        "first_full_summary_seconds": 0.033813,
+        "persisted_bytes": 285824,
+        "sessions": 1000,
+        "topics": 676,
+        "warm_full_summary": {
+          "p50_seconds": 0.033401,
+          "p95_seconds": 0.035113,
+          "samples": 7
+        }
+      },
+      {
+        "correctness": "all sessions and topic groups accounted for",
+        "first_full_summary_seconds": 0.348446,
+        "persisted_bytes": 2865665,
+        "sessions": 10000,
+        "topics": 1280,
+        "warm_full_summary": {
+          "p50_seconds": 0.350428,
+          "p95_seconds": 0.373663,
+          "samples": 7
+        }
+      }
+    ],
+    "seed": 20261114
+  },
+  "questions": {
+    "ai_included": false,
+    "attempt_seconds": 0.0021,
+    "benchmark": "local_question_flow",
+    "correctness": "upload, query, edit, attempt, review, and deletion assertions passed",
+    "delete_seconds": 0.0028,
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "image_bytes": 17905285,
+    "insight_seconds": 0.0006,
+    "insights_warm": {
+      "p50_seconds": 0.000564,
+      "p95_seconds": 0.001936,
+      "samples": 7
+    },
+    "limitations": "PNG pixels are deterministic synthetic noise; no AI or image-understanding path is called.",
+    "list_seconds": 0.0003,
+    "list_warm": {
+      "p50_seconds": 0.000248,
+      "p95_seconds": 0.000283,
+      "samples": 7
+    },
+    "questions": 24,
+    "repeated_deletes": {
+      "p50_seconds": 0.001899,
+      "p95_seconds": 0.003719,
+      "samples": 7
+    },
+    "repeated_updates": {
+      "p50_seconds": 0.001814,
+      "p95_seconds": 0.003043,
+      "samples": 7
+    },
+    "review_seconds": 0.0019,
+    "section_question_insight_seconds": 0.0022,
+    "section_question_upload_seconds": 0.0754,
+    "section_questions": 24,
+    "seed": 20261114,
+    "text_capture_seconds": 0.0555,
+    "text_captures_per_second": 432.78,
+    "update_seconds": 0.0038,
+    "upload_seconds": 1.0871,
+    "uploads_per_second": 22.08,
+    "valid_png_dimensions": [
+      "256x256",
+      "512x384",
+      "1024x768"
+    ]
+  },
+  "storage": {
+    "ai_included": false,
+    "append_records_per_second": 78.09,
+    "append_seconds": 12.8056,
+    "benchmark": "json_exam_storage_sequential_append_stress",
+    "correctness": "append/read/update/delete and progression assertions passed",
+    "delete_one": {
+      "p50_seconds": 0.022919,
+      "p95_seconds": 0.025294,
+      "samples": 7
+    },
+    "document_update": {
+      "p50_seconds": 0.001637,
+      "p95_seconds": 0.002139,
+      "samples": 7
+    },
+    "environment": {
+      "logical_cpus": 8,
+      "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+      "processor": "not reported",
+      "python": "3.14.8",
+      "seed": 20261114
+    },
+    "limitations": "Sequential append rewrites the full growing JSON list (O(n^2)); this is a stress case, not the mixed daily-flow workload.",
+    "persisted_json_bytes": 310435,
+    "progression_full_history": {
+      "p50_seconds": 0.012659,
+      "p95_seconds": 0.014157,
+      "samples": 7
+    },
+    "read_seconds": 0.0107,
+    "records": 1000,
+    "sectioned_full_mocks": 10,
+    "seed": 20261114,
+    "update_one": {
+      "p50_seconds": 0.02329,
+      "p95_seconds": 0.027794,
+      "samples": 7
+    },
+    "warm_read": {
+      "p50_seconds": 0.009891,
+      "p95_seconds": 0.012648,
+      "samples": 7
+    }
+  }
+}

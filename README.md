@@ -50,11 +50,12 @@ Backend tests from the repository root:
 
 ```sh
 PYTHONPATH=backend python -m unittest discover -s backend/tests -v
-python backend/benchmarks/benchmark_storage.py
-python backend/benchmarks/benchmark_questions.py
-python backend/benchmarks/benchmark_backup.py
-python backend/benchmarks/benchmark_question_order.py
-python backend/benchmarks/benchmark_practice_sessions.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_storage.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_questions.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_backup.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_question_order.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_mixed_workloads.py
 ```
 
 Frontend:

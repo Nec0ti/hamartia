@@ -26,6 +26,8 @@ backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 
 backend/data/*.json
+backend/.data.lock
+backend/data.before-restore-*/
 
 # ==========================================
 # PYTHON & BACKEND
@@ -62,9 +64,6 @@ ENV/
 .coverage
 htmlcov/
 *.log
-
-# Local verification sweep scripts
-backend/tests/*.py
 
 # ==========================================
 # NODE & REACT (FRONTEND)

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Radar, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
+import { Radar, RadarChart as RechartsRadarChart, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
 import { Activity } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
 
-const AXES = ['Speed', 'Focus', 'Precision', 'Stamina']
+const AXES = [['speed', 'Hız'], ['focus', 'Odak'], ['precision', 'İsabet'], ['stamina', 'Dayanıklılık']]
 
 /**
  * Recharts spider/radar chart for the four performance axes. Renders an outer
@@ -22,32 +22,31 @@ export default function RadarChart({ radar }) {
     return (
       <Panel>
         <div className="flex items-center justify-center h-48 text-zinc-500 text-xs">
-          No radar data recorded yet.
+          Henüz performans verisi yok.
         </div>
       </Panel>
     )
 
-  const data = AXES.map((axis, i) => ({
+  const data = AXES.map(([key, axis]) => ({
     axis,
-    value: radar[axis.toLowerCase()] ?? 50,
+    value: radar[key] ?? 50,
     fullMark: 100,
   }))
 
   return (
     <Panel>
-      <Header icon={Activity} title="Performance Radar" />
+      <Header icon={Activity} title="Performans radarı" />
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} cx="50%" cy="50%" outerRadius={90}>
+          <RechartsRadarChart data={data} cx="50%" cy="50%" outerRadius={90}>
             <PolarAngleAxis
-              type="number"
               dataKey="axis"
               tick={{ fill: '#a1a1aa', fontSize: 12 }}
             />
             <PolarRadiusAxis
               angle={90}
               domain={[0, 100]}
-              tick={false}
+              tick={{ fill: '#52525b', fontSize: 10 }}
               axisLine={false}
             />
             {/* Faint concentric grid ring. */}
@@ -66,12 +65,7 @@ export default function RadarChart({ radar }) {
               strokeWidth={2}
               polygon={{ fill: '#22d3ee', fillOpacity: 0.35 }}
             />
-            <PolarRadiusAxis
-              angle={90}
-              domain={[0, 100]}
-              tick={{ fill: '#52525b', fontSize: 10 }}
-            />
-          </RadarChart>
+          </RechartsRadarChart>
         </ResponsiveContainer>
       </div>
     </Panel>

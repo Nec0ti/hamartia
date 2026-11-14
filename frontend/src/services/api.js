@@ -25,29 +25,49 @@ export const exams = {
   get: (id) => client.get(`/exams/${id}`).then((r) => r.data),
   create: (payload) =>
     client.post('/exams', payload).then((r) => r.data),
+  update: (id, payload) => client.put(`/exams/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/exams/${id}`).then((r) => r.data),
+}
+
+export const practice = {
+  list: () => client.get('/practice').then((r) => r.data),
+  insights: () => client.get('/practice/insights').then((r) => r.data),
+  create: (payload) => client.post('/practice', payload).then((r) => r.data),
+  update: (id, payload) => client.put(`/practice/${id}`, payload).then((r) => r.data),
+  remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
 }
 
 /* ----------------------------- questions -------------------------------- */
 
 export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
+  insights: () => client.get('/questions/insights').then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
-  upload: (file, ocrText) => {
+  upload: (file, ocrText, subject, topic, examContext = {}) => {
     const fd = new FormData()
-    fd.append('file', file, file.name)
+    if (file) fd.append('file', file, file.name)
     fd.append('ocr_text', ocrText || '')
+    fd.append('subject', subject || '')
+    fd.append('topic', topic || '')
+    if (examContext.examId) fd.append('exam_id', examContext.examId)
+    if (examContext.questionNumber) fd.append('question_number', examContext.questionNumber)
+    if (examContext.solveOrder) fd.append('solve_order', examContext.solveOrder)
+    if (examContext.timeSpentSeconds) fd.append('time_spent_seconds', examContext.timeSpentSeconds)
     return client.post('/questions', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       transformRequest: [(d) => d],
     }).then((r) => r.data)
   },
+  update: (id, payload) => client.patch(`/questions/${id}`, payload).then((r) => r.data),
+  remove: (id) => client.delete(`/questions/${id}`).then((r) => r.data),
   analyze: (id) =>
-    client.patch(`/questions/${id}/analyze`).then((r) => r.data),
+    client.post(`/questions/${id}/analyze`).then((r) => r.data),
   tag: (id, hamartiaTag) =>
     client
       .patch(`/questions/${id}/tag`, { hamartia_tag: hamartiaTag })
       .then((r) => r.data),
+  review: (id, reviewed = true) => client.patch(`/questions/${id}/review`, { reviewed }).then((r) => r.data),
+  attempt: (id, correct) => client.post(`/questions/${id}/attempt`, { correct }).then((r) => r.data),
 }
 
 /* -------------------------------- cosmos -------------------------------- */
@@ -110,4 +130,4 @@ export const handleApiError = (error) => {
   return { ok: false, status, detail }
 }
 
-export default { exams, questions, cosmos, agent, settings, health }
+export default { exams, practice, questions, cosmos, agent, user, settings, health }

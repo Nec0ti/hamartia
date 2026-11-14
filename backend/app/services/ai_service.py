@@ -8,17 +8,18 @@ the harness defined in the project root `HAMARTIA.md`.
 from __future__ import annotations
 
 import json
-import logging
+from base64 import b64encode
 from pathlib import Path
 
-from openai import AsyncOpenAI, OpenAI, OpenAIError
+from openai import AsyncOpenAI
 
 from app.core.config import DATA_DIR
 from app.core.formulas import net_score
 from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
+from app.services.storage import StorageService
 
-logger = logging.getLogger("hamartia.ai")
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
+IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
 # System prompt distilled from HAMARTIA.md. Injected at runtime so the harness
 # stays the single source of truth for the council's behavior.
@@ -49,25 +50,20 @@ class AIService:
         base_url: str = "http://localhost:4000/v1",
         model_name: str = "ollama/qwen2.5",
         api_key: str = "",
-        sync_client: bool = False,
     ):
         self.base_url = base_url
         self.model_name = model_name
         self.api_key = api_key or "sk-placeholder"
-        # Sync client by default so endpoints can be called without an event
-        # loop; switch to AsyncOpenAI when streaming is required.
-        self.client = OpenAI(base_url=base_url, api_key=self.api_key) if sync_client else None
         self._async_client: AsyncOpenAI | None = None
 
     @classmethod
     def default(cls) -> "AIService":
-        """Factory for the default sync-backed council engine."""
-        settings = Settings()
+        """Factory using the locally saved model endpoint and credentials."""
+        settings = StorageService(DATA_DIR).load_doc("settings.json", Settings) or Settings()
         return cls(
             base_url=settings.litellm_base_url,
             model_name=settings.model_name,
             api_key=settings.api_key,
-            sync_client=True,
         )
 
     # -- lifecycle ----------------------------------------------------------
@@ -90,29 +86,33 @@ class AIService:
         return analysis
 
     def _build_prompt(self, question: Question) -> list:
+        content = [{
+            "type": "text",
+            "text": (
+                f"Analyze this failed question.\n\n"
+                f"OCR text:\n{question.ocr_text}\n\n"
+                f"Image filename: {question.image_name}"
+            ),
+        }]
+        image_path = (DATA_DIR / question.image_path).resolve()
+        uploads_dir = (DATA_DIR / "uploads").resolve()
+        mime_type = IMAGE_MIME_TYPES.get(Path(question.image_name).suffix.lower())
+        if mime_type and image_path.is_relative_to(uploads_dir) and image_path.is_file():
+            encoded = b64encode(image_path.read_bytes()).decode("ascii")
+            content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}})
         return [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Analyze this failed question.\n\n"
-                    f"OCR text:\n{question.ocr_text}\n\n"
-                    f"Image filename: {question.image_name}"
-                ),
-            },
+            {"role": "user", "content": content},
         ]
 
     async def _completions(self, messages: list) -> str:
-        try:
-            resp = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                temperature=0.2,
-            )
-            return resp.choices[0].message.content or ""
-        except OpenAIError as exc:
-            logger.error("LiteLLM council call failed: %s", exc)
-            return ""
+        client = await self._ensure_async()
+        resp = await client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=0.2,
+        )
+        return resp.choices[0].message.content or ""
 
     # -- parsing ------------------------------------------------------------
 

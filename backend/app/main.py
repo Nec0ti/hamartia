@@ -9,14 +9,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agent, cosmos, exams, questions, settings
+from app.api import agent, backup, cosmos, exams, practice, questions, settings
+from app.core.config import DATA_DIR
+from app.services.data_lock import DataDirectoryLock
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Datastore is created lazily by the storage dependency; nothing to tear
-    # down on shutdown.
-    yield
+    with DataDirectoryLock(DATA_DIR):
+        yield
 
 
 app = FastAPI(
@@ -42,6 +43,7 @@ app.add_middleware(
 
 # Order matters: more specific routes must be registered before broader ones.
 app.include_router(exams.router)
+app.include_router(practice.router)
 app.include_router(questions.router)
 # 'user' is imported via __import__: the name shadows a Python stdlib module,
 # which breaks a plain `from app.api import user`.
@@ -49,5 +51,6 @@ app.include_router(__import__("app.api.user", fromlist=["router"]).router)
 app.include_router(cosmos.router)
 app.include_router(agent.router)
 app.include_router(settings.router)
+app.include_router(backup.router)
 
 app.include_router(__import__("app.api.healthcheck", fromlist=["router"]).router)

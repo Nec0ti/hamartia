@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Save, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Download, Save, X } from 'lucide-react'
 import Modal from './Modal.jsx'
-import { handleApiError } from '../services/api'
+import { API_BASE, handleApiError } from '../services/api'
 
 /**
  * Settings modal. Edits the LiteLLM proxy configuration (base URL, model name,
@@ -9,13 +9,35 @@ import { handleApiError } from '../services/api'
  * (XP / level / streak) is intentionally NOT editable here — it lives in
  * backend/data/user.json and is served read-only via /user.
  */
-export default function SettingsModal({ open, settings, onSave, onClose }) {
+export default function SettingsModal({ open, settings, onSave, onClose, loadError }) {
   const [draft, setDraft] = useState(
     settings ?? { litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', api_key: '' },
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [clearApiKey, setClearApiKey] = useState(false)
+
+  useEffect(() => {
+    if (open && settings) setDraft({ ...settings, api_key: '' })
+    if (!open) setDraft((current) => ({ ...current, api_key: '' }))
+    setClearApiKey(false)
+  }, [open, settings])
+
+  const save = async () => {
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      const { has_api_key: _hasApiKey, ...config } = draft
+      await onSave({ ...config, clear_api_key: clearApiKey })
+      setSaved(true)
+    } catch (e) {
+      setError(handleApiError(e).detail)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (!open) return null
 
@@ -32,11 +54,11 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
         className="absolute right-4 top-4 z-10 w-full max-w-lg rounded-xl border border-canvas-line bg-canvas-panel p-6 shadow-glow"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">Settings</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">Ayarlar</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label="Ayarları kapat"
             className="rounded-md p-1 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
           >
             <X size={18} />
@@ -45,7 +67,7 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              LiteLLM Base URL
+              Yerel model sunucu adresi
             </label>
             <input
               className={inputCls}
@@ -56,7 +78,7 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              Model Name
+              Model adı
             </label>
             <input
               className={inputCls}
@@ -66,19 +88,45 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              API Key <span className="text-canvas-muted/60">(optional)</span>
+            <label htmlFor="settings-api-key" className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
+              API anahtarı <span className="text-canvas-muted/60">(isteğe bağlı)</span>
             </label>
             <input
+              id="settings-api-key"
               type="password"
               className={inputCls}
               value={draft.api_key}
-              onChange={(e) => setDraft({ ...draft, api_key: e.target.value })}
-              placeholder="Leave empty for local proxy"
+              onChange={(e) => {
+                setDraft({ ...draft, api_key: e.target.value })
+                if (e.target.value) setClearApiKey(false)
+              }}
+              placeholder={settings?.has_api_key ? 'Boş bırakılırsa kayıtlı anahtar korunur' : 'Yerel sunucu anahtar istemiyorsa boş bırak'}
             />
+            {settings?.has_api_key && (
+              <label className="mt-2 flex items-center gap-2 text-xs text-canvas-muted">
+                <input
+                  type="checkbox"
+                  checked={clearApiKey}
+                  onChange={(e) => setClearApiKey(e.target.checked)}
+                />
+                Kayıtlı API anahtarını sil
+              </label>
+            )}
           </div>
-          {saved && <p className="text-xs text-emerald-400">Settings saved.</p>}
-          {error && <p className="text-xs text-accent">{error}</p>}
+          {saved && <p className="text-xs text-emerald-400">Ayarlar kaydedildi.</p>}
+          {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
+          <div className="rounded-lg border border-canvas-line bg-canvas-base p-3">
+            <a
+              href={`${API_BASE}/backup`}
+              download="hamartia-backup.zip"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent"
+            >
+              <Download size={15} /> Yedeği indir
+            </a>
+            <p className="mt-2 text-xs leading-relaxed text-canvas-muted">
+              Geri yüklemek için Hamartia'yı kapatıp repo klasöründe <code>python scripts/restore_backup.py hamartia-backup.zip</code> komutunu çalıştır. Önceki veriler ayrı bir klasörde saklanır.
+            </p>
+          </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -86,7 +134,7 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
             onClick={onClose}
             className="rounded-lg border border-canvas-line bg-canvas-base px-4 py-2 text-sm font-medium text-canvas-muted transition hover:bg-canvas-raise"
           >
-            Cancel
+            Vazgeç
           </button>
           <button
             type="button"
@@ -95,26 +143,12 @@ export default function SettingsModal({ open, settings, onSave, onClose }) {
             className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>
       </div>
     </div>
   )
-}
-
-async function save() {
-  setSaving(true)
-  setSaved(false)
-  setError(null)
-  try {
-    await onSave(draft)
-    setSaved(true)
-  } catch (e) {
-    setError(handleApiError(e).detail)
-  } finally {
-    setSaving(false)
-  }
 }
 
 const inputCls =

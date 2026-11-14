@@ -1,22 +1,24 @@
 import { useMemo } from 'react'
-import { ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
+import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
 import { fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
+
+const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
 
 /**
  * Recent-exams table. Each row shows the derived net and XP. Double-clicking
  * the Incorrect cell (or the row) opens the question-upload modal, matching the
  * "double-click Incorrect to upload" behaviour from the spec.
  */
-export default function RecentExams({ exams, onDoubleClickIncorrect, recentError, setRecentError }) {
-  const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)).slice(0, 8), [exams])
+export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onDelete, recentError }) {
+  const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)), [exams])
 
   if (recent.length === 0) {
     return (
       <Panel>
-        <Header title="Recent Exams" />
+        <Header title="Deneme geçmişi" />
         <p className="py-10 text-center text-sm text-canvas-muted">
-          No exams logged yet. Click &quot;Add Exam&quot; to record your first run.
+          Henüz deneme kaydı yok. İlk denemeni eklemek için “Deneme ekle”ye tıkla.
         </p>
       </Panel>
     )
@@ -24,42 +26,54 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
 
   return (
     <Panel>
-      <Header title="Recent Exams" />
+      <Header title="Deneme geçmişi" />
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-canvas-line text-xs uppercase tracking-wider text-canvas-muted">
-              <th className="py-3 pr-4">Date</th>
-              <th className="py-3 pr-4">Subject</th>
-              <th className="py-3 pr-4">Correct</th>
-              <th className="py-3 pr-4">Incorrect</th>
-              <th className="py-3 pr-4">Blank</th>
-              <th className="py-3 pr-4">Duration</th>
+              <th className="py-3 pr-4">Tarih</th>
+              <th className="py-3 pr-4">Ders</th>
+              <th className="py-3 pr-4">Tür</th>
+              <th className="py-3 pr-4">Doğru</th>
+              <th className="py-3 pr-4">Yanlış</th>
+              <th className="py-3 pr-4">Boş</th>
+              <th className="py-3 pr-4">Süre</th>
               <th className="py-3 pr-4 text-right">Net</th>
               <th className="py-3 pr-4 text-right">XP</th>
+              <th className="py-3 pr-1" />
             </tr>
           </thead>
           <tbody>
             {recent.map((ex) => {
               const net = ex.net
               const xp = ex.xp
-              const handleRow = (e) => {
-                if ((e.button === 0 && e.detail === 2) || e.ctrlKey) {
-                  onDoubleClickIncorrect(ex)
-                }
-              }
               return (
                 <tr
                   key={ex.id}
-                  onDoubleClick={() => onDoubleClickIncorrect(ex)}
-                  className="cursor-pointer transition hover:bg-canvas-raise/50"
+                  onDoubleClick={ex.sections?.length ? undefined : () => onDoubleClickIncorrect(ex)}
+                  className={`${ex.sections?.length ? '' : 'cursor-pointer '}transition hover:bg-canvas-raise/50`}
                 >
                   <td className="py-3 pr-4 text-canvas-text">{ex.date}</td>
-                  <td className="py-3 pr-4 text-canvas-text">{subjectLabel(ex.subject)}</td>
+                  <td className="py-3 pr-4 text-canvas-text">
+                    {ex.sections?.length ? (
+                      <details>
+                        <summary className="cursor-pointer">{subjectLabel(ex.subject)} · {ex.sections.length} ders</summary>
+                        <div className="mt-2 space-y-2 text-xs">
+                          {ex.sections.map((section) => (
+                            <div key={section.subject} className="flex items-center justify-between gap-2">
+                              <span>{section.subject}: {section.correct}D / {section.incorrect}Y / {section.blank}B · net {fmtNet(section.correct - section.incorrect / 4)}</span>
+                              <button type="button" aria-label={`Yanlış ekle ${section.subject} ${ex.date}`} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">Yanlış ekle</button>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : subjectLabel(ex.subject)}
+                  </td>
+                  <td className="py-3 pr-4 text-canvas-muted">{EXAM_TYPES[ex.exam_type || 'branch']}</td>
                   <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct)}</td>
                   <td
                     className="py-3 pr-4 text-accent font-semibold transition hover:underline"
-                    title="Double-click to upload a question for analysis"
+                    title="Yanlış soruyu eklemek için satıra çift tıkla"
                   >
                       <span className="inline-flex items-center gap-1">
                         {fmtInt(ex.incorrect)}
@@ -84,6 +98,26 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
                     </span>
                   </td>
                   <td className="py-3 pr-4 text-right text-canvas-cyan">{fmtInt(xp)}</td>
+                  <td className="py-3 pr-1 text-right">
+                    <div className="inline-flex gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Denemeyi düzenle ${ex.subject} ${ex.date}`}
+                        onClick={() => onEdit(ex)}
+                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Denemeyi sil ${ex.subject} ${ex.date}`}
+                        onClick={() => onDelete(ex)}
+                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-accent"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )
             })}

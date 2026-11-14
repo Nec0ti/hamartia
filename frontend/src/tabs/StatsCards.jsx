@@ -8,15 +8,27 @@ import {
 import { fmtInt, fmtNet } from '../utils/formatters'
 
 const CARDS = [
-  { label: 'Total Exams', value: (p) => fmtInt(p.total), icon: GraduationCap, tone: 'text-canvas-indigo' },
-  { label: 'Average Net', value: (p) => fmtNet(p.avgNet), icon: Target, tone: 'text-emerald' },
-  { label: 'Total XP', value: (p) => fmtInt(p.totalXp), icon: Zap, tone: 'text-canvas-cyan' },
-  { label: 'Level', value: (p) => p.level, icon: Shield, tone: 'text-amber' },
-  { label: 'Streak', value: (p) => fmtInt(p.streakDays), icon: Flame, tone: 'text-orange' },
+  { label: 'Deneme sayısı', value: (p) => fmtInt(p.total), icon: GraduationCap, tone: 'text-canvas-indigo' },
+  { label: 'Ortalama net', value: (p) => fmtNet(p.avgNet), icon: Target, tone: 'text-emerald' },
+  { label: 'Toplam XP', value: (p) => fmtInt(p.totalXp), icon: Zap, tone: 'text-canvas-cyan' },
+  { label: 'Seviye', value: (p) => p.level, icon: Shield, tone: 'text-amber' },
+  { label: 'Günlük seri', value: (p) => fmtInt(p.streakDays), icon: Flame, tone: 'text-orange' },
 ]
 
 /** Five stat cards across the top of the dashboard. */
-export default function StatsCards({ profile, stats }) {
+export default function StatsCards({ profile, stats, examType = 'all' }) {
+  const examLabel = {
+    all: 'Deneme sayısı',
+    tyt: 'Deneme sayısı · TYT',
+    ayt: 'Deneme sayısı · AYT',
+    branch: 'Deneme sayısı · Branş',
+  }[examType]
+  const values = {
+    ...stats,
+    totalXp: profile?.totalXp ?? 0,
+    level: profile?.level ?? 1,
+    streakDays: profile?.streakDays ?? 0,
+  }
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {CARDS.map((card) => {
@@ -29,11 +41,11 @@ export default function StatsCards({ profile, stats }) {
             <div className="flex items-center gap-2 text-canvas-muted">
               <Icon size={14} />
               <span className="text-xs font-medium uppercase tracking-wider">
-                {card.label}
+                {card.label === 'Deneme sayısı' ? examLabel : card.label}
               </span>
             </div>
             <div className="mt-2 text-2xl font-bold text-canvas-text">
-              {card.value(profile ?? stats)}
+              {card.value(values)}
             </div>
           </div>
         )

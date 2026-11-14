@@ -68,13 +68,14 @@ export function Toggle({ value, options, onChange }) {
 export function SubjectSelect({ value, options, onChange }) {
   return (
     <select
+      aria-label="Net değişimi ders filtresi"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-1.5 text-xs text-canvas-text outline-none transition hover:bg-canvas-raise"
     >
       {options.map((s) => (
         <option key={s} value={s} className="bg-canvas-panel">
-          {s === 'all' ? 'All subjects' : s}
+          {s === 'all' ? 'Tüm dersler' : s}
         </option>
       ))}
     </select>

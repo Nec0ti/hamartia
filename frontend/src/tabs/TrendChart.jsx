@@ -14,6 +14,7 @@ import {
 import { TrendingUp } from 'lucide-react'
 import { Panel, Header, Toggle, SubjectSelect } from '../components/ui.jsx'
 import { fmtNet } from '../utils/formatters'
+import { examResultsForSubject } from '../utils/examSections.js'
 
 /**
  * Recharts net-score trend chart with a bar/line toggle and a subject filter.
@@ -24,10 +25,7 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
   const [hover, setHover] = useState(null)
 
   const series = useMemo(() => {
-    if (subjectFilter !== 'all') {
-      return data.filter((e) => e.net > 0 && e.subject === subjectFilter)
-    }
-    return data.filter((e) => e.net > 0)
+    return examResultsForSubject(data, subjectFilter).filter((exam) => exam.net > 0)
   }, [data, subjectFilter])
 
   const chart =
@@ -74,13 +72,13 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
   return (
     <Panel>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <Header icon={TrendingUp} title="Net Score Trend" />
+        <Header icon={TrendingUp} title="Net değişimi" />
         <div className="flex items-center gap-2">
           <SubjectSelect value={subjectFilter} options={['all', ...subjects]} onChange={onFilter} />
-          <Toggle value={toggle} options={[{ value: 'bar', label: 'Bar' }, { value: 'line', label: 'Line' }]} onChange={onToggle} />
+          <Toggle value={toggle} options={[{ value: 'bar', label: 'Sütun' }, { value: 'line', label: 'Çizgi' }]} onChange={onToggle} />
         </div>
       </div>
-      <div className="h-72">
+      <div role="img" aria-label={`Net değişimi · ${subjectFilter === 'all' ? 'tüm dersler' : subjectFilter}`} className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           {chart}
         </ResponsiveContainer>

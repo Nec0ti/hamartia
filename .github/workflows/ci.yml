@@ -1,0 +1,60 @@
+name: Hamartia checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r backend/requirements.txt
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:browser
+        working-directory: frontend
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r backend/requirements.txt
+      - run: python -m unittest discover -s backend/tests -v
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_storage.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_questions.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_backup.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_question_order.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_practice_sessions.py
+        env:
+          PYTHONPATH: backend

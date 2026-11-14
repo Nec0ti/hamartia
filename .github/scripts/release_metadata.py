@@ -154,6 +154,7 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
         code = release["tag_name"]
         notes_path.write_text(release["body"])
     else:
+        release = None
         for _ in range(20):
             subprocess.run(["git", "fetch", "--tags", "origin"], check=True)
             tags = subprocess.check_output(["git", "tag", "--list", "ARETE-*"], text=True).splitlines()

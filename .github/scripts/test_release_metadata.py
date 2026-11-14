@@ -1,8 +1,10 @@
 import importlib.util
+import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 
 MODULE_PATH = Path(__file__).with_name("release_metadata.py")
@@ -60,6 +62,49 @@ class ReleaseMetadataTests(unittest.TestCase):
                     module.ensure_release_assets("ARETE-001", release, artifact_paths)
             with self.assertRaisesRegex(RuntimeError, "Missing release package artifacts: .deb"):
                 module.validate_artifacts([artifact_paths[0], artifact_paths[2]])
+
+    def test_first_publication_creates_release_and_fetches_its_assets(self):
+        pull = {
+            "number": 42,
+            "title": "Ship the desktop app",
+            "html_url": "https://github.com/Nec0ti/hamartia/pull/42",
+            "state": "closed",
+            "merged_at": "2026-11-14T19:00:00Z",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pulls_path = root / "pulls.json"
+            pulls_path.write_text(json.dumps([pull]))
+            artifacts = root / "artifacts"
+            artifacts.mkdir()
+            for name in ("Hamartia-win-x64.exe", "Hamartia-linux-x64.deb", "Hamartia-linux-x64.AppImage"):
+                (artifacts / name).touch()
+            notes_path = root / "notes.md"
+            output_path = root / "github-output"
+            created_release = {
+                "tag_name": "ARETE-001",
+                "body": module.render_notes("ARETE-001", pull),
+                "assets": [{"name": path.name} for path in artifacts.iterdir()],
+            }
+
+            def fake_check_output(command, **_kwargs):
+                if command[0:2] == ["gh", "api"]:
+                    return "[[]]"
+                if command[0:3] == ["git", "tag", "--list"]:
+                    return ""
+                raise AssertionError(f"Unexpected command: {command}")
+
+            with patch.dict(os.environ, {"GITHUB_REPOSITORY": "Nec0ti/hamartia"}), \
+                 patch.object(module.subprocess, "check_output", side_effect=fake_check_output), \
+                 patch.object(module.subprocess, "run", return_value=module.subprocess.CompletedProcess([], 0, "", "")) as run, \
+                 patch.object(module, "fetch_release", return_value=created_release):
+                module.publish_release(pulls_path, artifacts, "abc123", notes_path, output_path)
+
+            create_call = next(item for item in run.call_args_list if item.args[0][:3] == ["gh", "release", "create"])
+            self.assertIn("ARETE-001", create_call.args[0])
+            self.assertEqual(output_path.read_text(), "tag=ARETE-001\npr_number=42\n")
+            self.assertIn("## English", notes_path.read_text())
+            self.assertIn("## Türkçe", notes_path.read_text())
 
 
 if __name__ == "__main__":

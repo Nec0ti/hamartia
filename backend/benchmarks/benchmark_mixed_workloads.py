@@ -87,8 +87,8 @@ def fixtures(exam_count, question_count, session_count):
         solve_order = next(positions[(exam_index, section_index)][1])
         section = exam.sections[section_index] if section_index is not None else None
         attempt_count = index % 4
-        last_age = 1 + index % 30
-        all_correct = index % 3 == 0
+        last_age = 0 if index % 8 == 1 else 1 + index % 30
+        all_correct = index % 3 == 1
         questions.append(Question(
             id=f"question-{index}", exam_id=exam.id,
             question_number=question_number, solve_order=solve_order,
@@ -158,6 +158,8 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
         expected_priorities = _expected_priorities(questions, exams)
         assert priority_result == expected_priorities
         assert priority_result["pending_questions"] > 0 and priority_result["scheduled_questions"] > 0
+        assert priority_result["today_questions"] > 0
+        assert priority_result["today_correct"] > 0 and priority_result["today_incorrect"] > 0
         priorities = measure(lambda: _assert_equal(topic_priorities(
             storage.load_list("questions.json", Question), today=TODAY,
             exams=storage.load_list("exams.json", Exam)), expected_priorities), repeats)
@@ -194,9 +196,11 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             "first_service_load_seconds": first_service_load, "warm_load": warm,
             "progression_full_history": progression, "question_insights_full_history": priorities,
             "practice_summaries_full_history": summaries,
+            "question_review_activity": {key: priority_result[key] for key in (
+                "pending_questions", "scheduled_questions", "today_questions", "today_correct", "today_incorrect")},
             "question_update_10_records": update, "question_delete_10_records": delete,
             "concurrent_appends": {"workers": 4, "records": len(concurrent), "seconds": round(concurrent_seconds, 6)},
-            "correctness": "progression, topic/review/order insights, practice groups/trends, mutation targets, and all appended IDs match independent oracles",
+            "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
         }, json_output)
 
 

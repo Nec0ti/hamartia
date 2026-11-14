@@ -37,10 +37,10 @@
     "benchmark": "persisted_mixed_study_workloads",
     "concurrent_appends": {
       "records": 16,
-      "seconds": 0.814479,
+      "seconds": 0.779411,
       "workers": 4
     },
-    "correctness": "progression, topic/review/order insights, practice groups/trends, mutation targets, and all appended IDs match independent oracles",
+    "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
     "environment": {
       "logical_cpus": 8,
       "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
@@ -49,9 +49,9 @@
       "seed": 20261114
     },
     "first_service_load_seconds": {
-      "exams.json": 0.021034,
-      "practice_sessions.json": 0.119286,
-      "questions.json": 0.060257
+      "exams.json": 0.020762,
+      "practice_sessions.json": 0.112469,
+      "questions.json": 0.060701
     },
     "persisted_json_bytes": {
       "exams.json": 537993,
@@ -59,28 +59,35 @@
       "questions.json": 1842179
     },
     "practice_summaries_full_history": {
-      "p50_seconds": 0.12974,
-      "p95_seconds": 0.16657,
+      "p50_seconds": 0.131553,
+      "p95_seconds": 0.168004,
       "samples": 21
     },
     "progression_full_history": {
-      "p50_seconds": 0.025963,
-      "p95_seconds": 0.027645,
+      "p50_seconds": 0.026107,
+      "p95_seconds": 0.028171,
       "samples": 21
     },
     "question_delete_10_records": {
-      "p50_seconds": 0.0934,
-      "p95_seconds": 0.151579,
+      "p50_seconds": 0.097778,
+      "p95_seconds": 0.150779,
       "samples": 10
     },
     "question_insights_full_history": {
-      "p50_seconds": 0.119189,
-      "p95_seconds": 0.167687,
+      "p50_seconds": 0.1173,
+      "p95_seconds": 0.160184,
       "samples": 21
     },
+    "question_review_activity": {
+      "pending_questions": 2145,
+      "scheduled_questions": 355,
+      "today_correct": 105,
+      "today_incorrect": 208,
+      "today_questions": 313
+    },
     "question_update_10_records": {
-      "p50_seconds": 0.086053,
-      "p95_seconds": 0.145406,
+      "p50_seconds": 0.094465,
+      "p95_seconds": 0.144145,
       "samples": 10
     },
     "records": {
@@ -91,18 +98,18 @@
     "seed": 20261114,
     "warm_load": {
       "exams.json": {
-        "p50_seconds": 0.020615,
-        "p95_seconds": 0.032335,
+        "p50_seconds": 0.019844,
+        "p95_seconds": 0.034636,
         "samples": 21
       },
       "practice_sessions.json": {
-        "p50_seconds": 0.115261,
-        "p95_seconds": 0.132469,
+        "p50_seconds": 0.112053,
+        "p95_seconds": 0.127379,
         "samples": 21
       },
       "questions.json": {
-        "p50_seconds": 0.05547,
-        "p95_seconds": 0.091594,
+        "p50_seconds": 0.050161,
+        "p95_seconds": 0.087713,
         "samples": 21
       }
     }

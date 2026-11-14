@@ -5,11 +5,12 @@ mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.models.schemas import Question
@@ -18,6 +19,8 @@ from app.services.storage import StorageError, StorageService
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 UPLOAD_DIR = DATA_DIR / "uploads"
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
 
 def get_storage():
@@ -35,33 +38,47 @@ def _utcnow() -> str:
 async def upload_question(
     file: UploadFile = File(...),
     ocr_text: str = Form(""),
+    subject: str = Form(""),
+    topic: str = Form(""),
     storage: StorageService = Depends(get_storage),
 ):
-    """Store an uploaded question image and its OCR text."""
+    """Store an uploaded question image, OCR text, and study labels."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "img"
-    safe_name = f"q_{_utcnow().replace(':', '')}.{ext}"
+    ext = Path(file.filename).suffix.lower()
+    if ext not in IMAGE_TYPES or file.content_type not in (None, "", IMAGE_TYPES[ext]):
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WebP image")
+    safe_name = f"q_{uuid4().hex}{ext}"
     path = UPLOAD_DIR / safe_name
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
-        contents = await file.read()
-        if contents:
-            path.write_bytes(contents)
+        contents = await file.read(MAX_UPLOAD_BYTES + 1)
     except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not read upload: {exc}")
+    if not contents:
+        raise HTTPException(status_code=422, detail="Image is empty")
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds 10 MB")
+    try:
+        path.write_bytes(contents)
+    except OSError as exc:
         raise HTTPException(status_code=500, detail=f"Could not save upload: {exc}")
 
     question = Question(
-        id=f"q_{_utcnow().replace(':', '')}",
+        id=f"q_{uuid4().hex}",
         image_name=safe_name,
-        image_path=str(path.relative_to(DATA_DIR)),
+        image_path=(Path("uploads") / safe_name).as_posix(),
         ocr_text=ocr_text or "",
+        subject=subject.strip(),
+        topic=topic.strip(),
         created_at=_utcnow(),
     )
-    questions = storage.load_list("questions.json", Question)
-    questions.append(question)
-    storage.save_list("questions.json", questions)
+    try:
+        storage.append_list("questions.json", question, Question)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
     return question
 
 
@@ -77,6 +94,19 @@ async def get_question(question_id: str, storage: StorageService = Depends(get_s
     if q is None:
         raise HTTPException(status_code=404, detail="Question not found")
     return q
+
+
+@router.get("/{question_id}/image")
+async def get_question_image(question_id: str, storage: StorageService = Depends(get_storage)):
+    questions = storage.load_list("questions.json", Question)
+    question = next((item for item in questions if item.id == question_id), None)
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    path = (DATA_DIR / question.image_path).resolve()
+    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Question image not found")
+    return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})
 
 
 @router.post("/{question_id}/analyze", response_model=Question)

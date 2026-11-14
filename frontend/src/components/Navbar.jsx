@@ -12,10 +12,10 @@ import { handleApiError } from '../services/api'
 import { fmtInt, levelForXp, xpProgress, xpToNextLevel } from '../utils/formatters'
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'questions', label: 'Quest[ion]s', icon: FileQuestion },
+  { id: 'dashboard', label: 'Ana Sayfa', icon: LayoutDashboard },
+  { id: 'questions', label: 'Yanlışlarım', icon: FileQuestion },
   { id: 'cosmos', label: 'Cosmos', icon: Globe },
-  { id: 'fatalflaw', label: 'Fatal Flaw', icon: BookOpen },
+  { id: 'fatalflaw', label: 'Çalışma Koçu', icon: BookOpen },
 ]
 
 /**

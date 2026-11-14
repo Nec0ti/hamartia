@@ -8,7 +8,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, computed_field, Field, field_validator
+from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
@@ -99,16 +99,29 @@ class CouncilVerdict(BaseModel):
     subject_affinity: str = ""
 
 
-class CouncilAnalysis(BaseModel):
-    """Full five-counselor report attached to a analyzed question."""
-
+class CouncilMembers(BaseModel):
     dissenter: str = ""
     first_principles: str = ""
     expansionist: str = ""
     outsider: str = ""
     executor: str = ""
+
+
+class CouncilAnalysis(BaseModel):
+    """Council envelope; also reads records saved in the old flat shape."""
+
+    counselors: CouncilMembers = Field(default_factory=CouncilMembers)
     verdict: CouncilVerdict = Field(default_factory=CouncilVerdict)
     analyzed_at: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def wrap_legacy_counselors(cls, value):
+        if isinstance(value, dict) and "counselors" not in value:
+            keys = ("dissenter", "first_principles", "expansionist", "outsider", "executor")
+            if any(key in value for key in keys):
+                value = {**value, "counselors": {key: value.get(key, "") for key in keys}}
+        return value
 
 
 class Question(BaseModel):
@@ -116,6 +129,8 @@ class Question(BaseModel):
     image_name: str
     image_path: str
     ocr_text: str = ""
+    subject: str = ""
+    topic: str = ""
     analysis: CouncilAnalysis | None = None
     hamartia_tag: str = "[Knowledge Gap]"
     created_at: str = ""

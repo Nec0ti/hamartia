@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
+import QuestionsTab from './tabs/QuestionsTab.jsx'
 import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import api from './services/api'
@@ -16,6 +17,7 @@ import { handleApiError } from './services/api'
  */
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [questionSubject, setQuestionSubject] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState(null)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
@@ -52,15 +54,22 @@ export default function App() {
   }, [])
 
   const panel = useMemo(() => {
-    if (activeTab === 'dashboard') return <DashboardTab />
+    if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {
+      setQuestionSubject(exam.subject)
+      setActiveTab('questions')
+    }} />
+    if (activeTab === 'questions') return <QuestionsTab initialSubject={questionSubject} />
     return <ComingSoon />
-  }, [activeTab])
+  }, [activeTab, questionSubject])
 
   return (
     <div className="flex h-full flex-col">
       <Navbar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={(tab) => {
+          if (tab !== 'questions') setQuestionSubject('')
+          setActiveTab(tab)
+        }}
         onOpenSettings={() => {
           setSettingsOpen(true)
           setSettingsSaved(false)

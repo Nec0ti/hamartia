@@ -33,17 +33,19 @@ export const exams = {
 export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
-  upload: (file, ocrText) => {
+  upload: (file, ocrText, subject, topic) => {
     const fd = new FormData()
     fd.append('file', file, file.name)
     fd.append('ocr_text', ocrText || '')
+    fd.append('subject', subject || '')
+    fd.append('topic', topic || '')
     return client.post('/questions', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       transformRequest: [(d) => d],
     }).then((r) => r.data)
   },
   analyze: (id) =>
-    client.patch(`/questions/${id}/analyze`).then((r) => r.data),
+    client.post(`/questions/${id}/analyze`).then((r) => r.data),
   tag: (id, hamartiaTag) =>
     client
       .patch(`/questions/${id}/tag`, { hamartia_tag: hamartiaTag })

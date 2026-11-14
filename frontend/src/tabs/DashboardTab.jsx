@@ -12,6 +12,7 @@ import RadarChart from './RadarChart.jsx'
 import TrendChart from './TrendChart.jsx'
 import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
+import { examPayloadFromForm, examResultsForSubject, examSubjectOptions } from '../utils/examSections.js'
 
 const EMPTY_FORM = {
   date: new Date().toLocaleDateString('en-CA'),
@@ -22,6 +23,7 @@ const EMPTY_FORM = {
   correct: 10,
   incorrect: 2,
   blank: 1,
+  sections: [],
 }
 
 /**
@@ -70,31 +72,33 @@ export default function DashboardTab({ onUploadQuestion }) {
   }, [])
 
   const subjects = useMemo(
-    () => Array.from(new Set(exams.map((e) => e.subject).filter(Boolean))).sort(),
+    () => examSubjectOptions(exams),
     [exams],
   )
 
   const filtered = useMemo(() => {
     return exams.filter(
       (exam) => (examTypeFilter === 'all' || (exam.exam_type || 'branch') === examTypeFilter)
-        && (subjectFilter === 'all' || exam.subject === subjectFilter),
+        && (subjectFilter === 'all' || exam.subject === subjectFilter || exam.sections?.some((section) => section.subject === subjectFilter)),
     )
   }, [exams, examTypeFilter, subjectFilter])
 
   const stats = useMemo(() => {
     const total = filtered.length
-    const answered = filtered.filter((e) => e.correct + e.incorrect > 0)
+    const results = examResultsForSubject(filtered, subjectFilter)
+    const answered = results.filter((e) => e.correct + e.incorrect > 0)
     const avgNet =
       answered.length > 0
         ? answered.reduce((s, e) => s + e.net, 0) / answered.length
         : 0
     return { total, avgNet }
-  }, [filtered])
+  }, [filtered, subjectFilter])
 
   const submitExam = (e) => {
     e.preventDefault()
     setRecentError(null)
-    const save = editingExam ? api.exams.update(editingExam.id, form) : api.exams.create(form)
+    const payload = examPayloadFromForm(form)
+    const save = editingExam ? api.exams.update(editingExam.id, payload) : api.exams.create(payload)
     save.then(load).then(() => {
       setShowAdd(false)
       setEditingExam(null)
@@ -113,6 +117,9 @@ export default function DashboardTab({ onUploadQuestion }) {
       correct: exam.correct,
       incorrect: exam.incorrect,
       blank: exam.blank,
+      sections: exam.sections?.length ? exam.sections : exam.exam_type !== 'branch' ? [{
+        subject: exam.subject, correct: exam.correct, incorrect: exam.incorrect, blank: exam.blank,
+      }] : [],
     })
     setShowAdd(true)
   }

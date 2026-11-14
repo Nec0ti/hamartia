@@ -50,11 +50,25 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
               return (
                 <tr
                   key={ex.id}
-                  onDoubleClick={() => onDoubleClickIncorrect(ex)}
-                  className="cursor-pointer transition hover:bg-canvas-raise/50"
+                  onDoubleClick={ex.sections?.length ? undefined : () => onDoubleClickIncorrect(ex)}
+                  className={`${ex.sections?.length ? '' : 'cursor-pointer '}transition hover:bg-canvas-raise/50`}
                 >
                   <td className="py-3 pr-4 text-canvas-text">{ex.date}</td>
-                  <td className="py-3 pr-4 text-canvas-text">{subjectLabel(ex.subject)}</td>
+                  <td className="py-3 pr-4 text-canvas-text">
+                    {ex.sections?.length ? (
+                      <details>
+                        <summary className="cursor-pointer">{subjectLabel(ex.subject)} · {ex.sections.length} ders</summary>
+                        <div className="mt-2 space-y-2 text-xs">
+                          {ex.sections.map((section) => (
+                            <div key={section.subject} className="flex items-center justify-between gap-2">
+                              <span>{section.subject}: {section.correct}D / {section.incorrect}Y / {section.blank}B · net {fmtNet(section.correct - section.incorrect / 4)}</span>
+                              <button type="button" aria-label={`Yanlış ekle ${section.subject} ${ex.date}`} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">Yanlış ekle</button>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : subjectLabel(ex.subject)}
+                  </td>
                   <td className="py-3 pr-4 text-canvas-muted">{EXAM_TYPES[ex.exam_type || 'branch']}</td>
                   <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct)}</td>
                   <td

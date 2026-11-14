@@ -121,6 +121,7 @@ export default function QuestionsTab({ initialExam = null }) {
       <form onSubmit={upload} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-2">
         {initialExam && <div className="rounded-lg border border-canvas-line bg-canvas-base p-3 text-sm text-canvas-muted sm:col-span-2">
           Bağlı deneme: {initialExam.date} · {initialExam.subject} ({initialExam.exam_type?.toUpperCase() || 'BRANŞ'})
+          <p className="mt-1 text-xs">Bu bölümde {initialExam.correct + initialExam.incorrect + initialExam.blank} soru var.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label>Sınavdaki soru no<input type="number" min="1" max={initialExam.correct + initialExam.incorrect + initialExam.blank} value={questionNumber} onChange={(e) => setQuestionNumber(e.target.value)} className={inputClass} /></label>
             <label>Çözüm sırası<input type="number" min="1" max={initialExam.correct + initialExam.incorrect + initialExam.blank} value={solveOrder} onChange={(e) => setSolveOrder(e.target.value)} className={inputClass} /></label>

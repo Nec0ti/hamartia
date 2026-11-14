@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -57,6 +58,62 @@ class ExamFlowTests(unittest.TestCase):
             ), Exam)
 
         self.assertEqual(path.read_text(), "not json")
+
+    def test_invalid_json_read_raises_without_changing_source(self):
+        path = Path(self.temp_dir.name) / "exams.json"
+        path.write_text("not json")
+
+        with self.assertRaises(StorageError):
+            self.storage.load_list("exams.json", Exam)
+
+        self.assertEqual(path.read_text(), "not json")
+
+    def test_invalid_record_read_raises_without_discarding_records(self):
+        path = Path(self.temp_dir.name) / "exams.json"
+        raw = '[{"id":"old"}]'
+        path.write_text(raw)
+
+        with self.assertRaises(StorageError):
+            self.storage.load_list("exams.json", Exam)
+
+        self.assertEqual(path.read_text(), raw)
+
+    def test_plain_dict_collections_round_trip(self):
+        document = {"id": "doc-1", "filename": "notes.pdf"}
+
+        self.storage.append_list("agent_documents.json", document, dict)
+
+        self.assertEqual(self.storage.load_list("agent_documents.json", dict), [document])
+
+    def test_delete_and_append_cannot_lose_the_new_record(self):
+        old = Exam(id="old", date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)
+        new = Exam(id="new", date="2026-11-14", subject="Physics", correct=1, incorrect=0, blank=0)
+        self.storage.save_list("exams.json", [old])
+        gate = threading.Barrier(2)
+
+        def delete_old():
+            gate.wait()
+
+            def remove(exams):
+                filtered = [exam for exam in exams if exam.id != "old"]
+                if len(filtered) == len(exams):
+                    return False
+                exams[:] = filtered
+                return True
+
+            return self.storage.update_list("exams.json", Exam, remove)
+
+        def append_new():
+            gate.wait()
+            self.storage.append_list("exams.json", new, Exam)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            delete_future = pool.submit(delete_old)
+            append_future = pool.submit(append_new)
+            delete_future.result()
+            append_future.result()
+
+        self.assertEqual([exam.id for exam in self.storage.load_list("exams.json", Exam)], ["new"])
 
     def test_exam_input_rejects_blank_subject_and_negative_counts(self):
         base = {"date": "2026-11-14", "subject": "Math", "correct": 1, "incorrect": 0, "blank": 0}

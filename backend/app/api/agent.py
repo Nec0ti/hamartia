@@ -63,9 +63,11 @@ async def ingest_document(
         "size_bytes": len(contents),
         "uploaded_at": _utcnow(),
     }
-    docs = storage.load_list("agent_documents.json", dict)
-    docs.append(doc)
-    storage.save_list("agent_documents.json", docs)
+    try:
+        storage.append_list("agent_documents.json", doc, dict)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
     return doc
 
 

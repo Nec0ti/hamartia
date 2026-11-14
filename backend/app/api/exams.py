@@ -58,9 +58,13 @@ async def get_exam(exam_id: str, storage: StorageService = Depends(get_storage))
 
 @router.delete("/{exam_id}", status_code=200)
 async def delete_exam(exam_id: str, storage: StorageService = Depends(get_storage)):
-    exams = storage.load_list("exams.json", Exam)
-    filtered = [e for e in exams if e.id != exam_id]
-    if len(filtered) == len(exams):
+    def remove(exams):
+        filtered = [exam for exam in exams if exam.id != exam_id]
+        if len(filtered) == len(exams):
+            return False
+        exams[:] = filtered
+        return True
+
+    if not storage.update_list("exams.json", Exam, remove):
         raise HTTPException(status_code=404, detail="Exam not found")
-    storage.save_list("exams.json", filtered)
     return {"deleted": exam_id}

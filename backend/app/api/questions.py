@@ -117,15 +117,25 @@ async def analyze_question(
 ):
     """Run the Council of Minds and attach the five-counselor verdict."""
     questions = storage.load_list("questions.json", Question)
-    q = next((x for x in questions if x.id == question_id), None)
-    if q is None:
+    question = next((item for item in questions if item.id == question_id), None)
+    if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    analysis = await ai.analyze_question(q)
-    q.analysis = analysis
-    q.hamartia_tag = analysis.verdict.hamartia_tag
-    storage.save_list("questions.json", questions)
-    return q
+    analysis = await ai.analyze_question(question)
+    updated = []
+
+    def save_analysis(items):
+        for item in items:
+            if item.id == question_id:
+                item.analysis = analysis
+                item.hamartia_tag = analysis.verdict.hamartia_tag
+                updated.append(item)
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, save_analysis):
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated[0]
 
 
 class TagRequest(BaseModel):
@@ -145,10 +155,16 @@ async def tag_question(
             status_code=422,
             detail=f"Invalid tag. Allowed: {', '.join(HAMARTIA_TAGS)}",
         )
-    questions = storage.load_list("questions.json", Question)
-    for q in questions:
-        if q.id == question_id:
-            q.hamartia_tag = tag
-            storage.save_list("questions.json", questions)
-            return q
-    raise HTTPException(status_code=404, detail="Question not found")
+    updated = []
+
+    def save_tag(questions):
+        for question in questions:
+            if question.id == question_id:
+                question.hamartia_tag = tag
+                updated.append(question)
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, save_tag):
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated[0]

@@ -1,8 +1,8 @@
 """Centralized storage layer for the JSON datastore.
 
 Guarantees:
-  * Fault tolerance — missing, empty or malformed files degrade to safe
-    defaults instead of raising.
+  * Fault tolerance — missing or empty files get safe defaults; malformed
+    collections raise instead of hiding or overwriting student data.
   * Atomic writes — each save writes to a temp file then renames, so a crash
     mid-write can never corrupt an existing file.
   * Thread safety — a per-file lock serializes concurrent access.
@@ -14,7 +14,7 @@ import json
 import os
 import threading
 from pathlib import Path
-from typing import Any, List, Type, TypeVar
+from typing import Any, Callable, List, TypeVar
 
 T = TypeVar("T", bound=object)
 # shortcut: locks are process-local, use SQLite before enabling multiple workers.
@@ -57,6 +57,14 @@ class StorageService:
             return ""
         return content
 
+    @staticmethod
+    def _validate_record(model_cls: type, item: Any) -> Any:
+        return model_cls.model_validate(item) if hasattr(model_cls, "model_validate") else model_cls(item)
+
+    @staticmethod
+    def _dump_record(item: Any) -> Any:
+        return item.model_dump(mode="json") if hasattr(item, "model_dump") else item
+
     def _write_atomic(self, filename: str, payload: str) -> None:
         path = self._path(filename)
         tmp = path.with_suffix(".tmp")
@@ -77,40 +85,49 @@ class StorageService:
 
     # -- typed list collections --------------------------------------------
 
-    def load_list(self, filename: str, model_cls: type) -> List[Any]:
-        """Load a JSON array of records, validating each against model_cls."""
+    def _load_list_unlocked(self, filename: str, model_cls: type) -> List[Any]:
         raw = self._read_raw(filename)
         if not raw:
             return []
         try:
             data = json.loads(raw)
             if not isinstance(data, list):
-                return []
-            return [model_cls.model_validate(item) for item in data]
-        except (ValueError, TypeError):
-            # Malformed JSON or incompatible records -> start fresh.
-            return []
+                raise ValueError("expected a JSON array")
+            return [self._validate_record(model_cls, item) for item in data]
+        except (ValueError, TypeError) as exc:
+            raise StorageError(f"Cannot read invalid {filename}") from exc
+
+    def load_list(self, filename: str, model_cls: type) -> List[Any]:
+        """Load a JSON array of records, validating each against model_cls."""
+        with self._lock_for(filename):
+            return self._load_list_unlocked(filename, model_cls)
 
     def save_list(self, filename: str, items: List[Any]) -> None:
         lock = self._lock_for(filename)
         with lock:
-            serialized = [item.model_dump(mode="json") for item in items]
+            serialized = [self._dump_record(item) for item in items]
             self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
+
+    def update_list(self, filename: str, model_cls: type, update: Callable[[List[Any]], bool]) -> bool:
+        """Apply and persist a list mutation while holding its file lock."""
+        with self._lock_for(filename):
+            items = self._load_list_unlocked(filename, model_cls)
+            if not update(items):
+                return False
+            serialized = [self._dump_record(item) for item in items]
+            self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
+            return True
 
     def append_list(self, filename: str, item: Any, model_cls: type) -> None:
         """Append one validated record without losing concurrent updates."""
         lock = self._lock_for(filename)
         with lock:
-            raw = self._read_raw(filename)
             try:
-                data = json.loads(raw) if raw else []
-                if not isinstance(data, list):
-                    raise ValueError("expected a JSON array")
-                items = [model_cls.model_validate(record) for record in data]
-            except (ValueError, TypeError) as exc:
+                items = self._load_list_unlocked(filename, model_cls)
+            except StorageError as exc:
                 raise StorageError(f"Cannot append to invalid {filename}") from exc
-            items.append(model_cls.model_validate(item))
-            serialized = [record.model_dump(mode="json") for record in items]
+            items.append(self._validate_record(model_cls, item))
+            serialized = [self._dump_record(record) for record in items]
             self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
 
     # -- typed scalar documents --------------------------------------------

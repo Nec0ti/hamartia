@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle2, FileImage, Sparkles, Upload } from 'lucide-react'
+import { CheckCircle2, FileImage, FileText, Sparkles, Upload } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
 
 const TAGS = ['[Knowledge Gap]', '[Distractor Trap]', '[Reading Slip]', '[Time Panic]']
@@ -28,7 +28,7 @@ export default function QuestionsTab({ initialSubject = '' }) {
 
   const upload = async (event) => {
     event.preventDefault()
-    if (!file) return setError('Önce soru görseli seç.')
+    if (!file && !ocrText.trim()) return setError('Görsel seç veya soru metnini yaz.')
     setBusy(true)
     setError('')
     try {
@@ -93,12 +93,12 @@ export default function QuestionsTab({ initialSubject = '' }) {
           <input value={topic} onChange={(e) => setTopic(e.target.value)} className={inputClass} placeholder="Örn. Fonksiyonlar" />
         </label>
         <label className="text-sm text-canvas-muted sm:col-span-2">
-          Soru görseli (PNG, JPEG veya WebP; en fazla 10 MB)
-          <input ref={fileInput} required type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-canvas-muted file:mr-3 file:rounded-lg file:border-0 file:bg-canvas-raise file:px-3 file:py-2 file:text-canvas-text" />
+          Soru görseli (isteğe bağlı; PNG, JPEG veya WebP, en fazla 10 MB)
+          <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-canvas-muted file:mr-3 file:rounded-lg file:border-0 file:bg-canvas-raise file:px-3 file:py-2 file:text-canvas-text" />
         </label>
         <label className="text-sm text-canvas-muted sm:col-span-2">
-          Soru metni veya kendi notun
-          <textarea value={ocrText} onChange={(e) => setOcrText(e.target.value)} rows={3} className={inputClass} placeholder="İstersen soruyu ve nerede takıldığını yaz." />
+          Soru metni veya kendi notun (görsel yoksa zorunlu)
+          <textarea value={ocrText} onChange={(e) => setOcrText(e.target.value)} rows={3} className={inputClass} placeholder="Soruyu ve nerede takıldığını yaz." />
         </label>
         <div className="flex items-center justify-between gap-3 sm:col-span-2">
           <span className="truncate text-xs text-canvas-muted">{file?.name || 'Henüz görsel seçilmedi'}</span>
@@ -119,9 +119,13 @@ export default function QuestionsTab({ initialSubject = '' }) {
           <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">İlk yanlış sorunu ekleyince tekrar listende görünecek.</div>
         ) : questions.slice().reverse().map((question) => (
           <article key={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[160px_1fr]">
-            <a href={`${API_BASE}/questions/${question.id}/image`} target="_blank" rel="noreferrer" className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-canvas-base" aria-label="Soru görselini aç">
-              <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject || 'Derssiz'} ${question.topic || 'konusuz'} soru`} className="max-h-56 w-full object-contain" />
-            </a>
+            {question.image_path ? (
+              <a href={`${API_BASE}/questions/${question.id}/image`} target="_blank" rel="noreferrer" className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-canvas-base" aria-label="Soru görselini aç">
+                <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject || 'Derssiz'} ${question.topic || 'konusuz'} soru`} className="max-h-56 w-full object-contain" />
+              </a>
+            ) : (
+              <div role="img" aria-label="Görseli olmayan metin sorusu" className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />Metin sorusu</div>
+            )}
             <div className="min-w-0 space-y-3">
               <div>
                 <p className="font-semibold text-canvas-text">{question.subject || 'Ders belirtilmedi'}{question.topic ? ` · ${question.topic}` : ''}</p>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpenCheck, CheckCircle2, Clock3, Tags, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { BookOpenCheck, CheckCircle2, Clock3, FileText, Tags, ThumbsDown, ThumbsUp } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
 
 const TAG_LABELS = {
@@ -57,7 +57,11 @@ export default function StudyPlanTab() {
           <div className="rounded-xl border border-dashed border-canvas-line p-6 text-center text-sm text-canvas-muted">{plan.scheduled_questions ? `${plan.scheduled_questions} soru sonraki tekrar tarihinde açılacak.` : 'Şu an çözmen gereken soru yok. Yanlışlarım sekmesinden yeni bir soru kaydet.'}</div>
         ) : plan.reviews.slice(0, 6).map((question) => (
           <article key={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[200px_1fr]">
-            <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject} · ${question.topic} sorusu`} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
+            {question.has_image ? (
+              <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject} · ${question.topic} sorusu`} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
+            ) : (
+              <div role="img" aria-label="Görseli olmayan metin sorusu" className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />Metin sorusu</div>
+            )}
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-canvas-muted">{question.subject} · {question.topic}</p>

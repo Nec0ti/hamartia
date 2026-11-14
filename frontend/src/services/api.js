@@ -36,7 +36,7 @@ export const questions = {
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
   upload: (file, ocrText, subject, topic) => {
     const fd = new FormData()
-    fd.append('file', file, file.name)
+    if (file) fd.append('file', file, file.name)
     fd.append('ocr_text', ocrText || '')
     fd.append('subject', subject || '')
     fd.append('topic', topic || '')

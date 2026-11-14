@@ -57,15 +57,22 @@ async function main() {
     const consoleErrors = []
     const failedResponses = []
     const appRequests = []
+    let createdQuestion
     page.on('pageerror', (error) => pageErrors.push(error.message))
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push({ text: message.text(), location: message.location() })
     })
     page.on('response', (response) => {
       if (response.status() >= 400) failedResponses.push({ url: response.url(), status: response.status() })
+      if (new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST') {
+        response.json().then((question) => { createdQuestion = question })
+      }
     })
     page.on('request', (request) => {
-      if (request.url().startsWith(apiUrl)) appRequests.push({ path: new URL(request.url()).pathname, method: request.method(), body: request.postDataJSON() })
+      if (request.url().startsWith(apiUrl)) {
+        const jsonBody = request.headers()['content-type']?.includes('application/json')
+        appRequests.push({ path: new URL(request.url()).pathname, method: request.method(), body: jsonBody ? request.postDataJSON() : null })
+      }
     })
 
     const started = performance.now()
@@ -87,15 +94,34 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     await page.getByText('1 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    await page.getByRole('button', { name: 'Yanlışlarım' }).click()
+    await page.getByLabel('Ders').fill('Türkçe')
+    await page.getByLabel('Konu').fill('Paragraf')
+    await page.locator('textarea').fill('Metin tabanlı deneme sorusu')
+    await page.getByRole('button', { name: 'Soruyu kaydet' }).click()
+    await page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }).waitFor()
+    assert.equal(createdQuestion.image_path, '')
+    assert.equal(createdQuestion.ocr_text, 'Metin tabanlı deneme sorusu')
+
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }).waitFor()
+    await page.getByRole('button', { name: 'Doğru çözdüm' }).click()
+    await page.getByText('2 soru aralıklı tekrar için ileride açılacak.').waitFor()
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await page.getByText('2 soru aralıklı tekrar için ileride açılacak.').waitFor()
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
+    assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
+    assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(consoleErrors, [])
-    const attemptAndPersistenceMs = Math.round(performance.now() - attempted)
+    const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     const saved = JSON.parse(await fs.readFile(path.join(dataDir, 'questions.json'), 'utf8'))
-    assert.deepEqual(saved[0].review_attempts.map((item) => item.correct), [false])
-    console.log(JSON.stringify({ benchmark: 'study_plan_browser_smoke', navigation_ms: navigationMs, attempt_and_persistence_ms: attemptAndPersistenceMs, ai_included: false }))
+    assert.deepEqual(saved.find((question) => question.id === 'q1').review_attempts.map((item) => item.correct), [false])
+    assert.deepEqual(saved.find((question) => question.id === createdQuestion.id).review_attempts.map((item) => item.correct), [true])
+    console.log(JSON.stringify({ benchmark: 'study_plan_browser_smoke', navigation_ms: navigationMs, capture_and_review_persistence_ms: captureAndPersistenceMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error

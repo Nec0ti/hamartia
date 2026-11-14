@@ -4,32 +4,21 @@ YKS denemelerini ve yanlış soruları bu bilgisayarda tutan, çalışma önceli
 
 ## Yerelde çalıştırma
 
-Python 3.12 ve Node.js 22 gerekir. İki terminal kullan:
-
-### 1. API
-
-Repo kökünde:
+Python 3.12 ve Node.js 22 gerekir. İlk kurulumda:
 
 ```sh
 python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r backend/requirements.txt
-uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+.venv/bin/python -m pip install -r backend/requirements.txt
+cd frontend && npm ci
 ```
 
-API dokümanı `http://127.0.0.1:8000/docs` adresinde açılır.
-
-### 2. Arayüz
-
-İkinci terminalde:
+Günlük kullanımda repo kökünde tek terminal aç:
 
 ```sh
-cd frontend
-npm ci
-npm run dev
+.venv/bin/python scripts/dev.py
 ```
 
-Tarayıcıda `http://localhost:5173` adresini aç.
+Başlatıcı API'nin hazır olduğunu kontrol eder ve iki süreci birlikte kapatır; durdurmak için Ctrl+C kullan. Arayüz `http://127.0.0.1:5173`, API dokümanı `http://127.0.0.1:8000/docs` adresindedir. 5173 başka bir uygulamada açıksa `HAMARTIA_FRONTEND_PORT=5174 .venv/bin/python scripts/dev.py` ile boş bir port seç.
 
 Deneme, yanlış soru ve ayarlar `backend/data/` altında saklanır. Soru görselleri de bu dizinin `uploads/` klasöründedir. Bu klasörü düzenli olarak yedekle; içindeki veriler git'e eklenmez.
 
@@ -59,6 +48,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Browser smoke gerçek yerel FastAPI ve Vite sunucularını geçici bir veri diziniyle açar; görselsiz yanlış soru kaydı/tekrarını, bugünkü etkinlik özetini ve düzenleme-silme akışını, TYT/AYT/branş denemesi oluşturma-düzenleme-silme akışını ve yenileme sonrası saklamayı kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
+Browser smoke `scripts/dev.py` başlatıcısıyla gerçek FastAPI ve Vite sunucularını geçici bir veri dizininde açar; görselsiz yanlış soru kaydı/tekrarını, bugünkü etkinlik özetini ve düzenleme-silme akışını, TYT/AYT/branş denemesi oluşturma-düzenleme-silme akışını ve yenileme sonrası saklamayı kontrol eder. Test için Python backend bağımlılıkları kurulu olmalı; etkin sanal ortam kullan veya `HAMARTIA_PYTHON` ile Python yolunu belirt.
 
 Bu komutlar model yüklemez veya model endpoint'ine istek göndermez. GitHub Actions frontend test/build/browser smoke ile backend test/benchmark akışlarını çalıştırır.

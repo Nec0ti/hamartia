@@ -5,6 +5,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.api.exams import create_exam, delete_exam, update_exam
@@ -55,9 +56,9 @@ class ExamFlowTests(unittest.TestCase):
 
     def test_update_and_delete_missing_exam_return_404(self):
         payload = ExamCreate(date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)
-        with self.assertRaises(Exception) as update_error:
+        with self.assertRaises(HTTPException) as update_error:
             asyncio.run(update_exam("missing", payload, self.storage))
-        with self.assertRaises(Exception) as delete_error:
+        with self.assertRaises(HTTPException) as delete_error:
             asyncio.run(delete_exam("missing", self.storage))
         self.assertEqual(update_error.exception.status_code, 404)
         self.assertEqual(delete_error.exception.status_code, 404)
@@ -169,6 +170,8 @@ class ExamFlowTests(unittest.TestCase):
             ExamCreate(**{**base, "date": "2026-02-30"})
         with self.assertRaises(ValidationError):
             ExamCreate(**{**base, "duration_seconds": 60})
+        with self.assertRaises(ValidationError):
+            ExamCreate(**{**base, "exam_type": "mock"})
 
 
 if __name__ == "__main__":

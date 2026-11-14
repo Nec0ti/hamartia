@@ -22,6 +22,7 @@
 - A source scan found 226 literal translation references and no missing dictionary keys.
 - Browser smoke coverage now checks English default/fallback, persistence, localized dates and chart labels, and existing study flows in both languages. Local execution is blocked because this host lacks `libglib-2.0.so.0`; GitHub Actions must run it before merge.
 - The first PR CI run found that an eagerly evaluated assertion message consumed the seed response body before JSON parsing. The smoke now reads the error body only for a failed response; the rerun is pending.
+- Subsequent browser runs found test-only mismatches in date-cell strictness, the radar accessible-name expectation, Turkish localized percentages/dates, and exam form/result labels. Those assertions now follow the rendered UI, and practice accuracy formatting preserves the existing one-decimal display with locale separators. `npm test` passes 15/15 after the fix; GitHub Actions run #43634176775 passed frontend and backend, including Chromium smoke.
 - The local GitHub Pages browser smoke has the same missing Chromium system dependency and was not verified locally. The public Pages deployment remains on the existing `master` build until this PR is merged.
 
 ## Limits

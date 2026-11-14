@@ -3,12 +3,12 @@
 ## P0 — çalışma temelini kur
 
 - [ ] Yerel geliştirme dalını ve GitHub `codex/hamartia-rebuild` dalını güvenilir biçimde eşleştir; kaynak `master` değişmediğini doğrula.
-- [ ] Backend ve frontend bağımlılıklarını kurma/çalıştırma yolunu doğrula; mevcut API ve veri biçimini raporla.
+- [ ] Frontend bağımlılıklarını kurup build/smoke yolunu doğrula; mevcut API ve veri biçimini raporla.
 - [ ] AI dışı smoke/test/benchmark komutlarını belirle; `backend/tests/*.py` ignore kuralını gözden geçir.
 
 ## P1 — ilk çalışan öğrenci döngüsü
 
-- [ ] Deneme kaydetme ve düzenleme akışını kullanılabilir hâle getir.
+- [ ] Deneme kaydını ve geçmişi korumayı backend'de çalışır hâle getir; UI smoke doğrulamasını tamamla.
 - [ ] Yanlış soruyu görsel/metin ve ders/konu bağlamıyla yerelde kaydet.
 - [ ] Hataları ders/konu bazında özetleyip tekrar çalışma önerisi için şeffaf, deterministik başlangıç görünümü oluştur.
 - [ ] Dashboard ve yer tutucu sekmelerdeki navigasyonu gerçek, tutarlı akışa bağla.

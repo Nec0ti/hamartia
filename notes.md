@@ -18,7 +18,7 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - Frontend: React 18, Vite, Tailwind, Recharts, Axios (`frontend`).
 - Var olan API alanları: denemeler, sorular, kullanıcı/progres, Cosmos oyunlaştırması, AI chat/analiz, ayarlar, healthcheck.
 - `backend/app/core/formulas.py`: YKS neti, XP, seviye ve ortalama net formülleri.
-- `backend/app/services/storage.py`: JSON kayıtları için atomic write ve kilit; veri değişikliklerinde korunmalı.
+- `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit; çok worker/multi-process kullanımda SQLite'a geçiş gerekir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
 - `frontend/src/App.jsx`: yalnızca Dashboard gerçek ekran, diğer sekmeler yer tutucu.
 - `frontend/_smoke.cjs` var; `frontend/package.json` içinde test scripti yok.
@@ -47,6 +47,7 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - Çalışma kopyası GitHub salt-okunur blob/tree uç noktalarından geri kuruldu; yerel `git write-tree` SHA'sı kaynak ağaç `48414fcdac4bd612370a191206a95dae26686c32` ile eşleşti.
 - Ortamda `github.com` DNS çözümlemesi başarısız olduğundan normal `git clone/fetch/push` yapılamıyor. İlerleme dalı GitHub API üzerinden açıldı; yayın/commit aktarımı aynı araçla yapılmalı ve her remote SHA ayrıca doğrulanmalı.
 - İzole yerel checkout'un başlangıç commit'i `8255e39` kaynak commit'in kendisi değildir; yalnızca kaynak ağaç aynıdır. Bu farkı remote ile senkron kanıtı diye sunma.
+- Yerel docs commit'i `6b48813`, deneme kaydı commit'i `513ce14`; GitHub branch eş ağaçları sırasıyla `a6ac8d0` ve `24c8fbef` commitlerinde. Yerel başlangıç commit'i `8255e39` kaynak `master` commit'iyle aynı SHA değil. SHA farkı, yerel kaynağın API üzerinden yeniden kurulmuş olmasından kaynaklanıyor.
 
 ## Açık kararlar
 

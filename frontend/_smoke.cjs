@@ -47,7 +47,7 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-11-14', exam_type: 'branch', subject: 'Matematik', duration_minutes: 30, correct: 30, incorrect: 4, blank: 2 }),
     })
-    assert.equal(seedResponse.ok, true, `Locale fixture failed: ${await seedResponse.text()}`)
+    if (!seedResponse.ok) throw new Error(`Locale fixture failed: ${await seedResponse.text()}`)
     const localeExam = await seedResponse.json()
     browser = await chromium.launch({
       headless: true,

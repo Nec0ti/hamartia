@@ -16,7 +16,7 @@ Implementation follows the official documentation only:
 - [Preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations) and [errors and recovery](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery) — eligibility, usage limits, and failure behavior.
 - [OpenAI SIWC cookbook](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt) — protocol overview.
 
-The implementation uses the official OIDC discovery document at `https://auth.openai.com/.well-known/openid-configuration` and the discovered OpenAI authorization, token, JWKS, and revocation endpoints. Requested scopes are `openid profile email offline_access resource.invoke chatgpt.tokens.use.direct`; the implementation requires `openid`, `offline_access`, `resource.invoke`, and `chatgpt.tokens.use.direct` in the grant before enabling inference.
+The implementation uses the SIWC-documented fixed authorization endpoint (`https://auth.openai.com/api/accounts/authorize`), token endpoint (`https://auth.openai.com/api/accounts/oauth/token`), and OpenAI JWKS. It uses OIDC discovery only for the revocation endpoint, as directed by the SIWC profiles/sessions guide. The metadata issuer must exactly match `https://auth.openai.com`; the revocation endpoint must be an absolute HTTPS URL on that exact origin with no user info, query, or fragment. Valid metadata is cached in memory; failed or malformed discovery is not cached and prevents any revocation request. Requested scopes are `openid profile email offline_access resource.invoke chatgpt.tokens.use.direct`; the implementation requires `openid`, `offline_access`, `resource.invoke`, and `chatgpt.tokens.use.direct` in the grant before enabling inference.
 
 The OAuth flow runs in Electron's main process. It binds a temporary callback to `127.0.0.1`, uses fresh PKCE S256/state/nonce, validates callback state and the issued client ID, and validates the RS256 ID token against OpenAI JWKS (issuer, audience, expiry, issue time, nonce, and subject). It uses no API key, Codex CLI credential, embedded client secret, server proxy, or browser-held token.
 
@@ -30,13 +30,24 @@ Automated tests mock Electron secure storage and all OpenAI endpoints. Native sa
 
 All automated work used mocks or local deterministic study fixtures; no ChatGPT or local model call was made.
 
-- Desktop: `npm test` — 22/22 passed. Covers PKCE/state/nonce, scopes, consent, token validation/redaction, storage failure, failed code exchange and issued-client-ID reuse, refresh rotation/races, model filtering, Responses streaming/completion, error and quota handling, cancellation, revocation success/failure, and account mapping reuse.
-- Frontend: `npm test` — 16/16 passed.
+- Desktop at PR #8: `npm test` — 22/22 passed. The follow-up hardening checks below add metadata, IPC, timer, and recovery coverage.
+- Frontend: `npm test` — 16/16 passed; `npm run build` passed after adding the recovery UI.
 - Backend: `PYTHONPATH=backend /tmp/hamartia-siwc-venv/bin/python -m unittest discover -s backend/tests -v` — 93/93 passed.
 - Production UI: `npm run build` — passed.
 - Public docs: `npm run test:docs` with `PLAYWRIGHT_CHROMIUM_EXECUTABLE` set to the host's Nix Chromium — passed; English default, Turkish navigation, mobile layout, and no external requests.
 - Browser smoke: `npm run test:browser` with the same Chromium path and the temporary backend venv — passed, including mocked Study Agent consent, streaming, cancellation, revocation warning, account-reset flow, and Turkish UI. Reported `ai_included: false`.
+- Docs smoke: `npm run test:docs` with the host Chromium path — passed in English and Turkish, including the new unreadable-credential recovery guidance. The extended app browser smoke also exercised the confirmed local-recovery UI with a mocked desktop bridge and reported `ai_included: false`.
 - `git diff --check` — passed.
+
+## Follow-up hardening for PR #9
+
+The SIWC documentation distinguishes fixed authorization/token endpoints from revocation discovery. The implementation now validates and caches only the discovered revocation endpoint; authorize, token, and JWKS remain fixed to the documented SIWC endpoints. Mock tests exercise valid discovery, cache reuse, retry after a network failure, malformed/missing metadata, untrusted issuer/origin/scheme/type, and prove no token is POSTed to a metadata-provided URL. Another test confirms callback timeout cleanup when the system browser cannot be opened.
+
+Unreadable encrypted credentials now produce a recoverable status. The user must explicitly confirm removal of the unreadable file; the stable host ID is retained, the UI says remote revocation could not be confirmed, and a readable active credential record cannot use this recovery action. The IPC trust/consent boundary is now directly tested through mocked registered main-process handlers, including off-origin and subframe denial, explicit-consent denial, and per-WebContents cancellation/delta routing.
+
+- Desktop: `npm test` — 29/29 passed with mocked Electron and endpoint dependencies; no real ChatGPT/local model calls.
+- Frontend: `npm test` — 16/16 passed; `npm run build`, `npm run test:docs`, and `npm run test:browser` passed, including the new localized recovery action. Browser smoke reported `ai_included: false`.
+- Native Electron secure-store behavior, real SIWC sign-in/inference/revocation, and consumer-machine recovery UX were not exercised and remain manual checks.
 
 The smoke fixture uses a fixed November 14 date. On the first PR CI run the app date was November 14, so the question became scheduled and the due-only review card was hidden; the smoke incorrectly required that card. On this host the app date was November 15, so the same question was due and the old scheduled-summary assertion also failed. The smoke now verifies the persisted per-question attempt API result across reload, independent of current date. The browser run uses the host's Nix Chromium because Playwright's bundled Chromium could not load the system library `libglib-2.0.so.0`.
 

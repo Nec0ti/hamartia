@@ -17,15 +17,16 @@
 - Vite `^5.4.8` yerine `^6.4.6` oldu. Resmi [GHSA-p4f5-76q4-ffq7](https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7) duyurusunda <=6.4.5 etkileniyor; [6.4.6 release](https://github.com/vitejs/vite/releases) yamalı sürüm.
 - Soru dosyası uzantı/MIME denetimine PNG/JPEG/WebP imza doğrulaması eklendi; yanlış başlıklı PNG 415 alıyor.
 - Yanlışlar için tekrar edildi durumu eklendi; plan yalnızca bekleyen kayıtları sıralıyor ve kullanıcı durumu geri alabiliyor.
+- Kullanıcı XP'si deneme başına hesaplanan XP ile mevcut profil bonusunun toplamı; seviye toplam XP'den, seri deneme günlerinden türetiliyor. Profil ve Cosmos aynı XP projeksiyonunu kullanıyor.
 - AI endpoint'i kaydedilmiş ayarları okuyacak async OpenAI client'ı kullanıyor ve görseli data URI ile isteğe ekliyor. Kullanıcı isteği gereği bu yol test/benchmark edilmedi; ayrı bilgisayarda doğrulanması gerekiyor.
 
 ## Doğrulama
 
 | İş | Sonuç |
 | --- | ---: |
-| Backend testleri | 16/16 geçti |
+| Backend testleri | 20/20 geçti |
 | Frontend formatter testleri | 3/3 geçti |
-| Frontend production build (review status akışı dahil) | geçti, 21.46 sn |
+| Frontend production build (review status akışı dahil) | geçti, 20.55 sn |
 | Build ana JS | 661.61 KB minified / 190.49 KB gzip |
 | 100 yanlış yükleme benchmarkı | 0.8692 sn / 115.04 kayıt/sn |
 | 100 soru listeleme | 0.0017 sn |
@@ -34,8 +35,9 @@
 | Aynı tekrar testinde liste/öncelik hesabı | 0.0010 sn / 0.0020 sn |
 | Tekrar döngüsü benchmarkı: 100 soru upload | 0.4798 sn / 208.43 kayıt/sn |
 | Tekrar listesi / review update | 0.0031 sn / 0.0036 sn |
-| 1.000 JSON denemesi append | 15.8939 sn / 62.92 kayıt/sn |
-| 1.000 JSON denemesi okuma | 0.0132 sn |
+| 1.000 JSON denemesi append | 13.6749 sn / 73.13 kayıt/sn |
+| 1.000 JSON denemesi okuma | 0.0078 sn |
+| 1.000 deneme için XP/seri hesabı | 0.0017 sn |
 | `npm audit --offline` | cache'de 0 bulgu |
 
 AI dışı benchmark komutları:
@@ -60,7 +62,7 @@ npm run build
 - Görsel başlığı doğrulanır, piksel akışı decode edilmez; bozuk ama imza taşıyan dosya kabul edilebilir.
 - JSON append her eklemede tüm dosyayı yeniden yazıyor. 1.000 kayıt ölçümü bu maliyeti gösteriyor; eşzamanlı process/çok worker veya büyüyen geçmiş için SQLite'a geçiş gerekir.
 - Bundle 500 KB eşiğini aşıyor. Bu çalışma diliminde code-splitting yapılmadı.
-- GitHub Actions `feat: add a local mistake review loop`, review undo ve son dokümantasyon commit'lerinde frontend/backend job'larını başarıyla tamamladı. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
+- GitHub Actions `feat: add a local mistake review loop`, review undo ve sonraki docs commit'lerinde frontend/backend job'ları başarıyla tamamlandı. XP/seri derived summary workflow'u şu an çalışıyor. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
 - Yerel `git write-tree` ve GitHub ilerleme dalının tree SHA'sı `55fcba2eb952846ef60936e6bf9bb978daf132c6` ile eşleşti; kaynak `master` `c5642d0` kaldı.
 
 ## Model sınırı

@@ -19,4 +19,5 @@
 - 2026-11-14: Yanlış soru tekrar edildi durumu, geri alma ve bekleyen konu önceliği eklendi. 16 backend, 3 frontend testi ve model çağrısız benchmark geçti; ilk yeni CI akışı başarılı.
 - Yeni AI dışı soru-flow ölçümü: `reports/2026-11-14-storage-and-study-plan.md`.
 - 2026-11-14: Review undo ve docs commit'lerinde GitHub Actions frontend/backend işleri başarılı; local ve remote branch tree'leri eşleşti, `master` değişmedi.
+- 2026-11-14: XP toplamı/level/seri artık deneme geçmişinden hesaplanıyor ve profil bonusunu koruyor; 20 backend testi, 3 frontend testi ve 1000 deneme progression benchmarkı geçti. GitHub Actions çalışıyor.
 - Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.

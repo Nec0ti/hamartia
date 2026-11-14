@@ -20,6 +20,7 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `backend/app/core/formulas.py`: YKS neti, XP, seviye ve ortalama net formülleri.
 - `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit. `update_list` kilit altında read-modify-write yapar; bozuk/uyumsuz listeler `StorageError` üretir. Çok worker/multi-process kullanımda SQLite gerekir.
 - `backend/app/core/study_plan.py` ve `/questions/insights`: yanlış soru kayıtlarından AI çağırmadan ders/konu tekrar sıklığı, etiket dağılımı ve son kayıt gününü çıkarır.
+- `backend/app/core/progression.py`: kullanıcıya görünen XP'yi kayıtlı deneme XP'leriyle korunan profil bonusunu toplayarak, seviyeyi bu toplamdan, aktif seriyi deneme günlerinden hesaplar. Aynı özet Cosmos XP projeksiyonunda da kullanılır.
 - `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
 - Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
 - `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
@@ -60,6 +61,7 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - Soru akışı benchmarkı: 100 yükleme 0.8692 sn (115.04/s), listeleme 0.0017 sn, çalışma önceliği 0.0031 sn. JSON depolama benchmarkı: 1.000 append 15.8939 sn (62.92/s), okuma 0.0132 sn.
 - PNG imzası sınırı eklendikten sonraki 100 soru tekrarı: upload 0.5873 sn (170.28/s), listeleme 0.0010 sn, öncelik hesabı 0.0020 sn; 14/14 backend testi geçti.
 - Tekrar döngüsü sonrasında backend 16/16, frontend 3/3 test geçti. 100 kayıt: upload 0.4798 sn (208.43/s), listeleme 0.0022 sn, öncelik 0.0031 sn, tekrar durumu 0.0036 sn.
+- Deneme tabanlı toplam XP/seri hesabı eklendikten sonra 20/20 backend testi geçti; 1.000 kayıt üzerinde hesaplama 0.0017 sn sürdü. JSON storage bu tekrarda 1.000 append 13.6749 sn, read 0.0078 sn ölçtü.
 - Frontend: 3 test geçti; Vite 6.4.6 build'i 21.38 sn, ana bundle 659.95 KB minified ve 190.16 KB gzip. Rollup büyük bundle uyarısı devam ediyor.
 - `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
 - Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.

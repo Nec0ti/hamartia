@@ -24,6 +24,10 @@ YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntü
 - `frontend/src/utils/formatters.js`: seviye barı XP eşiği backend ile eşleşir; seviye N, `(N-1)*500` XP'de başlar ve sonraki seviye N*500 XP'dir.
 - `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
 - `Question.review_attempts` eski kayıtlarda varsayılan boş listedir; her yeni deneme `{attempted_at, correct}` saklar. `reviewed_at` varsa soru arşivli sayılır; yeni çözüm denemesi arşivi açar.
+- `Exam.exam_type` `tyt`, `ayt` veya `branch` değeridir; eski sınav JSON kayıtları varsayılan `branch` ile yüklenir. `PUT /exams/{id}` tüm ham alanları yeniler fakat `id` ve `created_at` değerini korur; DELETE kilitli liste güncellemesidir.
+- Ana sayfa deneme geçmişinin tüm kayıtlarını türe göre filtreleyip tür/ders filtresini trend ve net toplamlarına uygular. Her satırda düzenle ve onaylı sil eylemleri vardır.
+- `frontend/src/services/api.js` varsayılan export `user` servisini de içermelidir; dashboard ve navbar ikisi de `api.user.get()` çağırır.
+- `RadarChart` kategorik eksen kullanır. Numeric `PolarAngleAxis` ve iki aynı yarıçap ekseni Recharts'ta duplicate tick key / NaN SVG hatası veriyordu.
 - Soru görseli artık isteğe bağlıdır; boş görüntü yolları eski JSON biçimini bozmaz. Görselsiz kaydın metin alanı boşsa upload 422 verir. AI prompt'u görseli ancak güvenli dosya bulunduğunda ekler; AI çalışma zamanı doğrulaması yapılmaz.
 - `backend/app/core/review_schedule.py` deterministik tekrar tarihi çıkarır: ilk/yanlış denemeden 1 gün sonra; ardışık doğru denemelerde 1, 3, 7, 14, 30 gün (30 gün üst sınır). Geçersiz tarihli eski deneme bugüne düşer.
 - `POST /questions/{id}/attempt` kilitli liste mutation ile sonucu ekler. `/questions/insights` due soru kuyruğunu (`reviews`) ve ileride açılacak sayıyı (`scheduled_questions`) döndürür.

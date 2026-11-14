@@ -14,6 +14,8 @@
 - [x] Yanlış soruyu tekrar edildi diye işaretleyip planı güncelleme ve işareti geri alma.
 - [x] Doğru/yanlış çözüm denemelerini tarihle saklayıp tekrar aralığını yerelde hesaplama.
 - [x] Görsel zorunluluğunu kaldırıp metin tabanlı yanlış yakalama ve görünür kayıt formu sağlama.
+- [x] TYT/AYT/branş deneme türünü saklama, türe göre filtreleme ve toplamları ayırma.
+- [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 - [ ] Eski Cosmos saldırı/ödül API'sini UI'ya bağlamadan önce XP bahis kurallarını ve çok dosyalı yazım atomikliğini düzelt.
 
@@ -33,4 +35,4 @@
 
 ## Sonraki küçük iş
 
-Deneme kayıtlarına TYT/AYT/branş bağlamı ve düzenleme akışı ekle; sınav türü toplamlarını trendlerden ayır.
+Cosmos ödül API'sinin kurallarını netleştirip tek dosya veya gerçek transaction ile tutarlı hâle getir; bağlantıdan önce kayıp güncelleme ve XP suistimal testlerini yaz.

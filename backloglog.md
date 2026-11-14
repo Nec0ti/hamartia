@@ -28,3 +28,7 @@
 - 2026-11-14: Chromium smoke gerçek FastAPI+Vite ile temp veride görselsiz soru ekleme, çözüm persistence, AI route dışılığı, erişilebilir adlar ve 390 px taşmama kontrolünü geçti. 2.715 sn navigasyon, 2.432 sn capture+review persistence. `npm audit` online 0 bulgu.
 - 100 görselli soru upload 0.4674 sn; 100 text-only capture 0.6439 sn; iki workflow da AI'siz benchmark.
 - Rapor: `reports/2026-11-14-spaced-review-loop.md`. `test:browser` CI'a bağlandı; son Actions çalışması bekleniyor.
+- 2026-11-14: Deneme modeline geriye uyumlu TYT/AYT/branş türü, kilitli PUT/DELETE API'si, tam geçmişte görünür düzenleme/silme, tür filtresi ve tür bazlı net/deneme toplamı eklendi. 32 backend testi; 4 frontend testi, build ve gerçek tarayıcı smoke geçti.
+- Browser: 390 px taşma yok, dashboard JS/API hatası yok, Recharts NaN/duplicate-key hatası yok. Deneme CRUD döngüsü 1.039 sn; arayüz navigasyonu 2.266 sn; capture+review persistence 3.483 sn.
+- 1.000 JSON denemede append 19.178 sn (52.14/s), read 0.0078 sn, update 0.0272 sn, delete 0.0237 sn, progression 0.0017 sn. 100 görselli yanlış 0.3149 sn (317.57/s), 100 text-only yanlış 0.4523 sn (221.11/s); hepsi AI'siz.
+- Rapor: `reports/2026-11-14-exam-context-crud.md`. Uzaktaki kod commitleri ve Actions sonucu doğrulaması sırada.

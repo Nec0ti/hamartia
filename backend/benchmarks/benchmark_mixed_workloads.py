@@ -100,6 +100,7 @@ def fixtures(exam_count, question_count, session_count):
             exam_section_total=(section.correct + section.incorrect + section.blank) if section else None,
             review_attempts=[ReviewAttempt(
                 attempted_at=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat() + "T09:00:00Z",
+                attempt_day=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat(),
                 correct=all_correct if all_correct else offset < attempt_count - 1,
             ) for offset in range(attempt_count)],
         ))
@@ -257,7 +258,7 @@ def _expected_priorities(questions, exams):
     intervals = (1, 3, 7, 14, 30)
     for question in questions:
         for attempt in question.review_attempts:
-            day = datetime.fromisoformat(attempt.attempted_at.replace("Z", "+00:00")).date()
+            day = date.fromisoformat(attempt.attempt_day) if attempt.attempt_day else datetime.fromisoformat(attempt.attempted_at.replace("Z", "+00:00")).date()
             if day == TODAY:
                 today_ids.add(question.id)
                 today_correct += int(attempt.correct)
@@ -265,7 +266,7 @@ def _expected_priorities(questions, exams):
 
         if question.review_attempts:
             attempts = question.review_attempts
-            last_day = datetime.fromisoformat(attempts[-1].attempted_at.replace("Z", "+00:00")).date()
+            last_day = date.fromisoformat(attempts[-1].attempt_day) if attempts[-1].attempt_day else datetime.fromisoformat(attempts[-1].attempted_at.replace("Z", "+00:00")).date()
             streak = 0
             for attempt in reversed(attempts):
                 if not attempt.correct:
@@ -277,8 +278,8 @@ def _expected_priorities(questions, exams):
         else:
             streak, due_day, last_correct = 0, TODAY, None
         due = due_day <= TODAY
-        subject = question.subject.strip() or "Ders belirtilmedi"
-        topic = question.topic.strip() or "Konu belirtilmedi"
+        subject = question.subject.strip()
+        topic = question.topic.strip()
         exam = exam_by_id.get(question.exam_id)
         size = question.exam_section_total or exam.correct + exam.incorrect + exam.blank
         order_subject = question.subject if question.exam_section_total else exam.subject

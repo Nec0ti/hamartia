@@ -3,14 +3,10 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
-import { fmtDate, fmtPercent } from '../utils/formatters.js'
+import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
 
-const dateToday = () => {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
 const emptyForm = () => ({
-  date: dateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
+  date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
   duration_minutes: 0, duration_seconds: 0,
 })
 const fields = [
@@ -80,7 +76,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       setError(t('study.finishOrCancelActive'))
     } else {
       setActive({
-        date: dateToday(), subject: startTopic.subject, topic: startTopic.topic,
+        date: localDateToday(), subject: startTopic.subject, topic: startTopic.topic,
         correct: 0, incorrect: 0, blank: 0, elapsed_seconds: 0, running_since: Date.now(),
       })
     }

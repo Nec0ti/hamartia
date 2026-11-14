@@ -43,7 +43,7 @@ export const practice = {
 
 export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
-  insights: () => client.get('/questions/insights').then((r) => r.data),
+  insights: (today) => client.get('/questions/insights', { params: today ? { today } : {} }).then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
   upload: (file, ocrText, subject, topic, examContext = {}) => {
     const fd = new FormData()
@@ -69,7 +69,7 @@ export const questions = {
       .patch(`/questions/${id}/tag`, { hamartia_tag: hamartiaTag })
       .then((r) => r.data),
   review: (id, reviewed = true) => client.patch(`/questions/${id}/review`, { reviewed }).then((r) => r.data),
-  attempt: (id, correct) => client.post(`/questions/${id}/attempt`, { correct }).then((r) => r.data),
+  attempt: (id, correct, attemptDay) => client.post(`/questions/${id}/attempt`, { correct, attempt_day: attemptDay }).then((r) => r.data),
 }
 
 /* -------------------------------- cosmos -------------------------------- */

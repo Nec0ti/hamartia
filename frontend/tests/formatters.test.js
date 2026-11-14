@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtDate, fmtInt, fmtNet, fmtPercent, subjectLabel } from '../src/utils/formatters.js'
+import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtDate, fmtInt, fmtNet, fmtPercent, labelOr, localDateToday, subjectLabel } from '../src/utils/formatters.js'
 
 test('net score applies the YKS quarter penalty', () => {
   assert.equal(netScore(3, 2), 2.5)
@@ -50,4 +50,24 @@ test('date display follows the selected locale and stays on the calendar date', 
   assert.equal(fmtDate('2026-11-14', 'tr-TR'), '14 Kas 2026')
   assert.equal(fmtDate('2026-11-14', 'tr-TR', { month: 'numeric', day: 'numeric' }), '14/11')
   assert.equal(fmtDate('invalid', 'en-US'), 'invalid')
+})
+
+test('local calendar day follows UTC offsets and midnight without UTC conversion', () => {
+  const originalTz = process.env.TZ
+  try {
+    process.env.TZ = 'Asia/Kathmandu'
+    assert.equal(localDateToday(new Date('2026-11-14T18:30:00Z')), '2026-11-15')
+    assert.equal(localDateToday(new Date('2026-11-14T22:30:00Z')), '2026-11-15')
+    process.env.TZ = 'Etc/GMT+12'
+    assert.equal(localDateToday(new Date('2026-11-14T22:30:00Z')), '2026-11-14')
+  } finally {
+    if (originalTz === undefined) delete process.env.TZ
+    else process.env.TZ = originalTz
+  }
+})
+
+test('missing saved labels use caller-provided English or Turkish fallback', () => {
+  assert.equal(labelOr('', 'Subject not specified'), 'Subject not specified')
+  assert.equal(labelOr('   ', 'Konu belirtilmedi'), 'Konu belirtilmedi')
+  assert.equal(labelOr('Matematik', 'Ders belirtilmedi'), 'Matematik')
 })

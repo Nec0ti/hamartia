@@ -61,6 +61,7 @@ async function main() {
     let createdQuestion
     let linkedQuestion
     let practiceSession
+    let localAttemptDay
     page.on('pageerror', (error) => pageErrors.push(error.message))
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push({ text: message.text(), location: message.location() })
@@ -71,7 +72,8 @@ async function main() {
     page.on('request', (request) => {
       if (request.url().startsWith(apiUrl)) {
         const jsonBody = request.headers()['content-type']?.includes('application/json')
-        appRequests.push({ path: new URL(request.url()).pathname, method: request.method(), body: jsonBody ? request.postDataJSON() : null })
+        const requestUrl = new URL(request.url())
+        appRequests.push({ path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
       }
     })
 
@@ -248,11 +250,17 @@ async function main() {
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     const savedTextQuestion = page.locator('article').filter({ has: page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }) })
     await savedTextQuestion.waitFor()
+    localAttemptDay = await page.evaluate(() => {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    })
     const [correctAttemptResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === `/questions/${createdQuestion.id}/attempt` && response.request().method() === 'POST'),
       savedTextQuestion.getByRole('button', { name: 'Doğru çözdüm' }).click(),
     ])
-    assert.equal((await correctAttemptResponse.json()).review_attempts.at(-1).correct, true)
+    const persistedAttempt = (await correctAttemptResponse.json()).review_attempts.at(-1)
+    assert.equal(persistedAttempt.correct, true)
+    assert.equal(persistedAttempt.attempt_day, localAttemptDay)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
@@ -520,9 +528,34 @@ async function main() {
     await page.getByRole('button', { name: 'ChatGPT ile devam et' }).click()
     await page.getByText(/Bu istek için yazdığım sorunun/).waitFor()
     await page.getByText(/en fazla 8 konu çalışma özeti/).waitFor()
+    const missingLabelForm = new FormData()
+    missingLabelForm.set('ocr_text', 'Synthetic unlabelled question')
+    const missingLabelResponse = await fetch(`${apiUrl}/questions`, { method: 'POST', body: missingLabelForm })
+    assert.equal(missingLabelResponse.status, 201)
+    const missingLabelQuestion = await missingLabelResponse.json()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Plan' }).click()
+    await page.getByText('Subject not specified', { exact: true }).first().waitFor()
+    await page.getByText('Topic not specified', { exact: true }).first().waitFor()
+    await page.getByRole('button', { name: 'Cosmos' }).click()
+    await page.getByText('Subject not specified', { exact: true }).first().waitFor()
+    await page.getByText('Topic not specified', { exact: true }).first().waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await page.getByText('Ders belirtilmedi', { exact: true }).first().waitFor()
+    await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
+    await page.getByRole('button', { name: 'Cosmos' }).click()
+    await page.getByText('Ders belirtilmedi', { exact: true }).first().waitFor()
+    await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
+    const missingLabelDelete = await fetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
+    assert.equal(missingLabelDelete.ok, true)
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
+    assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.body.attempt_day === localAttemptDay))
+    assert(appRequests.some((request) => request.path === '/questions/insights' && request.query.today === localAttemptDay))
     assert(appRequests.some((request) => request.path === '/exams' && request.method === 'POST' && request.body.exam_type === 'ayt'))
     assert(appRequests.some((request) => request.path.startsWith('/exams/') && request.method === 'PUT' && request.body.exam_type === 'tyt'))
     assert(appRequests.some((request) => request.path.startsWith('/exams/') && request.method === 'DELETE'))
@@ -540,6 +573,7 @@ async function main() {
     assert(savedPractice.find((session) => session.id === practiceSession.id).duration_seconds >= elapsedAtFinish)
     assert.equal(savedPractice.filter((session) => session.topic === 'Fonksiyon').length, 7)
     assert.deepEqual(saved.find((question) => question.id === createdQuestion.id).review_attempts.map((item) => item.correct), [true])
+    assert.equal(saved.find((question) => question.id === createdQuestion.id).review_attempts[0].attempt_day, localAttemptDay)
     assert.equal(saved.find((question) => question.id === createdQuestion.id).subject, 'Edebiyat')
     assert.equal(saved.find((question) => question.id === createdQuestion.id).ocr_text, 'Güncellenmiş soru metni')
     assert.equal(saved.some((question) => question.id === 'q1'), false)

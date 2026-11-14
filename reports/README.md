@@ -8,6 +8,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-14 frozen Linux backend bundle verification](2026-11-14-desktop-backend-bundle.md)
 - [2026-11-15 repeatable AI-free benchmark hardening](2026-11-15-benchmark-hardening.md)
 - [2026-11-15 ChatGPT plan Study Agent implementation and verification](2026-11-15-chatgpt-plan-study-agent.md)
+- [2026-11-15 backup snapshot and upload boundaries](2026-11-15-backup-snapshot-and-upload-boundaries.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)

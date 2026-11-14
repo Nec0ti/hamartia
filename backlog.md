@@ -38,6 +38,7 @@
 - [x] Verify the Vite security patch and frontend dependency installation/build.
 - [x] Verify behavior for malformed JSON and the legacy CouncilAnalysis format.
 - [x] Download a ZIP backup without the API key from Settings and validate restore while the app is closed.
+- [x] Capture backups as one point-in-time snapshot during live writes; keep uploaded question images inside the configured data directory.
 - [x] Preserve the current data directory as a snapshot before restore and protect directory swap with a process lock.
 - [x] Benchmark backup creation, validation, and restore using representative data, without AI.
 - [x] Replace single-shot benchmark probes with seeded persisted mixed workloads, correctness oracles, repeated percentiles, and machine metadata; keep sequential JSON append labeled as stress-only.

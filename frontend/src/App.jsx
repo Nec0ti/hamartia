@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
 import QuestionsTab from './tabs/QuestionsTab.jsx'
+import StudyPlanTab from './tabs/StudyPlanTab.jsx'
 import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import api from './services/api'
@@ -54,6 +55,7 @@ export default function App() {
       setActiveTab('questions')
     }} />
     if (activeTab === 'questions') return <QuestionsTab initialSubject={questionSubject} />
+    if (activeTab === 'studyplan') return <StudyPlanTab />
     return <ComingSoon />
   }, [activeTab, questionSubject])
 

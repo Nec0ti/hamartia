@@ -32,6 +32,7 @@ export const exams = {
 
 export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
+  insights: () => client.get('/questions/insights').then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
   upload: (file, ocrText, subject, topic) => {
     const fd = new FormData()

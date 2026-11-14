@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
+from app.core.study_plan import topic_priorities
 from app.models.schemas import Question
 from app.services.ai_service import AIService, get_ai
 from app.services.storage import StorageError, StorageService
@@ -85,6 +86,12 @@ async def upload_question(
 @router.get("", response_model=list[Question])
 async def list_questions(storage: StorageService = Depends(get_storage)):
     return storage.load_list("questions.json", Question)
+
+
+@router.get("/insights", response_model=dict)
+async def question_insights(storage: StorageService = Depends(get_storage)):
+    """Rank repeated mistake topics without calling a model."""
+    return topic_priorities(storage.load_list("questions.json", Question))
 
 
 @router.get("/{question_id}", response_model=Question)

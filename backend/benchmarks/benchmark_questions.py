@@ -42,6 +42,13 @@ async def run(count=100):
             saved = await questions.list_questions(storage)
             list_seconds = time.perf_counter() - started
             assert len(saved) == count
+
+            started = time.perf_counter()
+            insights = await questions.question_insights(storage)
+            insight_seconds = time.perf_counter() - started
+            assert insights["total_questions"] == count
+            assert insights["topics"][0]["question_count"] == count
+
             image = await questions.get_question_image(saved[0].id, storage)
             assert Path(image.path).is_file()
             await questions.tag_question(saved[0].id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
@@ -52,6 +59,7 @@ async def run(count=100):
             "upload_seconds": round(upload_seconds, 4),
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),
+            "insight_seconds": round(insight_seconds, 4),
             "ai_included": False,
         }))
 

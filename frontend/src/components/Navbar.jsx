@@ -15,7 +15,7 @@ const TABS = [
   { id: 'dashboard', label: 'Ana Sayfa', icon: LayoutDashboard },
   { id: 'questions', label: 'Yanlışlarım', icon: FileQuestion },
   { id: 'cosmos', label: 'Cosmos', icon: Globe },
-  { id: 'fatalflaw', label: 'Çalışma Koçu', icon: BookOpen },
+  { id: 'studyplan', label: 'Çalışma Planı', icon: BookOpen },
 ]
 
 /**

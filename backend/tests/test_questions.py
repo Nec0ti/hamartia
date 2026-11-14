@@ -99,6 +99,21 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(result.hamartia_tag, "[Reading Slip]")
         self.assertEqual(self.storage.load_list("questions.json", Question)[0].hamartia_tag, "[Reading Slip]")
 
+    def test_topic_insights_rank_repeated_mistakes_without_ai(self):
+        self.storage.save_list("questions.json", [
+            Question(id="q1", image_name="1.png", image_path="uploads/1.png", subject="Matematik", topic="Fonksiyon", hamartia_tag="[Knowledge Gap]", created_at="2026-11-01T12:00:00Z"),
+            Question(id="q2", image_name="2.png", image_path="uploads/2.png", subject="matematik", topic="fonksiyon", hamartia_tag="[Reading Slip]", created_at="2026-11-05T12:00:00Z"),
+            Question(id="q3", image_name="3.png", image_path="uploads/3.png", subject="Fizik", topic="Vektör", created_at="2026-11-04T12:00:00Z"),
+        ])
+
+        result = asyncio.run(question_api.question_insights(self.storage))
+
+        self.assertEqual(result["total_questions"], 3)
+        self.assertEqual(result["unclassified_questions"], 0)
+        self.assertEqual(result["topics"][0]["question_count"], 2)
+        self.assertEqual(result["topics"][0]["last_seen"], "2026-11-05")
+        self.assertEqual(result["topics"][0]["tags"], {"[Knowledge Gap]": 1, "[Reading Slip]": 1})
+
     def test_council_schema_reads_old_and_new_envelopes(self):
         legacy = CouncilAnalysis.model_validate({
             "dissenter": "old", "first_principles": "base", "verdict": {"difficulty": 3},

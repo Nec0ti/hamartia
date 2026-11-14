@@ -26,6 +26,7 @@ backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 
 backend/data/*.json
+backend/.data.lock
 
 # ==========================================
 # PYTHON & BACKEND

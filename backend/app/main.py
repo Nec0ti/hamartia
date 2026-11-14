@@ -10,13 +10,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import agent, cosmos, exams, questions, settings
+from app.core.config import DATA_DIR
+from app.services.data_lock import DataDirectoryLock
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Datastore is created lazily by the storage dependency; nothing to tear
-    # down on shutdown.
-    yield
+    with DataDirectoryLock(DATA_DIR):
+        yield
 
 
 app = FastAPI(

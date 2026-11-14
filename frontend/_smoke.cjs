@@ -172,6 +172,7 @@ async function main() {
       launcher.kill('SIGTERM')
       await new Promise((resolve) => launcher.once('exit', resolve))
     }
+    await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
     await fs.rm(dataDir, { recursive: true, force: true })
   }
 }

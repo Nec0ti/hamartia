@@ -49,3 +49,9 @@ jobs:
       - run: python backend/benchmarks/benchmark_questions.py
         env:
           PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_backup.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_question_order.py
+        env:
+          PYTHONPATH: backend

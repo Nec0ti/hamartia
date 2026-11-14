@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Save, X } from 'lucide-react'
+import { Download, Save, X } from 'lucide-react'
 import Modal from './Modal.jsx'
-import { handleApiError } from '../services/api'
+import { API_BASE, handleApiError } from '../services/api'
 
 /**
  * Settings modal. Edits the LiteLLM proxy configuration (base URL, model name,
@@ -97,6 +97,18 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </div>
           {saved && <p className="text-xs text-emerald-400">Ayarlar kaydedildi.</p>}
           {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
+          <div className="rounded-lg border border-canvas-line bg-canvas-base p-3">
+            <a
+              href={`${API_BASE}/backup`}
+              download="hamartia-backup.zip"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent"
+            >
+              <Download size={15} /> Yedeği indir
+            </a>
+            <p className="mt-2 text-xs leading-relaxed text-canvas-muted">
+              Geri yüklemek için Hamartia'yı kapatıp repo klasöründe <code>python scripts/restore_backup.py hamartia-backup.zip</code> komutunu çalıştır. Önceki veriler ayrı bir klasörde saklanır.
+            </p>
+          </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button

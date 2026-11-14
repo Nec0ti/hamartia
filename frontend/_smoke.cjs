@@ -143,6 +143,16 @@ async function main() {
     await imageCard.getByRole('button', { name: /Soruyu sil Matematik/ }).click()
     await imageCard.waitFor({ state: 'detached' })
     const questionManageMs = Math.round(performance.now() - questionManageStarted)
+    const backupStarted = performance.now()
+    await page.getByRole('button', { name: 'Ayarları aç' }).click()
+    assert.match(await page.getByRole('link', { name: 'Yedeği indir' }).getAttribute('href'), /\/backup$/)
+    const [backupDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('link', { name: 'Yedeği indir' }).click(),
+    ])
+    assert.equal(backupDownload.suggestedFilename(), 'hamartia-backup.zip')
+    assert.deepEqual((await fs.readFile(await backupDownload.path())).subarray(0, 2), Buffer.from('PK'))
+    const backupDownloadMs = Math.round(performance.now() - backupStarted)
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
@@ -151,6 +161,7 @@ async function main() {
     assert(appRequests.some((request) => request.path.startsWith('/exams/') && request.method === 'DELETE'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}` && request.method === 'PATCH' && request.body.subject === 'Edebiyat'))
     assert(appRequests.some((request) => request.path === '/questions/q1' && request.method === 'DELETE'))
+    assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])
@@ -162,7 +173,7 @@ async function main() {
     assert.equal(saved.some((question) => question.id === 'q1'), false)
     assert.equal(await fs.access(path.join(uploads, 'q1.png')).then(() => true).catch(() => false), false)
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'exams.json'), 'utf8')), [])
-    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, ai_included: false }))
+    console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error

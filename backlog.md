@@ -30,6 +30,9 @@
 - [x] Frontend bağımlılıklarını güncel advisory'lere karşı online audit et.
 - [x] Vite güvenlik yamasını ve frontend bağımlılık kurulum/build'ini doğrulama.
 - [x] Bozuk JSON ve eski CouncilAnalysis biçimi davranışlarını doğrulama.
+- [x] Ayarlar'dan API anahtarı hariç ZIP yedeği indirme ve uygulama kapalıyken doğrulamalı geri yükleme.
+- [x] Geri yüklemeden önce mevcut veri klasörünü snapshot olarak tutma ve dizin değişimini process lock ile koruma.
+- [x] Temsilî veri boyutunda yedek oluşturma, doğrulama ve geri yüklemeyi AI'siz benchmarka alma.
 
 ## P3 — diğer bilgisayarda doğrulama
 
@@ -38,4 +41,4 @@
 
 ## Sonraki küçük iş
 
-`backend/data/` için yedek/dışa aktarma ve geri yükleme akışını veri kaybı ölçütleriyle tasarla.
+Diğer bilgisayarda kayıtlı OpenAI uyumlu endpoint ve görsel analizini doğrula; AI dışı test ve benchmark kapsamına alma.

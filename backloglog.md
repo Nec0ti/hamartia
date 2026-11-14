@@ -1,5 +1,13 @@
 # Backlog günlüğü
 
+## 2026-11-14 — veri yedeği
+
+- Ayarlar ekranına ZIP yedeği indirme eklendi. Denemeler, yanlışlar, kullanıcı/Cosmos ilerlemesi, ayarlar ve `uploads/` alınır; API anahtarı boşaltılır. Bozuk/şemaya uymayan kayıt veya eksik referanslı dosya yedeği reddedilir.
+- Uygulama ömür boyu process lock tutuyor; restore komutu uygulama açıkken çalışmaz. Arşiv önce staging dizininde yol, tür, boyut, checksum, şema ve upload referansı açısından bütünüyle doğrulanır; swap öncesi eski veri klasörü snapshot olarak saklanır.
+- 57 backend testi, 4 frontend testi, production build ve gerçek Chromium smoke geçti. Smoke ZIP indirme adımını da doğruladı (285 ms); 390 px görünüm taşmadı.
+- 50 x 2 MiB temsili upload ile backup export 8.5842 sn, doğrulama 0.9865 sn, restore 1.0021 sn; ZIP 104,900,138 bayt. 1.000 exam storage ve 100 question flow benchmarkları da geçti. Tüm benchmarklar AI'siz.
+- Rapor: `reports/2026-11-14-backup-restore.md`. Yerel API endpoint/model ve multimodal aktarım diğer bilgisayarda doğrulanmayı bekliyor.
+
 ## 2026-11-14
 
 - İlk backlog oluşturuldu; kapsam kaynak kod ve eski proje notuna dayalı, kullanıcıyla henüz UX kararları netleştirilmedi.

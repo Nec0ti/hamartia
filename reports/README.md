@@ -8,3 +8,4 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 - [2026-11-14 yanlış soru kaydı düzenleme ve güvenli silme](2026-11-14-question-record-crud.md)
 - [2026-11-14 bugünkü çalışma etkinliği](2026-11-14-todays-study-activity.md)
 - [2026-11-14 yerel uygulama başlatıcısı](2026-11-14-local-launcher.md)
+- [2026-11-14 veri yedeği ve geri yükleme](2026-11-14-backup-restore.md)

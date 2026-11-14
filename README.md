@@ -20,7 +20,15 @@ Günlük kullanımda repo kökünde tek terminal aç:
 
 Başlatıcı API'nin hazır olduğunu kontrol eder ve iki süreci birlikte kapatır; durdurmak için Ctrl+C kullan. Arayüz `http://127.0.0.1:5173`, API dokümanı `http://127.0.0.1:8000/docs` adresindedir. 5173 başka bir uygulamada açıksa `HAMARTIA_FRONTEND_PORT=5174 .venv/bin/python scripts/dev.py` ile boş bir port seç.
 
-Deneme, yanlış soru ve ayarlar `backend/data/` altında saklanır. Soru görselleri de bu dizinin `uploads/` klasöründedir. Bu klasörü düzenli olarak yedekle; içindeki veriler git'e eklenmez.
+Deneme, yanlış soru ve ayarlar `backend/data/` altında saklanır. Soru görselleri de bu dizinin `uploads/` klasöründedir. Ayarlar'dan ZIP yedeği indirebilirsin. Yedekte kişisel API anahtarı bulunmaz; geri yükleme mevcut bilgisayarın anahtarını korur.
+
+Geri yükleme sırasında uygulamayı kapat ve repo kökünde çalıştır:
+
+```sh
+.venv/bin/python scripts/restore_backup.py hamartia-backup.zip
+```
+
+Geri yükleme tüm arşivi ve kayıt şemalarını doğrular, sonra mevcut `backend/data/` klasörünü `backend/data.before-restore-.../` adıyla saklar. Windows'ta `.venv\\Scripts\\python.exe` kullan. Hamartia çalışırken işlem güvenli şekilde reddedilir.
 
 ## Yerel AI bağlantısı
 
@@ -36,6 +44,7 @@ Repo kökünde backend testleri:
 PYTHONPATH=backend python -m unittest discover -s backend/tests -v
 python backend/benchmarks/benchmark_storage.py
 python backend/benchmarks/benchmark_questions.py
+python backend/benchmarks/benchmark_backup.py
 ```
 
 Frontend:

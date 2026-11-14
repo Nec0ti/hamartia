@@ -27,6 +27,7 @@ backend/data/uploads/*
 
 backend/data/*.json
 backend/.data.lock
+backend/data.before-restore-*/
 
 # ==========================================
 # PYTHON & BACKEND

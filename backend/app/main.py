@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agent, cosmos, exams, questions, settings
+from app.api import agent, backup, cosmos, exams, questions, settings
 from app.core.config import DATA_DIR
 from app.services.data_lock import DataDirectoryLock
 
@@ -50,5 +50,6 @@ app.include_router(__import__("app.api.user", fromlist=["router"]).router)
 app.include_router(cosmos.router)
 app.include_router(agent.router)
 app.include_router(settings.router)
+app.include_router(backup.router)
 
 app.include_router(__import__("app.api.healthcheck", fromlist=["router"]).router)

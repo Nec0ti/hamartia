@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import random
 import tempfile
 import time
 from pathlib import Path
@@ -14,11 +15,14 @@ from app.api import questions
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
+from benchmark_common import emit
 
+SEED = 20261114
+RNG = random.Random(SEED)
 
 def make_upload(index):
     file = tempfile.SpooledTemporaryFile()
-    file.write(b"\x89PNG\r\n\x1a\n" + b"local image fixture" * 128)
+    file.write(b"\x89PNG\r\n\x1a\n" + RNG.randbytes(4096 * (1 + index % 12)))
     file.seek(0)
     return UploadFile(
         filename=f"question-{index}.png",
@@ -27,7 +31,9 @@ def make_upload(index):
     )
 
 
-async def run(count=100):
+async def run(count=100, repeats=7, json_output=None):
+    if not 1 <= count <= 200 or not 3 <= repeats <= 31:
+        raise ValueError("count must be 1..200 and repeats 3..31")
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         storage = StorageService(root)
@@ -49,12 +55,16 @@ async def run(count=100):
             saved = await questions.list_questions(storage)
             list_seconds = time.perf_counter() - started
             assert len(saved) == count
+            list_stats = await _measure_async(lambda: questions.list_questions(storage), repeats)
+            assert list_stats.pop("last_result_count") == count
 
             started = time.perf_counter()
             insights = await questions.question_insights(storage)
             insight_seconds = time.perf_counter() - started
             assert insights["total_questions"] == count
             assert insights["topics"][0]["pending_count"] == count
+            insight_stats = await _measure_async(lambda: questions.question_insights(storage), repeats)
+            assert insight_stats.pop("last_result_count") == count
 
             image = await questions.get_question_image(saved[0].id, storage)
             assert Path(image.path).is_file()
@@ -103,13 +113,18 @@ async def run(count=100):
             section_insight_seconds = time.perf_counter() - started
             assert len(section_insights) == 1 and section_insights[0]["subject"] == "Türkçe"
 
-        print(json.dumps({
+        emit({
             "benchmark": "local_question_flow",
+            "seed": SEED,
             "questions": count,
+            "synthetic_image_bytes_min": 4096,
+            "synthetic_image_bytes_max": 12 * 4096,
             "upload_seconds": round(upload_seconds, 4),
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),
+            "list_warm": list_stats,
             "insight_seconds": round(insight_seconds, 4),
+            "insights_warm": insight_stats,
             "attempt_seconds": round(attempt_seconds, 4),
             "review_seconds": round(review_seconds, 4),
             "update_seconds": round(update_seconds, 4),
@@ -119,9 +134,32 @@ async def run(count=100):
             "section_questions": section_count,
             "section_question_upload_seconds": round(section_question_upload_seconds, 4),
             "section_question_insight_seconds": round(section_insight_seconds, 4),
-            "ai_included": False,
-        }))
+            "correctness": "upload, query, edit, attempt, review, and deletion assertions passed",
+            "limitations": "Signature-valid deterministic payloads approximate image sizes; pixels are not decoded or AI analyzed.",
+        }, json_output)
+
+
+async def _measure_async(operation, repeats):
+    for _ in range(1):
+        await operation()
+    samples = []
+    result = None
+    for _ in range(repeats):
+        started = time.perf_counter()
+        result = await operation()
+        samples.append(time.perf_counter() - started)
+    ordered = sorted(samples)
+    from statistics import median
+    return {"samples": repeats, "p50_seconds": round(median(samples), 6),
+            "p95_seconds": round(ordered[max(0, (repeats * 95 + 99) // 100 - 1)], 6),
+            "last_result_count": len(result) if isinstance(result, list) else result["total_questions"]}
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--count", type=int, default=100)
+    parser.add_argument("--repeats", type=int, default=7)
+    parser.add_argument("--json-output")
+    args = parser.parse_args()
+    asyncio.run(run(args.count, args.repeats, args.json_output))

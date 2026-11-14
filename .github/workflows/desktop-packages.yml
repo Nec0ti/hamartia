@@ -1,0 +1,75 @@
+name: Desktop package builds
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'desktop/**'
+      - 'desktop/smoke_backend.py'
+      - '.github/scripts/release_metadata.py'
+      - '.github/scripts/test_release_metadata.py'
+      - '.github/workflows/desktop-packages.yml'
+      - '.github/workflows/release.yml'
+      - 'RELEASES.md'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build ${{ matrix.target }} packages
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux
+          - os: windows-2022
+            target: windows
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix frontend
+      - run: npm ci --prefix desktop
+      - run: python -m pip install -r backend/requirements-build.txt
+      - run: npm test --prefix frontend
+      - run: python .github/scripts/test_release_metadata.py
+      - if: matrix.target == 'linux'
+        run: npm run dist:linux --prefix desktop
+      - if: matrix.target == 'windows'
+        run: npm run dist:win --prefix desktop
+      - run: python desktop/smoke_backend.py
+      - if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hamartia-linux
+          path: |
+            desktop/dist/*.deb
+            desktop/dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+      - if: matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hamartia-windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 14

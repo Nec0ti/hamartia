@@ -1,0 +1,68 @@
+name: Publish desktop release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-22.04
+    outputs:
+      release: ${{ steps.discover.outputs.release }}
+      pr_number: ${{ steps.discover.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Find the merged pull request for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" > "$RUNNER_TEMP/pulls.json"
+      - id: discover
+        run: python .github/scripts/release_metadata.py discover "$RUNNER_TEMP/pulls.json" "$GITHUB_OUTPUT"
+
+  packages:
+    needs: discover
+    if: needs.discover.outputs.release == 'true'
+    uses: ./.github/workflows/desktop-packages.yml
+    with:
+      ref: ${{ github.sha }}
+
+  publish:
+    needs: [discover, packages]
+    if: needs.discover.outputs.release == 'true'
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: hamartia-arete-release-${{ needs.discover.outputs.pr_number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hamartia-*
+          path: artifacts
+          merge-multiple: true
+      - name: Load merged pull request details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.discover.outputs.pr_number }}
+        run: gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > "$RUNNER_TEMP/pull.json"
+      - id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/release_metadata.py publish "$RUNNER_TEMP/pull.json" artifacts "$GITHUB_SHA" "$RUNNER_TEMP/release-notes.md" "$GITHUB_OUTPUT"
+      - name: Add bilingual release notes to RELEASES.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/release_metadata.py append "${{ steps.release.outputs.tag }}" "$RUNNER_TEMP/release-notes.md" "$GITHUB_REPOSITORY" "$GH_TOKEN"

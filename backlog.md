@@ -11,6 +11,7 @@
 - [x] Deneme girme, geçmişi koruma, yanlış görselini yerel kaydetme ve etiketleme.
 - [x] Ana sayfa ve Yanlışlarım sekmesini gerçek akışa bağlama.
 - [x] Ders/konu hata örüntülerinden deterministik çalışma önceliği çıkarma.
+- [x] Yanlış soruyu tekrar edildi diye işaretleyip planı güncelleme ve işareti geri alma.
 - [ ] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 
 ## P2 — doğrulama ve sağlamlaştırma

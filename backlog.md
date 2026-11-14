@@ -40,6 +40,7 @@
 - [x] Download a ZIP backup without the API key from Settings and validate restore while the app is closed.
 - [x] Preserve the current data directory as a snapshot before restore and protect directory swap with a process lock.
 - [x] Benchmark backup creation, validation, and restore using representative data, without AI.
+- [x] Replace single-shot benchmark probes with seeded persisted mixed workloads, correctness oracles, repeated percentiles, and machine metadata; keep sequential JSON append labeled as stress-only.
 - [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
 
 ## P3 — verification on another computer

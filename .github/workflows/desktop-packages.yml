@@ -114,8 +114,12 @@ jobs:
           }
           trap cleanup EXIT
           sudo apt-get install -y "$GITHUB_WORKSPACE/$package_file"
-          executable="$(dpkg-query -L "$package_name" | grep -E '/(hamartia-desktop|Hamartia)$' | head -n 1 || true)"
+          executable="/usr/bin/hamartia-desktop"
+          dpkg-query -L "$package_name" | grep -Fxq "$executable"
           test -n "$executable"
+          test -x "$executable"
+          executable="$(readlink -f "$executable")"
+          test -f "$executable"
           test -x "$executable"
           xvfb-run -a node desktop/smoke_electron.cjs "$executable"
       - name: Launch the AppImage

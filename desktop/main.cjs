@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const { randomBytes } = require('node:crypto')
 const { spawn } = require('node:child_process')
+const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 const { backendInvocation } = require('./backendInvocation.cjs')
@@ -122,6 +123,29 @@ async function openWindow() {
     if (new URL(url).origin !== backendUrl) event.preventDefault()
   })
   await window.loadURL(backendUrl)
+  await writeSmokeReadiness(window)
+}
+
+async function writeSmokeReadiness(window) {
+  const markerPath = process.env.HAMARTIA_ELECTRON_SMOKE_MARKER
+  if (!markerPath) return
+  let result
+  try {
+    result = await window.webContents.executeJavaScript(`(async () => {
+      const health = await fetch('/healthcheck/ready')
+      const headings = [...document.querySelectorAll('h1, h2')].map((item) => item.textContent.trim())
+      return {
+        origin: location.origin,
+        language: document.documentElement.lang,
+        overviewVisible: headings.includes('Overview'),
+        healthStatus: health.status,
+      }
+    })()`)
+  } catch (error) {
+    result = { error: error.message }
+  }
+  fs.writeFileSync(markerPath, JSON.stringify(result), 'utf8')
+  setImmediate(() => app.quit())
 }
 
 function waitForExit(child, timeoutMs = 0) {
@@ -232,6 +256,9 @@ ipcMain.handle(RESTORE_CHANNEL, async (event, language) => {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  if (process.env.HAMARTIA_ELECTRON_SMOKE_USER_DATA) {
+    app.setPath('userData', process.env.HAMARTIA_ELECTRON_SMOKE_USER_DATA)
+  }
   app.on('second-instance', () => {
     const window = BrowserWindow.getAllWindows()[0]
     if (!window) return

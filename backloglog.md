@@ -1,5 +1,7 @@
 # Backlog log
 
+- 2026-11-14: PR #4 merged to `master` as `4453abb`; the GitHub Pages workflow deployed the updated English/Turkish guide successfully in run #43634470636. Both `/hamartia/` and `/hamartia/tr/` returned HTTP 200. No desktop packages or automated GitHub Releases exist yet; next is native Windows/Linux desktop packaging and merged-PR release automation.
+
 - 2026-11-14: Implemented the English-default English/Turkish app interface and persistent Settings selector; date, number, API error, and accessible labels follow the selected language. Added browser smoke coverage for default/fallback, persistence, localized dates/charts, and existing study flows. Local checks: frontend 15/15, production build succeeded (32.12 sec; 726.76 KB minified / 206.90 KB gzip), backend 81/81, five AI-free benchmarks passed, and 226 literal translation references have no missing keys. The local docs/browser smoke could not launch Chromium because this host lacks `libglib-2.0.so.0`; GitHub CI is pending. Vite still reports its existing >500 KB chunk warning. Report: `reports/2026-11-14-english-turkish-interface.md`.
 
 - 2026-11-14: PR #4's backend checks passed. Frontend browser smoke exposed eager error-message evaluation that consumed the seed response before JSON parsing; fixed in commit `2998a45`. The updated browser check is pending.

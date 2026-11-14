@@ -115,10 +115,25 @@ class QuestionFlowTests(unittest.TestCase):
         result = asyncio.run(question_api.question_insights(self.storage))
 
         self.assertEqual(result["total_questions"], 3)
+        self.assertEqual(result["pending_questions"], 3)
         self.assertEqual(result["unclassified_questions"], 0)
-        self.assertEqual(result["topics"][0]["question_count"], 2)
+        self.assertEqual(result["topics"][0]["pending_count"], 2)
         self.assertEqual(result["topics"][0]["last_seen"], "2026-11-05")
         self.assertEqual(result["topics"][0]["tags"], {"[Knowledge Gap]": 1, "[Reading Slip]": 1})
+
+    def test_review_action_removes_question_from_pending_plan(self):
+        self.storage.save_list("questions.json", [
+            Question(id="q1", image_name="1.png", image_path="uploads/1.png", subject="Matematik", topic="Fonksiyon"),
+            Question(id="q2", image_name="2.png", image_path="uploads/2.png", subject="Matematik", topic="Fonksiyon"),
+        ])
+
+        reviewed = asyncio.run(question_api.review_question("q1", self.storage))
+        plan = asyncio.run(question_api.question_insights(self.storage))
+
+        self.assertTrue(reviewed.reviewed_at.endswith("Z"))
+        self.assertEqual(plan["total_questions"], 2)
+        self.assertEqual(plan["pending_questions"], 1)
+        self.assertEqual(plan["topics"][0]["pending_count"], 1)
 
     def test_council_schema_reads_old_and_new_envelopes(self):
         legacy = CouncilAnalysis.model_validate({

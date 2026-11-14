@@ -182,3 +182,24 @@ async def tag_question(
     if not storage.update_list("questions.json", Question, save_tag):
         raise HTTPException(status_code=404, detail="Question not found")
     return updated[0]
+
+
+@router.post("/{question_id}/review", response_model=Question)
+async def review_question(
+    question_id: str,
+    storage: StorageService = Depends(get_storage),
+):
+    """Mark a question as reviewed so it leaves the pending study plan."""
+    updated = []
+
+    def mark_reviewed(questions):
+        for question in questions:
+            if question.id == question_id:
+                question.reviewed_at = _utcnow()
+                updated.append(question)
+                return True
+        return False
+
+    if not storage.update_list("questions.json", Question, mark_reviewed):
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated[0]

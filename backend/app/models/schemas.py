@@ -134,6 +134,7 @@ class Question(BaseModel):
     analysis: CouncilAnalysis | None = None
     hamartia_tag: str = "[Knowledge Gap]"
     created_at: str = ""
+    reviewed_at: str = ""
 
 
 # ---------------------------------------------------------------------------

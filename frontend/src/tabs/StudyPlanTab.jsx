@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpenCheck, RotateCcw } from 'lucide-react'
+import { BookOpenCheck, CheckCircle2, Tags } from 'lucide-react'
 import api, { handleApiError } from '../services/api'
 
 const TAG_LABELS = {
@@ -27,9 +27,10 @@ export default function StudyPlanTab() {
         <p className="mt-1 text-sm text-canvas-muted">Öncelikler, yanlış soru defterindeki tekrar sayılarına göre sıralanır. Bu görünüm yerel ve deterministiktir; AI kullanmaz.</p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Kayıtlı yanlış" value={plan.total_questions} icon={<BookOpenCheck size={18} />} />
-        <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<RotateCcw size={18} />} />
+        <Stat label="Tekrar bekleyen" value={plan.pending_questions} icon={<CheckCircle2 size={18} />} />
+        <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<Tags size={18} />} />
       </div>
 
       <section className="space-y-3">
@@ -38,7 +39,7 @@ export default function StudyPlanTab() {
           <p className="text-sm text-canvas-muted">Bir konuda daha çok yanlış kaydı varsa listede daha üstte görünür.</p>
         </div>
         {plan.topics.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">Öncelik oluşturmak için önce Yanlışlarım sekmesinden soru kaydet.</div>
+          <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">{plan.total_questions ? 'Bekleyen yanlışın yok. Tekrar listeni tamamladın.' : 'Öncelik oluşturmak için önce Yanlışlarım sekmesinden soru kaydet.'}</div>
         ) : plan.topics.slice(0, 8).map((topic, index) => (
           <article key={`${topic.subject}-${topic.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -49,7 +50,7 @@ export default function StudyPlanTab() {
                   <p className="text-sm text-canvas-muted">{topic.subject}</p>
                 </div>
               </div>
-              <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{topic.question_count} yanlış kaydı</span>
+              <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{topic.pending_count} bekleyen yanlış</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(topic.tags).map(([tag, count]) => (

@@ -47,11 +47,14 @@ async def run(count=100):
             insights = await questions.question_insights(storage)
             insight_seconds = time.perf_counter() - started
             assert insights["total_questions"] == count
-            assert insights["topics"][0]["question_count"] == count
+            assert insights["topics"][0]["pending_count"] == count
 
             image = await questions.get_question_image(saved[0].id, storage)
             assert Path(image.path).is_file()
             await questions.tag_question(saved[0].id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
+            started = time.perf_counter()
+            await questions.review_question(saved[0].id, storage)
+            review_seconds = time.perf_counter() - started
 
         print(json.dumps({
             "benchmark": "local_question_flow",
@@ -60,6 +63,7 @@ async def run(count=100):
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),
             "insight_seconds": round(insight_seconds, 4),
+            "review_seconds": round(review_seconds, 4),
             "ai_included": False,
         }))
 

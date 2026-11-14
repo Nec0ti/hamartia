@@ -2,7 +2,11 @@
   "name": "hamartia-desktop",
   "version": "0.1.0",
   "private": true,
-  "author": "Nec0ti",
+  "author": {
+    "name": "Nec0ti",
+    "email": "nec0ti@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/nec0ti/hamartia",
   "description": "Desktop shell for the local-first Hamartia study app",
   "main": "main.cjs",
   "scripts": {
@@ -45,6 +49,7 @@
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
+      "maintainer": "Necoti <nec0ti@users.noreply.github.com>",
       "category": "Education",
       "target": [
         "deb",

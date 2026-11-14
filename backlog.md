@@ -18,6 +18,7 @@
 - [x] Deneme geçmişinin tamamında mevcut kayıtları düzenleme ve onaylı silme.
 - [x] Cosmos yer tutucusunu güvenli, AI'siz yerel ilerleme akışına dönüştürme.
 - [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
+- [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
 
 ## P2 — doğrulama ve sağlamlaştırma
 
@@ -35,4 +36,4 @@
 
 ## Sonraki küçük iş
 
-Yanlış soru kayıtlarında metin/ders/konu/etiket düzeltme ve görseli koruyan güvenli silme akışı ekle.
+Çalışma planında günlük hedef/gerçekleşme görünümünü öğrenci akışına eklemeden önce kapsamını ve ölçülebilir başarı ölçütünü belirle.

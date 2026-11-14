@@ -1,38 +1,38 @@
-# Deneme türü ve geçmiş yönetimi — 2026-11-14
+# Exam type and history management — 2026-11-14
 
-## Kapsam
+## Scope
 
-- Denemeyi TYT, AYT veya branş olarak kaydetme; eski JSON kayıtlarını kayıpsız okuma.
-- Tür filtresini ders filtresinden ayrı tutup tür seçimini deneme toplamları ve trendlerde uygulama.
-- Deneme geçmişindeki kayıtları düzenleme veya onayla silme.
-- Gerçek API ve UI akışını geçici yerel veride çalıştırma; AI route'larına çağrı olmamasını doğrulama.
+- Save an exam as TYT, AYT, or branch; read old JSON records without data loss.
+- Keep the type filter separate from the subject filter and apply the selected type to exam totals and trends.
+- Edit or confirm deletion of records in exam history.
+- Run the real API and UI flow using temporary local data; verify that no AI routes are called.
 
-## Veri ve API davranışı
+## Data and API behavior
 
-- `Exam.exam_type` izinli değerleri `tyt`, `ayt`, `branch`; tür içermeyen eski JSON kayıtları `branch` kabul edilir. Dosya migrasyonu gerekmez.
-- `PUT /exams/{id}` kilitli `update_list` kullanır; tür ve sonuç alanlarını değiştirir, `id` ile `created_at` değerini korur. Kayıt bulunmazsa 404 döner.
-- `DELETE /exams/{id}` aynı kilitli mutasyon desenini kullanır; bulunmayan kayıt 404 döner.
-- Dashboard TYT/AYT/branş filtresiyle deneme sayısını, ortalama neti, trendi ve tabloyu daraltır. XP profili tüm deneme geçmişinden türemeye devam eder.
-- Tüm denemeler tarihe göre sıralı listelenir; her satır düzenleme ve onaylı silme düğmeleri sunar.
-- Browser smoke, oluşturulan AYT denemesini TYT + yeni ders adıyla günceller, onaylayıp siler ve geçici `exams.json` dosyasının boş kaldığını doğrular.
+- Allowed values for `Exam.exam_type` are `tyt`, `ayt`, and `branch`; old JSON records with no type are treated as `branch`. No file migration is needed.
+- `PUT /exams/{id}` uses locked `update_list`; it changes type and result fields while preserving `id` and `created_at`. Returns 404 if the record is not found.
+- `DELETE /exams/{id}` uses the same locked mutation pattern; returns 404 if the record is not found.
+- The dashboard narrows the exam count, average net, trend, and table using the TYT/AYT/branch filter. The XP profile continues to derive from all exam history.
+- All exams are listed in date order; each row provides edit and confirmed-delete buttons.
+- Browser smoke updates a created AYT exam to TYT with a new subject name, confirms and deletes it, then verifies the temporary `exams.json` file is empty.
 
-## Doğrulama
+## Verification
 
-| Kontrol | Sonuç |
+| Check | Result |
 | --- | ---: |
-| Backend unittest | 32/32 geçti |
-| Frontend Node testleri | 4/4 geçti |
-| Frontend üretim derlemesi | 20.77 sn, başarılı |
-| Ana JS bundle | 676.80 KB minified / 193.58 KB gzip |
-| Online `npm audit` | 0 bulgu |
-| Chromium smoke navigasyon / capture+review / exam CRUD | 2.266 / 3.483 / 1.039 sn |
-| 1.000 kayıt JSON append / read | 19.178 sn / 0.0078 sn |
-| Tek kayıt update / delete | 0.0272 sn / 0.0237 sn |
-| 1.000 kayıt progression hesabı | 0.0017 sn |
-| 100 görselli yanlış kaydı | 0.3149 sn / 317.57 kayıt/sn |
-| 100 text-only yanlış kaydı | 0.4523 sn / 221.11 kayıt/sn |
+| Backend unittest | 32/32 passed |
+| Frontend Node tests | 4/4 passed |
+| Frontend production build | 20.77 sec, succeeded |
+| Main JS bundle | 676.80 KB minified / 193.58 KB gzip |
+| Online `npm audit` | 0 findings |
+| Chromium smoke navigation / capture+review / exam CRUD | 2.266 / 3.483 / 1.039 sec |
+| 1,000-record JSON append / read | 19.178 sec / 0.0078 sec |
+| Single-record update / delete | 0.0272 sec / 0.0237 sec |
+| Progression calculation for 1,000 records | 0.0017 sec |
+| 100 image-question records | 0.3149 sec / 317.57 records/sec |
+| 100 text-only question records | 0.4523 sec / 221.11 records/sec |
 
-Komutlar:
+Commands:
 
 ```sh
 PYTHONPATH=backend python -m unittest discover -s backend/tests -v
@@ -42,17 +42,17 @@ cd frontend && npm test && npm run build && npm audit
 cd frontend && npm run test:browser
 ```
 
-## Bulunan ve düzeltilen sorunlar
+## Issues found and fixed
 
-- Browser smoke gerçek dashboard'da `api.user.get()` çağrıldığını, fakat default API nesnesinde `user` export'unun olmadığını gösterdi. Varsayılan export düzeltildi ve smoke ilk yüklemede bu hatanın çıkmadığını assert eder.
-- Profil rozeti dar ekranda navbar'ı 390 px dışına taşıyordu. Küçük ekranda marka yazısı ve XP çubuğu gizlenip gezinme simgeleri korundu.
-- Boş varsayılan radar, numeric `PolarAngleAxis` ve yinelenen `PolarRadiusAxis` yüzünden duplicate tick key ve NaN SVG çizgisi üretiyordu. Kategorik eksen ve tek yarıçap ekseniyle giderildi.
+- Browser smoke showed that the actual dashboard called `api.user.get()`, but the default API object did not export `user`. The default export was fixed, and smoke asserts that this error does not occur on initial load.
+- The profile badge pushed the navbar beyond 390 px on narrow screens. The brand text and XP bar are hidden on small screens while the navigation icons remain.
+- The empty default radar produced a duplicate tick key and a NaN SVG line because it used a numeric `PolarAngleAxis` and duplicate `PolarRadiusAxis`. This was fixed with a categorical axis and a single radius axis.
 
-## Sınırlamalar
+## Limitations
 
-- Eski kayıtların gerçek sınav türü JSON'da bulunmadığı için varsayılan olarak branş sayılır; kullanıcı bu türü düzenleyebilir.
-- İstatistikler seçili tür ve ders filtresine bağlıdır. XP toplamı kasıtlı olarak filtre dışıdır.
-- Browser smoke örnek kayıtla CRUD ve persistence'i sınar; çok büyük geçmişlerde gerçek kullanıcı veri hacmi benchmark edilmedi.
-- Local AI yüklenmedi, çağrılmadı veya benchmark edilmedi. Başka bilgisayardaki multimodal endpoint doğrulaması bekliyor.
-- Üretim JS paketi 500 KB tavsiye eşiğini aşıyor; mevcut build başarılı ancak Vite uyarısı sürüyor.
-- GitHub Actions run `43608878405` (#41), aynı kaynak kodu için frontend test/build/browser smoke ile backend test ve benchmark adımlarının ikisini de başarıyla tamamladı.
+- Since the actual exam type is not present in old records' JSON, they default to branch; the user can change this type by editing the record.
+- Statistics depend on the selected type and subject filters. The XP total intentionally remains unfiltered.
+- Browser smoke checks CRUD and persistence with a sample record; real user data volume has not been benchmarked for very large histories.
+- Local AI was not loaded, called, or benchmarked. Multimodal endpoint verification on another computer is pending.
+- The production JS bundle exceeds the 500 KB recommended threshold; the current build succeeds, but the Vite warning remains.
+- GitHub Actions run `43608878405` (#41) successfully completed frontend test/build/browser smoke and both backend test and benchmark steps for the same source code.

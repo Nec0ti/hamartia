@@ -1,18 +1,18 @@
-# 2026-11-14 konu çalışma grafikleri ve tam geçmiş — uygulama ve doğrulama
+# 2026-11-14 topic study charts and full history — implementation and verification
 
-## Değişiklik
+## Change
 
-Her ders/konu çalışma kartında kayıtlı setlerin tüm tarih sıralı noktalarıyla iki küçük grafik var: set neti ve yalnızca cevaplanan soru paydasındaki doğruluk. Boş-only set doğruluk çizgisine nokta üretmez. Son altı setin düzenleme/silme eylemleri doğrudan görünür, eskiler açılır geçmişte yönetilebilir. Liste/özet istekleri farklı anda tamamlanırsa listede eşleşmeyen kayıt için hatalı eylem gösterilmez. Model veya backend veri biçimi değişmedi.
+Each subject/topic study card has two small charts using all date-ordered points from saved sets: set net and accuracy using only answered questions in the denominator. A blank-only set produces no point on the accuracy line. Edit/delete actions for the latest six sets are directly visible; older sets can be managed in expanded history. If list/summary requests complete at different times, no invalid action is shown for an unmatched record in the list. The model and backend data format did not change.
 
-## Doğrulama
+## Verification
 
-- Backend regression: 72/72 test geçti.
-- Frontend: `npm test` — 4/4 geçti.
-- Production build başarılı: JS 695.22 KB minified / 198.14 KB gzip; 500 KB chunk uyarısı sürüyor.
-- Chromium smoke: tek noktalı, 8 noktalı, aynı tarihli, tüm yanıtları boş olan grafikler; 390 px taşmama; 6'dan eski seti düzenleme ve silme; net/doğruluk etiketleri doğrulandı. Practice graph + full-history edit/delete bölümü 1.420 sn; AI isteği yok.
-- AI'siz konu seti depolama/özet benchmarkı, 20 konu: 1.000 set — özet 0.007644 sn, yazma 0.009294 sn, okuma 0.023394 sn; 10.000 set — özet 0.043044 sn, yazma 0.089774 sn, okuma 0.233654 sn.
-- GitHub Actions run #67, backend ve frontend işleriyle başarılı.
+- Backend regression: 72/72 tests passed.
+- Frontend: `npm test` — 4/4 passed.
+- Production build succeeded: JS 695.22 KB minified / 198.14 KB gzip; the 500 KB chunk warning remains.
+- Chromium smoke: verified single-point, 8-point, same-date, and all-blank-answer charts; no overflow at 390 px; editing and deleting a set older than six; and net/accuracy labels. Practice graph + full-history edit/delete section took 1.420 sec; no AI request.
+- AI-free topic set storage/summary benchmark, 20 topics: 1,000 sets — summary 0.007644 sec, write 0.009294 sec, read 0.023394 sec; 10,000 sets — summary 0.043044 sec, write 0.089774 sec, read 0.233654 sec.
+- GitHub Actions run #67 succeeded with backend and frontend jobs.
 
-## Sınırlamalar
+## Limitations
 
-Her konu kartında iki grafik bulunur; çok fazla farklı konu aynı anda kayıtlıysa sayfa uzar. Mevcut veriler yalnızca kullanıcının kaydettiği setleri temsil eder. Yerel AI bu kontrol ve ölçümlere dahil edilmedi.
+Each topic card contains two charts; the page gets longer if many different topics are saved at once. Existing data represents only sets the user saved. Local AI was not included in these checks and measurements.

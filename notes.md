@@ -1,109 +1,109 @@
-# Hamartia — proje bilgi dökümü
+# Hamartia — project notes
 
-## Amaç
+## Purpose
 
-YKS hazırlığında deneme sonuçlarını, yanlış soruları ve hata örüntülerini yerelde takip eden; öğrenciye neyi tekrar çalışacağını gösteren bir sistem. Esin kaynağı, ders/deneme/soru çözümü/ilerleme akışını tek platformda sunan 3-4-5 All Star. Hamartia kendi arayüzünü, verisini ve içerik akışını geliştirecek.
+A system for locally tracking practice exam results, missed questions, and error patterns while preparing for YKS, and showing students what to review. The inspiration is 3-4-5 All Star, which offers a single platform for courses, exams, question solving, and progress. Hamartia will develop its own interface, data, and content flows.
 
-## Kullanıcının daha önce tarif ettiği ihtiyaç
+## Needs previously described by the user
 
-- Deneme sonuçlarını süre ve doğru/yanlış/boş değerleriyle saklamak.
-- Yanlış soruların görselini veya metnini kaydetmek.
-- Ders/konu bazında hata tekrarlarını görmek.
-- İlerlemeyi grafiklerle ve soruların çözüm sırasını dikkate alan ölçülerle izlemek.
-- Yerel AI kullanmak; model başka bilgisayarda deneneceği için AI bileşenini test ve benchmarklardan hariç tutmak.
+- Store practice exam results with duration and correct/incorrect/blank values.
+- Save images or text for missed questions.
+- See repeated errors by subject/topic.
+- Track progress with charts and measures that account for question solve order.
+- Use local AI; because the model will be tried on another computer, exclude the AI component from tests and benchmarks.
 
-## Mevcut depo (GitHub `master`, 2026-11-14 incelemesi)
+## Current repository (GitHub `master`, reviewed 2026-11-14)
 
-- Backend: Python/FastAPI, Pydantic, JSON dosya deposu (`backend/app`).
+- Backend: Python/FastAPI, Pydantic, JSON file storage (`backend/app`).
 - Frontend: React 18, Vite, Tailwind, Recharts, Axios (`frontend`).
-- Var olan API alanları: denemeler, sorular, kullanıcı/progres, Cosmos oyunlaştırması, AI chat/analiz, ayarlar, healthcheck.
-- `backend/app/core/formulas.py`: YKS neti, XP, seviye ve ortalama net formülleri.
-- `backend/app/services/storage.py`: JSON kayıtları için atomic write ve aynı dosya yoluna göre paylaşılan process içi kilit. `update_list` kilit altında read-modify-write yapar; bozuk/uyumsuz listeler `StorageError` üretir. Çok worker/multi-process kullanımda SQLite gerekir.
-- `backend/app/core/study_plan.py` ve `/questions/insights`: yanlış soru kayıtlarından AI çağırmadan ders/konu tekrar sıklığı, etiket dağılımı ve son kayıt gününü çıkarır.
-- `backend/app/core/progression.py`: kullanıcıya görünen XP'yi kayıtlı deneme XP'leriyle korunan profil bonusunu toplayarak, seviyeyi bu toplamdan, aktif seriyi deneme günlerinden hesaplar. Aynı özet Cosmos XP projeksiyonunda da kullanılır.
-- `frontend/src/utils/formatters.js`: seviye barı XP eşiği backend ile eşleşir; seviye N, `(N-1)*500` XP'de başlar ve sonraki seviye N*500 XP'dir.
-- `Question.reviewed_at` tekrar edilen tarihi tutar; aynı yerel rotadan işaretlenip geri alınabilir. Eski JSON kayıtları boş tarih varsayılanıyla okunur.
-- `Question.review_attempts` eski kayıtlarda varsayılan boş listedir; her yeni deneme `{attempted_at, correct}` saklar. `reviewed_at` varsa soru arşivli sayılır; yeni çözüm denemesi arşivi açar.
-- `Exam.exam_type` `tyt`, `ayt` veya `branch` değeridir; eski sınav JSON kayıtları varsayılan `branch` ile yüklenir. `PUT /exams/{id}` tüm ham alanları yeniler fakat `id` ve `created_at` değerini korur; DELETE kilitli liste güncellemesidir.
-- `Exam.sections` tam TYT/AYT denemesinde serbest adlı ders sonuçlarını tek oturumda tutar. Backend üst toplamları bölüm toplamlarıyla doğrular; XP/seri/oturum sayımı kayıtta bir kez yapılır. Bölümsüz legacy TYT/AYT ve branş kayıtları okunmaya devam eder. Dashboard bölüm netine göre filtreleyebilir; eski tam deneme düzenlenirken eski tek ders sayıları bir bölüme taşınır.
-- `StorageService.update_doc(filename, model, callback)` tek JSON nesnesini read-modify-write kilidi altında günceller; `load_doc` aynı dosya kilidini kullanır. Kilitler tek process içindir; çok worker gerekirse SQLite/process lock gerekir.
-- Cosmos node upsert ve sector unlock `update_doc` kullanır; paralel tekrar/sector değişikliklerini korur. `/cosmos/nodes/{id}/assault` 410 döndürür, çünkü eski random XP saldırısı dosyalar arası tutarsız yazım ve tanımsız oyun kuralı taşıyordu. UI bağlamadı; var olan `cosmos.json`/`user.json` verisine dokunmaz.
-- Ana sayfa deneme geçmişinin tüm kayıtlarını türe göre filtreleyip tür/ders filtresini trend ve net toplamlarına uygular. Her satırda düzenle ve onaylı sil eylemleri vardır.
-- Yanlış soru kartları ders, konu ve OCR/metin alanlarını düzenleyebilir; düzenleme görsel yolunu, AI analizini, hata etiketini ve tekrar geçmişini korur. Silme kaydı kilitli liste mutasyonuyla çıkarır, yalnızca çözümlenmiş dosya `uploads/` altında ise görseli kaldırır. JSON kaydı ile dosya sistemi arasında tek transaction yoktur; süreç tam o arada kesilirse yetim görsel kalabilir.
-- `frontend/src/services/api.js` varsayılan export `user` servisini de içermelidir; dashboard ve navbar ikisi de `api.user.get()` çağırır.
-- `RadarChart` kategorik eksen kullanır. Numeric `PolarAngleAxis` ve iki aynı yarıçap ekseni Recharts'ta duplicate tick key / NaN SVG hatası veriyordu.
-- Soru görseli artık isteğe bağlıdır; boş görüntü yolları eski JSON biçimini bozmaz. Görselsiz kaydın metin alanı boşsa upload 422 verir. AI prompt'u görseli ancak güvenli dosya bulunduğunda ekler; AI çalışma zamanı doğrulaması yapılmaz.
-- `backend/app/core/review_schedule.py` deterministik tekrar tarihi çıkarır: ilk/yanlış denemeden 1 gün sonra; ardışık doğru denemelerde 1, 3, 7, 14, 30 gün (30 gün üst sınır). Geçersiz tarihli eski deneme bugüne düşer.
-- `backend/app/core/study_plan.py` aynı kayıtlı `review_attempts` üzerinden bugünkü farklı soru sayısı ile her doğru/yanlış yanıtın sayısını çıkarır. Farklı soru metriği distinct soru kimliği sayar; geçersiz attempt tarihleri etkinliğe girmez. Plan ekranı her yanıt sonrası ve yenilemede bu özeti gösterir.
-- `scripts/dev.py` aktif Python ortamındaki FastAPI/Uvicorn ve `frontend/node_modules`/npm ile API ve Vite'ı tek komutta başlatır, API ready ile frontend yanıtını bekler, Ctrl+C/SIGTERM'de iki child process'i durdurur. POSIX'te process group'u kapatır. Vite portu strict; 5173 doluysa `HAMARTIA_FRONTEND_PORT` ayarlanabilir. Backend portu 8000'dir.
-- `backend/app/services/data_lock.py` veri dizini için processler arası sahiplik kilidi sağlar; API ömrü boyunca kilit tutar. `scripts/restore_backup.py` bu kilidi almadan restore etmez, bu nedenle uygulama kapalı olmalıdır.
-- `backend/app/services/backup.py` `manifest.json` sürümlü SHA-256 ZIP yedeği üretip geri yükler. İçerik exams/questions/user/cosmos/agent documents/settings JSON'ları ve `uploads/` dosyalarıdır; geçici `.tmp` dosyaları ve `settings.json` API anahtarı dışarıda kalır. Geri yükleme mevcut API anahtarını korur.
-- `Question` yeni `exam_id`, `question_number`, `solve_order`, `time_spent_seconds` alanlarını geriye uyumlu boş varsayılanlarla okur. Deneme listesinden açılan yanlış ekleme akışı bağlamı taşır; sıraya göre erken/orta/geç hata sayısı ve her bölümün medyan soruda kalma süresi `/questions/insights` içinde sunulur.
-- Bölümlü denemeye bağlanan yeni yanlış soru, ders bölümüne göre sınırlandırılır; `Question.exam_section_total` o andaki bölüm büyüklüğünü saklar. Eski sorularda alan `None` kalır. Bölüm sonradan düzenlense de sıra özeti kayıt anındaki büyüklüğü kullanır.
-- Tamamlanan konu çalışma setleri `practice_sessions.json` içinde doğru/yanlış/boş, süre ve tarihle tutulur. Net doğru/4 - yanlış/4; doğruluk paydası doğru+yanlıştır ve boş soruları dışlar. Konu grupları yalnızca setlerden hesaplanır. CRUD API'si ve Çalışma Planı özeti vardır; backup v1 arşivleri boş set listesiyle içe alınabilir. Model çağrısı yapılmaz.
-- Çalışma Planı'ndaki bekleyen konu kartı, oturum zamanlayıcısını başlatır. Oturumun doğru/yanlış/boş sayaçları sıfırın altına inmez; süre duraklatılıp sürdürülebilir. Taslak aynı tarayıcıda `localStorage` ile yenileme sonrası geri gelir; taslak ZIP backup'ta değildir. En az bir soru sayımıyla bitirildiğinde toplam süre dakika+saniye ve sonuçlar mevcut `/practice` API'sine tek kayıtta gider. Hamartia soru veya çözüm sağlamaz; AI kullanmaz.
-- Konu çalışma kartları tüm kayıtlı setler için ayrı net ve cevaplanan doğruluk grafikleri gösterir. Doğruluk çizgisinde tümü boş olan setin noktası yoktur. Son altı set doğrudan; daha eski olanlar açılır geçmiş içinde düzenlenip silinebilir. Özet ve kayıt GET istekleri yarışırsa ilgili kayıt listede görünür fakat eşleşmeyen kayda yanlış edit/sil eylemi sunulmaz.
-- Council API provider `OpenAIError` hatasını 502'ye çevirir; varsayılan sahte verdict ve `[Distractor Trap]` etiketi olarak saklamaz. `QuestionsTab` bu HTTP hatasını gösterir; analiz ve etiket başarısız çağrıda korunur. Sınır fake exception ile doğrulanır; gerçek endpoint/model ve multimodal istek başka bilgisayarda elle denenir, AI test/benchmark kapsamına alınmaz.
-- Sıra özeti mevcut exam kayıtlarına bağlanamayan (silinmiş exam) veya çözüm sırası olmayan soruları dışarıda bırakır. Sadece yanlış defterinde kaydedilmiş soruları içerir; cevaplanan toplam sayısı olmadığı için doğru/yanlış başarı yüzdesi iddiasında bulunmaz.
-- Restore bütün arşivi sibling staging klasöründe path traversal, symlink, dosya sayısı/boyutu, SHA-256, Pydantic şema ve upload referansları bakımından kontrol eder; veri dizinini değiştirmeden önce doğrulama tamamlanır. Swap'tan önce mevcut dizin `data.before-restore-<UTC>` adıyla korunur. Snapshot'ları kullanıcı ancak ayrı karar verirse silebilir.
-- `GET /backup` ZIP attachment üretir; Ayarlar ekranı indirme bağlantısı ve `scripts/restore_backup.py` talimatı taşır. `backend/benchmarks/benchmark_backup.py` 50 x 2 MiB upload benchmarkıyla export/validation/restore maliyetlerini ölçer; AI çalıştırmaz.
-- `GET/PATCH /settings` API anahtarını yanıtta döndürmez; `SettingsResponse.has_api_key` yalnızca varlığını bildirir. Boş key alanı saklı değeri korur, `clear_api_key` sadece kullanıcı açıkça temizlemeyi seçtiğinde siler. Ayarlar modalı gizli değeri tarayıcı state'ine almaz; her açılışta anahtar girişi sıfırlanır. Bu, localhost/UI yanıtındaki sır ifşasını azaltır ama aynı makinedeki güvenilmeyen süreçler için gizli kasa değildir.
-- `POST /questions/{id}/attempt` kilitli liste mutation ile sonucu ekler. `/questions/insights` due soru kuyruğunu (`reviews`) ve ileride açılacak sayıyı (`scheduled_questions`) döndürür.
-- `StudyPlanTab` gerçek sorunun görsel/metnini sunar; doğru/yanlış sonucunu kaydedip kuyruğu tazeler. Soru yanıtı XP üretmez; XP deneme geçmişinden türetilir.
-- Soru görseli yüklemesi uzantı/MIME türünün yanı sıra PNG/JPEG/WebP dosya başlığını doğrular; başlık kontrolü tam görüntü decode'u değildir.
-- `backend/app/services/ai_service.py`: LiteLLM/OpenAI uyumlu istemci; local model çalıştırılmayacak.
-- `AIService.default()` `backend/data/settings.json` ayarlarını okur; soru görselini ve OCR metnini OpenAI uyumlu multimodal chat isteğine ekler. Bu kod yolu başka bilgisayardaki modelle doğrulanmadı ve test/benchmark dışında tutuldu.
-- `frontend/src/App.jsx`: Dashboard, Yanlışlarım, deterministik Çalışma Planı ve salt okunur Cosmos ekranı gerçek akışa bağlı. Çalışma Koçu yer tutucu.
-- `frontend/src/tabs/CosmosTab.jsx`: deneme geçmişinden türetilen XP/seviye/seri ile bekleyen konu önceliklerini kartlar halinde gösterir; yalnızca GET uçlarını çağırır ve yeni durum yazmaz.
-- Cosmos'taki mevcut `assault` ve `unlock_sector` POST akışları UI'da kullanılmıyor. Özellikle `assault`, user/cosmos JSON'larını ayrı yazar ve başarı/başarısızlık XP semantiği tutarsız; atomik ve kuralları netleşmeden bağlama.
-- `frontend/package.json`: Node test scripti ve AI çağrısı içermeyen formatter testleri var.
-- Backend testleri `backend/tests/` altında Git'te izleniyor; AI dışı benchmarklar `backend/benchmarks/` altında.
-- `frontend/_smoke.cjs` gerçek FastAPI+Vite uygulamasını temp veri diziniyle başlatır; text-only soru ekler, çözüm sonucunu yazar ve reload sonrası korunduğunu doğrular. Bu akış AI endpoint'lerine istek çıkarmaz.
+- Existing API areas: exams, questions, user/progression, Cosmos gamification, AI chat/analysis, settings, health check.
+- `backend/app/core/formulas.py`: YKS net, XP, level, and average-net formulas.
+- `backend/app/services/storage.py`: atomic writes and process-local locks shared by file path for JSON records. `update_list` performs read-modify-write under a lock; malformed/incompatible lists raise `StorageError`. SQLite is needed for multi-worker/multi-process use.
+- `backend/app/core/study_plan.py` and `/questions/insights`: derive subject/topic review frequency, label distribution, and latest record date from missed-question records without calling AI.
+- `backend/app/core/progression.py`: calculates user-visible XP by adding saved exam XP to the preserved profile bonus, derives level from that total, and calculates the active streak from exam dates. The same summary is used for the Cosmos XP projection.
+- `frontend/src/utils/formatters.js`: level-bar XP threshold matches the backend; level N starts at `(N-1)*500` XP and the next level is at N*500 XP.
+- `Question.reviewed_at` stores the review date; it can be marked and undone through the same local route. Old JSON records are read with an empty-date default.
+- `Question.review_attempts` defaults to an empty list for old records; each new attempt stores `{attempted_at, correct}`. If `reviewed_at` exists, the question is considered archived; a new answer attempt reopens it.
+- `Exam.exam_type` is `tyt`, `ayt`, or `branch`; old exam JSON records load with `branch` as the default. `PUT /exams/{id}` replaces all submitted fields while preserving `id` and `created_at`; DELETE is a locked list update.
+- `Exam.sections` stores freely named subject results in one full TYT/AYT session. The backend validates top-level totals against section totals; XP/streak/session count is applied once per record. Legacy TYT/AYT and branch records without sections remain readable. The dashboard can filter by section net; when editing an old full exam, its old single-subject counts are moved into one section.
+- `StorageService.update_doc(filename, model, callback)` updates one JSON object under a read-modify-write lock; `load_doc` uses the same per-file lock. Locks are per-process; SQLite/process locks are needed for multiple workers.
+- Cosmos node upsert and sector unlock use `update_doc`, preserving concurrent review/sector changes. `/cosmos/nodes/{id}/assault` returns 410 because the old random XP attack involved inconsistent cross-file writes and undefined game rules. It is not connected in the UI and does not touch existing `cosmos.json`/`user.json` data.
+- The home page filters all exam history by type and applies the type/subject filter to trend and net totals. Every row has edit and confirmed-delete actions.
+- Missed-question cards can edit subject, topic, and OCR/text fields; editing preserves the image path, AI analysis, error label, and review history. Deletion removes the record through a locked list mutation and removes the image only if the resolved file is under `uploads/`. There is no single transaction across the JSON record and filesystem; if the process stops in that interval, an orphan image may remain.
+- `frontend/src/services/api.js` default export must also include the `user` service; both dashboard and navbar call `api.user.get()`.
+- `RadarChart` uses a categorical axis. Numeric `PolarAngleAxis` and two identical radial axes caused duplicate tick key / NaN SVG errors in Recharts.
+- Question images are now optional; empty image paths do not break the old JSON format. Upload returns 422 if a record without an image has empty text. The AI prompt includes an image only when a safe file is found; AI runtime has not been verified.
+- `backend/app/core/review_schedule.py` derives deterministic review dates: 1 day after the first/incorrect attempt; after consecutive correct attempts, 1, 3, 7, 14, 30 days (30-day maximum). An old attempt with an invalid date falls back to today.
+- `backend/app/core/study_plan.py` uses the same saved `review_attempts` to derive today's distinct question count and counts of every correct/incorrect answer. The distinct-question metric counts unique question IDs; attempts with invalid dates are excluded from activity. The plan screen shows this summary after each answer and on reload.
+- `scripts/dev.py` starts the API and Vite in one command using FastAPI/Uvicorn in the active Python environment and `frontend/node_modules`/npm; it waits for API readiness and a frontend response, then stops both child processes on Ctrl+C/SIGTERM. On POSIX, it shuts down the process group. Vite uses a strict port; if 5173 is occupied, set `HAMARTIA_FRONTEND_PORT`. Backend port is 8000.
+- `backend/app/services/data_lock.py` provides an inter-process ownership lock for the data directory; the API holds it for its lifetime. `scripts/restore_backup.py` will not restore unless it can acquire this lock, so the app must be closed.
+- `backend/app/services/backup.py` creates/restores a versioned SHA-256 ZIP backup with `manifest.json`. Contents are exams/questions/user/cosmos/agent documents/settings JSON files and files under `uploads/`; temporary `.tmp` files and the `settings.json` API key are excluded. Restore preserves the current API key.
+- `Question` reads new `exam_id`, `question_number`, `solve_order`, and `time_spent_seconds` fields with backward-compatible empty defaults. The missed-question flow opened from the exam list carries this context; counts of early/middle/late errors by order and median time per section are exposed in `/questions/insights`.
+- A new missed question linked to a sectioned exam is limited by that subject section; `Question.exam_section_total` stores the section size at the time. Old questions keep this field as `None`. Even if the section is edited later, the order summary uses the size saved at capture time.
+- Completed topic practice sets are stored in `practice_sessions.json` with correct/incorrect/blank counts, duration, and date. Net is correct/4 - incorrect/4; accuracy denominator is correct+incorrect and excludes blank answers. Topic groups are derived only from sets. A CRUD API and Study Plan summary exist; backup v1 archives can be imported with an empty set list. No model call is made.
+- A pending topic card in Study Plan starts a session timer. Correct/incorrect/blank counters cannot go below zero; the timer can be paused and resumed. A draft returns after reload from `localStorage` in the same browser; drafts are not in ZIP backups. When completed with at least one question counted, total duration in minutes+seconds and results are sent in one record to the existing `/practice` API. Hamartia provides no questions or solutions and uses no AI.
+- Topic practice cards show separate net and answered-accuracy charts for all saved sets. A set with only blank answers has no point on the accuracy line. The last six sets are shown directly; older sets can be edited/deleted in expandable history. If summary and record GET requests race, the relevant record remains in the list, but edit/delete actions are not shown for a mismatched record.
+- The Council API converts provider `OpenAIError` to 502; it does not save it as a default fake verdict or `[Distractor Trap]` label. `QuestionsTab` shows this HTTP error; analysis and labels are preserved after a failed call. The boundary is verified with a fake exception; the real endpoint/model and multimodal request will be manually tried on another computer and are outside AI test/benchmark scope.
+- The order summary excludes questions that cannot be linked to current exam records (deleted exam) or lack solve order. It includes only questions saved in the missed-question notebook; because the total number answered is unknown, it does not claim a correct/incorrect success percentage.
+- Restore checks the entire archive in a sibling staging directory for path traversal, symlinks, file count/size, SHA-256, Pydantic schema, and upload references; validation finishes before changing the data directory. Before swap, the current directory is preserved as `data.before-restore-<UTC>`. The user may delete snapshots only as a separate decision.
+- `GET /backup` creates a ZIP attachment; the Settings screen provides a download link and `scripts/restore_backup.py` instructions. `backend/benchmarks/benchmark_backup.py` measures export/validation/restore costs with 50 x 2 MiB uploads; it does not run AI.
+- `GET/PATCH /settings` does not return the API key; `SettingsResponse.has_api_key` reports only whether one exists. An empty key field preserves the stored value; `clear_api_key` deletes it only when the user explicitly chooses to clear it. The Settings modal does not load the hidden value into browser state; the key field is reset on every open. This reduces secret exposure in localhost/UI responses but is not a secret vault against untrusted processes on the same computer.
+- `POST /questions/{id}/attempt` appends the result through a locked list mutation. `/questions/insights` returns the due-question queue (`reviews`) and the number scheduled for later (`scheduled_questions`).
+- `StudyPlanTab` displays the real question's image/text, records a correct/incorrect result, and refreshes the queue. Answering questions does not grant XP; XP is derived from exam history.
+- Question image upload validates the PNG/JPEG/WebP file header in addition to extension/MIME type; header validation is not a full image decode.
+- `backend/app/services/ai_service.py`: LiteLLM/OpenAI-compatible client; local model will not be run.
+- `AIService.default()` reads `backend/data/settings.json`; it adds the question image and OCR text to an OpenAI-compatible multimodal chat request. This code path has not been verified with a model on another computer and is excluded from tests/benchmarks.
+- `frontend/src/App.jsx`: Dashboard, My Mistakes, deterministic Study Plan, and read-only Cosmos screens are connected to real flows. Study Coach is a placeholder.
+- `frontend/src/tabs/CosmosTab.jsx`: shows XP/level/streak derived from exam history and pending topic priorities as cards; it calls only GET endpoints and writes no new state.
+- Existing `assault` and `unlock_sector` POST flows in Cosmos are not used in the UI. In particular, `assault` writes user/cosmos JSON files separately and has inconsistent success/failure XP semantics; do not connect it until it is atomic and its rules are clear.
+- `frontend/package.json`: contains a Node test script and formatter tests that make no AI calls.
+- Backend tests are tracked under `backend/tests/`; non-AI benchmarks are under `backend/benchmarks/`.
+- `frontend/_smoke.cjs` starts the real FastAPI+Vite app with a temporary data directory; it adds a text-only question, records an answer, and verifies persistence after reload. This flow does not request AI endpoints.
 
-## Eski tanı tasarımı
+## Legacy diagnosis design
 
-`HAMARTIA.md`, yanlış soruların beş farklı bakış açısıyla incelendiği tek LiteLLM çağrılı bir Council of Minds tanımlar: Dissenter, First Principles, Expansionist, Outsider, Executor ve bunları birleştiren President. Model yanıtı hata etiketi, kök neden, tavsiye, zorluk ve konu yakınlığı taşıyan JSON zarfıdır. Şema ve prompt biçimleri arasında olası uyumsuzluklar var; AI dışı çekirdek akış tasarlanmadan önce bunlara bağımlılık kurulmayacak.
+`HAMARTIA.md` describes a single LiteLLM call examining missed questions from five perspectives in a Council of Minds: Dissenter, First Principles, Expansionist, Outsider, Executor, and a President who combines them. The model response is a JSON envelope containing an error label, root cause, recommendation, difficulty, and topic similarity. Schema and prompt formats may not match; do not depend on them before designing the non-AI core flow.
 
-## Veri ve uyumluluk notları
+## Data and compatibility notes
 
-- `backend/data/*.json` kişisel uygulama verisi için `.gitignore` kapsamındadır.
-- Mevcut depodaki veri örnekleri yok; canlı kullanımdaki şema/örnek dosyalar doğrulanmış değil.
-- Yeni sistem eski JSON kayıtlarını silmemeli; şema değişikliği gerekirse geriye uyumlu okuma veya açık migrasyon planı olmalı.
-- Soru görselleri `backend/data/uploads/` altında saklanıyor ve Git dışında kalmalı.
+- `backend/data/*.json` is covered by `.gitignore` for personal application data.
+- There are no sample data files in the current repository; schemas/sample files from live use have not been verified.
+- The new system must not delete old JSON records; if a schema change is needed, use backward-compatible reads or an explicit migration plan.
+- Question images are stored under `backend/data/uploads/` and must remain outside Git.
 
-## Benchmark sınırı
+## Benchmark boundary
 
-Benchmarka dahil: net/istatistik hesapları, JSON depolama, API iş akışları, kayıtları listeleme/filtreleme, frontend build ve model çağrısı içermeyen UI smoke akışları.
+Included in benchmarks: net/statistics calculations, JSON storage, API workflows, listing/filtering records, frontend build, and UI smoke flows without model calls.
 
-Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kalitesi, AI latency/token/VRAM/RAM ölçümleri. Testlerde AI servisi mock veya atlanmış olmalı; gerçek local AI'a istek gönderilmemeli.
+Excluded from benchmarks: model loading/running, prompt quality, AI response quality, and AI latency/token/VRAM/RAM measurements. Tests must mock or skip the AI service; do not send requests to a real local AI.
 
-## Başlangıç ve erişim kanıtı
+## Origin and access evidence
 
-- Kaynak: `Nec0ti/hamartia`, `master` başındaki GitHub commit `c5642d0cb2f133e641b0d1c73a12faaf57a611c6`.
-- Çalışma kopyası GitHub salt-okunur blob/tree uç noktalarından geri kuruldu; yerel `git write-tree` SHA'sı kaynak ağaç `48414fcdac4bd612370a191206a95dae26686c32` ile eşleşti.
-- Ortamda `github.com` DNS çözümlemesi başarısız olduğundan normal `git clone/fetch/push` yapılamıyor. İlerleme dalı GitHub API üzerinden açıldı; yayın/commit aktarımı aynı araçla yapılmalı ve her remote SHA ayrıca doğrulanmalı.
-- İzole yerel checkout'un başlangıç commit'i `8255e39` kaynak commit'in kendisi değildir; yalnızca kaynak ağaç aynıdır. Bu farkı remote ile senkron kanıtı diye sunma.
-- Yerel docs commit'i `6b48813`, deneme kaydı commit'i `513ce14`; GitHub branch eş ağaçları sırasıyla `a6ac8d0` ve `24c8fbef` commitlerinde. Yerel başlangıç commit'i `8255e39` kaynak `master` commit'iyle aynı SHA değil. SHA farkı, yerel kaynağın API üzerinden yeniden kurulmuş olmasından kaynaklanıyor.
+- Source: `Nec0ti/hamartia`, GitHub commit at the head of `master`: `c5642d0cb2f133e641b0d1c73a12faaf57a611c6`.
+- The working copy was reconstructed from GitHub read-only blob/tree endpoints; local `git write-tree` SHA matched the source tree `48414fcdac4bd612370a191206a95dae26686c32`.
+- Normal `git clone/fetch/push` is unavailable because `github.com` DNS resolution fails in the environment. The working branch was created through the GitHub API; publication/commit transfer must use the same tool, and each remote SHA must be verified separately.
+- The isolated local checkout's starting commit `8255e39` is not the source commit itself; only the trees are the same. Do not present this difference as proof of remote synchronization.
+- Local docs commit `6b48813`, exam-entry commit `513ce14`; corresponding GitHub branch trees are at commits `a6ac8d0` and `24c8fbef`, respectively. Local starting commit `8255e39` does not have the same SHA as source `master`. The SHA difference exists because the local source was reconstructed through the API.
 
-## 2026-11-14 doğrulama güncellemesi
+## 2026-11-14 verification update
 
-- Liste okuma bozuk/şema dışı JSON'ı boş veri gibi göstermiyor; etiketleme, analiz sonucu yazımı, deneme silme ve belge ekleme kilitli koleksiyon mutasyonlarını kullanıyor.
-- 14 backend testi geçti. Python 3.14 Nix paket yolları kullanıldı; yerelde eksik `openai` ve `python_multipart` importları test harness'inde stub edildi. Gerçek AI çağrısı yapılmadı.
-- Soru akışı benchmarkı: 100 yükleme 0.8692 sn (115.04/s), listeleme 0.0017 sn, çalışma önceliği 0.0031 sn. JSON depolama benchmarkı: 1.000 append 15.8939 sn (62.92/s), okuma 0.0132 sn.
-- PNG imzası sınırı eklendikten sonraki 100 soru tekrarı: upload 0.5873 sn (170.28/s), listeleme 0.0010 sn, öncelik hesabı 0.0020 sn; 14/14 backend testi geçti.
-- Tekrar döngüsü sonrasında backend 16/16, frontend 3/3 test geçti. 100 kayıt: upload 0.4798 sn (208.43/s), listeleme 0.0022 sn, öncelik 0.0031 sn, tekrar durumu 0.0036 sn.
-- Deneme tabanlı toplam XP/seri hesabı eklendikten sonra 20/20 backend testi geçti; 1.000 kayıt üzerinde hesaplama 0.0017 sn sürdü. JSON storage bu tekrarda 1.000 append 13.6749 sn, read 0.0078 sn ölçtü.
-- Frontend: 3 test geçti; Vite 6.4.6 build'i 21.38 sn, ana bundle 659.95 KB minified ve 190.16 KB gzip. Rollup büyük bundle uyarısı devam ediyor.
-- `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
-- Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.
-- `README.md` yerel çalıştırma, veri dizini, AI endpoint ayarı ve AI dışı doğrulama komutlarını açıklar. Remote model davranışı başka bilgisayarda hâlâ doğrulanmalı.
-- Cosmos ekranının ilerleme çubuğu erişilebilir progressbar değerlerini taşır; üretim derlemesi bunu doğrular ancak gerçek tarayıcı/ekran okuyucu kontrolü yapılmadı.
-- GitHub Actions `feat: add a local mistake review loop` ve review geri alma commit'lerinde frontend/backend işleri başarıyla bitti. Yerel Git tree ile GitHub `codex/hamartia-rebuild` tree SHA'sı eşleşiyor; kaynak `master` `c5642d0` olarak kaldı. Normal Git taşıması DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
-- 2026-11-14 full-mock sonucu: backend 81 test, frontend 7 test, Vite build ve gerçek tarayıcı TYT/AYT create/reload/edit/delete + bölüm yanlış yakalama smoke'u geçti. Beş benchmark AI çağrısı olmadan tamamlandı; rapor `reports/2026-11-14-full-mock-results.md`. Gerçek kullanıcı `backend/data` örneği bu checkout'ta yok; gerçek yerel model hâlâ diğer bilgisayarda elle denenmeli.
+- Reading malformed/schema-invalid JSON lists does not present them as empty data; labeling, writing analysis results, deleting exams, and adding documents use locked collection mutations.
+- 14 backend tests passed. Python 3.14 Nix package paths were used; missing local `openai` and `python_multipart` imports were stubbed in the test harness. No real AI call was made.
+- Question workflow benchmark: 100 uploads took 0.8692 sec (115.04/sec), listing 0.0017 sec, study-priority calculation 0.0031 sec. JSON storage benchmark: 1,000 appends took 15.8939 sec (62.92/sec), read 0.0132 sec.
+- After adding the PNG signature boundary, the repeat run with 100 questions measured upload at 0.5873 sec (170.28/sec), listing 0.0010 sec, priority calculation 0.0020 sec; 14/14 backend tests passed.
+- After the review loop, backend 16/16 and frontend 3/3 tests passed. For 100 records: upload 0.4798 sec, listing 0.0022 sec, priority 0.0031 sec, review status 0.0036 sec.
+- After adding exam-derived total XP/streak calculation, 20/20 backend tests passed; calculation over 1,000 records took 0.0017 sec. In this JSON storage run, 1,000 appends measured 13.6749 sec and read 0.0078 sec.
+- Frontend: 3 tests passed; Vite 6.4.6 build took 21.38 sec, main bundle 659.95 KB minified and 190.16 KB gzip. Rollup's large bundle warning remains.
+- `npm ci --offline --ignore-scripts` passed in the sandbox without running package install scripts; build/test succeeded. `npm audit --offline` reported 0 findings in the current cache; this is not a current online audit.
+- Updated to Vite 6.4.6. Official advisory GHSA-p4f5-76q4-ffq7 affects 6.4.5 and below; a critical risk exists if the dev server can be reached by remote clients. Hamartia's dev server defaults to localhost.
+- `README.md` describes local run, data directory, AI endpoint setup, and non-AI verification commands. Remote model behavior still needs verification on another computer.
+- The Cosmos screen's progress bar carries accessible progressbar values; the production build verifies this, but no actual browser/screen-reader check was done.
+- GitHub Actions frontend/backend jobs succeeded for `feat: add a local mistake review loop` and review-undo commits. Local Git tree matches the GitHub `codex/hamartia-rebuild` tree SHA; source `master` remains at `c5642d0`. Normal Git transport is unavailable due to DNS; the branch is committed through the GitHub API.
+- 2026-11-14 full-mock result: 81 backend tests, 7 frontend tests, Vite build, and real-browser TYT/AYT create/reload/edit/delete + section missed-question capture smoke passed. Five benchmarks completed without AI calls; report: `reports/2026-11-14-full-mock-results.md`. This checkout has no real user `backend/data` sample; the real local model still needs manual testing on the other computer.
 
-## Açık kararlar
+## Open decisions
 
-- Deneme girişinde TYT/AYT genel deneme ve branş denemesi nasıl ayrılacak?
-- Konu/alt konu etiketlerini kullanıcı mı girecek, başlangıçta serbest metin mi kalacak?
-- Yanlış soru girişi fotoğraf, metin ve manuel hata etiketi akışlarından hangileriyle başlayacak?
-- Masaüstü ve mobil yerel kullanım için hedeflenen ilk çalıştırma biçimi nedir?
+- How should full TYT/AYT practice exams and branch exams be distinguished in exam entry?
+- Should users enter topic/subtopic labels, or should they remain free text initially?
+- Which missed-question entry methods should launch first: photo, text, or manual error label?
+- What should the initial launch method be for local desktop and mobile use?

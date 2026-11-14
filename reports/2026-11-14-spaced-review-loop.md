@@ -1,50 +1,50 @@
-# Aralıklı yanlış tekrar döngüsü — 2026-11-14
+# Spaced wrong-question review loop — 2026-11-14
 
-## Kapsam
+## Scope
 
-- Her yanlış sorunun çözüm girişimini ve doğru/yanlış sonucunu yerelde saklama.
-- Tekrar tarihini deterministik hesaplama; eski `reviewed_at` kayıtlarını koruma.
-- Çalışma Planı'nda due soruyu açıp sonucunu kaydetme.
-- Gerçek tarayıcı + FastAPI smoke, dar ekran ve temel erişilebilirlik adları.
-- Bu akış için AI'siz backend/frontend doğrulama ve performans ölçümü.
+- Store each attempt to solve a wrong question and whether the result was correct/incorrect locally.
+- Calculate the next review date deterministically; preserve old `reviewed_at` records.
+- Open a due question and save its result in the Study Plan.
+- Real browser + FastAPI smoke, narrow-screen layout, and basic accessibility names.
+- AI-free backend/frontend validation and performance measurement for this flow.
 
-## Tekrar kuralı
+## Review rule
 
-- Denenmemiş soru hemen çözüm kuyruğuna girer.
-- Yanlış cevap ertesi takvim gününe planlanır ve doğru serisini sıfırlar.
-- Doğru cevapta ardışık doğru sayısına göre 1, 3, 7, 14, sonra en fazla 30 gün beklenir.
-- Eski `reviewed_at` değeri soru arşivini korur. Yeni çözüm denemesi bu işareti temizleyip soruyu tekrar zamanlamaya alır.
-- Eski JSON'larda `review_attempts` olmadığı için şema varsayılan boş listeyi kullanır; dosya migrasyonu gerekmez.
-- XP üretimi bu işleme bağlanmaz; XP deneme kayıtlarından hesaplanır.
+- An unattempted question immediately enters the solve queue.
+- An incorrect answer is scheduled for the next calendar day and resets the correct streak.
+- After a correct answer, wait 1, 3, 7, 14, then up to 30 days, based on the consecutive-correct count.
+- The old `reviewed_at` value preserves the question archive. A new solve attempt clears this marker and reschedules the question.
+- Old JSON files lack `review_attempts`, so the schema uses a default empty list; no file migration is required.
+- XP generation is not tied to this operation; XP is calculated from exam records.
 
-## Uygulanan yollar
+## Implemented paths
 
-- `POST /questions/{id}/attempt` doğru/yanlış sonucunu `StorageService.update_list` ile kilitli read-modify-write içinde ekler.
-- `review_state()` tarih, ardışık doğru serisi ve sonraki gün hesabını modelden bağımsız yapar.
-- `GET /questions/insights` due soru kuyruğunu ve daha sonra açılacak sayıyı döndürür.
-- Study Plan görsel/metni gösterir, doğru/yanlış çözüm düğmeleri sunar ve kayıt sonrası planı yeniden yükler.
-- Yanlış soru API'si görsel veya metinle kayıt kabul eder. Görsel yoksa boş `image_name`/`image_path` saklanır; var olan kayıt şemasına yeni attempt listesi eklenmesi geriye uyumludur.
-- Browser smoke Playwright Chromium, geçici `HAMARTIA_DATA_DIR`, canlı FastAPI ve Vite kullanır. Görselsiz bir soru formdan eklenir, bir görsel soru yanlış, metin-only soru doğru çözüldü olarak kaydedilir, sayfa yenilenir ve her iki verinin JSON dosyasında kaldığı okunur. Aynı smoke AI route'larına hiç istek gitmediğini, resmin yüklendiğini, düğme erişilebilir adlarını ve 390 px görünümde yatay taşma olmadığını kontrol eder.
-- Tarayıcı smoke için `HAMARTIA_DATA_DIR` config override'ı test verisini `backend/data` dışına yazar. Normal kullanım varsayılan dizini değiştirmez.
+- `POST /questions/{id}/attempt` adds a correct/incorrect result within a locked read-modify-write using `StorageService.update_list`.
+- `review_state()` calculates the date, consecutive-correct streak, and next review day without a model.
+- `GET /questions/insights` returns the due-question queue and the number to be opened later.
+- Study Plan displays the image/text, provides correct/incorrect solve buttons, and reloads the plan after saving.
+- The wrong-question API accepts image or text records. If there is no image, save an empty `image_name`/`image_path`; adding a new attempt list to the existing record schema is backward compatible.
+- Browser smoke uses Playwright Chromium, a temporary `HAMARTIA_DATA_DIR`, live FastAPI, and Vite. A question without an image is added through the form; an image question is saved with an incorrect result, and a text-only question with a correct result. After page refresh, JSON files are read to verify both records persist. The same smoke confirms no requests to AI routes, image upload, accessible button names, and no horizontal overflow at 390 px.
+- The browser smoke's `HAMARTIA_DATA_DIR` config override writes test data outside `backend/data`. Normal use does not change the default directory.
 
-## Doğrulama ve ölçümler
+## Verification and measurements
 
-| Kontrol | Sonuç |
+| Check | Result |
 | --- | ---: |
-| Backend unittest | 29/29 geçti |
-| Frontend Node testleri | 4/4 geçti |
-| Frontend üretim derlemesi | 20.91 sn, başarılı |
-| Ana JS bundle | 673.35 KB minified / 192.80 KB gzip |
-| Online `npm audit` | 0 bulgu |
-| 1.000 kayıt JSON append / read | 21.0752 sn / 0.0078 sn |
-| 1.000 kayıt XP/seri hesabı | 0.0017 sn |
-| 100 görselli soru upload / hız | 0.4674 sn / 213.97 kayıt/sn |
-| Soru listesi / çalışma planı hesabı | 0.0011 sn / 0.0129 sn |
-| Çözüm sonucu kaydı / eski arşiv işareti | 0.0034 sn / 0.0049 sn |
-| 100 text-only soru capture / hız | 0.6439 sn / 155.29 kayıt/sn |
-| Browser smoke navigasyon / text capture + sonuç + persistence | 2.715 sn / 2.432 sn |
+| Backend unittest | 29/29 passed |
+| Frontend Node tests | 4/4 passed |
+| Frontend production build | 20.91 sec, succeeded |
+| Main JS bundle | 673.35 KB minified / 192.80 KB gzip |
+| Online `npm audit` | 0 findings |
+| 1,000-record JSON append / read | 21.0752 sec / 0.0078 sec |
+| XP/streak calculation for 1,000 records | 0.0017 sec |
+| Upload / throughput for 100 image questions | 0.4674 sec / 213.97 records/sec |
+| Question list / Study Plan calculation | 0.0011 sec / 0.0129 sec |
+| Save solve result / old archive marker | 0.0034 sec / 0.0049 sec |
+| Capture 100 text-only questions / throughput | 0.6439 sec / 155.29 records/sec |
+| Browser smoke navigation / text capture + result + persistence | 2.715 sec / 2.432 sec |
 
-Komutlar:
+Commands:
 
 ```sh
 PYTHONPATH=backend python -m unittest discover -s backend/tests -v
@@ -54,10 +54,10 @@ cd frontend && npm test && npm run build && npm audit
 cd frontend && npm run test:browser
 ```
 
-## Sınırlamalar
+## Limitations
 
-- Browser smoke iki soru (biri seeded görsel, biri yeni text-only) ile upload ve sonuç write/persistence sınar; başarılı cevap aralıklarının tüm 1/3/7/14/30 gün basamakları tarayıcıda değil unit testlerinde kapsanır.
-- Local AI yüklenmedi, çağrılmadı veya benchmark edilmedi.
-- Bundle 500 KB uyarısını sürdürüyor.
-- JSON dosyası kilidi tek process kapsamındadır; birden fazla server worker desteklenmez.
-- CI, bu rapordan sonraki dokümantasyon commit'inde Chromium smoke ve güncel backend benchmarklarını ayrıca doğrulayacak.
+- Browser smoke tests upload and result persistence with two questions (one seeded image, one new text-only); correct-answer intervals across all 1/3/7/14/30 day steps are covered by unit tests, not in the browser.
+- Local AI was not loaded, called, or benchmarked.
+- The bundle continues to trigger the 500 KB warning.
+- JSON file locks are scoped to one process; multiple server workers are not supported.
+- CI will separately verify Chromium smoke and current backend benchmarks in a documentation commit after this report.

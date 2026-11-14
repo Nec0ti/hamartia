@@ -1,36 +1,36 @@
-# Ayar API anahtarı gizleme planı
+# Settings API key redaction plan
 
-## Sorun
+## Problem
 
-`GET /settings` ve `PATCH /settings` tam `Settings` modelini döndürüyor. Bu modelin `api_key` alanı React state'ine de kopyalanıyor. Uygulamanın belgelenen başlatıcısı loopback ile sınırlı olsa da aynı makinedeki süreçler ve izinli tarayıcı origin'leri anahtarı okuyabilir.
+`GET /settings` and `PATCH /settings` return the full `Settings` model. Its `api_key` field is also copied into React state. Although the application's documented launcher is limited to loopback, processes on the same machine and allowed browser origins can read the key.
 
-## En küçük güvenli değişiklik
+## Smallest safe change
 
-- API yanıtı `api_key` değerini hiçbir zaman döndürmesin; yalnızca anahtar ayarlı mı bilgisini versin.
-- PATCH'te boş/atlanmış anahtar var olan anahtarı korusun; açık `clear_api_key` işareti anahtarı temizlesin. Yeni girilen anahtar mevcut anahtarın yerini alsın.
-- Ayarlar modalında boş alanın anahtarı koruduğu yazsın ve kayıtlı anahtarı temizlemek için açık bir kontrol bulunsun.
-- Saklama biçimini ve yedek uyumluluğunu değiştirme.
+- Never return the `api_key` value in API responses; return only whether a key is set.
+- In PATCH, an empty/omitted key preserves the existing key; an explicit `clear_api_key` flag clears it. A newly entered key replaces the existing key.
+- State in the Settings modal that a blank field preserves the key, and provide an explicit control to clear the saved key.
+- Do not change the storage format or backup compatibility.
 
-## Etkilenen sözleşme ve kapsam
+## Affected contract and scope
 
-- Çağıranlar: `frontend/src/App.jsx`, `frontend/src/components/SettingsModal.jsx`, `frontend/src/services/api.js` ve backend'deki `/settings` rotası.
-- Testler: yeni settings API testlerinde GET/PATCH yanıtının gizliliği, boş değerle koruma, yeni değerle değiştirme ve açık temizleme kapsansın.
-- AI servisi, model çağrısı ve benchmark akışı değişmeyecek. Tüm kontroller sahte ayarlarla çalışacak.
+- Callers: `frontend/src/App.jsx`, `frontend/src/components/SettingsModal.jsx`, `frontend/src/services/api.js`, and the backend `/settings` route.
+- Tests: new settings API tests cover GET/PATCH response redaction, preservation with an empty value, replacement with a new value, and explicit clearing.
+- AI service, model calls, and benchmark flow remain unchanged. All checks use fake settings.
 
-## Kabul ölçütleri
+## Acceptance criteria
 
-- Hiçbir `/settings` yanıtında sır saklı anahtar bulunmuyor.
-- Var olan istemci alanları GET sonrası normal şekilde düzenlenip kaydedilebiliyor.
-- Anahtar girilmeden kayıt yapmak mevcut anahtarı kaybetmiyor; yeni anahtar yazılabiliyor; kullanıcı açıkça temizleyebiliyor.
-- Backend testleri, frontend test/build ve mevcut AI'siz browser smoke geçiyor.
-- Ölçüm: burada AI dışı yol değişmediği için benchmark sonucu eklenmeyecek; uçtan uca ayar ve API kontrolleri raporlanacak.
+- No `/settings` response contains the secret key.
+- Existing client fields can be edited and saved normally after GET.
+- Saving without entering a key does not lose the existing key; a new key can be entered; the user can explicitly clear it.
+- Backend tests, frontend test/build, and existing AI-free browser smoke pass.
+- Measurement: no benchmark result will be added because the AI-free path is unchanged; report end-to-end settings and API checks.
 
-## Sıra
+## Sequence
 
-1. Bu planı ve backlog maddesini commit et.
-2. Ayar yanıt/güncelleme şemasını, form etkileşimini ve API regresyon testlerini tek küçük kod commitinde değiştir.
-3. Backend/frontend/browser kontrollerini çalıştır, sonucu raporla ve ayrı docs commit yap.
+1. Commit this plan and the backlog item.
+2. Change settings response/update schema, form interaction, and API regression tests in one small code commit.
+3. Run backend/frontend/browser checks, report the result, and create a separate docs commit.
 
-## Bilinen sınır
+## Known limit
 
-Bu, yerel makinede aynı kullanıcı yetkisiyle çalışan güvenilmeyen süreçlere karşı bir gizli kasa değildir. Ama HTTP/UI üzerinden anahtarın gereksiz ifşasını kaldırır.
+This is not a secret vault against untrusted processes running with the same user permissions on the local machine. It removes unnecessary key exposure through HTTP/UI.

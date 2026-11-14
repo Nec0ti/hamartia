@@ -1,96 +1,98 @@
-# Backlog günlüğü
+# Backlog log
 
-- 2026-11-14: TYT/AYT genel denemesi tek kayıtta ders bölümleriyle giriliyor; bölüm toplamları üst sonucu belirliyor, oturum XP/seri/deneme sayısını bir kez etkiliyor. Eski tek dersli kayıtlar ve backup biçimi uyumlu. Bölüm trendi ve bölüm soru sınırları eklendi. Backend 81/81, frontend 7/7, production build ve Chromium browser smoke geçti; beş AI'siz benchmark da çalıştı. Sonuç/ölçüler: `reports/2026-11-14-full-mock-results.md`. PR #1 `master` dalına açıldı; Actions run #84 başarılı (backend/frontend).
+- 2026-11-14: Delivery direction recorded: English-default English/Turkish app and public GitHub Pages guide; Windows 10/11, `.deb`, and AppImage packages; an automatic bilingual GitHub Release after each merged PR with sequential `ARETE-###` codes; and explicit-consent ChatGPT plan usage as the primary study agent, with local AI retained for later manual verification. Internal development notes stay off Pages. Plan: `reports/2026-11-14-language-and-chatgpt-agent-plan.md`.
 
-- 2026-11-14: Ürün incelemesi, TYT/AYT genel denemesinin şu an tek dersli `Exam` formuyla kaydedildiğini buldu. Yeni dilim tek oturum/tek XP ve alt ders sonuçlarını aynı kayıtta tutacak, legacy/branch biçimini koruyacak; bölüm yanlışlarının sınırı ve sırası doğru derse bağlanacak. Tasarım: `reports/2026-11-14-full-mock-plan.md`.
+- 2026-11-14: Full TYT/AYT practice exams are entered with subject sections in one record; section totals determine the overall result, while the session affects XP/streak/exam count once. Legacy single-subject records and backup format remain compatible. Section trends and section question limits were added. Backend 81/81, frontend 7/7, production build, and Chromium browser smoke passed; all five AI-free benchmarks also ran. Results/measurements: `reports/2026-11-14-full-mock-results.md`. PR #1 was opened against the `master` branch; Actions run #84 succeeded (backend/frontend).
 
-- 2026-11-14: `/settings` GET/PATCH artık API anahtarını döndürmüyor; yalnızca ayarlı olup olmadığı görünür. Boş kaydetme anahtarı koruyor, Ayarlar ekranında açıkça silinebilir. 3 yeni API testiyle backend 76/76, frontend 4/4, production build ve Chromium smoke geçti. Smoke anahtar ekle/sil döngüsünü doğruladı ve 1.269 ms ölçtü. Beş mevcut backend benchmarkı AI'siz geçti. Gerçek model çalıştırılmadı. Rapor: `reports/2026-11-14-settings-key-redaction.md`.
-- 2026-11-14: CI #73 smoke testinde asenkron response listener eski çalışma setini yarış koşuluyla okudu. Test artık mutation response body'lerini doğrudan await ediyor; yerel smoke ve GitHub Actions #74 geçti. Ayar anahtarı akışı son smoke'ta 1.014 ms ölçüldü.
+- 2026-11-14: Product review found that full TYT/AYT practice exams are currently saved through a single-subject `Exam` form. The new slice will keep one session/one XP and subject-level results in the same record, preserve legacy/branch formats, and associate section missed-question limits and order with the correct subject. Design: `reports/2026-11-14-full-mock-plan.md`.
 
-- 2026-11-14: Ayarlar GET/PATCH yanıtlarının API anahtarını tarayıcıya döndürdüğü bulundu. Loopback-only çalışma bağlamı riski daraltsa da sır yanıt sözleşmesinden çıkarılacak; boş güncelleme anahtarı koruyacak ve açık temizleme eklenecek. Plan: `reports/2026-11-14-settings-key-redaction-plan.md`.
+- 2026-11-14: `/settings` GET/PATCH no longer return the API key; only whether one is configured is visible. Saving an empty key preserves it, and it can be explicitly deleted from Settings. With 3 new API tests, backend 76/76, frontend 4/4, production build, and Chromium smoke passed. Smoke verified the add/delete key cycle and measured 1.269 ms. Five existing backend benchmarks passed without AI. No real model was run. Report: `reports/2026-11-14-settings-key-redaction.md`.
+- 2026-11-14: The asynchronous response listener in CI #73's smoke test read an old practice set due to a race. The test now awaits mutation response bodies directly; local smoke and GitHub Actions #74 passed. The Settings key flow measured 1.014 ms in the latest smoke.
 
-- 2026-11-14: Provider `OpenAIError` artık sahte analiz/etiket olarak kaydedilmiyor; analiz rotası 502 döndürüyor ve kaydı koruyor. Hata sınırı fake `OpenAIError` ile test edildi; 73 backend testi, frontend 4/4, build ve AI'siz browser smoke geçti. GitHub Actions run #69 başarılı. Gerçek model çağrısı ve AI benchmarkı çalıştırılmadı. Rapor: `reports/2026-11-14-ai-failure-handling.md`.
+- 2026-11-14: It was found that Settings GET/PATCH responses returned the API key to the browser. Although the loopback-only operating context narrowed the risk, the secret will be removed from the response contract; empty updates will preserve it and explicit clearing will be added. Plan: `reports/2026-11-14-settings-key-redaction-plan.md`.
 
-- 2026-11-14: Yerel model hatası incelemesi, `_completions()` boş yanıtının varsayılan teşhise dönüşüp kaydedilebildiğini buldu. Plan: gerçek model kullanmadan sahte provider hatasıyla API error boundary'yi doğrula; gerçek endpoint/model ve görseli daha sonra ayrı bilgisayarda elle dene.
+- 2026-11-14: Provider `OpenAIError` is no longer saved as fake analysis/label; the analysis route returns 502 and preserves the record. The error boundary was tested with a fake `OpenAIError`; 73 backend tests, frontend 4/4, build, and AI-free browser smoke passed. GitHub Actions run #69 succeeded. No real model call or AI benchmark was run. Report: `reports/2026-11-14-ai-failure-handling.md`.
 
-- 2026-11-14: Konu seti kartlarına tüm kayıtlı noktaları kullanan net ve cevaplanan doğruluk çizgileri eklendi. Son altıdan eski kayıtlar açılır geçmişte düzenlenip/silinebiliyor; eşzamanlı liste/özet farkında görünmeyen kayıt eylemleri güvenli biçimde saklanıyor. 390 px smoke, tek nokta ve boş-yanıt grafiği dahil geçti. Frontend 4/4, backend 72/72 ve build geçti; AI çağrısı yok. GitHub Actions run #67 başarılı. Rapor: `reports/2026-11-14-practice-trend-chart.md`.
+- 2026-11-14: Review of local model errors found that an empty `_completions()` response could become and be saved as the default diagnosis. Plan: verify the API error boundary with a fake provider error without using a real model; later, manually try the real endpoint/model and image on a separate computer.
 
-- 2026-11-14: Konu çalışma grafiği planlandı. Var olan sıralı set eğilimi yalnızca metin olarak gösteriliyor ve altıdan eski kayıtlar düzenlenemiyor/silinemiyor. Plan, net ve doğruluk için ayrı okunabilir grafikler ile açılır tam geçmiş yönetimini kapsar; AI veya backend/API değişikliği yok.
+- 2026-11-14: Net and answered-accuracy lines using all saved points were added to topic set cards. Records older than the last six can be edited/deleted in expandable history; record actions are safely hidden for records absent from one side of a concurrent list/summary mismatch. The 390 px smoke passed, including single-point and all-blank-response charts. Frontend 4/4, backend 72/72, and build passed; no AI call. GitHub Actions run #67 succeeded. Report: `reports/2026-11-14-practice-trend-chart.md`.
 
-- 2026-11-14: Odaklı konu oturumu eklendi. Öncelik kartı aynı konu için çalışmayı başlatıyor; süre ve doğru/yanlış/boş sayaçları duraklatma/sürdürme ile izleniyor. Aktif taslak yenilemede tarayıcı `localStorage` alanından döner; bitince mevcut `POST /practice` ile bir kez saklanır. Frontend 4/4, backend 72/72, build ve browser smoke geçti; AI çağrısı yok. GitHub Actions run #65 başarılı. Rapor: `reports/2026-11-14-focused-practice.md`.
+- 2026-11-14: Topic practice charts were planned. The existing ordered set trend is shown only as text, and records older than six cannot be edited/deleted. The plan covers separate readable charts for net and accuracy plus expandable full-history management; no AI or backend/API changes.
 
-- 2026-11-14: Sonraki dilim planlandı: öncelikli konuya bağlı süreli odaklı oturum, doğru/yanlış/boş sayaçları ve bitince mevcut çalışma seti API'sine kayıt. Oturum taslağının sekme yenilenince geri gelmesi ve model çağrısı içermemesi kabul ölçütlerine eklendi.
+- 2026-11-14: Focused topic sessions were added. A priority card starts a session for that topic; time and correct/incorrect/blank counters are tracked with pause/resume. On reload, an active draft returns from the browser's `localStorage`; when finished, it is saved once using the existing `POST /practice`. Frontend 4/4, backend 72/72, build, and browser smoke passed; no AI call. GitHub Actions run #65 succeeded. Report: `reports/2026-11-14-focused-practice.md`.
 
-- 2026-11-14: Konu çalışma seti kaydı tamamlandı. Doğru/yanlış/boş, süre, net ve yalnızca cevaplanan sorular üzerinden doğruluk saklanıyor; konu özeti set kayıtlarından hesaplanıyor. Yedekleme eski ZIP biçimiyle uyumlu. 72 backend testi, frontend 4/4, build ve gerçek tarayıcı smoke geçti. AI'siz 1k/10k benchmarkı eklendi. GitHub Actions run #63 (`c1da9aa`) backend/frontend ve tüm benchmark adımlarıyla başarılı.
+- 2026-11-14: The next slice was planned: a timed focused session tied to the priority topic, correct/incorrect/blank counters, and saving to the existing practice set API when finished. Acceptance criteria include restoring the session draft after a tab reload and making no model call.
 
-- 2026-11-14: Konu bazında gerçek çalışma ilerlemesi için doğru/yanlış/boş ve süreyle tamamlanmış set kaydı planlandı. Doğruluk yalnızca cevaplanan sorulara bölünecek; yanlış defteri sayısı payda yapılmayacak. Tasarım: `reports/2026-11-14-practice-sessions-plan.md`.
+- 2026-11-14: Topic practice set records were completed. Correct/incorrect/blank counts, duration, net, and accuracy based only on answered questions are stored; topic summaries are calculated from set records. Backups remain compatible with the old ZIP format. 72 backend tests, frontend 4/4, build, and real browser smoke passed. An AI-free 1k/10k benchmark was added. GitHub Actions run #63 (`c1da9aa`) succeeded with backend/frontend and all benchmark steps.
 
-## 2026-11-14 — deneme sırası ve yanlış süresi
+- 2026-11-14: Completed practice set records with correct/incorrect/blank counts and duration were planned to track actual topic-level study progress. Accuracy will be divided only by answered questions; the missed-question notebook count will not be used as the denominator. Design: `reports/2026-11-14-practice-sessions-plan.md`.
 
-- Yanlış soru denemeye bağlanabiliyor; soru no, gerçek çözüm sırası ve o soruda harcanan saniye kalıcı saklanıyor. Eski JSON kayıtları boş varsayılanlarla okunuyor.
-- Çalışma Planı, mevcut denemelere bağlı kaydedilmiş yanlışları çözüm sırasının erken/orta/geç üçte birlik bölümlerinde sayıp sürelerin medyanını gösteriyor. Doğru/boş sonuçlar soru kaydı olmadığı için doğruluk yüzdesi üretilmiyor.
-- 65 backend testi, 4 frontend testi, üretim build'i ve browser smoke geçti. Smoke veriyi yenileme sonrası okudu ve deneme silinince yanlış kaydının korunduğunu, sıra özetinin ilişkisiz kaldığını doğruladı.
-- Sıra özeti benchmarkı (yalnızca hesaplama): 1.000 kayıt 0.0146 sn; 10.000 kayıt 0.1379 sn; AI dahil değil.
-- Var olan 100 soruluk akış benchmarkı da yeni alanlarla geçti: upload 0.6005 sn, liste 0.0008 sn, içgörü 0.0015 sn, text capture 1.1541 sn; AI dahil değil.
-- GitHub Actions run #61 (`3d84fcc`): frontend ve backend işleri, yeni backup/order benchmark adımları dahil başarılı.
-- Rapor: `reports/2026-11-14-question-order-insights.md`.
+## 2026-11-14 — exam order and time per missed question
 
-- 2026-11-14: Sonraki dikey dilim olarak denemeye bağlı yanlış soru sırası ve soru başı süre takibi planlandı. Sıra özeti yalnızca açıkça kaydedilen yanlışları sayacak; doğruluk yüzdesi hesaplamayacak. Kabul ölçütleri `reports/2026-11-14-question-order-plan.md` içinde.
+- A missed question can be linked to an exam; its question number, actual solve order, and seconds spent are persistently stored. Old JSON records are read with empty defaults.
+- The Study Plan counts saved missed questions linked to existing exams across the early/middle/late thirds of solve order and shows the median time spent. It does not produce an accuracy percentage because correct/blank answers have no question records.
+- 65 backend tests, 4 frontend tests, production build, and browser smoke passed. Smoke read data after reload and confirmed that deleting an exam preserves its missed-question record and leaves the order summary unlinked.
+- Order summary benchmark (calculation only): 1,000 records took 0.0146 sec; 10,000 took 0.1379 sec; AI excluded.
+- The existing 100-question workflow benchmark also passed with the new fields: upload 0.6005 sec, list 0.0008 sec, insight 0.0015 sec, text capture 1.1541 sec; AI excluded.
+- GitHub Actions run #61 (`3d84fcc`): frontend and backend jobs succeeded, including new backup/order benchmark steps.
+- Report: `reports/2026-11-14-question-order-insights.md`.
 
-## 2026-11-14 — veri yedeği
+- 2026-11-14: Tracking missed-question order and time per question linked to an exam was planned as the next vertical slice. The order summary will count only explicitly saved missed questions; it will not calculate an accuracy percentage. Acceptance criteria are in `reports/2026-11-14-question-order-plan.md`.
 
-- Ayarlar ekranına ZIP yedeği indirme eklendi. Denemeler, yanlışlar, kullanıcı/Cosmos ilerlemesi, ayarlar ve `uploads/` alınır; API anahtarı boşaltılır. Bozuk/şemaya uymayan kayıt veya eksik referanslı dosya yedeği reddedilir.
-- Uygulama ömür boyu process lock tutuyor; restore komutu uygulama açıkken çalışmaz. Arşiv önce staging dizininde yol, tür, boyut, checksum, şema ve upload referansı açısından bütünüyle doğrulanır; swap öncesi eski veri klasörü snapshot olarak saklanır.
-- 57 backend testi, 4 frontend testi, production build ve gerçek Chromium smoke geçti. Smoke ZIP indirme adımını da doğruladı (285 ms); 390 px görünüm taşmadı.
-- 50 x 2 MiB temsili upload ile backup export 8.5842 sn, doğrulama 0.9865 sn, restore 1.0021 sn; ZIP 104,900,138 bayt. 1.000 exam storage ve 100 question flow benchmarkları da geçti. Tüm benchmarklar AI'siz.
-- Rapor: `reports/2026-11-14-backup-restore.md`. Yerel API endpoint/model ve multimodal aktarım diğer bilgisayarda doğrulanmayı bekliyor.
+## 2026-11-14 — data backup
+
+- ZIP backup download was added to Settings. It includes exams, missed questions, user/Cosmos progress, settings, and `uploads/`; the API key is blanked. A backup with malformed/schema-invalid records or files with missing references is rejected.
+- The app holds a process lock for its lifetime; the restore command will not run while the app is open. The archive is fully validated in a staging directory for paths, types, sizes, checksums, schemas, and upload references; the old data directory is kept as a snapshot before the swap.
+- 57 backend tests, 4 frontend tests, production build, and real Chromium smoke passed. Smoke also verified ZIP download (285 ms); the 390 px view did not overflow.
+- With 50 x 2 MiB representative uploads, backup export took 8.5842 sec, validation 0.9865 sec, restore 1.0021 sec; ZIP size was 104,900,138 bytes. The 1,000-exam storage and 100-question flow benchmarks also passed. All benchmarks were AI-free.
+- Report: `reports/2026-11-14-backup-restore.md`. Local API endpoint/model and multimodal transfer still await verification on another computer.
 
 ## 2026-11-14
 
-- İlk backlog oluşturuldu; kapsam kaynak kod ve eski proje notuna dayalı, kullanıcıyla henüz UX kararları netleştirilmedi.
-- `codex/hamartia-rebuild` dalı GitHub'da `master` başlangıç commit'i `c5642d0` üzerinden açıldı.
-- Yerel çalışma kopyası GitHub tree/blob içerikleriyle kuruldu; tree SHA kaynak ağaçla eşleşti. DNS kısıtı nedeniyle normal Git taşıması kullanılamıyor.
-- Local AI test ve benchmark kapsamı dışında tutuldu.
-- Deneme POST akışındaki zorunlu-id sözleşmesi ve geçmişi silen kayıt davranışı düzeltildi; path-paylaşımlı kilit altında append eklendi.
-- Dört backend kontrolü geçti; 1.000 JSON kayıt benchmarkı 12.4065 sn append (80.60 kayıt/sn), 0.0091 sn read ölçtü.
-- `npm ci --offline`, Vite paketi npm önbelleğinde olmadığı için tamamlanamadı; frontend build ve browser smoke henüz doğrulanmadı.
-- 2026-11-14: Backlog, gerçekleşen UI/test/build adımlarıyla güncellendi; sıradaki hedef veri bütünlüğü yarışlarını çözmek oldu.
-- 2026-11-14: Kilitli `update_list`, katı JSON liste okuma ve eşzamanlı silme/append testleri eklendi; 13 backend testi geçti. Hamartia'nın doküman listesi için dict koleksiyon round-trip'i sağlandı.
-- 2026-11-14: Yerel, AI'siz Çalışma Planı ekranı ve `/questions/insights` eklendi. 14 backend testi, 3 frontend testi geçti; 100 yanlış için öncelik hesabı 0.0031 sn.
-- 2026-11-14: Vite 6.4.6 yamalı sürüme alındı; offline temiz kurulum/test/build/audit cache kontrolü geçti. Bundle 659.95 KB; tarayıcı smoke ve GitHub Actions sonucu hâlâ bekliyor.
-- 2026-11-14: Görsel yüklemeye PNG/JPEG/WebP imza kontrolü eklendi. 14 backend testi geçti, 100 soru benchmarkı 0.5873 sn upload ölçtü; GitHub Actions yeni commit için sırada.
-- 2026-11-14: Yerel kurulum ve model endpoint ayarı README'ye eklendi; AI istemcisi kayıtlı ayarı kullanıp görseli payload'a alıyor. Gerçek local model başka bilgisayarda doğrulanmadı.
-- 2026-11-14: Deneme girişi ISO tarih ve 0-59 saniye aralığıyla sınırlandı; 14 backend testi, frontend test/build ve GitHub Actions geçti.
-- 2026-11-14: Yanlış soru tekrar edildi durumu, geri alma ve bekleyen konu önceliği eklendi. 16 backend, 3 frontend testi ve model çağrısız benchmark geçti; ilk yeni CI akışı başarılı.
-- Yeni AI dışı soru-flow ölçümü: `reports/2026-11-14-storage-and-study-plan.md`.
-- 2026-11-14: Review undo ve docs commit'lerinde GitHub Actions frontend/backend işleri başarılı; local ve remote branch tree'leri eşleşti, `master` değişmedi.
-- 2026-11-14: XP toplamı/level/seri artık deneme geçmişinden hesaplanıyor ve profil bonusunu koruyor; 20 backend testi, 3 frontend testi ve 1000 deneme progression benchmarkı geçti. GitHub Actions çalışıyor.
-- Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.
-- 2026-11-14: Cosmos yer tutucusu salt okunur yerel ilerleme görünümüne çevrildi; XP/seviye/seri ve en çok dokuz bekleyen konu yer alıyor. İlk build 18.49 sn sürdü. Browser smoke ortamda browser/Playwright olmadığı için yapılmadı. Eski random assault endpointinin çok dosyalı XP yazımı ve ödül semantiği incelenip UI kapsamı dışında bırakıldı.
-- 2026-11-14: XP çubuğunun 500 XP ilk seviye eşiği backend ile hizalandı; navbar ve Cosmos ortak yardımcıyı kullanıyor. 4 frontend testi ve 17.64 sn build geçti.
-- GitHub Actions run `43603845596`: frontend test/build, backend unittest, JSON storage benchmarkı ve soru akışı benchmarkı başarılı.
-- 2026-11-14: Soru bazında doğru/yanlış attempt history ve deterministik 1/3/7/14/30 gün tekrar aralıkları eklendi. Text-only capture da API/form/tekrar listesine bağlandı. 29 backend, 4 frontend testi geçti.
-- 2026-11-14: Chromium smoke gerçek FastAPI+Vite ile temp veride görselsiz soru ekleme, çözüm persistence, AI route dışılığı, erişilebilir adlar ve 390 px taşmama kontrolünü geçti. 2.715 sn navigasyon, 2.432 sn capture+review persistence. `npm audit` online 0 bulgu.
-- 100 görselli soru upload 0.4674 sn; 100 text-only capture 0.6439 sn; iki workflow da AI'siz benchmark.
-- Rapor: `reports/2026-11-14-spaced-review-loop.md`. `test:browser` CI'a bağlandı; son Actions çalışması bekleniyor.
-- 2026-11-14: Deneme modeline geriye uyumlu TYT/AYT/branş türü, kilitli PUT/DELETE API'si, tam geçmişte görünür düzenleme/silme, tür filtresi ve tür bazlı net/deneme toplamı eklendi. 32 backend testi; 4 frontend testi, build ve gerçek tarayıcı smoke geçti.
-- Browser: 390 px taşma yok, dashboard JS/API hatası yok, Recharts NaN/duplicate-key hatası yok. Deneme CRUD döngüsü 1.039 sn; arayüz navigasyonu 2.266 sn; capture+review persistence 3.483 sn.
-- 1.000 JSON denemede append 19.178 sn (52.14/s), read 0.0078 sn, update 0.0272 sn, delete 0.0237 sn, progression 0.0017 sn. 100 görselli yanlış 0.3149 sn (317.57/s), 100 text-only yanlış 0.4523 sn (221.11/s); hepsi AI'siz.
-- Rapor: `reports/2026-11-14-exam-context-crud.md`. Kod commitleri GitHub dalına ağaç SHA eşleşmesiyle aktarıldı. Actions run `43608878405` (#41) frontend test/build/browser smoke ile backend test ve benchmarklarını başarıyla tamamladı.
-- 2026-11-14: `StorageService.update_doc` ile Cosmos node upsert/sector unlock tek belge kilidine taşındı; legacy XP assault 410 ile kapandı. 38 backend testi geçiyor; 24 eşzamanlı node ve 3 paralel sector güncellemesinde kayıt kaybı yok.
-- 1.000 exam append 19.8911 sn (50.27/s), read 0.0135 sn, exam update/delete 0.0325/0.0305 sn, tek user document update 0.0013 sn, progression 0.0021 sn. Q-flow 100 görsel 0.3414 sn, 100 text capture 0.4828 sn. Local AI dışarıda.
-- Browser smoke (regresyon): navigasyon 3.035 sn, capture+review persistence 3.615 sn, exam CRUD 1.045 sn; frontend 4/4, build başarılı.
-- Rapor: `reports/2026-11-14-cosmos-storage-safety.md`; CI doğrulaması bu değişiklikten sonra bekliyor.
-- 2026-11-14: Yanlış soru kartlarına ders/konu/metin düzenleme ve onaylı silme eklendi. Düzenleme görseli, analiz etiketini ve tekrar geçmişini koruyor; text-only soru boş metne çevrilemiyor. Silme kaydı atomik listeden çıkarıyor ve yalnızca `uploads/` altındaki görseli kaldırıyor. 43 backend testi, 4 frontend testi, build ve Chromium smoke geçti; AI çağrısı yok.
-- 100 soruluk akışta upload 0.3006 sn, text capture 0.4759 sn, tek soru düzenleme 0.0047 sn ve görsel silmeyle soru silme 0.0041 sn ölçüldü. 1.000 JSON denemede append 12.8297 sn (77.94/s), read 0.0077 sn, update/delete 0.0278/0.0241 sn; tüm benchmarklar AI'siz. Benchmark süreçleri eşzamanlı çalıştığı için sonuçlar makine gürültüsüne açık.
-- Browser smoke: navigasyon 2.362 sn, capture+review persistence 2.335 sn, deneme CRUD 1.301 sn, soru düzenle+sil 0.423 sn; 390 px taşma, API/JS/console hatası yok. Build 23.50 sn, ana bundle 679.05 KB minified / 193.94 KB gzip; 500 KB chunk uyarısı sürüyor.
-- GitHub Actions run #47 (`f372b2f4`) frontend test/build/browser smoke ile backend test ve iki benchmark işini başarıyla tamamladı.
-- Rapor: `reports/2026-11-14-question-record-crud.md`.
-- 2026-11-14: Çalışma planına bugünkü ilerleme kartı eklendi. Tekrar denenen soru bir kez sayılıyor; doğru/yanlış sayaçları her yanıtı sayıyor. Kayıtlı attempt geçmişinden hesaplanıyor, yeni JSON alanı/ayar/AI çağrısı yok. 45 backend testi, 4 frontend testi, production build ve browser smoke geçti.
-- Browser smoke: navigasyon 2.157 sn, capture+review sonrası yenileme 2.335 sn, deneme CRUD 1.234 sn, soru düzenle+sil 0.409 sn; bugünkü sayıların reload sonrası 2 soru, 1 doğru, 1 yanlış kaldığı doğrulandı.
-- 100 soru benchmarkı: insight 0.0053 sn; upload 0.604 sn, list 0.0008 sn, attempt 0.0034 sn, review 0.0038 sn, edit/delete 0.0045/0.0030 sn, text capture 0.4463 sn. Hepsi AI'siz.
-- Build 22.12 sn, bundle 679.49 KB minified / 194.02 KB gzip (500 KB chunk uyarısı sürüyor). GitHub Actions run #49 (`d0cd18ff`) kod commitini başarıyla doğruladı; dokümantasyon commitinin CI'ı çalışıyor. Rapor: `reports/2026-11-14-todays-study-activity.md`.
-- 2026-11-14: `scripts/dev.py` uvicorn ve Vite'ı tek komutla başlatıp readiness kontrol ediyor; Ctrl+C/SIGTERM ile ikisini kapatıyor. Vite sessizce başka porta geçmiyor; 5173 doluysa `HAMARTIA_FRONTEND_PORT` seçeneği kullanılabilir. Browser smoke artık gerçek launcher üzerinden çalışıyor.
-- Launcher entegrasyon kontrolü: geçici veri dizininde API/frontend 200 ve Ctrl+C sonrası iki Hamartia portu kapalı; mevcut 5173 uygulaması korundu. Process group cleanup sonrası açılış/kapanış 2.458 sn. Port çakışması smoke'u launcher'ın 1 ile çıktığını ve API child'ını kapatıp mevcut Vite'ı koruduğunu doğruladı.
-- Launcher sonrası browser smoke geçti: navigasyon 2.056 sn, capture+review 2.288 sn, deneme CRUD 1.217 sn, soru edit/delete 0.471 sn. Frontend 4/4 test; build 26.07 sn, bundle öncekiyle aynı 679.49/194.02 KB. Process group temizliği ayrı committe; Actions run #54 çalışıyor.
-- Rapor: `reports/2026-11-14-local-launcher.md`.
+- Initial backlog created; scope based on source code and old project notes, with UX decisions not yet settled with the user.
+- The `codex/hamartia-rebuild` branch was created on GitHub from `master` starting commit `c5642d0`.
+- The local working copy was built from GitHub tree/blob contents; its tree SHA matched the source tree. Normal Git transport is unavailable due to DNS restrictions.
+- Local AI was excluded from test and benchmark scope.
+- Fixed the required-ID contract and history-deleting behavior in the exam POST flow; added append under a path-shared lock.
+- Four backend checks passed; a 1,000-record JSON benchmark measured append at 12.4065 sec (80.60 records/sec) and read at 0.0091 sec.
+- `npm ci --offline` could not complete because the Vite package was not in the npm cache; frontend build and browser smoke remain unverified.
+- 2026-11-14: Backlog updated with completed UI/test/build steps; the next target became resolving data-integrity races.
+- 2026-11-14: Added locked `update_list`, strict JSON list reading, and concurrent delete/append tests; 13 backend tests passed. Dict collection round-trip was enabled for Hamartia's document list.
+- 2026-11-14: Added a local, AI-free Study Plan screen and `/questions/insights`. 14 backend tests and 3 frontend tests passed; priority calculation for 100 missed questions took 0.0031 sec.
+- 2026-11-14: Updated to patched Vite 6.4.6; offline clean install/test/build/audit cache check passed. Bundle is 659.95 KB; browser smoke and GitHub Actions results are still pending.
+- 2026-11-14: Added PNG/JPEG/WebP signature checks to image uploads. 14 backend tests passed; the 100-question benchmark measured upload at 0.5873 sec; GitHub Actions is queued for the new commit.
+- 2026-11-14: Added local setup and model endpoint configuration to README; AI client uses the saved settings and includes the image in the payload. Real local model remains unverified on another computer.
+- 2026-11-14: Limited exam entry to ISO dates and a 0-59 second range; 14 backend tests, frontend test/build, and GitHub Actions passed.
+- 2026-11-14: Added missed-question reviewed status, undo, and pending topic priority. 16 backend tests, 3 frontend tests, and the model-free benchmark passed; the first new CI workflow succeeded.
+- New non-AI question-flow measurements: `reports/2026-11-14-storage-and-study-plan.md`.
+- 2026-11-14: GitHub Actions frontend/backend jobs succeeded for review-undo and docs commits; local and remote branch trees match, and `master` is unchanged.
+- 2026-11-14: Total XP/level/streak are now calculated from exam history and preserve the profile bonus; 20 backend tests, 3 frontend tests, and the 1000-exam progression benchmark passed. GitHub Actions is running.
+- Measurement report: `reports/2026-11-14-storage-and-study-plan.md`.
+- 2026-11-14: Cosmos placeholder became a read-only local progress view with XP/level/streak and up to nine pending topics. Initial build took 18.49 sec. Browser smoke was not run because browser/Playwright were unavailable in the environment. The old random assault endpoint's multi-file XP writes and reward semantics were reviewed and excluded from UI scope.
+- 2026-11-14: XP bar's 500 XP first-level threshold was aligned with backend; navbar and Cosmos use the shared helper. 4 frontend tests and a 17.64 sec build passed.
+- GitHub Actions run `43603845596`: frontend test/build, backend unittest, JSON storage benchmark, and question workflow benchmark succeeded.
+- 2026-11-14: Added question-level correct/incorrect attempt history and deterministic 1/3/7/14/30 day review intervals. Text-only capture was also connected to the API/form/review list. 29 backend and 4 frontend tests passed.
+- 2026-11-14: Chromium smoke with real FastAPI+Vite and temporary data passed checks for image-free question creation, answer persistence, exclusion of the AI route, accessible names, and no overflow at 390 px. Navigation took 2.715 sec; capture+review persistence took 2.432 sec. Online `npm audit` found 0 issues.
+- Uploading 100 questions with images took 0.4674 sec; 100 text-only captures took 0.6439 sec; both workflows were benchmarked without AI.
+- Report: `reports/2026-11-14-spaced-review-loop.md`. `test:browser` was connected to CI; the latest Actions run is pending.
+- 2026-11-14: Added backward-compatible TYT/AYT/branch types to the exam model, locked PUT/DELETE API, visible edit/delete throughout full history, type filter, and type-specific net/exam totals. 32 backend tests, 4 frontend tests, build, and real browser smoke passed.
+- Browser: no overflow at 390 px, no dashboard JS/API errors, and no Recharts NaN/duplicate-key errors. Exam CRUD cycle took 1.039 sec; UI navigation took 2.266 sec; capture+review persistence took 3.483 sec.
+- For 1,000 JSON exams, append took 19.178 sec (52.14/sec), read 0.0078 sec, update 0.0272 sec, delete 0.0237 sec, progression 0.0017 sec. 100 image-backed missed questions took 0.3149 sec (317.57/sec); 100 text-only missed questions took 0.4523 sec (221.11/sec). All were AI-free.
+- Report: `reports/2026-11-14-exam-context-crud.md`. Code commits were transferred to the GitHub branch with tree SHA matching. GitHub Actions run `43608878405` (#41) successfully completed frontend test/build/browser smoke and backend tests/benchmarks.
+- 2026-11-14: Cosmos node upsert/sector unlock moved to a single-document lock using `StorageService.update_doc`; legacy XP assault was closed with 410. 38 backend tests pass; no records were lost in 24 concurrent node and 3 parallel sector updates.
+- For 1,000 exams: append 19.8911 sec (50.27/sec), read 0.0135 sec, exam update/delete 0.0325/0.0305 sec, single user document update 0.0013 sec, progression 0.0021 sec. Q-flow: 100 images 0.3414 sec, 100 text captures 0.4828 sec. Local AI excluded.
+- Browser smoke (regression): navigation 3.035 sec, capture+review persistence 3.615 sec, exam CRUD 1.045 sec; frontend 4/4 and build passed.
+- Report: `reports/2026-11-14-cosmos-storage-safety.md`; CI verification after this change is pending.
+- 2026-11-14: Added subject/topic/text editing and confirmed deletion to missed-question cards. Editing preserves image, analysis label, and review history; text-only questions cannot be changed to empty text. Deletion atomically removes the record from the list and removes the image only if it is under `uploads/`. 43 backend tests, 4 frontend tests, build, and Chromium smoke passed; no AI call.
+- In the 100-question flow, upload took 0.3006 sec, text capture 0.4759 sec, one-question edit 0.0047 sec, and question deletion with image removal 0.0041 sec. For 1,000 JSON exams, append took 12.8297 sec (77.94/sec), read 0.0077 sec, update/delete 0.0278/0.0241 sec; all benchmarks were AI-free. Benchmark processes ran concurrently, so results are subject to machine noise.
+- Browser smoke: navigation 2.362 sec, capture+review persistence 2.335 sec, exam CRUD 1.301 sec, question edit+delete 0.423 sec; no 390 px overflow or API/JS/console errors. Build took 23.50 sec; main bundle 679.05 KB minified / 193.94 KB gzip; the 500 KB chunk warning remains.
+- GitHub Actions run #47 (`f372b2f4`) successfully completed frontend test/build/browser smoke, backend tests, and two benchmark jobs.
+- Report: `reports/2026-11-14-question-record-crud.md`.
+- 2026-11-14: Added a today's progress card to the Study Plan. A reviewed question counts once; correct/incorrect counters count each answer. It is calculated from saved attempt history; no new JSON field, setting, or AI call. 45 backend tests, 4 frontend tests, production build, and browser smoke passed.
+- Browser smoke: navigation 2.157 sec, reload after capture+review 2.335 sec, exam CRUD 1.234 sec, question edit+delete 0.409 sec; after reload, today's counts remained 2 questions, 1 correct, 1 incorrect.
+- 100-question benchmark: insight 0.0053 sec; upload 0.604 sec, list 0.0008 sec, attempt 0.0034 sec, review 0.0038 sec, edit/delete 0.0045/0.0030 sec, text capture 0.4463 sec. All AI-free.
+- Build took 22.12 sec; bundle 679.49 KB minified / 194.02 KB gzip (the 500 KB chunk warning remains). GitHub Actions run #49 (`d0cd18ff`) verified the code commit successfully; CI for the docs commit is running. Report: `reports/2026-11-14-todays-study-activity.md`.
+- 2026-11-14: `scripts/dev.py` starts Uvicorn and Vite with one command and checks readiness; Ctrl+C/SIGTERM stops both. Vite does not silently switch to another port; if 5173 is occupied, `HAMARTIA_FRONTEND_PORT` can be used. Browser smoke now runs through the real launcher.
+- Launcher integration check: with a temporary data directory, API/frontend returned 200 and both Hamartia ports were closed after Ctrl+C; the existing app on 5173 was preserved. Startup/shutdown after process-group cleanup took 2.458 sec. Port-conflict smoke confirmed the launcher exited with 1, stopped its API child, and preserved the existing Vite app.
+- Browser smoke after launcher change passed: navigation 2.056 sec, capture+review 2.288 sec, exam CRUD 1.217 sec, question edit/delete 0.471 sec. Frontend 4/4 tests; build 26.07 sec, bundle unchanged at 679.49/194.02 KB. Process-group cleanup is in a separate commit; Actions run #54 is running.
+- Report: `reports/2026-11-14-local-launcher.md`.

@@ -1,32 +1,32 @@
-# 2026-11-14 deneme bağlamı ve çözüm sırası — uygulama planı
+# 2026-11-14 exam context and solve order — implementation plan
 
-## Sorun
+## Problem
 
-Deneme kayıtları yalnızca toplam doğru/yanlış/boş ve toplam süreyi saklıyor. Yanlış soru kaydı deneme kimliği, sınavdaki soru numarası, çözümde kaçıncı sırada ele alındığı veya o soruya harcanan süreyi saklamıyor. Bu yüzden deneme sırasına göre hata örüntüsü görülemiyor.
+Exam records store only total correct/incorrect/blank counts and total duration. A wrong-question record does not store the exam ID, question number within the exam, order in which it was solved, or time spent on that question. As a result, error patterns by exam order cannot be seen.
 
-## Kullanıcı akışı
+## User flow
 
-Deneme geçmişindeki satırdan yanlış soru eklemeyi açınca ders, deneme kimliği, tarih ve tür bağlamı taşınsın. Formda kullanıcı isteğe bağlı soru numarası, kendi çözüm sırası ve soru başı süreyi eklesin. Elle açılan genel yanlış soru formu eskisi gibi çalışsın.
+When opening the add-wrong-question form from a row in exam history, carry over the subject, exam ID, date, and type context. In the form, the user can optionally add the question number, their solve order, and time per question. The general wrong-question form opened manually continues to work as before.
 
-## Veri ve hesaplama
+## Data and calculation
 
-- `Question` modeline varsayılanı boş/`None` olan `exam_id`, `question_number`, `solve_order`, `time_spent_seconds` alanları ekle; eski `questions.json` için migrasyon yapma.
-- İlişkili deneme silinirse yanlış kayıtlarını tut. Deneme kimliği artık mevcut değilse sıra özetine katma.
-- Çalışma planında sadece mevcut denemeye bağlı ve gerekli sıra/süre alanları dolu yanlış kayıtlarının erken/orta/geç çözüm sırasındaki adedini ve soru başı medyan süresini göster.
-- Bu özet yalnızca kaydedilmiş yanlışları kapsar; doğru/boş cevapların toplamı olmadığı için doğruluk yüzdesi üretmez.
-- Soru numarası ve sıra, deneme toplam soru sayısını aşamaz; süre en az bir saniyedir.
+- Add `exam_id`, `question_number`, `solve_order`, and `time_spent_seconds` fields to the `Question` model, defaulting to empty/`None`; do not migrate old `questions.json` files.
+- Keep wrong-question records if the related exam is deleted. If the exam ID no longer exists, exclude it from the solve-order summary.
+- In the Study Plan, show the count of wrong questions with an existing exam link and required solve-order/time fields, grouped into early/middle/late solve order, and median time per question.
+- This summary covers saved wrong questions only; without totals for correct/blank answers, do not produce an accuracy percentage.
+- Question number and solve order cannot exceed the exam's total question count; time must be at least one second.
 
-## Değişiklik yüzeyleri
+## Change surfaces
 
 - `backend/app/models/schemas.py`, `backend/app/api/questions.py`, `backend/app/core/study_plan.py`
 - `frontend/src/tabs/RecentExams.jsx`, `DashboardTab.jsx`, `App.jsx`, `QuestionsTab.jsx`, `StudyPlanTab.jsx`, `frontend/src/services/api.js`
-- Backend şema/API/özet testleri, frontend form testi ve browser smoke.
-- 1.000 ve 10.000 soru için AI'siz özet benchmarkı.
+- Backend schema/API/summary tests, frontend form test, and browser smoke.
+- AI-free summary benchmark for 1,000 and 10,000 questions.
 
-## Kabul ölçütleri
+## Acceptance criteria
 
-- Eski soru JSON kayıtları varsayılan alanlarla okunur; mevcut soru ekleme akışında yeni alanlar opsiyoneldir.
-- Denemeden açılan form doğru deneme bağlamını kaydeder ve yenilemede korur.
-- Sınır dışı soru numarası/sıra/süre reddedilir; silinmiş deneme bağlı soru kayıtlarını silmez veya özetlemez.
-- Sıra/süre özeti uç değerleri medyan ile dayanıklı biçimde toplar; eksik metadata özet dışı kalır.
-- Browser smoke AI endpoint'ine gitmez. Özet benchmarkı model yüklemez/çağırmaz.
+- Old question JSON records are read with default fields; new fields remain optional in the current add-question flow.
+- A form opened from an exam saves the correct exam context and preserves it after refresh.
+- Out-of-range question number/order/time are rejected; deleting an exam does not delete its linked question records or include them in the summary.
+- Solve-order/time summary handles outliers robustly with the median; records missing metadata are excluded from the summary.
+- Browser smoke does not call an AI endpoint. The summary benchmark does not load/call a model.

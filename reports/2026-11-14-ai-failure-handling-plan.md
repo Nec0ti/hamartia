@@ -1,19 +1,19 @@
-# 2026-11-14 yerel model hata işleme — plan
+# 2026-11-14 local model error handling — plan
 
-## Bulgu
+## Finding
 
-`AIService._completions()` OpenAI uyumlu endpoint'ten gelen `OpenAIError` hatasını boş metne çeviriyor. `analyze_question()` bu metni varsayılan bir Council sonucuna dönüştürüyor; `/questions/{id}/analyze` bu sonucu kaydedip `[Distractor Trap]` etiketini yazabiliyor. Böylece erişilemeyen endpoint, yanlış model adı, yetkilendirme veya multimodal destek sorunu gerçek teşhis gibi görünür.
+`AIService._completions()` converts `OpenAIError` failures from the OpenAI-compatible endpoint into empty text. `analyze_question()` turns this text into a default Council result; `/questions/{id}/analyze` can save that result and write the `[Distractor Trap]` tag. This makes an unavailable endpoint, incorrect model name, authorization problem, or multimodal support issue look like a real diagnosis.
 
-## Değişiklik
+## Change
 
-- Provider hatasını `_completions()` üzerinden yukarı taşı.
-- Analyze rotasında hatayı 502 API cevabına dönüştür; UI'nin mevcut hata yüzeyinde göster.
-- Başarısız çağrıda mevcut analysis ve `hamartia_tag` değişmediğini doğrula.
-- Mevcut `Yerel AI ile incele` eylemini başka bilgisayarda text-only, ardından görselli soruyla elle doğrula; yeni probe endpoint'i ekleme.
+- Propagate provider errors through `_completions()`.
+- Convert the error to a 502 API response in the analyze route; show it through the UI's existing error surface.
+- Verify that the existing analysis and `hamartia_tag` remain unchanged after a failed call.
+- Manually verify the existing `Review with Local AI` action on another computer, first with a text-only question and then with an image question; do not add a new probe endpoint.
 
-## Sınır ve kabul
+## Limits and acceptance
 
-- Automated test provider hatasını fake `OpenAIError` ile sınar, gerçek local model veya endpoint çağırmaz.
-- Test/benchmarkta prompt, model çıktısı, kalite, inference gecikmesi veya kaynak kullanımı ölçülmez.
-- Başarılı çağrı davranışı, Council şeması ve görsel payload'ı değiştirilmez.
-- Fake provider hatasında API 502 döner; kayıtlı soru/etiket aynı kalır; local model test ve benchmark dışında kalır.
+- The automated test exercises a provider error using a fake `OpenAIError`; it does not call a real local model or endpoint.
+- The test/benchmark does not measure the prompt, model output, quality, inference latency, or resource usage.
+- Successful-call behavior, the Council schema, and image payload are unchanged.
+- For a fake provider error, the API returns 502; the saved question/tag stays the same; the local model remains outside the test and benchmark.

@@ -1,24 +1,24 @@
-# 2026-11-14 — başlangıç depolama ve deneme akışı
+# 2026-11-14 — initial storage and exam flow
 
-## Kapsam
+## Scope
 
-Deneme oluşturma API mantığı, JSON geçmişinin korunması, eşzamanlı kayıt ve depolama mikrobenchmarkı. Local AI veya herhangi bir model çağrılmadı.
+Exam creation API logic, JSON history preservation, concurrent writes, and storage microbenchmark. No local AI or model calls were made.
 
-## Kontroller
+## Checks
 
-`backend/tests/test_exams.py`: 4 kontrol geçti.
+`backend/tests/test_exams.py`: 4 checks passed.
 
-- UI'nın gönderdiği kimliksiz payload ile ID/zaman üretilmesi ve eski kaydın korunması.
-- Boş ders ve negatif doğru sayısının reddedilmesi.
-- Aynı JSON dosyasına farklı `StorageService` örneklerinden 32 eşzamanlı ekleme.
-- Bozuk JSON'un append sırasında değiştirilmemesi.
+- Generate an ID/time from the identity-free payload sent by the UI and preserve the old record.
+- Reject an empty subject and a negative correct count.
+- Add 32 concurrent records to the same JSON file using different `StorageService` instances.
+- Do not modify malformed JSON during append.
 
-Çalıştırma ortamı Python 3.14 ve sistem Nix store'undaki FastAPI 0.141.1/Pydantic 2.13.4 paketleriydi. Bu, backend HTTP sunucusunun tamamını veya AI rotalarını test etmez.
+The runtime used Python 3.14 and FastAPI 0.141.1/Pydantic 2.13.4 packages from the system Nix store. This does not test the full backend HTTP server or AI routes.
 
 ## Benchmark
 
-`backend/benchmarks/benchmark_storage.py`, geçici dizinde 1.000 sınav kaydını sırayla ekleyip yeniden okudu. Sonuç: append 12.4065 sn (80.60 kayıt/sn), read 0.0091 sn. Dosya tabanlı JSON'un her append'te listeyi yeniden yazması bu yapay toplu yükü pahalı kılıyor; kullanıcı başına tipik kayıt hızını temsil etmez. Daha büyük/çok süreçli kullanımda SQLite değerlendirilmelidir.
+`backend/benchmarks/benchmark_storage.py` sequentially added and reread 1,000 exam records in a temporary directory. Result: append 12.4065 sec (80.60 records/sec), read 0.0091 sec. Rewriting the whole list on each append makes this synthetic batch load expensive for file-based JSON; it does not represent a typical user's record rate. SQLite should be considered for larger/multi-process use.
 
-## Frontend doğrulaması
+## Frontend verification
 
-`npm ci --offline` Vite 5.4.21 paketi yerel npm cache'inde olmadığı için başarısız oldu. Frontend build ve browser smoke çalıştırılmadı; bu yüzden kayıt akışının arayüzden uçtan uca çalıştığı henüz kanıtlanmış değil.
+`npm ci --offline` failed because Vite 5.4.21 was not in the local npm cache. Frontend build and browser smoke were not run; therefore, it has not yet been proven that the entry flow works end-to-end through the UI.

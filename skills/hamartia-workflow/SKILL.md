@@ -1,23 +1,23 @@
 ---
 name: hamartia-workflow
-description: Hamartia YKS takip uygulamasında değişiklik, yerel AI sınırı ve benchmark iş akışı.
+description: Change workflow for the Hamartia YKS tracking app, local AI boundary, and benchmark process.
 ---
 
-# Hamartia iş akışı
+# Hamartia workflow
 
-1. `AGENTS.md`, `notes.md`, `backlog.md` ve en son `reports/` kaydını oku.
-2. Değişikliğin kullanan API/UI noktalarını ve JSON veri uyumluluğunu incele.
-3. Tek, öğrenciye görünen bir dikey dilim seç; ilgili backend ve frontend parçalarını aynı iş içinde tamamla.
-4. AI dışı davranışı test et; gerçek local AI servisini çağırma.
-5. Test/benchmark komutlarını ve sonuçları tarihli `reports/` raporuna yaz.
-6. Her tamamlanan küçük dilimi commit et; GitHub'a aktarırken kaynak dal SHA'sını, yeni commit SHA'sını ve ref sonucunu doğrula.
-7. Veri export/restore değişikliklerinde tüm kayıt türlerini ve `uploads/` dizinini say; secret alanlarını dışarıda tut, arşivi staging'de tamamen doğrula ve eski veriyi swap öncesi koru. Restore'u uygulama process lock'u ile çakışmaya karşı denetle.
-8. Sınav bağlamlı yanlış analizlerinde ölçüm paydasını açık belirt; yalnızca yanlış kaydı olan sorulardan doğruluk oranı türetme. Eski soru JSON'ları geriye uyumlu okunmalı ve silinmiş sınav ilişkileri özetleri kirletmemeli.
-9. Konu başarı ölçüsünü yalnızca tamamlanmış `practice_sessions.json` kayıtlarından üret; doğruluk paydasında boş soruları çıkar ve eski backup arşivlerini yeni liste dosyası olmadan da kabul et.
-10. Odaklı oturum taslağı yalnızca aynı tarayıcı profilinde geçici saklanır; tamamlanan sonuçları mevcut practice API'sine bir kez yaz ve gerçek model çağırma.
-11. Konu trend grafikleri yalnızca kayıtlı çalışma setlerinden üret; null doğruluğu sıfır gibi çizme ve son altıdan eski setler için de yönetim eylemi bırak.
-12. Provider `OpenAIError` hatasını analiz başarısı gibi kaydetme; soru analizinde görünür HTTP hatası ver, testte yalnızca fake provider exception kullan ve gerçek modeli otomatik doğrulama/benchmark kapsamına alma.
+1. Read `AGENTS.md`, `notes.md`, `backlog.md`, and the latest record under `reports/`.
+2. Inspect the API/UI points that use the change and JSON data compatibility.
+3. Choose one student-visible vertical slice; complete the related backend and frontend parts together.
+4. Test non-AI behavior; do not call a real local AI service.
+5. Record test/benchmark commands and results in a dated report under `reports/`.
+6. Commit each completed small slice; when transferring to GitHub, verify the source branch SHA, new commit SHA, and ref result.
+7. For data export/restore changes, count all record types and the `uploads/` directory; exclude secret fields, fully validate the archive in staging, and preserve old data before the swap. Check restore for conflicts with the app's process lock.
+8. For exam-context missed-question analysis, state the measurement denominator explicitly; do not derive an accuracy rate from only questions recorded as missed. Old question JSON must remain readable, and deleted exam links must not pollute summaries.
+9. Derive topic performance measures only from completed `practice_sessions.json` records; exclude blank questions from the accuracy denominator and accept old backup archives even without the new list file.
+10. A focused-session draft is stored temporarily only in the same browser profile; write completed results once to the existing practice API and do not call a real model.
+11. Build topic trend charts only from saved practice sets; do not draw null accuracy as zero, and keep management actions available for sets older than the last six.
+12. Do not save a provider `OpenAIError` as successful analysis; return a visible HTTP error for question analysis, test only with a fake provider exception, and keep real models outside automated verification/benchmark scope.
 
-## Ölçüm kuralı
+## Measurement rule
 
-Net hesapları, depolama, API, UI build ve model çağrısız smoke akışları kapsama dahildir. Model açılışı, yanıtı, kalitesi, gecikmesi ve donanım tüketimi kapsam dışıdır.
+Net calculations, storage, APIs, UI builds, and smoke flows without model calls are in scope. Model startup, responses, quality, latency, and hardware usage are out of scope.

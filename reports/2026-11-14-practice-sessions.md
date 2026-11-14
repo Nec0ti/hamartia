@@ -1,18 +1,18 @@
-# 2026-11-14 konu çalışma setleri — uygulama ve doğrulama
+# 2026-11-14 topic study sets — implementation and verification
 
-## Kapsam
+## Scope
 
-Çalışma Planı'na ayrı konu çalışma seti kaydı eklendi. Tarih, ders, konu, doğru/yanlış/boş ve dakika alanları saklanır. Backend neti `doğru - yanlış/4`, doğruluğu `doğru / (doğru + yanlış)` olarak hesaplar; boş sorular doğruluk paydasına girmez. Ders/konu özetleri yalnızca bu kayıtları toplar. Setler düzenlenip silinebilir. `practice_sessions.json` ZIP yedeğine dahil edildi; eski v1 arşivinde bu dosya yoksa boş listeyle restore edilir.
+A separate topic study set record was added to the Study Plan. Date, subject, topic, correct/incorrect/blank counts, and minutes are stored. The backend calculates net as `correct - incorrect/4` and accuracy as `correct / (correct + incorrect)`; blank questions are excluded from the accuracy denominator. Subject/topic summaries aggregate only these records. Sets can be edited and deleted. `practice_sessions.json` is included in the ZIP backup; if it is missing from an old v1 archive, restore uses an empty list.
 
-## Doğrulama
+## Verification
 
-- Backend: `cd backend && /tmp/hamartia-venv/bin/python -m unittest discover -s tests -q` — 72 test geçti.
-- Frontend: `cd frontend && npm test` — 4/4 geçti.
-- Üretim derlemesi: `cd frontend && npm run build` — başarılı; ana JS 689.01 KB minified / 196.30 KB gzip. Vite'ın 500 KB chunk uyarısı sürüyor.
-- Gerçek Chromium smoke: practice formu gönderildi, API yanıtı ve sayfanın yeniden yüklenmesi sonrası kayıtlı sonuç doğrulandı. Ölçümler: navigation 2.475 sn, practice persistence 1.436 sn, mistake capture/review persistence 2.850 sn, exam CRUD 3.245 sn, question edit/delete 0.493 sn, backup download 0.262 sn. `ai_included: false`.
-- Benchmark: `PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py` — 1.000 set/20 konu: özet 0.007639 sn, yazma 0.017720 sn, okuma 0.028008 sn; 10.000 set/20 konu: özet 0.055283 sn, yazma 0.107469 sn, okuma 0.317847 sn. Ölçüm model yüklemez/çağırmaz.
-- GitHub Actions run #63 (`c1da9aa`) backend ve frontend işleriyle, yeni practice-session benchmarkı dahil, başarılı.
+- Backend: `cd backend && /tmp/hamartia-venv/bin/python -m unittest discover -s tests -q` — 72 tests passed.
+- Frontend: `cd frontend && npm test` — 4/4 passed.
+- Production build: `cd frontend && npm run build` — succeeded; main JS 689.01 KB minified / 196.30 KB gzip. Vite's 500 KB chunk warning remains.
+- Real Chromium smoke: submitted the practice form and verified the saved result after the API response and page reload. Measurements: navigation 2.475 sec, practice persistence 1.436 sec, mistake capture/review persistence 2.850 sec, exam CRUD 3.245 sec, question edit/delete 0.493 sec, backup download 0.262 sec. `ai_included: false`.
+- Benchmark: `PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py` — 1,000 sets/20 topics: summary 0.007639 sec, write 0.017720 sec, read 0.028008 sec; 10,000 sets/20 topics: summary 0.055283 sec, write 0.107469 sec, read 0.317847 sec. The measurement does not load or call a model.
+- GitHub Actions run #63 (`c1da9aa`) succeeded with backend and frontend jobs, including the new practice-session benchmark.
 
-## Sınırlamalar
+## Limitations
 
-Build büyük chunk uyarısı veriyor. Tarayıcı süreleri bu makinenin yerel ölçümüdür. Yerel model ve görsel aktarımı başka bilgisayarda sınanmadı ve bu test/benchmarklara dahil edilmedi.
+The build emits a large chunk warning. Browser timings are local measurements on this machine. The local model and image transfer were not tested on another computer and are not included in these tests/benchmarks.

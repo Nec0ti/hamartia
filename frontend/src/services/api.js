@@ -8,6 +8,7 @@
  * /agent, /settings, /healthcheck.
  */
 import axios from 'axios'
+import { handleApiError } from './apiError.js'
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
 
@@ -124,10 +125,6 @@ export const health = {
  * Small helper to surface API errors without crashing the tab. Returns a
  * human-readable message plus the HTTP status code.
  */
-export const handleApiError = (error) => {
-  const status = error?.response?.status ?? 0
-  const detail = error?.response?.data?.detail ?? error?.message ?? 'Request failed'
-  return { ok: false, status, detail }
-}
+export { handleApiError }
 
 export default { exams, practice, questions, cosmos, agent, user, settings, health }

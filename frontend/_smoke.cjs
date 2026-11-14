@@ -42,6 +42,13 @@ async function main() {
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
+    const seedResponse = await fetch(`${apiUrl}/exams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-11-14', exam_type: 'branch', subject: 'Matematik', duration_minutes: 30, correct: 30, incorrect: 4, blank: 2 }),
+    })
+    if (!seedResponse.ok) throw new Error(`Locale fixture failed: ${await seedResponse.text()}`)
+    const localeExam = await seedResponse.json()
     browser = await chromium.launch({
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
@@ -70,7 +77,39 @@ async function main() {
 
     const started = performance.now()
     await page.goto(baseUrl, { waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
+    assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
+    await page.getByRole('cell', { name: 'Nov 14, 2026', exact: true }).waitFor()
+    await page.getByRole('img', { name: 'Net trend · All subjects' }).waitFor()
+    await page.getByRole('img', { name: 'Performance radar chart: speed, focus, precision, and stamina' }).waitFor()
+    await page.getByText('11/14', { exact: true }).waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'fr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
+    await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.getByRole('button', { name: 'My Mistakes' }).click()
+    await page.getByRole('heading', { name: 'Missed questions' }).waitFor()
+    await page.getByRole('button', { name: 'Dashboard' }).click()
+    await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await page.getByRole('button', { name: 'Open settings' }).click()
+    await page.getByLabel('Language').selectOption('tr')
+    await page.waitForFunction(() => document.documentElement.lang === 'tr' && localStorage.getItem('hamartia.language') === 'tr')
+    assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
     await page.getByRole('heading', { name: 'Genel bakış' }).waitFor()
+    assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
+    await page.getByRole('cell', { name: '14 Kas 2026', exact: true }).waitFor()
+    await page.getByRole('img', { name: 'Net değişimi · Tüm dersler' }).waitFor()
+    await page.getByRole('img', { name: 'Performans radarı: hız, odak, isabet ve dayanıklılık' }).waitFor()
+    await page.getByText('14/11', { exact: true }).waitFor()
+    const deleteFixture = await fetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
+    assert.equal(deleteFixture.ok, true, `Locale fixture cleanup failed: ${await deleteFixture.text()}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByText('Henüz deneme kaydı yok.').waitFor()
     assert.equal(await page.getByText('Cannot read properties of undefined', { exact: false }).count(), 0)
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     await page.getByRole('heading', { name: 'Şimdi çöz' }).waitFor()
@@ -100,11 +139,11 @@ async function main() {
     ])
     if (!practiceResponse.ok()) throw new Error(`Practice save failed ${practiceResponse.status()}: ${await practiceResponse.text()}`)
     practiceSession = await practiceResponse.json()
-    await practiceSection.getByText('80.0% cevaplanan doğruluğu').waitFor()
+    await practiceSection.getByText('80,0% cevaplanan doğruluğu').waitFor()
     assert.equal(practiceSession.correct, 8)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    await page.getByRole('region', { name: 'Konu çalışma setleri' }).getByText('80.0% cevaplanan doğruluğu').waitFor()
+    await page.getByRole('region', { name: 'Konu çalışma setleri' }).getByText('80,0% cevaplanan doğruluğu').waitFor()
     const practiceSessionPersistenceMs = Math.round(performance.now() - practiceStarted)
 
     const focusStarted = performance.now()
@@ -139,7 +178,7 @@ async function main() {
     assert.equal(practiceSession.topic, 'Fonksiyon')
     assert.deepEqual([practiceSession.correct, practiceSession.incorrect, practiceSession.blank], [1, 0, 1])
     assert(practiceSession.duration_seconds >= elapsedAtFinish)
-    await practiceSection.getByText('81.8% cevaplanan doğruluğu').waitFor()
+    await practiceSection.getByText('81,8% cevaplanan doğruluğu').waitFor()
 
     for (let index = 1; index <= 6; index += 1) {
       const response = await page.context().request.post(`${apiUrl}/practice`, { data: {
@@ -166,19 +205,19 @@ async function main() {
     await blankAccuracy.waitFor()
     await page.getByText('Cevaplanan soru yok').first().waitFor()
     assert.equal(await blankAccuracy.locator('.recharts-line-curve').count(), 0)
-    await page.getByText('88.2% cevaplanan doğruluğu').waitFor()
+    await page.getByText('88,2% cevaplanan doğruluğu').waitFor()
     assert.equal(await page.locator('details > summary').filter({ hasText: 'Önceki setler (2)' }).count(), 1)
     const chartPageWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     assert(chartPageWidth <= 390, `390 px chart view overflows to ${chartPageWidth} px`)
     const oldHistory = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Önceki setler (2)' }) })
     if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
-    await page.getByRole('button', { name: 'Seti düzenle 2026-11-01 Fonksiyon' }).click()
+    await page.getByRole('button', { name: 'Seti düzenle 1 Kas 2026 Fonksiyon' }).click()
     await practiceSection.locator('form').getByLabel('Doğru').fill('10')
     await practiceSection.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
-    await practiceSection.getByText('92.3% cevaplanan doğruluğu').waitFor()
+    await practiceSection.getByText('92,3% cevaplanan doğruluğu').waitFor()
     if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
     page.once('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: 'Seti sil 2026-11-02 Fonksiyon' }).click()
+    await page.getByRole('button', { name: 'Seti sil 2 Kas 2026 Fonksiyon' }).click()
     await page.locator('details > summary').filter({ hasText: 'Önceki setler (1)' }).waitFor()
     const practiceTrendAndHistoryMs = Math.round(performance.now() - chartStarted)
     const focusedSessionMs = Math.round(performance.now() - focusStarted)
@@ -257,13 +296,13 @@ async function main() {
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Türkçe')
-    await page.getByLabel('Doğru · 1. ders').fill('30')
-    await page.getByLabel('Yanlış · 1. ders').fill('5')
-    await page.getByLabel('Boş · 1. ders').fill('5')
+    await page.getByLabel('1. ders Doğru').fill('30')
+    await page.getByLabel('1. ders Yanlış').fill('5')
+    await page.getByLabel('1. ders Boş').fill('5')
     await page.getByLabel('Ders adı 2').fill('Matematik')
-    await page.getByLabel('Doğru · 2. ders').fill('25')
-    await page.getByLabel('Yanlış · 2. ders').fill('8')
-    await page.getByLabel('Boş · 2. ders').fill('7')
+    await page.getByLabel('2. ders Doğru').fill('25')
+    await page.getByLabel('2. ders Yanlış').fill('8')
+    await page.getByLabel('2. ders Boş').fill('7')
     const [tytResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
@@ -275,7 +314,7 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     const tytDetails = page.locator('details').filter({ has: page.locator('summary', { hasText: 'TYT Geneli · 2 ders' }) })
     await tytDetails.locator('summary').click()
-    await tytDetails.getByText('Türkçe: 30D / 5Y / 5B').waitFor()
+    await tytDetails.getByText('Türkçe: 30 D / 5 Y / 5 B').waitFor()
     await tytDetails.getByRole('button', { name: /Yanlış ekle Türkçe/ }).click()
     await page.getByText(/Bağlı deneme: .*Türkçe \(TYT\)/).waitFor()
     await page.getByText('Bu bölümde 40 soru var.').waitFor()
@@ -291,7 +330,7 @@ async function main() {
     assert.deepEqual([sectionQuestion.subject, sectionQuestion.exam_section_total, sectionQuestion.question_number], ['Türkçe', 40, 40])
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
     await page.getByRole('button', { name: /Denemeyi düzenle TYT Geneli/ }).click()
-    await page.getByLabel('Boş · 1. ders').fill('4')
+    await page.getByLabel('1. ders Boş').fill('4')
     const [tytUpdateResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname.startsWith('/exams/') && response.request().method() === 'PUT'),
       page.getByRole('button', { name: 'Değişiklikleri kaydet' }).click(),
@@ -311,9 +350,9 @@ async function main() {
     await page.getByRole('dialog').locator('select').selectOption('ayt')
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Fizik')
-    await page.getByLabel('Doğru · 1. ders').fill('10')
-    await page.getByLabel('Yanlış · 1. ders').fill('3')
-    await page.getByLabel('Boş · 1. ders').fill('1')
+    await page.getByLabel('1. ders Doğru').fill('10')
+    await page.getByLabel('1. ders Yanlış').fill('3')
+    await page.getByLabel('1. ders Boş').fill('1')
     await page.getByPlaceholder('Dakika').fill('45')
     const [aytResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),

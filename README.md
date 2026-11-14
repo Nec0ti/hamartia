@@ -4,7 +4,7 @@ A local workspace that stores YKS practice exams and missed questions on this co
 
 ## Documentation
 
-The English and Turkish user guide is published at [necoti.github.io/hamartia](https://necoti.github.io/hamartia/).
+The English and Turkish user guide is published on [GitHub Pages](https://nec0ti.github.io/hamartia/).
 
 ## Run locally
 

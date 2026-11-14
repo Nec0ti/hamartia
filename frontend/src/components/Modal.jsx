@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useI18n } from '../i18n.jsx'
 
 /**
  * Reusable modal shell: layered backdrop, focus trap on Escape, and a
  * scroll lock while open. Children receive a compact `close` callback.
  */
 export default function Modal({ open, onClose, title, children, footer }) {
+  const { t } = useI18n()
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -40,7 +42,7 @@ export default function Modal({ open, onClose, title, children, footer }) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label={t('common.closeDialog')}
             className="rounded-md p-1 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
           >
             <X size={18} />

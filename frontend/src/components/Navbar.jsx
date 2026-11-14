@@ -9,13 +9,14 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import { handleApiError } from '../services/api'
-import { fmtInt, levelForXp, xpProgress, xpToNextLevel } from '../utils/formatters'
+import { levelForXp, xpProgress, xpToNextLevel } from '../utils/formatters'
+import { useI18n } from '../i18n.jsx'
 
 const TABS = [
-  { id: 'dashboard', label: 'Ana Sayfa', icon: LayoutDashboard },
-  { id: 'questions', label: 'Yanlışlarım', icon: FileQuestion },
-  { id: 'cosmos', label: 'Cosmos', icon: Globe },
-  { id: 'studyplan', label: 'Çalışma Planı', icon: BookOpen },
+  { id: 'dashboard', label: 'navigation.dashboard', icon: LayoutDashboard },
+  { id: 'questions', label: 'navigation.questions', icon: FileQuestion },
+  { id: 'cosmos', label: 'navigation.cosmos', icon: Globe },
+  { id: 'studyplan', label: 'navigation.studyPlan', icon: BookOpen },
 ]
 
 /**
@@ -23,6 +24,7 @@ const TABS = [
  * trigger, and a live XP/Level badge driven by the user.json datastore.
  */
 export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
+  const { t, locale } = useI18n()
   const [profile, setProfile] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -43,12 +45,11 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
         radar: data.radar_stats ?? { speed: 50, focus: 50, precision: 50, stamina: 50 },
       })
     } catch (e) {
-      const res = handleApiError(e)
-      setError(res.detail)
+      setError(handleApiError(e, t).detail)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -81,7 +82,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               <button
                 key={tab.id}
                 type="button"
-                aria-label={tab.label}
+                aria-label={t(tab.label)}
                 onClick={() => onSelectTab(tab.id)}
                 className={[
                   'relative flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition sm:px-3',
@@ -94,7 +95,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
                   <span className="absolute left-0 top-1/2 h-5 w-0 -translate-y-1/2 rounded-r-lg bg-canvas-accent/80 transition-all duration-200" />
                 )}
                 <Icon size={16} className={isActive ? 'text-canvas-accent' : ''} />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{t(tab.label)}</span>
               </button>
             )
           })}
@@ -104,7 +105,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
         <div className="flex items-center gap-2">
           {badge && (
             <div
-              title={`Seviye ${badge.level} • ${fmtInt(badge.xp)} XP`}
+              title={t('navigation.levelTitle', { level: new Intl.NumberFormat(locale).format(badge.level), xp: new Intl.NumberFormat(locale).format(badge.xp) })}
               className="flex items-center gap-2 rounded-full border border-canvas-line bg-canvas-base px-3 py-1.5"
             >
               <div className="relative hidden h-2 w-16 overflow-hidden rounded-full bg-canvas-line sm:block">
@@ -115,10 +116,10 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               </div>
               <span className="flex flex-col items-end leading-none">
                 <span className="text-xs font-bold text-canvas-cyan">
-                  Sv. {badge.level}
+                  {t('navigation.levelAbbreviation')} {new Intl.NumberFormat(locale).format(badge.level)}
                 </span>
                 <span className="text-[10px] text-canvas-muted">
-                  {fmtInt(badge.xp)} XP
+                  {new Intl.NumberFormat(locale).format(badge.xp)} XP
                 </span>
               </span>
             </div>
@@ -131,7 +132,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               onOpenSettings?.()
             }}
             className="relative rounded-lg border border-canvas-line bg-canvas-base p-2 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
-            aria-label="Ayarları aç"
+            aria-label={t('navigation.openSettings')}
           >
             <Settings size={18} />
           </button>

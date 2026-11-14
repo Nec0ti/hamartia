@@ -2,23 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { BookOpenCheck, CheckCircle2, Clock3, FileText, Tags, ThumbsDown, ThumbsUp } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
 import PracticeSessions from './PracticeSessions.jsx'
+import { useI18n } from '../i18n.jsx'
+import { fmtDate } from '../utils/formatters.js'
 
-const TAG_LABELS = {
-  '[Knowledge Gap]': 'Konu eksiği',
-  '[Distractor Trap]': 'Çeldirici tuzağı',
-  '[Reading Slip]': 'Soruyu yanlış okuma',
-  '[Time Panic]': 'Zaman baskısı',
-}
-const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
 const newFocusTopic = (topic) => ({ subject: topic.subject, topic: topic.topic, requestedAt: Date.now() })
 
 export default function StudyPlanTab() {
+  const { t, locale } = useI18n()
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState('')
   const [focusTopic, setFocusTopic] = useState(null)
 
-  const load = useCallback(() => api.questions.insights().then(setPlan).catch((e) => setError(handleApiError(e).detail)), [])
+  const load = useCallback(() => api.questions.insights().then(setPlan).catch((e) => setError(handleApiError(e, t).detail)), [t])
 
   useEffect(() => { load() }, [load])
 
@@ -29,101 +25,101 @@ export default function StudyPlanTab() {
       await api.questions.attempt(question.id, correct)
       await load()
     } catch (e) {
-      setError(handleApiError(e).detail)
+      setError(handleApiError(e, t).detail)
     } finally {
       setBusyId('')
     }
   }
 
   if (error) return <p role="alert" className="rounded-lg border border-accent/50 bg-canvas-panel p-3 text-sm text-accent">{error}</p>
-  if (!plan) return <p className="py-20 text-center text-sm text-canvas-muted">Çalışma verileri yükleniyor…</p>
+  if (!plan) return <p className="py-20 text-center text-sm text-canvas-muted">{t('study.loading')}</p>
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-canvas-text">Çalışma önceliklerin</h1>
-        <p className="mt-1 text-sm text-canvas-muted">Soruyu yeniden çöz, sonucunu kaydet; yanlışlar ertesi gün, doğru çözümler artan aralıklarla tekrar listene gelir. Plan yerel ve deterministiktir; AI kullanmaz.</p>
+        <h1 className="text-2xl font-bold text-canvas-text">{t('study.title')}</h1>
+        <p className="mt-1 text-sm text-canvas-muted">{t('study.intro')}</p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Kayıtlı yanlış" value={plan.total_questions} icon={<BookOpenCheck size={18} />} />
-        <Stat label="Tekrar bekleyen" value={plan.pending_questions} icon={<CheckCircle2 size={18} />} />
-        <Stat label="Sonraki güne planlı" value={plan.scheduled_questions} icon={<Clock3 size={18} />} />
-        <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<Tags size={18} />} />
+        <Stat label={t('study.stat.saved')} value={formatInt(plan.total_questions, locale)} icon={<BookOpenCheck size={18} />} />
+        <Stat label={t('study.stat.pending')} value={formatInt(plan.pending_questions, locale)} icon={<CheckCircle2 size={18} />} />
+        <Stat label={t('study.stat.scheduled')} value={formatInt(plan.scheduled_questions, locale)} icon={<Clock3 size={18} />} />
+        <Stat label={t('study.stat.unclassified')} value={formatInt(plan.unclassified_questions, locale)} icon={<Tags size={18} />} />
       </div>
 
       <PracticeSessions startTopic={focusTopic} onStartTopicConsumed={() => setFocusTopic(null)} />
 
-      <section aria-label="Bugünkü çalışma" className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
-        <h2 className="font-semibold text-canvas-text">Bugün</h2>
-        <p className="mt-1 text-sm text-canvas-muted"><strong className="text-canvas-text">{plan.today_questions}</strong> farklı soru denedin · {plan.today_correct} doğru, {plan.today_incorrect} yanlış yanıt</p>
+      <section aria-label={t('study.today')} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+        <h2 className="font-semibold text-canvas-text">{t('study.today')}</h2>
+        <p className="mt-1 text-sm text-canvas-muted">{t('study.todaySummary', { questions: formatInt(plan.today_questions, locale), correct: formatInt(plan.today_correct, locale), incorrect: formatInt(plan.today_incorrect, locale) })}</p>
       </section>
 
-      <section aria-label="Denemelerde çözüm sırası" className="space-y-3">
+      <section aria-label={t('study.questionOrder')} className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-canvas-text">Denemelerde hata sırası ve tempo</h2>
-          <p className="text-sm text-canvas-muted">Yalnızca deftere kaydedilen yanlışlar sayılır; bu bir doğruluk yüzdesi değildir.</p>
+          <h2 className="text-lg font-semibold text-canvas-text">{t('study.orderTitle')}</h2>
+          <p className="text-sm text-canvas-muted">{t('study.orderIntro')}</p>
         </div>
         {plan.question_order?.length ? plan.question_order.map((group) => (
           <article key={`${group.exam_type}-${group.subject}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
-            <h3 className="font-semibold text-canvas-text">{EXAM_TYPES[group.exam_type] || group.exam_type} · {group.subject}</h3>
-            <p className="text-xs text-canvas-muted">{group.exam_count} denemeden kaydedilen yanlışlar</p>
+            <h3 className="font-semibold text-canvas-text">{examTypeLabel(group.exam_type, t)} · {group.subject}</h3>
+            <p className="text-xs text-canvas-muted">{t('study.errorsFromExams', { count: formatInt(group.exam_count, locale) })}</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {[["early", "Erken sıra"], ["middle", "Orta sıra"], ["late", "Son sıra"]].map(([key, label]) => {
+              {[["early", t('study.early')], ["middle", t('study.middle')], ["late", t('study.late')]].map(([key, label]) => {
                 const stage = group[key]
                 const median = stage.median_seconds
                 return <div key={key} className="rounded-lg bg-canvas-base p-3 text-sm">
                   <p className="text-canvas-muted">{label}</p>
-                  <p className="mt-1 font-semibold text-canvas-text">{stage.wrong_count} yanlış</p>
-                  <p className="text-xs text-canvas-muted">{median == null ? 'Süre kaydı yok' : `Medyan ${Number.isInteger(median) ? median : median.toFixed(1)} sn`}</p>
+                  <p className="mt-1 font-semibold text-canvas-text">{t('study.wrongCount', { count: formatInt(stage.wrong_count, locale) })}</p>
+                  <p className="text-xs text-canvas-muted">{median == null ? t('study.noTime') : t('study.medianTime', { seconds: formatNumber(median, locale) })}</p>
                 </div>
               })}
             </div>
           </article>
         )) : (
-          <div className="rounded-xl border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">Sıra ve süre özeti için deneme geçmişinde bir satıra çift tıkla, yanlış sorunu eklerken çözüm sırasını kaydet.</div>
+          <div className="rounded-xl border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">{t('study.orderEmpty')}</div>
         )}
       </section>
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-canvas-text">Şimdi çöz</h2>
-          <p className="text-sm text-canvas-muted">Bir soru çözdükten sonra sonucunu işaretle. Yanlış seçersen soru yarın, doğru seçersen aralıklı tekrar için geri gelir.</p>
+          <h2 className="text-lg font-semibold text-canvas-text">{t('study.solveNow')}</h2>
+          <p className="text-sm text-canvas-muted">{t('study.solveIntro')}</p>
         </div>
         {plan.reviews.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-canvas-line p-6 text-center text-sm text-canvas-muted">{plan.scheduled_questions ? `${plan.scheduled_questions} soru sonraki tekrar tarihinde açılacak.` : 'Şu an çözmen gereken soru yok. Yanlışlarım sekmesinden yeni bir soru kaydet.'}</div>
+          <div className="rounded-xl border border-dashed border-canvas-line p-6 text-center text-sm text-canvas-muted">{plan.scheduled_questions ? t('study.scheduledSummary', { count: formatInt(plan.scheduled_questions, locale) }) : t('study.noQuestionsToSolve')}</div>
         ) : plan.reviews.slice(0, 6).map((question) => (
           <article key={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[200px_1fr]">
             {question.has_image ? (
-              <img src={`${API_BASE}/questions/${question.id}/image`} alt={`${question.subject} · ${question.topic} sorusu`} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
+              <img src={`${API_BASE}/questions/${question.id}/image`} alt={t('study.questionImageAlt', { subject: question.subject, topic: question.topic })} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
             ) : (
-              <div role="img" aria-label="Görseli olmayan metin sorusu" className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />Metin sorusu</div>
+              <div role="img" aria-label={t('questions.textQuestionWithoutImage')} className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />{t('questions.textQuestion')}</div>
             )}
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-canvas-muted">{question.subject} · {question.topic}</p>
-                <h3 className="font-semibold text-canvas-text">{TAG_LABELS[question.hamartia_tag] || question.hamartia_tag}</h3>
+                <h3 className="font-semibold text-canvas-text">{tagLabel(question.hamartia_tag, t)}</h3>
               </div>
               {question.ocr_text && <p className="whitespace-pre-wrap text-sm text-canvas-muted">{question.ocr_text}</p>}
-              <p className="text-xs text-canvas-muted">{question.last_correct === false ? 'Son denemede yanlış çözüldü.' : question.streak ? `Arka arkaya ${question.streak} doğru deneme.` : 'İlk tekrar.'}</p>
+              <p className="text-xs text-canvas-muted">{question.last_correct === false ? t('study.lastAttemptWrong') : question.streak ? t('study.correctStreak', { count: formatInt(question.streak, locale) }) : t('study.firstReview')}</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busyId === question.id} onClick={() => recordAttempt(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50"><ThumbsUp size={15} /> Doğru çözdüm</button>
-                <button type="button" disabled={busyId === question.id} onClick={() => recordAttempt(question, false)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50"><ThumbsDown size={15} /> Yanlış çözdüm</button>
+                <button type="button" disabled={busyId === question.id} onClick={() => recordAttempt(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50"><ThumbsUp size={15} /> {t('study.markCorrect')}</button>
+                <button type="button" disabled={busyId === question.id} onClick={() => recordAttempt(question, false)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50"><ThumbsDown size={15} /> {t('study.markIncorrect')}</button>
               </div>
             </div>
           </article>
         ))}
       </section>
 
-      {plan.scheduled_questions > 0 && <section className="rounded-xl border border-canvas-line bg-canvas-panel p-4 text-sm text-canvas-muted">{plan.scheduled_questions} soru aralıklı tekrar için ileride açılacak. Doğru çözdükçe aralıklar 1, 3, 7, 14 ve 30 güne kadar uzar.</section>}
+      {plan.scheduled_questions > 0 && <section className="rounded-xl border border-canvas-line bg-canvas-panel p-4 text-sm text-canvas-muted">{t('study.spacedReviewInfo', { count: formatInt(plan.scheduled_questions, locale) })}</section>}
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-canvas-text">Tekrar etmen gereken konular</h2>
-          <p className="text-sm text-canvas-muted">Bir konuda daha çok yanlış kaydı varsa listede daha üstte görünür.</p>
+          <h2 className="text-lg font-semibold text-canvas-text">{t('study.topicsToReview')}</h2>
+          <p className="text-sm text-canvas-muted">{t('study.topicsIntro')}</p>
         </div>
         {plan.topics.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">{plan.total_questions ? 'Bekleyen yanlışın yok. Tekrar listeni tamamladın.' : 'Öncelik oluşturmak için önce Yanlışlarım sekmesinden soru kaydet.'}</div>
+          <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">{plan.total_questions ? t('study.noPendingQuestions') : t('study.addQuestionToStart')}</div>
         ) : plan.topics.slice(0, 8).map((topic, index) => (
           <article key={`${topic.subject}-${topic.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -134,14 +130,14 @@ export default function StudyPlanTab() {
                   <p className="text-sm text-canvas-muted">{topic.subject}</p>
                 </div>
               </div>
-              <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{topic.pending_count} bekleyen yanlış</span>
+              <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{t('study.pendingWrongCount', { count: formatInt(topic.pending_count, locale) })}</span>
             </div>
-            <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">Odaklı çalış · {topic.subject} / {topic.topic}</button>
+            <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">{t('study.focusOnTopic', { subject: topic.subject, topic: topic.topic })}</button>
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(topic.tags).map(([tag, count]) => (
-                <span key={tag} className="rounded-md bg-canvas-base px-2 py-1 text-xs text-canvas-muted">{TAG_LABELS[tag] || tag}: {count}</span>
+                <span key={tag} className="rounded-md bg-canvas-base px-2 py-1 text-xs text-canvas-muted">{tagLabel(tag, t)}: {formatInt(count, locale)}</span>
               ))}
-              {topic.last_seen && <span className="px-2 py-1 text-xs text-canvas-muted">Son kayıt: {topic.last_seen}</span>}
+              {topic.last_seen && <span className="px-2 py-1 text-xs text-canvas-muted">{t('study.lastSeen', { date: fmtDate(topic.last_seen, locale) })}</span>}
             </div>
           </article>
         ))}
@@ -157,4 +153,25 @@ function Stat({ label, value, icon }) {
       <div><p className="text-xs text-canvas-muted">{label}</p><p className="text-xl font-bold text-canvas-text">{value}</p></div>
     </article>
   )
+}
+
+function tagLabel(tag, t) {
+  return ({
+    '[Knowledge Gap]': t('questions.tag.knowledgeGap'),
+    '[Distractor Trap]': t('questions.tag.distractorTrap'),
+    '[Reading Slip]': t('questions.tag.readingSlip'),
+    '[Time Panic]': t('questions.tag.timePanic'),
+  })[tag] || tag
+}
+
+function examTypeLabel(type, t) {
+  return ({ tyt: 'TYT', ayt: 'AYT', branch: t('common.branchExam') })[type] || type
+}
+
+function formatInt(value, locale) {
+  return new Intl.NumberFormat(locale).format(value ?? 0)
+}
+
+function formatNumber(value, locale) {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value)
 }

@@ -41,14 +41,24 @@ export const xpProgress = (totalXp, level) => {
 /* ------------------------------ formatters ------------------------------ */
 
 /** Compact numeric formatter for stat labels (e.g. 127 -> "127"). */
-export const fmtInt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US')
+export const fmtInt = (n, locale = 'en-US') => Math.round(Number(n) || 0).toLocaleString(locale)
+
+export const fmtPercent = (value, locale = 'en-US') =>
+  new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)
 
 /** Present positive nets in green, negative in crimson, zero neutral. */
-export const fmtNet = (net) => {
+export const fmtNet = (net, locale = 'en-US') => {
   const rounded = Math.round(net * 100) / 100
-  if (rounded === 0) return '0.0'
-  const sign = rounded < 0 ? '-' : ''
-  return `${sign}${rounded.toFixed(2)}`
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: rounded === 0 ? 1 : 2,
+    maximumFractionDigits: 2,
+  }).format(rounded)
+}
+
+export const fmtDate = (value, locale = 'en-US', options = { dateStyle: 'medium' }) => {
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.valueOf())) return value
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(date)
 }
 
 /** Format a whole number of minutes with leading zero padding. */
@@ -59,5 +69,5 @@ export const fmtDuration = (minutes, seconds) => {
 }
 
 /** Human-readable subject/emoji tag for a subject string. */
-export const subjectLabel = (subject) =>
-  (subject || 'Unlabelled').slice(0, 24)
+export const subjectLabel = (subject, fallback = 'Unlabelled') =>
+  (subject || fallback).slice(0, 24)

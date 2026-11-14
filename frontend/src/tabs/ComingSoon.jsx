@@ -6,8 +6,8 @@ const PLACEHOLDERS = {
   fatalflaw: { icon: BookOpen, title: 'Fatal Flaw', body: 'Document-grounded study assistant: upload notes and chat with the active LiteLLM model guided by the Council of Minds.' },
 }
 
-export default function ComingSoon() {
-  const tab = PLACEHOLDERS[location.hash.slice(1) || ''] || PLACEHOLDERS.questions
+export default function ComingSoon({ tabId }) {
+  const tab = PLACEHOLDERS[tabId] || PLACEHOLDERS.cosmos
   const Icon = tab.icon
 
   return (

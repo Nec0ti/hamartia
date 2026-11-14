@@ -56,7 +56,7 @@ export default function App() {
     }} />
     if (activeTab === 'questions') return <QuestionsTab initialSubject={questionSubject} />
     if (activeTab === 'studyplan') return <StudyPlanTab />
-    return <ComingSoon />
+    return <ComingSoon tabId={activeTab} />
   }, [activeTab, questionSubject])
 
   return (

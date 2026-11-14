@@ -169,6 +169,39 @@ class Question(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class ExamSection(BaseModel):
+    """One subject's result inside a full TYT or AYT mock session."""
+
+    subject: str
+    correct: int = Field(ge=0)
+    incorrect: int = Field(ge=0)
+    blank: int = Field(ge=0)
+
+    @field_validator("subject")
+    @classmethod
+    def require_subject(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("section subject is required")
+        return value
+
+
+def _exam_section_totals(exam_type, subject, correct, incorrect, blank, sections):
+    if not sections:
+        return subject, correct, incorrect, blank
+    if exam_type == "branch":
+        raise ValueError("branch exams cannot contain sections")
+    names = [section.subject.casefold() for section in sections]
+    if len(names) != len(set(names)):
+        raise ValueError("section subjects must be unique")
+    return (
+        f"{exam_type.upper()} Geneli",
+        sum(section.correct for section in sections),
+        sum(section.incorrect for section in sections),
+        sum(section.blank for section in sections),
+    )
+
+
 class Exam(BaseModel):
     """A single exam entry. Net and XP are derived, not stored."""
 
@@ -182,6 +215,17 @@ class Exam(BaseModel):
     duration_minutes: int = Field(default=0, ge=0)
     duration_seconds: int = Field(default=0, ge=0)
     created_at: str = ""
+    sections: list[ExamSection] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_section_totals(self):
+        if self.sections:
+            subject, correct, incorrect, blank = _exam_section_totals(
+                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections,
+            )
+            if (self.subject, self.correct, self.incorrect, self.blank) != (subject, correct, incorrect, blank):
+                raise ValueError("exam totals must match section totals")
+        return self
 
     # Derived metrics — computed on serialization via @computed_field.
 
@@ -217,6 +261,15 @@ class ExamCreate(BaseModel):
     blank: int = Field(ge=0)
     duration_minutes: int = Field(default=0, ge=0)
     duration_seconds: int = Field(default=0, ge=0, lt=60)
+    sections: list[ExamSection] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def derive_section_totals(self):
+        if self.sections:
+            self.subject, self.correct, self.incorrect, self.blank = _exam_section_totals(
+                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections,
+            )
+        return self
 
     @field_validator("date")
     @classmethod

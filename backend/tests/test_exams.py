@@ -54,6 +54,51 @@ class ExamFlowTests(unittest.TestCase):
         raw = (Path(self.temp_dir.name) / "exams.json").read_text()
         self.assertEqual(Exam.model_validate_json(raw[1:-1]).exam_type, "tyt")
 
+    def test_full_mock_create_and_edit_keeps_one_session_with_derived_totals(self):
+        first = ExamCreate(
+            date="2026-11-14", exam_type="tyt", subject="ignored",
+            correct=0, incorrect=0, blank=0, duration_minutes=165,
+            sections=[
+                {"subject": " Türkçe ", "correct": 30, "incorrect": 5, "blank": 5},
+                {"subject": "Matematik", "correct": 25, "incorrect": 8, "blank": 7},
+            ],
+        )
+        created = asyncio.run(create_exam(first, self.storage))
+        saved = self.storage.load_list("exams.json", Exam)
+
+        self.assertEqual(len(saved), 1)
+        self.assertEqual((created.subject, created.correct, created.incorrect, created.blank),
+                         ("TYT Geneli", 55, 13, 12))
+        self.assertEqual([section.subject for section in saved[0].sections], ["Türkçe", "Matematik"])
+        self.assertEqual(created.net, 51.75)
+        self.assertEqual(created.xp, 3733)
+
+        update = ExamCreate(
+            date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
+            correct=0, incorrect=0, blank=0, duration_minutes=160,
+            sections=[
+                {"subject": "Türkçe", "correct": 32, "incorrect": 4, "blank": 4},
+                {"subject": "Matematik", "correct": 27, "incorrect": 7, "blank": 6},
+            ],
+        )
+        edited = asyncio.run(update_exam(created.id, update, self.storage))
+
+        self.assertEqual((edited.id, edited.created_at), (created.id, created.created_at))
+        self.assertEqual((edited.correct, edited.incorrect, edited.blank), (59, 11, 10))
+        self.assertEqual(len(self.storage.load_list("exams.json", Exam)), 1)
+
+    def test_exam_sections_reject_duplicates_and_branch_sections(self):
+        common = dict(date="2026-11-14", subject="exam", correct=0, incorrect=0, blank=0)
+        with self.assertRaises(ValidationError):
+            ExamCreate(exam_type="ayt", **common, sections=[
+                {"subject": "Matematik", "correct": 1, "incorrect": 0, "blank": 0},
+                {"subject": " matematik ", "correct": 1, "incorrect": 0, "blank": 0},
+            ])
+        with self.assertRaises(ValidationError):
+            ExamCreate(exam_type="branch", **common, sections=[
+                {"subject": "Fizik", "correct": 1, "incorrect": 0, "blank": 0},
+            ])
+
     def test_update_and_delete_missing_exam_return_404(self):
         payload = ExamCreate(date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)
         with self.assertRaises(HTTPException) as update_error:

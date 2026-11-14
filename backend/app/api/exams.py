@@ -43,6 +43,7 @@ async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get
         duration_minutes=payload.duration_minutes,
         duration_seconds=payload.duration_seconds,
         created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        sections=payload.sections,
     )
     storage.append_list("exams.json", exam, Exam)
     return exam

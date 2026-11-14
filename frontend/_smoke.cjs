@@ -52,6 +52,7 @@ async function main() {
     const failedResponses = []
     const appRequests = []
     let createdQuestion
+    let linkedQuestion
     page.on('pageerror', (error) => pageErrors.push(error.message))
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push({ text: message.text(), location: message.location() })
@@ -59,7 +60,10 @@ async function main() {
     page.on('response', (response) => {
       if (response.status() >= 400) failedResponses.push({ url: response.url(), status: response.status() })
       if (new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST') {
-        response.json().then((question) => { createdQuestion = question })
+        response.json().then((question) => {
+          if (question.exam_id) linkedQuestion = question
+          else createdQuestion = question
+        })
       }
     })
     page.on('request', (request) => {
@@ -117,6 +121,21 @@ async function main() {
     await page.getByLabel('Ders').fill('Matematik')
     await page.getByRole('button', { name: 'Denemeyi kaydet' }).click()
     await page.getByRole('button', { name: /Denemeyi düzenle Matematik/ }).waitFor()
+    await page.locator('tbody tr').filter({ hasText: 'Matematik' }).dblclick()
+    await page.getByLabel('Sınavdaki soru no').fill('2')
+    await page.getByLabel('Çözüm sırası').fill('1')
+    await page.getByLabel('Soruda harcanan saniye').fill('32')
+    await page.locator('textarea').fill('Denemeye bağlı yanlış soru')
+    await page.getByRole('button', { name: 'Soruyu kaydet' }).click()
+    await page.getByText('Deneme sorusu 2 · çözüm sırası 1 · 32 sn').waitFor()
+    assert.equal(linkedQuestion.exam_id.length > 0, true)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Yanlışlarım' }).click()
+    await page.getByText('Deneme sorusu 2 · çözüm sırası 1 · 32 sn').waitFor()
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await page.getByRole('region', { name: 'Denemelerde çözüm sırası' }).getByText('Erken sıra').waitFor()
+    await page.getByRole('region', { name: 'Denemelerde çözüm sırası' }).getByText('Medyan 32 sn').waitFor()
+    await page.getByRole('button', { name: 'Ana Sayfa' }).click()
     await page.getByLabel('Deneme türü filtresi').selectOption('ayt')
     await page.getByText('Deneme sayısı · AYT').waitFor()
     await page.getByRole('button', { name: /Denemeyi düzenle Matematik/ }).click()
@@ -129,6 +148,10 @@ async function main() {
     await page.getByRole('button', { name: /Denemeyi sil Geometri/ }).click()
     await page.getByText('Henüz deneme kaydı yok.').waitFor()
     const examCrudMs = Math.round(performance.now() - examCrudStarted)
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    const orderSection = page.getByRole('region', { name: 'Denemelerde çözüm sırası' })
+    await orderSection.getByText('Sıra ve süre özeti için deneme geçmişinde bir satıra çift tıkla').waitFor()
+    assert.equal(await orderSection.getByText('AYT · Geometri', { exact: true }).count(), 0)
     const questionManageStarted = performance.now()
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     const textCard = page.locator(`article[data-question-id="${createdQuestion.id}"]`)
@@ -171,6 +194,8 @@ async function main() {
     assert.equal(saved.find((question) => question.id === createdQuestion.id).subject, 'Edebiyat')
     assert.equal(saved.find((question) => question.id === createdQuestion.id).ocr_text, 'Güncellenmiş soru metni')
     assert.equal(saved.some((question) => question.id === 'q1'), false)
+    assert.equal(saved.find((question) => question.id === linkedQuestion.id).exam_id.length > 0, true)
+    assert.equal(saved.find((question) => question.id === linkedQuestion.id).solve_order, 1)
     assert.equal(await fs.access(path.join(uploads, 'q1.png')).then(() => true).catch(() => false), false)
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'exams.json'), 'utf8')), [])
     console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, backup_download_ms: backupDownloadMs, ai_included: false }))

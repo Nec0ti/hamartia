@@ -20,6 +20,7 @@
 - [x] Kuralı net olmayan eski Cosmos saldırı/ödül rotasını 410 ile kapat; node/sector mutasyonlarını tek belge kilidi altında güvenli yaz.
 - [x] Yanlış soru kayıtlarında metin/ders/konu düzeltme; görseli koruyan, uploads dışını silmeyen silme akışı.
 - [x] Çalışma planında bugün denenmiş farklı soruları ve tüm doğru/yanlış yanıtlarını göster.
+- [x] Deneme bağlamından yanlış eklerken soru numarası, çözüm sırası ve soru süresini sakla; kaydedilen yanlışların sıra ve süre dağılımını göster.
 - [x] Yerel API ve frontend'i tek komutla başlat; readiness ve port çakışmasını kontrol et.
 
 ## P2 — doğrulama ve sağlamlaştırma
@@ -41,4 +42,4 @@
 
 ## Sonraki küçük iş
 
-Diğer bilgisayarda kayıtlı OpenAI uyumlu endpoint ve görsel analizini doğrula; AI dışı test ve benchmark kapsamına alma.
+Diğer bilgisayarda kayıtlı OpenAI uyumlu endpoint/model ve görsel analizini doğrula; AI dışı test ve benchmark kapsamına alma.

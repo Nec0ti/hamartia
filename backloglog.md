@@ -1,5 +1,15 @@
 # Backlog günlüğü
 
+## 2026-11-14 — deneme sırası ve yanlış süresi
+
+- Yanlış soru denemeye bağlanabiliyor; soru no, gerçek çözüm sırası ve o soruda harcanan saniye kalıcı saklanıyor. Eski JSON kayıtları boş varsayılanlarla okunuyor.
+- Çalışma Planı, mevcut denemelere bağlı kaydedilmiş yanlışları çözüm sırasının erken/orta/geç üçte birlik bölümlerinde sayıp sürelerin medyanını gösteriyor. Doğru/boş sonuçlar soru kaydı olmadığı için doğruluk yüzdesi üretilmiyor.
+- 65 backend testi, 4 frontend testi, üretim build'i ve browser smoke geçti. Smoke veriyi yenileme sonrası okudu ve deneme silinince yanlış kaydının korunduğunu, sıra özetinin ilişkisiz kaldığını doğruladı.
+- Sıra özeti benchmarkı (yalnızca hesaplama): 1.000 kayıt 0.0146 sn; 10.000 kayıt 0.1379 sn; AI dahil değil.
+- Rapor: `reports/2026-11-14-question-order-insights.md`.
+
+- 2026-11-14: Sonraki dikey dilim olarak denemeye bağlı yanlış soru sırası ve soru başı süre takibi planlandı. Sıra özeti yalnızca açıkça kaydedilen yanlışları sayacak; doğruluk yüzdesi hesaplamayacak. Kabul ölçütleri `reports/2026-11-14-question-order-plan.md` içinde.
+
 ## 2026-11-14 — veri yedeği
 
 - Ayarlar ekranına ZIP yedeği indirme eklendi. Denemeler, yanlışlar, kullanıcı/Cosmos ilerlemesi, ayarlar ve `uploads/` alınır; API anahtarı boşaltılır. Bozuk/şemaya uymayan kayıt veya eksik referanslı dosya yedeği reddedilir.

@@ -141,6 +141,10 @@ class Question(BaseModel):
     created_at: str = ""
     reviewed_at: str = ""
     review_attempts: list[ReviewAttempt] = Field(default_factory=list)
+    exam_id: str = ""
+    question_number: int | None = Field(default=None, ge=1)
+    solve_order: int | None = Field(default=None, ge=1)
+    time_spent_seconds: int | None = Field(default=None, ge=1)
 
 
 # ---------------------------------------------------------------------------

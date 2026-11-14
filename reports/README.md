@@ -9,3 +9,5 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 - [2026-11-14 bugünkü çalışma etkinliği](2026-11-14-todays-study-activity.md)
 - [2026-11-14 yerel uygulama başlatıcısı](2026-11-14-local-launcher.md)
 - [2026-11-14 veri yedeği ve geri yükleme](2026-11-14-backup-restore.md)
+- [2026-11-14 deneme-soru sırası uygulama planı](2026-11-14-question-order-plan.md)
+- [2026-11-14 deneme sırası ve yanlış soru süresi](2026-11-14-question-order-insights.md)

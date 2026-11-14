@@ -4,10 +4,13 @@ import api, { API_BASE, handleApiError } from '../services/api'
 
 const TAGS = ['[Knowledge Gap]', '[Distractor Trap]', '[Reading Slip]', '[Time Panic]']
 
-export default function QuestionsTab({ initialSubject = '' }) {
+export default function QuestionsTab({ initialExam = null }) {
   const [questions, setQuestions] = useState([])
-  const [subject, setSubject] = useState(initialSubject)
+  const [subject, setSubject] = useState(initialExam?.subject || '')
   const [topic, setTopic] = useState('')
+  const [questionNumber, setQuestionNumber] = useState('')
+  const [solveOrder, setSolveOrder] = useState('')
+  const [timeSpentSeconds, setTimeSpentSeconds] = useState('')
   const [ocrText, setOcrText] = useState('')
   const [file, setFile] = useState(null)
   const [error, setError] = useState('')
@@ -25,7 +28,7 @@ export default function QuestionsTab({ initialSubject = '' }) {
   }, [])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { if (initialSubject) setSubject(initialSubject) }, [initialSubject])
+  useEffect(() => { if (initialExam) setSubject(initialExam.subject) }, [initialExam])
 
   const upload = async (event) => {
     event.preventDefault()
@@ -33,10 +36,18 @@ export default function QuestionsTab({ initialSubject = '' }) {
     setBusy(true)
     setError('')
     try {
-      await api.questions.upload(file, ocrText, subject, topic)
+      await api.questions.upload(file, ocrText, subject, topic, {
+        examId: initialExam?.id,
+        questionNumber,
+        solveOrder,
+        timeSpentSeconds,
+      })
       setFile(null)
       setTopic('')
       setOcrText('')
+      setQuestionNumber('')
+      setSolveOrder('')
+      setTimeSpentSeconds('')
       if (fileInput.current) fileInput.current.value = ''
       await load()
     } catch (e) {
@@ -108,6 +119,14 @@ export default function QuestionsTab({ initialSubject = '' }) {
       </header>
 
       <form onSubmit={upload} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-2">
+        {initialExam && <div className="rounded-lg border border-canvas-line bg-canvas-base p-3 text-sm text-canvas-muted sm:col-span-2">
+          Bağlı deneme: {initialExam.date} · {initialExam.subject} ({initialExam.exam_type?.toUpperCase() || 'BRANŞ'})
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label>Sınavdaki soru no<input type="number" min="1" max={initialExam.correct + initialExam.incorrect + initialExam.blank} value={questionNumber} onChange={(e) => setQuestionNumber(e.target.value)} className={inputClass} /></label>
+            <label>Çözüm sırası<input type="number" min="1" max={initialExam.correct + initialExam.incorrect + initialExam.blank} value={solveOrder} onChange={(e) => setSolveOrder(e.target.value)} className={inputClass} /></label>
+            <label>Soruda harcanan saniye<input type="number" min="1" value={timeSpentSeconds} onChange={(e) => setTimeSpentSeconds(e.target.value)} className={inputClass} /></label>
+          </div>
+        </div>}
         <label className="text-sm text-canvas-muted">
           Ders
           <input required value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder="Örn. Matematik" />
@@ -165,6 +184,7 @@ export default function QuestionsTab({ initialSubject = '' }) {
                 <>
                   <div>
                     <p className="font-semibold text-canvas-text">{question.subject || 'Ders belirtilmedi'}{question.topic ? ` · ${question.topic}` : ''}</p>
+                {question.exam_id && <p className="mt-1 text-xs text-canvas-muted">Deneme sorusu {question.question_number ?? '—'} · çözüm sırası {question.solve_order ?? '—'} · {question.time_spent_seconds ? `${question.time_spent_seconds} sn` : 'süre yok'}</p>}
                     <p className="text-xs text-canvas-muted">{question.created_at?.slice(0, 10)}</p>
                   </div>
                   {question.ocr_text && <p className="whitespace-pre-wrap text-sm text-canvas-muted">{question.ocr_text}</p>}

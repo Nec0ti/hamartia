@@ -18,7 +18,7 @@ import { handleApiError } from './services/api'
  */
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [questionSubject, setQuestionSubject] = useState('')
+  const [questionExam, setQuestionExam] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState(null)
   const [settingsError, setSettingsError] = useState(null)
@@ -51,21 +51,21 @@ export default function App() {
 
   const panel = useMemo(() => {
     if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {
-      setQuestionSubject(exam.subject)
+      setQuestionExam(exam)
       setActiveTab('questions')
     }} />
-    if (activeTab === 'questions') return <QuestionsTab initialSubject={questionSubject} />
+    if (activeTab === 'questions') return <QuestionsTab initialExam={questionExam} />
     if (activeTab === 'studyplan') return <StudyPlanTab />
     if (activeTab === 'cosmos') return <CosmosTab />
     return <ComingSoon tabId={activeTab} />
-  }, [activeTab, questionSubject])
+  }, [activeTab, questionExam])
 
   return (
     <div className="flex h-full flex-col">
       <Navbar
         activeTab={activeTab}
         onSelectTab={(tab) => {
-          if (tab !== 'questions') setQuestionSubject('')
+          if (tab !== 'questions') setQuestionExam(null)
           setActiveTab(tab)
         }}
         onOpenSettings={() => {

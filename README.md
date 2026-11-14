@@ -45,6 +45,7 @@ PYTHONPATH=backend python -m unittest discover -s backend/tests -v
 python backend/benchmarks/benchmark_storage.py
 python backend/benchmarks/benchmark_questions.py
 python backend/benchmarks/benchmark_backup.py
+python backend/benchmarks/benchmark_question_order.py
 ```
 
 Frontend:

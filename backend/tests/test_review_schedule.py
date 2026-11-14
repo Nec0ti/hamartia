@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from app.core.review_schedule import review_state
 from app.core.study_plan import topic_priorities
-from app.models.schemas import Question, ReviewAttempt
+from app.models.schemas import Exam, Question, ReviewAttempt
 
 
 def question(*attempts, reviewed_at=""):
@@ -15,6 +15,30 @@ def question(*attempts, reviewed_at=""):
 
 
 class ReviewScheduleTests(unittest.TestCase):
+    def test_question_order_insights_bucket_wrong_records_and_use_median_time(self):
+        exam = Exam(id="e1", date="2026-11-14", subject="Matematik", correct=7, incorrect=2, blank=1)
+        questions = [
+            Question(id="q1", exam_id="e1", solve_order=1, time_spent_seconds=20),
+            Question(id="q2", exam_id="e1", solve_order=2, time_spent_seconds=40),
+            Question(id="q3", exam_id="e1", solve_order=5, time_spent_seconds=15),
+            Question(id="q4", exam_id="e1", solve_order=10, time_spent_seconds=60),
+            Question(id="orphan", exam_id="deleted", solve_order=1, time_spent_seconds=10),
+            Question(id="untracked", exam_id="e1", time_spent_seconds=99),
+        ]
+
+        order = topic_priorities(questions, exams=[exam])["question_order"]
+
+        self.assertEqual(len(order), 1)
+        self.assertEqual(order[0]["exam_count"], 1)
+        self.assertEqual(order[0]["early"], {"wrong_count": 2, "median_seconds": 30})
+        self.assertEqual(order[0]["middle"], {"wrong_count": 1, "median_seconds": 15})
+        self.assertEqual(order[0]["late"], {"wrong_count": 1, "median_seconds": 60})
+
+    def test_order_insights_empty_when_exam_is_deleted(self):
+        question_with_old_exam = Question(id="q1", exam_id="deleted", solve_order=1, time_spent_seconds=10)
+
+        self.assertEqual(topic_priorities([question_with_old_exam])["question_order"], [])
+
     def test_new_question_is_due_and_legacy_review_flag_stays_archived(self):
         today = date(2026, 11, 14)
 

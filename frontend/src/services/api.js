@@ -35,12 +35,16 @@ export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
   insights: () => client.get('/questions/insights').then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
-  upload: (file, ocrText, subject, topic) => {
+  upload: (file, ocrText, subject, topic, examContext = {}) => {
     const fd = new FormData()
     if (file) fd.append('file', file, file.name)
     fd.append('ocr_text', ocrText || '')
     fd.append('subject', subject || '')
     fd.append('topic', topic || '')
+    if (examContext.examId) fd.append('exam_id', examContext.examId)
+    if (examContext.questionNumber) fd.append('question_number', examContext.questionNumber)
+    if (examContext.solveOrder) fd.append('solve_order', examContext.solveOrder)
+    if (examContext.timeSpentSeconds) fd.append('time_spent_seconds', examContext.timeSpentSeconds)
     return client.post('/questions', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       transformRequest: [(d) => d],

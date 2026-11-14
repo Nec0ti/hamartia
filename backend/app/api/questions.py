@@ -5,6 +5,7 @@ mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
 from datetime import datetime
+from typing import Annotated
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,7 +15,7 @@ from fastapi.responses import FileResponse
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import Question, ReviewAttempt
+from app.models.schemas import Exam, Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
 from app.services.storage import StorageError, StorageService
 
@@ -42,8 +43,24 @@ async def upload_question(
     subject: str = Form(""),
     topic: str = Form(""),
     storage: StorageService = Depends(get_storage),
+    exam_id: Annotated[str, Form()] = "",
+    question_number: Annotated[int | None, Form(ge=1)] = None,
+    solve_order: Annotated[int | None, Form(ge=1)] = None,
+    time_spent_seconds: Annotated[int | None, Form(ge=1)] = None,
 ):
     """Store an uploaded question image, OCR text, and study labels."""
+    exam_id = exam_id.strip()
+    if exam_id:
+        exams = storage.load_list("exams.json", Exam)
+        exam = next((item for item in exams if item.id == exam_id), None)
+        if exam is None:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        total_questions = exam.correct + exam.incorrect + exam.blank
+        if any(value is not None and value > total_questions for value in (question_number, solve_order)):
+            raise HTTPException(status_code=422, detail="Question number and solve order cannot exceed the exam size")
+    elif any(value is not None for value in (question_number, solve_order, time_spent_seconds)):
+        raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
+
     safe_name = ""
     path = None
     if file:
@@ -86,6 +103,10 @@ async def upload_question(
         subject=subject.strip(),
         topic=topic.strip(),
         created_at=_utcnow(),
+        exam_id=exam_id,
+        question_number=question_number,
+        solve_order=solve_order,
+        time_spent_seconds=time_spent_seconds,
     )
     try:
         storage.append_list("questions.json", question, Question)
@@ -104,7 +125,9 @@ async def list_questions(storage: StorageService = Depends(get_storage)):
 @router.get("/insights", response_model=dict)
 async def question_insights(storage: StorageService = Depends(get_storage)):
     """Rank repeated mistake topics without calling a model."""
-    return topic_priorities(storage.load_list("questions.json", Question))
+    questions = storage.load_list("questions.json", Question)
+    exams = storage.load_list("exams.json", Exam)
+    return topic_priorities(questions, exams=exams)
 
 
 @router.get("/{question_id}", response_model=Question)

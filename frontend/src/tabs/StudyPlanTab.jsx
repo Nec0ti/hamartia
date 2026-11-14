@@ -8,6 +8,7 @@ const TAG_LABELS = {
   '[Reading Slip]': 'Soruyu yanlış okuma',
   '[Time Panic]': 'Zaman baskısı',
 }
+const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
 
 export default function StudyPlanTab() {
   const [plan, setPlan] = useState(null)
@@ -51,6 +52,32 @@ export default function StudyPlanTab() {
       <section aria-label="Bugünkü çalışma" className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
         <h2 className="font-semibold text-canvas-text">Bugün</h2>
         <p className="mt-1 text-sm text-canvas-muted"><strong className="text-canvas-text">{plan.today_questions}</strong> farklı soru denedin · {plan.today_correct} doğru, {plan.today_incorrect} yanlış yanıt</p>
+      </section>
+
+      <section aria-label="Denemelerde çözüm sırası" className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-canvas-text">Denemelerde hata sırası ve tempo</h2>
+          <p className="text-sm text-canvas-muted">Yalnızca deftere kaydedilen yanlışlar sayılır; bu bir doğruluk yüzdesi değildir.</p>
+        </div>
+        {plan.question_order?.length ? plan.question_order.map((group) => (
+          <article key={`${group.exam_type}-${group.subject}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+            <h3 className="font-semibold text-canvas-text">{EXAM_TYPES[group.exam_type] || group.exam_type} · {group.subject}</h3>
+            <p className="text-xs text-canvas-muted">{group.exam_count} denemeden kaydedilen yanlışlar</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {[["early", "Erken sıra"], ["middle", "Orta sıra"], ["late", "Son sıra"]].map(([key, label]) => {
+                const stage = group[key]
+                const median = stage.median_seconds
+                return <div key={key} className="rounded-lg bg-canvas-base p-3 text-sm">
+                  <p className="text-canvas-muted">{label}</p>
+                  <p className="mt-1 font-semibold text-canvas-text">{stage.wrong_count} yanlış</p>
+                  <p className="text-xs text-canvas-muted">{median == null ? 'Süre kaydı yok' : `Medyan ${Number.isInteger(median) ? median : median.toFixed(1)} sn`}</p>
+                </div>
+              })}
+            </div>
+          </article>
+        )) : (
+          <div className="rounded-xl border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">Sıra ve süre özeti için deneme geçmişinde bir satıra çift tıkla, yanlış sorunu eklerken çözüm sırasını kaydet.</div>
+        )}
       </section>
 
       <section className="space-y-3">

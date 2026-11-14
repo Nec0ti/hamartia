@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
-from app.models.schemas import CouncilAnalysis, Question
+from app.models.schemas import CouncilAnalysis, Exam, Question
 from app.services.storage import StorageService
 
 
@@ -66,6 +66,52 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(created.image_path, "")
         self.assertEqual(saved[0].id, created.id)
         self.assertFalse(self.uploads.exists())
+
+    def test_exam_question_metadata_round_trips_and_rejects_missing_exam(self):
+        self.storage.save_list("exams.json", [Exam(
+            id="exam1", date="2026-11-14", subject="Matematik", correct=7, incorrect=2, blank=1,
+        )])
+        created = asyncio.run(question_api.upload_question(
+            None, "Fonksiyon sorusu", "Matematik", "Fonksiyon", self.storage,
+            exam_id="exam1", question_number=8, solve_order=2, time_spent_seconds=45,
+        ))
+
+        saved = self.storage.load_list("questions.json", Question)[0]
+        self.assertEqual((saved.exam_id, saved.question_number, saved.solve_order, saved.time_spent_seconds),
+                         ("exam1", 8, 2, 45))
+        self.assertEqual(created.exam_id, "exam1")
+
+        with self.assertRaises(HTTPException) as missing:
+            asyncio.run(question_api.upload_question(
+                None, "Soru", "Matematik", "", self.storage, exam_id="missing",
+            ))
+        self.assertEqual(missing.exception.status_code, 404)
+
+    def test_exam_question_metadata_cannot_exceed_exam_size(self):
+        self.storage.save_list("exams.json", [Exam(
+            id="exam1", date="2026-11-14", subject="Matematik", correct=7, incorrect=2, blank=1,
+        )])
+
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(question_api.upload_question(
+                None, "Soru", "Matematik", "", self.storage,
+                exam_id="exam1", question_number=11,
+            ))
+        self.assertEqual(error.exception.status_code, 422)
+
+    def test_invalid_exam_reference_does_not_leave_uploaded_image(self):
+        with self.assertRaises(HTTPException):
+            asyncio.run(question_api.upload_question(
+                self.upload(), "Soru", "Matematik", "", self.storage, exam_id="missing",
+            ))
+
+        self.assertFalse(self.uploads.exists())
+
+    def test_legacy_question_json_defaults_order_fields(self):
+        question = Question.model_validate({"id": "legacy", "subject": "Matematik"})
+
+        self.assertEqual((question.exam_id, question.question_number, question.solve_order, question.time_spent_seconds),
+                         ("", None, None, None))
 
     def test_upload_requires_either_an_image_or_text(self):
         with self.assertRaises(HTTPException) as error:

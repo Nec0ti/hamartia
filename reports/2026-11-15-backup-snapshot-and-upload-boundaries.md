@@ -23,3 +23,13 @@ All tests and benchmarks used synthetic local data. The image-prompt resolver wa
 
 - The process-local lock coordinates the single API process and its `StorageService` instances. The lifetime `DataDirectoryLock` still prevents offline restore while the API is running. Direct manual edits to data files by another process are outside this lock contract.
 - Restore still snapshots the previous data directory before replacing it; automatic cleanup of old snapshots is not part of this change.
+
+## Integration after PR #10
+
+The branch was updated by an ordinary merge of origin/master at `89c3173` so the backup and upload changes include the local-calendar review-day schema/API/UI changes. The backup round-trip test for `ReviewAttempt.attempt_day` is preserved alongside the live-write snapshot test.
+
+- Backend: 103/103 tests passed. Focused backup tests: 20/20; question tests: 27/27.
+- Frontend: 18/18 tests passed; `npm run build` passed with the existing large-chunk warning.
+- Browser smoke: passed with `ai_included: false`; the new attempt day persisted and the `/questions/insights?today=...` request used the same local day.
+- AI-free backup benchmark: 24 files / 25,186,280 upload bytes; export p50 0.921 sec, validation p50 0.116 sec, restore p50 0.112 sec.
+- AI-free question benchmark: 24 image uploads in 1.055 sec. Mixed persisted workload correctness passed at 1,500 exams, 2,500 questions, and 4,000 practice sets.

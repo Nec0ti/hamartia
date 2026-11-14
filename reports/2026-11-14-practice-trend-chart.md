@@ -11,6 +11,7 @@ Her ders/konu çalışma kartında kayıtlı setlerin tüm tarih sıralı noktal
 - Production build başarılı: JS 695.22 KB minified / 198.14 KB gzip; 500 KB chunk uyarısı sürüyor.
 - Chromium smoke: tek noktalı, 8 noktalı, aynı tarihli, tüm yanıtları boş olan grafikler; 390 px taşmama; 6'dan eski seti düzenleme ve silme; net/doğruluk etiketleri doğrulandı. Practice graph + full-history edit/delete bölümü 1.420 sn; AI isteği yok.
 - AI'siz konu seti depolama/özet benchmarkı, 20 konu: 1.000 set — özet 0.007644 sn, yazma 0.009294 sn, okuma 0.023394 sn; 10.000 set — özet 0.043044 sn, yazma 0.089774 sn, okuma 0.233654 sn.
+- GitHub Actions run #67, backend ve frontend işleriyle başarılı.
 
 ## Sınırlamalar
 

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A local-first study workspace for YKS practice exams, missed questions, and study progress.">
+    <title>Hamartia — Local YKS study workspace</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Hamartia home">H<span>.</span></a>
+      <nav aria-label="Main navigation">
+        <a href="#guide">Guide</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#backup">Backup</a>
+        <a class="language" href="tr/" lang="tr">Türkçe ↗</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <p class="eyebrow"><span class="status-dot"></span> A calm place to keep your study history</p>
+        <h1>Study with a clearer picture.</h1>
+        <p class="hero-copy">Hamartia keeps YKS practice exams, missed questions, and topic progress together on your computer.</p>
+        <a class="button" href="#guide">Explore the guide <span aria-hidden="true">↓</span></a>
+        <div class="hero-note"><span>LOCAL-FIRST</span><span>YKS WORKSPACE</span><span>OPEN SOURCE</span></div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="section-heading"><p class="eyebrow">THE WORKSPACE</p><h2>Keep the useful details close.</h2></div>
+        <div class="cards">
+          <article class="card"><span class="card-index">01</span><h3>Practice history</h3><p>Record TYT, AYT, and branch exams. Full TYT/AYT sessions keep subject results together while preserving section-level trends.</p></article>
+          <article class="card"><span class="card-index">02</span><h3>Missed questions</h3><p>Save a question as text or attach an image, add subject and topic labels, and revisit it over time.</p></article>
+          <article class="card"><span class="card-index">03</span><h3>Study progress</h3><p>Review answer history, focused practice sessions, topic trends, and suggested priorities derived from your records.</p></article>
+        </div>
+      </section>
+
+      <section class="section guide-layout" id="guide">
+        <div class="section-heading"><p class="eyebrow">GETTING STARTED</p><h2>Run the development build.</h2><p class="muted">Desktop installers for Windows and Linux are planned. For now, Hamartia runs from its source checkout.</p></div>
+        <div class="steps" id="setup">
+          <div class="step"><span>1</span><div><h3>Install prerequisites</h3><p>Use Python 3.12 and Node.js 22. From the repository root, install the Python and frontend dependencies:</p><pre><code>python3.12 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements.txt
+cd frontend &amp;&amp; npm ci</code></pre></div></div>
+          <div class="step"><span>2</span><div><h3>Start Hamartia</h3><p>From the repository root, run the launcher. Open the local address it prints in your browser.</p><pre><code>.venv/bin/python scripts/dev.py</code></pre><p>Press <kbd>Ctrl</kbd> + <kbd>C</kbd> to stop both servers. By default, the app uses ports 5173 and 8000 on this computer.</p></div></div>
+          <div class="step"><span>3</span><div><h3>Keep your data safe</h3><p>Exams, questions, images, and settings live in <code>backend/data/</code>. Use Settings to download a ZIP backup before moving or restoring your records.</p></div></div>
+        </div>
+      </section>
+
+      <section class="section split" id="privacy">
+        <div><p class="eyebrow">YOUR DATA</p><h2>Local by default. Clear when AI is involved.</h2></div>
+        <div class="prose"><p>The development app stores study records and uploaded images under <code>backend/data/</code> on this computer. It has no account sync or ChatGPT sign-in yet.</p><p>Optional question analysis can send the question text and image to the OpenAI-compatible endpoint configured in Settings. Only connect to an endpoint you trust. The API key is omitted from API responses and backups, but is stored in the local settings file; it is not encrypted by the current development app.</p><p>The local API is intended for use on this computer. Do not expose it to the public internet.</p></div>
+      </section>
+
+      <section class="section backup" id="backup">
+        <div class="backup-copy"><p class="eyebrow">BACKUP &amp; RESTORE</p><h2>A backup you can take with you.</h2><p>Download a ZIP backup from Settings. The archive contains your study records and question images, but not the saved API key.</p><p>Close Hamartia before restoring. From the repository root, run:</p><pre><code>.venv/bin/python scripts/restore_backup.py hamartia-backup.zip</code></pre><p>Restore validates the archive and keeps the current data directory as a timestamped backup before replacing it. On Windows, use <code>.venv\Scripts\python.exe</code>.</p></div>
+        <div class="backup-mark" aria-hidden="true"><span>H</span><i></i><i></i><i></i></div>
+      </section>
+    </main>
+
+    <footer><a class="brand" href="#top">H<span>.</span></a><p>Built for steady progress, one session at a time.</p><a href="https://github.com/Nec0ti/hamartia">View the source ↗</a></footer>
+  </body>
+</html>

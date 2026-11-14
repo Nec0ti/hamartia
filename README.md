@@ -2,6 +2,10 @@
 
 A local workspace that stores YKS practice exams and missed questions on this computer, and derives study priorities from recorded review attempts. Hamartia is an original application; it does not use content from external platforms.
 
+## Documentation
+
+The English and Turkish user guide is published at [necoti.github.io/hamartia](https://necoti.github.io/hamartia/).
+
 ## Run locally
 
 Python 3.12 and Node.js 22 are required. For the initial setup:

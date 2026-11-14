@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="YKS denemeleri, yanlış sorular ve çalışma ilerlemesi için yerel öncelikli çalışma alanı.">
+    <title>Hamartia — Yerel YKS çalışma alanı</title>
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Hamartia ana sayfa">H<span>.</span></a>
+      <nav aria-label="Ana gezinme">
+        <a href="#guide">Kılavuz</a>
+        <a href="#privacy">Gizlilik</a>
+        <a href="#backup">Yedekleme</a>
+        <a class="language" href="../" lang="en">English ↗</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <p class="eyebrow"><span class="status-dot"></span> Çalışma geçmişin için sakin bir alan</p>
+        <h1>Daha net bir tabloyla çalış.</h1>
+        <p class="hero-copy">Hamartia, YKS denemelerini, yanlış sorularını ve konu ilerlemeni bilgisayarında bir arada tutar.</p>
+        <a class="button" href="#guide">Kılavuza göz at <span aria-hidden="true">↓</span></a>
+        <div class="hero-note"><span>YEREL ÖNCELİKLİ</span><span>YKS ÇALIŞMA ALANI</span><span>AÇIK KAYNAK</span></div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="section-heading"><p class="eyebrow">ÇALIŞMA ALANI</p><h2>İşe yarayan ayrıntılar elinin altında.</h2></div>
+        <div class="cards">
+          <article class="card"><span class="card-index">01</span><h3>Deneme geçmişi</h3><p>TYT, AYT ve branş denemelerini kaydet. Tam TYT/AYT oturumlarında ders sonuçları birlikte tutulur ve ders bazlı eğilimler korunur.</p></article>
+          <article class="card"><span class="card-index">02</span><h3>Yanlış sorular</h3><p>Soruyu metin veya görsel olarak kaydet, ders ve konu etiketleri ekle, zamanla tekrar gözden geçir.</p></article>
+          <article class="card"><span class="card-index">03</span><h3>Çalışma ilerlemesi</h3><p>Cevap geçmişini, odaklı çalışma oturumlarını, konu eğilimlerini ve kayıtlarından çıkarılan öncelikleri izle.</p></article>
+        </div>
+      </section>
+
+      <section class="section guide-layout" id="guide">
+        <div class="section-heading"><p class="eyebrow">BAŞLANGIÇ</p><h2>Geliştirme sürümünü çalıştır.</h2><p class="muted">Windows ve Linux kurulum paketleri planlanıyor. Şimdilik Hamartia kaynak kodundan çalışıyor.</p></div>
+        <div class="steps" id="setup">
+          <div class="step"><span>1</span><div><h3>Gerekli araçları kur</h3><p>Python 3.12 ve Node.js 22 kullan. Depo kök dizininde Python ve arayüz bağımlılıklarını yükle:</p><pre><code>python3.12 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements.txt
+cd frontend &amp;&amp; npm ci</code></pre></div></div>
+          <div class="step"><span>2</span><div><h3>Hamartia'yı başlat</h3><p>Depo kök dizininden başlatıcıyı çalıştır. Tarayıcıda yerel adresi aç.</p><pre><code>.venv/bin/python scripts/dev.py</code></pre><p>İki sunucuyu da durdurmak için <kbd>Ctrl</kbd> + <kbd>C</kbd> tuşlarına bas. Varsayılan olarak uygulama bu bilgisayarda 5173 ve 8000 portlarını kullanır.</p></div></div>
+          <div class="step"><span>3</span><div><h3>Verilerini koru</h3><p>Denemeler, sorular, görseller ve ayarlar <code>backend/data/</code> altında tutulur. Kayıtlarını taşımadan veya geri yüklemeden önce Ayarlar'dan ZIP yedeği indir.</p></div></div>
+        </div>
+      </section>
+
+      <section class="section split" id="privacy">
+        <div><p class="eyebrow">VERİLERİN</p><h2>Varsayılan olarak yerel. AI kullanırken açıkça belirtir.</h2></div>
+        <div class="prose"><p>Geliştirme sürümü çalışma kayıtlarını ve yüklenen görselleri bu bilgisayardaki <code>backend/data/</code> klasöründe tutar. Henüz hesap eşitleme veya ChatGPT ile giriş özelliği yoktur.</p><p>İsteğe bağlı soru analizi, soru metnini ve görselini Ayarlar'da yapılandırdığın OpenAI uyumlu uç noktaya gönderebilir. Yalnızca güvendiğin bir uç noktaya bağlan. API anahtarı API yanıtlarına ve yedeklere eklenmez; yerel ayar dosyasında saklanır ve mevcut geliştirme sürümünde şifrelenmez.</p><p>Yerel API bu bilgisayarda kullanım içindir. İnternete açık hale getirme.</p></div>
+      </section>
+
+      <section class="section backup" id="backup">
+        <div class="backup-copy"><p class="eyebrow">YEDEKLEME VE GERİ YÜKLEME</p><h2>Yanında götürebileceğin bir yedek.</h2><p>Ayarlar'dan ZIP yedeği indir. Arşiv çalışma kayıtlarını ve soru görsellerini içerir; kayıtlı API anahtarını içermez.</p><p>Geri yüklemeden önce Hamartia'yı kapat. Depo kök dizininde şu komutu çalıştır:</p><pre><code>.venv/bin/python scripts/restore_backup.py hamartia-backup.zip</code></pre><p>Geri yükleme arşivi doğrular ve değiştirmeden önce mevcut veri klasörünü tarihli bir yedek olarak saklar. Windows'ta <code>.venv\Scripts\python.exe</code> yolunu kullan.</p></div>
+        <div class="backup-mark" aria-hidden="true"><span>H</span><i></i><i></i><i></i></div>
+      </section>
+    </main>
+
+    <footer><a class="brand" href="#top">H<span>.</span></a><p>Her oturumda, istikrarlı ilerleme için.</p><a href="https://github.com/Nec0ti/hamartia">Kaynak kodunu gör ↗</a></footer>
+  </body>
+</html>

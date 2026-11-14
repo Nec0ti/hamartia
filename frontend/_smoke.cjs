@@ -83,7 +83,7 @@ async function main() {
     assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
     await page.getByRole('cell', { name: 'Nov 14, 2026', exact: true }).waitFor()
     await page.getByRole('img', { name: 'Net trend · All subjects' }).waitFor()
-    await page.getByRole('img', { name: 'Performance radar: speed, focus, precision, and stamina' }).waitFor()
+    await page.getByRole('img', { name: 'Performance radar chart: speed, focus, precision, and stamina' }).waitFor()
     await page.getByText('11/14', { exact: true }).waitFor()
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'fr'))
     await page.reload({ waitUntil: 'networkidle' })

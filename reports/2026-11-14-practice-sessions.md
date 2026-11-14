@@ -11,6 +11,7 @@
 - Üretim derlemesi: `cd frontend && npm run build` — başarılı; ana JS 689.01 KB minified / 196.30 KB gzip. Vite'ın 500 KB chunk uyarısı sürüyor.
 - Gerçek Chromium smoke: practice formu gönderildi, API yanıtı ve sayfanın yeniden yüklenmesi sonrası kayıtlı sonuç doğrulandı. Ölçümler: navigation 2.475 sn, practice persistence 1.436 sn, mistake capture/review persistence 2.850 sn, exam CRUD 3.245 sn, question edit/delete 0.493 sn, backup download 0.262 sn. `ai_included: false`.
 - Benchmark: `PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py` — 1.000 set/20 konu: özet 0.007639 sn, yazma 0.017720 sn, okuma 0.028008 sn; 10.000 set/20 konu: özet 0.055283 sn, yazma 0.107469 sn, okuma 0.317847 sn. Ölçüm model yüklemez/çağırmaz.
+- GitHub Actions run #63 (`c1da9aa`) backend ve frontend işleriyle, yeni practice-session benchmarkı dahil, başarılı.
 
 ## Sınırlamalar
 

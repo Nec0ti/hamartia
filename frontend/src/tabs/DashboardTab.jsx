@@ -17,7 +17,7 @@ import AddExamModal from './AddExamModal.jsx'
 
 const EMPTY_FORM = {
   date: new Date().toLocaleDateString('en-CA'),
-  subject: 'Math',
+  subject: 'Matematik',
   duration_minutes: 30,
   duration_seconds: 0,
   correct: 10,
@@ -106,7 +106,7 @@ export default function DashboardTab({ onUploadQuestion }) {
   if (loading)
     return (
       <div className="px-6 py-24 text-center text-canvas-muted">
-        Loading dashboard…
+        Ana sayfa yükleniyor…
       </div>
     )
 
@@ -114,7 +114,7 @@ export default function DashboardTab({ onUploadQuestion }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-canvas-text">
-          Dashboard
+          Genel bakış
         </h1>
         <button
           type="button"
@@ -122,7 +122,7 @@ export default function DashboardTab({ onUploadQuestion }) {
           className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
         >
           <Plus size={16} />
-          Add Exam
+          Deneme ekle
         </button>
       </div>
 

@@ -103,7 +103,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
         <div className="flex items-center gap-2">
           {badge && (
             <div
-              title={`Level ${badge.level} • ${fmtInt(badge.xp)} XP`}
+              title={`Seviye ${badge.level} • ${fmtInt(badge.xp)} XP`}
               className="flex items-center gap-2 rounded-full border border-canvas-line bg-canvas-base px-3 py-1.5"
             >
               <div className="relative h-2 w-16 overflow-hidden rounded-full bg-canvas-line">
@@ -114,7 +114,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               </div>
               <span className="flex flex-col items-end leading-none">
                 <span className="text-xs font-bold text-canvas-cyan">
-                  Lvl {badge.level}
+                  Sv. {badge.level}
                 </span>
                 <span className="text-[10px] text-canvas-muted">
                   {fmtInt(badge.xp)} XP
@@ -130,7 +130,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
               onOpenSettings?.()
             }}
             className="relative rounded-lg border border-canvas-line bg-canvas-base p-2 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
-            aria-label="Open settings"
+            aria-label="Ayarları aç"
           >
             <Settings size={18} />
           </button>

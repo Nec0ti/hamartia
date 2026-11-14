@@ -50,11 +50,11 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
         className="absolute right-4 top-4 z-10 w-full max-w-lg rounded-xl border border-canvas-line bg-canvas-panel p-6 shadow-glow"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">Settings</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">Ayarlar</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label="Ayarları kapat"
             className="rounded-md p-1 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
           >
             <X size={18} />
@@ -63,7 +63,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              LiteLLM Base URL
+              Yerel model sunucu adresi
             </label>
             <input
               className={inputCls}
@@ -74,7 +74,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              Model Name
+              Model adı
             </label>
             <input
               className={inputCls}
@@ -85,17 +85,17 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
-              API Key <span className="text-canvas-muted/60">(optional)</span>
+              API anahtarı <span className="text-canvas-muted/60">(isteğe bağlı)</span>
             </label>
             <input
               type="password"
               className={inputCls}
               value={draft.api_key}
               onChange={(e) => setDraft({ ...draft, api_key: e.target.value })}
-              placeholder="Leave empty for local proxy"
+              placeholder="Yerel sunucu anahtar istemiyorsa boş bırak"
             />
           </div>
-          {saved && <p className="text-xs text-emerald-400">Settings saved.</p>}
+          {saved && <p className="text-xs text-emerald-400">Ayarlar kaydedildi.</p>}
           {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
         </div>
         <div className="mt-6 flex justify-end gap-2">
@@ -104,7 +104,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             onClick={onClose}
             className="rounded-lg border border-canvas-line bg-canvas-base px-4 py-2 text-sm font-medium text-canvas-muted transition hover:bg-canvas-raise"
           >
-            Cancel
+            Vazgeç
           </button>
           <button
             type="button"
@@ -113,7 +113,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>
       </div>

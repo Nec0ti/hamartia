@@ -8,11 +8,11 @@ import {
 import { fmtInt, fmtNet } from '../utils/formatters'
 
 const CARDS = [
-  { label: 'Total Exams', value: (p) => fmtInt(p.total), icon: GraduationCap, tone: 'text-canvas-indigo' },
-  { label: 'Average Net', value: (p) => fmtNet(p.avgNet), icon: Target, tone: 'text-emerald' },
-  { label: 'Total XP', value: (p) => fmtInt(p.totalXp), icon: Zap, tone: 'text-canvas-cyan' },
-  { label: 'Level', value: (p) => p.level, icon: Shield, tone: 'text-amber' },
-  { label: 'Streak', value: (p) => fmtInt(p.streakDays), icon: Flame, tone: 'text-orange' },
+  { label: 'Deneme sayısı', value: (p) => fmtInt(p.total), icon: GraduationCap, tone: 'text-canvas-indigo' },
+  { label: 'Ortalama net', value: (p) => fmtNet(p.avgNet), icon: Target, tone: 'text-emerald' },
+  { label: 'Toplam XP', value: (p) => fmtInt(p.totalXp), icon: Zap, tone: 'text-canvas-cyan' },
+  { label: 'Seviye', value: (p) => p.level, icon: Shield, tone: 'text-amber' },
+  { label: 'Günlük seri', value: (p) => fmtInt(p.streakDays), icon: Flame, tone: 'text-orange' },
 ]
 
 /** Five stat cards across the top of the dashboard. */

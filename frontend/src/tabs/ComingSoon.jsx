@@ -1,9 +1,9 @@
 import { Globe, FileQuestion, BookOpen } from 'lucide-react'
 
 const PLACEHOLDERS = {
-  questions: { icon: FileQuestion, title: 'Quest[ion]s', body: 'Mistake vault: upload a question image, run the Council of Minds analysis, and tag your recurring hamartia.' },
-  cosmos: { icon: Globe, title: 'Cosmos', body: 'Assault planetary nodes born from your mistakes, spend XP to cleanse them, and unlock new sectors of the arena.' },
-  fatalflaw: { icon: BookOpen, title: 'Fatal Flaw', body: 'Document-grounded study assistant: upload notes and chat with the active LiteLLM model guided by the Council of Minds.' },
+  questions: { icon: FileQuestion, title: 'Yanlışlarım', body: 'Yanlış soru görsellerini yükle, hata türlerini etiketle ve tekrar eden konularını takip et.' },
+  cosmos: { icon: Globe, title: 'Cosmos', body: 'Hatalarından doğan gezegenleri ve çalışma ilerlemeni tek bir haritada keşfet.' },
+  fatalflaw: { icon: BookOpen, title: 'Çalışma Koçu', body: 'Kendi notlarını yükleyip yerel model bağlantısıyla çalış.' },
 }
 
 export default function ComingSoon({ tabId }) {
@@ -17,7 +17,7 @@ export default function ComingSoon({ tabId }) {
       </div>
       <h1 className="text-2xl font-bold text-canvas-text">{tab.title}</h1>
       <p className="max-w-md text-sm leading-relaxed text-canvas-muted">{tab.body}</p>
-      <p className="text-xs text-canvas-line">Coming in a later phase.</p>
+      <p className="text-xs text-canvas-line">Daha sonraki bir aşamada.</p>
     </div>
   )
 }

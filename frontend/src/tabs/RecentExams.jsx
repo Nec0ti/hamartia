@@ -14,9 +14,9 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
   if (recent.length === 0) {
     return (
       <Panel>
-        <Header title="Recent Exams" />
+        <Header title="Son denemeler" />
         <p className="py-10 text-center text-sm text-canvas-muted">
-          No exams logged yet. Click &quot;Add Exam&quot; to record your first run.
+          Henüz deneme kaydı yok. İlk denemeni eklemek için “Deneme ekle”ye tıkla.
         </p>
       </Panel>
     )
@@ -24,17 +24,17 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
 
   return (
     <Panel>
-      <Header title="Recent Exams" />
+      <Header title="Son denemeler" />
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-canvas-line text-xs uppercase tracking-wider text-canvas-muted">
-              <th className="py-3 pr-4">Date</th>
-              <th className="py-3 pr-4">Subject</th>
-              <th className="py-3 pr-4">Correct</th>
-              <th className="py-3 pr-4">Incorrect</th>
-              <th className="py-3 pr-4">Blank</th>
-              <th className="py-3 pr-4">Duration</th>
+              <th className="py-3 pr-4">Tarih</th>
+              <th className="py-3 pr-4">Ders</th>
+              <th className="py-3 pr-4">Doğru</th>
+              <th className="py-3 pr-4">Yanlış</th>
+              <th className="py-3 pr-4">Boş</th>
+              <th className="py-3 pr-4">Süre</th>
               <th className="py-3 pr-4 text-right">Net</th>
               <th className="py-3 pr-4 text-right">XP</th>
             </tr>
@@ -43,11 +43,6 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
             {recent.map((ex) => {
               const net = ex.net
               const xp = ex.xp
-              const handleRow = (e) => {
-                if ((e.button === 0 && e.detail === 2) || e.ctrlKey) {
-                  onDoubleClickIncorrect(ex)
-                }
-              }
               return (
                 <tr
                   key={ex.id}
@@ -59,7 +54,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, recentError
                   <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct)}</td>
                   <td
                     className="py-3 pr-4 text-accent font-semibold transition hover:underline"
-                    title="Double-click to upload a question for analysis"
+                    title="Yanlış soruyu eklemek için satıra çift tıkla"
                   >
                       <span className="inline-flex items-center gap-1">
                         {fmtInt(ex.incorrect)}

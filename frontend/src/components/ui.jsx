@@ -74,7 +74,7 @@ export function SubjectSelect({ value, options, onChange }) {
     >
       {options.map((s) => (
         <option key={s} value={s} className="bg-canvas-panel">
-          {s === 'all' ? 'All subjects' : s}
+          {s === 'all' ? 'Tüm dersler' : s}
         </option>
       ))}
     </select>

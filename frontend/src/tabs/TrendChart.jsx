@@ -74,10 +74,10 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
   return (
     <Panel>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <Header icon={TrendingUp} title="Net Score Trend" />
+        <Header icon={TrendingUp} title="Net değişimi" />
         <div className="flex items-center gap-2">
           <SubjectSelect value={subjectFilter} options={['all', ...subjects]} onChange={onFilter} />
-          <Toggle value={toggle} options={[{ value: 'bar', label: 'Bar' }, { value: 'line', label: 'Line' }]} onChange={onToggle} />
+          <Toggle value={toggle} options={[{ value: 'bar', label: 'Sütun' }, { value: 'line', label: 'Çizgi' }]} onChange={onToggle} />
         </div>
       </div>
       <div className="h-72">

@@ -1,0 +1,67 @@
+{
+  "name": "hamartia-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": {
+    "name": "Nec0ti",
+    "email": "nec0ti@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/nec0ti/hamartia",
+  "description": "Desktop shell for the local-first Hamartia study app",
+  "main": "main.cjs",
+  "scripts": {
+    "build:ui": "npm --prefix ../frontend run build",
+    "build:backend": "python ../backend/build_desktop.py",
+    "test": "node --test",
+    "start": "npm run build:ui && electron .",
+    "pack:dir": "npm run build:ui && npm run build:backend && electron-builder --dir",
+    "dist:win": "npm run build:ui && npm run build:backend && electron-builder --win nsis",
+    "dist:linux": "npm run build:ui && npm run build:backend && electron-builder --linux deb AppImage"
+  },
+  "build": {
+    "appId": "io.github.nec0ti.hamartia",
+    "productName": "Hamartia",
+    "artifactName": "${productName}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "backendInvocation.cjs",
+      "restoreFlow.cjs",
+      "shutdownFlow.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/hamartia-backend",
+        "to": "backend/hamartia-backend"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "maintainer": "Necoti <nec0ti@users.noreply.github.com>",
+      "category": "Education",
+      "target": [
+        "deb",
+        "AppImage"
+      ]
+    }
+  },
+  "toolsets": {
+    "appimage": "1.0.3"
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0"
+  }
+}

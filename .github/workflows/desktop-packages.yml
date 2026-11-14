@@ -53,10 +53,16 @@ jobs:
       - run: npm test --prefix frontend
       - run: python .github/scripts/test_release_metadata.py
       - if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - if: matrix.target == 'linux'
         run: npm run dist:linux --prefix desktop
       - if: matrix.target == 'windows'
         run: npm run dist:win --prefix desktop
       - run: python desktop/smoke_backend.py
+      - if: matrix.target == 'linux'
+        run: xvfb-run -a node desktop/smoke_electron.cjs desktop/dist/linux-unpacked
+      - if: matrix.target == 'windows'
+        run: node desktop/smoke_electron.cjs desktop/dist/win-unpacked
       - if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
         with:

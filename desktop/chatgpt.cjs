@@ -73,6 +73,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
   let refreshInFlight
   let signingOut = false
   let storageBlocked = false
+  let revocationEndpointPromise
   const chats = new Map()
 
   function storageAvailable() {
@@ -92,7 +93,9 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       return JSON.parse(safeStorage.decryptString(encrypted))
     } catch (error) {
       if (error.code === 'ENOENT') return null
-      throw new Error('The saved ChatGPT connection could not be opened. No request was sent.')
+      const unreadable = new Error('The saved ChatGPT connection could not be opened. No request was sent.')
+      unreadable.code = 'CHATGPT_CREDENTIALS_UNREADABLE'
+      throw unreadable
     }
   }
 
@@ -158,6 +161,38 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return response.json()
   }
 
+  function validatedEndpoint(value) {
+    if (typeof value !== 'string' || !value) throw new Error('OpenAI sign-out metadata is invalid.')
+    let endpoint
+    try {
+      endpoint = new URL(value)
+    } catch {
+      throw new Error('OpenAI sign-out metadata is invalid.')
+    }
+    if (endpoint.origin !== ISSUER || endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.pathname === '/') {
+      throw new Error('OpenAI sign-out metadata is invalid.')
+    }
+    return endpoint.toString()
+  }
+
+  async function getRevocationEndpoint() {
+    if (!revocationEndpointPromise) {
+      revocationEndpointPromise = (async () => {
+        const response = await fetchImpl(OIDC_CONFIG_URL, { signal: AbortSignal.timeout(10_000) })
+        if (!response.ok) throw new Error('Could not read OpenAI sign-out metadata.')
+        const metadata = await response.json()
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) || metadata.issuer !== ISSUER) {
+          throw new Error('OpenAI sign-out metadata is invalid.')
+        }
+        return validatedEndpoint(metadata.revocation_endpoint)
+      })().catch((error) => {
+        revocationEndpointPromise = null
+        throw error
+      })
+    }
+    return revocationEndpointPromise
+  }
+
   async function startListener() {
     const server = http.createServer()
     await new Promise((resolve, reject) => {
@@ -176,10 +211,11 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     const state = randomValue()
     const nonce = randomValue()
     const verifier = randomValue(48)
+    let timeout
     const clientId = previous?.client_id || 'dynamic_agent_client'
     const id = { promise: null }
     id.promise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Sign-in timed out. Try again.')), 5 * 60 * 1000)
+      timeout = setTimeout(() => reject(new Error('Sign-in timed out. Try again.')), 5 * 60 * 1000)
       listener.server.on('request', (request, response) => {
         const callback = new URL(request.url, listener.redirectUri)
         if (request.method !== 'GET' || callback.pathname !== CALLBACK_PATH) {
@@ -237,6 +273,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       await writeCredentials(credentials)
       return { connected: true, email: credentials.email, planUse: true }
     } finally {
+      clearTimeout(timeout)
       listener.server.close()
     }
   }
@@ -263,7 +300,13 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
 
   async function status() {
     if (!storageAvailable()) return { connected: false, unavailable: true }
-    const credentials = await readCredentials()
+    let credentials
+    try {
+      credentials = await readCredentials()
+    } catch (error) {
+      if (error.code === 'CHATGPT_CREDENTIALS_UNREADABLE') return { connected: false, recoveryRequired: true }
+      throw error
+    }
     return credentials?.access_token ? { connected: true, savedAccount: true, email: credentials.email, planUse: credentials.scopes?.includes('chatgpt.tokens.use.direct') && credentials.scopes?.includes('resource.invoke') } : { connected: false, savedAccount: Boolean(credentials?.client_id), email: credentials?.email || '' }
   }
 
@@ -277,10 +320,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       if (credentials?.refresh_token && credentials.client_id) {
         let endpoint
         try {
-          const response = await fetchImpl(OIDC_CONFIG_URL, { signal: AbortSignal.timeout(10_000) })
-          if (!response.ok) throw new Error()
-          endpoint = new URL((await response.json()).revocation_endpoint)
-          if (endpoint.origin !== ISSUER || endpoint.protocol !== 'https:') throw new Error()
+          endpoint = await getRevocationEndpoint()
         } catch {}
         if (endpoint) {
           for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -319,6 +359,19 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     if (credentials?.access_token || credentials?.refresh_token) throw new Error('Sign out before switching the saved ChatGPT account.')
     await fs.rm(file, { force: true })
     return { connected: false, savedAccount: false }
+  }
+
+  async function recoverUnreadableCredentials(confirmed) {
+    if (confirmed !== true) throw new Error('Confirm local credential removal before continuing.')
+    try {
+      const credentials = await readCredentials()
+      if (credentials?.access_token || credentials?.refresh_token) throw new Error('Sign out before recovering the saved ChatGPT connection.')
+      throw new Error('The saved ChatGPT connection is readable; use the account controls instead.')
+    } catch (error) {
+      if (error.code !== 'CHATGPT_CREDENTIALS_UNREADABLE') throw error
+    }
+    await fs.rm(file, { force: true })
+    return { connected: false, savedAccount: false, recoveredUnreadableCredentials: true, revocationConfirmed: false }
   }
 
   async function models(signal) {
@@ -398,7 +451,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     chats.get(requestId)?.abort()
   }
 
-  return { status, signIn, signOut, forgetAccount, models, chat, cancel }
+  return { status, signIn, signOut, forgetAccount, recoverUnreadableCredentials, models, chat, cancel }
 }
 
 module.exports = { API_URL, CALLBACK_PATH, ISSUER, MAX_CONTEXT_LENGTH, MAX_MESSAGE_LENGTH, REQUIRED_SCOPES, RESOURCE, SCOPES, buildAuthorizationUrl, createChatGPT, grantedScopes, safeError, summarizeStudyContext }

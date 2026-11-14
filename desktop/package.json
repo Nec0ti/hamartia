@@ -27,6 +27,7 @@
     },
     "files": [
       "main.cjs",
+      "chatgptIpc.cjs",
       "preload.cjs",
       "chatgpt.cjs",
       "backendInvocation.cjs",

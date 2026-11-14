@@ -50,6 +50,9 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
   let refreshGate = null
   let revocationStatus = 200
   let revocationRequests = 0
+  let oidcMetadata = { issuer: 'https://auth.openai.com', revocation_endpoint: 'https://auth.openai.com/api/accounts/oauth/revoke' }
+  let oidcRequests = 0
+  let openExternalError = null
   const authorizationUrls = []
   let streamMode = 'complete'
   let responseRequest
@@ -74,7 +77,11 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
   }
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url: String(url), options })
-    if (String(url).includes('.well-known/openid-configuration')) return Response.json({ revocation_endpoint: 'https://auth.openai.com/api/accounts/oauth/revoke' })
+    if (String(url).includes('.well-known/openid-configuration')) {
+      oidcRequests += 1
+      if (oidcMetadata instanceof Error) throw oidcMetadata
+      return Response.json(oidcMetadata)
+    }
     if (String(url).endsWith('/oauth/revoke')) {
       revocationRequests += 1
       return new Response(null, { status: revocationStatus })
@@ -110,6 +117,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
   const client = createChatGPT({
     app: { getPath: () => directory }, safeStorage, fetchImpl, getBackendUrl: () => 'http://127.0.0.1:43210',
     shell: { openExternal: async (value) => {
+      if (openExternalError) throw openExternalError
       authorizationUrls.push(value)
       const url = new URL(value)
       nonceForToken = url.searchParams.get('nonce')
@@ -123,7 +131,10 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
     setCallbackError: (value) => { callbackError = value }, setCallbackMutator: (value) => { callbackMutator = value },
     setResponseError: (status, code) => { responseStatus = status; responseErrorCode = code },
     setRevocationStatus: (value) => { revocationStatus = value },
+    setOidcMetadata: (value) => { oidcMetadata = value },
+    setOpenExternalError: (value) => { openExternalError = value },
     getRevocationRequests: () => revocationRequests,
+    getOidcRequests: () => oidcRequests,
     getAuthorizationUrls: () => authorizationUrls,
     setRefreshGate: (value) => { refreshGate = value },
     expireCredentials: async () => {
@@ -273,6 +284,76 @@ test('sign-out clears local tokens and reports unconfirmed remote revocation aft
   assert.equal(testApp.getRevocationRequests(), 3)
   const mapping = JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))))
   assert.deepEqual(mapping, { client_id: 'oaiapp_test', subject: 'student-123', email: 'student@example.test' })
+})
+
+test('revocation metadata is validated, cached after success, and retried after discovery failure', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  testApp.setOidcMetadata(new Error('temporary discovery failure'))
+  assert.equal((await testApp.client.signOut()).revocationConfirmed, false)
+  assert.equal(testApp.getOidcRequests(), 1)
+  assert.equal(testApp.getRevocationRequests(), 0)
+
+  testApp.setOidcMetadata({ issuer: 'https://auth.openai.com', revocation_endpoint: 'https://auth.openai.com/custom/oauth/revoke' })
+  await testApp.client.signIn()
+  assert.equal((await testApp.client.signOut()).revocationConfirmed, true)
+  assert.equal(testApp.getOidcRequests(), 2)
+  assert.equal(testApp.calls.some(({ url }) => url === 'https://auth.openai.com/custom/oauth/revoke'), true)
+
+  await testApp.client.signIn()
+  assert.equal((await testApp.client.signOut()).revocationConfirmed, true)
+  assert.equal(testApp.getOidcRequests(), 2)
+})
+
+test('malformed and untrusted revocation metadata fail closed without sending tokens to it', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+
+  for (const metadata of [
+    null,
+    { issuer: 'https://attacker.example', revocation_endpoint: 'https://auth.openai.com/revoke' },
+    { issuer: 'https://auth.openai.com', revocation_endpoint: 'http://auth.openai.com/revoke' },
+    { issuer: 'https://auth.openai.com', revocation_endpoint: 'https://attacker.example/revoke' },
+    { issuer: 'https://auth.openai.com', revocation_endpoint: 'https://user@auth.openai.com/revoke' },
+    { issuer: 'https://auth.openai.com', revocation_endpoint: 7 },
+  ]) {
+    testApp.setOidcMetadata(metadata)
+    await testApp.client.signOut()
+    assert.equal(testApp.getRevocationRequests(), 0)
+    assert.equal(testApp.calls.some(({ url }) => url.includes('attacker.example') || url.startsWith('http://auth.openai.com')), false)
+    await testApp.client.signIn()
+  }
+  assert.equal(testApp.calls.filter(({ url }) => url === 'https://auth.openai.com/api/accounts/oauth/token').length, 7)
+  assert.equal(testApp.calls.some(({ url }) => url.includes('attacker.example') || url.startsWith('http://auth.openai.com')), false)
+})
+
+test('sign-in clears the callback timeout and closes its listener when opening the browser fails', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  testApp.setOpenExternalError(new Error('browser unavailable'))
+  await assert.rejects(testApp.client.signIn(), /browser unavailable/)
+  assert.equal(testApp.tokenBodies.length, 0)
+  testApp.setOpenExternalError(null)
+  assert.deepEqual(await testApp.client.signIn(), { connected: true, email: 'student@example.test', planUse: true })
+})
+
+test('unreadable encrypted credentials have a confirmed local recovery that preserves host identity', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const hostId = await fs.readFile(path.join(testApp.directory, 'chatgpt-host-id'), 'utf8')
+  await fs.writeFile(path.join(testApp.directory, 'chatgpt-credentials.bin'), Buffer.from('corrupt encrypted credential data'))
+
+  assert.deepEqual(await testApp.client.status(), { connected: false, recoveryRequired: true })
+  await assert.rejects(testApp.client.recoverUnreadableCredentials(false), /Confirm local credential removal/)
+  const recovery = await testApp.client.recoverUnreadableCredentials(true)
+  assert.deepEqual(recovery, { connected: false, savedAccount: false, recoveredUnreadableCredentials: true, revocationConfirmed: false })
+  assert.equal(await fs.readFile(path.join(testApp.directory, 'chatgpt-host-id'), 'utf8'), hostId)
+  await assert.rejects(fs.stat(path.join(testApp.directory, 'chatgpt-credentials.bin')), { code: 'ENOENT' })
+  assert.deepEqual(await testApp.client.signIn(), { connected: true, email: 'student@example.test', planUse: true })
+  assert.equal(new URL(testApp.getAuthorizationUrls()[1]).searchParams.get('client_id'), 'dynamic_agent_client')
 })
 
 test('forgetting a signed-out account keeps the host ID and permits a fresh dynamic registration', async (t) => {

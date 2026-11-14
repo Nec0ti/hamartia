@@ -86,6 +86,20 @@ export default function StudyAgentTab() {
     }
   }
 
+  async function recoverUnreadableCredentials() {
+    if (!window.confirm(t('agent.confirmRecoverCredentials'))) return
+    setBusy(true)
+    setError('')
+    try {
+      setConnection(await desktop().recoverUnreadableCredentials(true))
+      setNotice(t('agent.credentialsRecovered'))
+    } catch (e) {
+      setError(e.message || t('agent.signOutError'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function send() {
     if (!consent || !message.trim() || !model || busy) return
     const id = window.crypto.randomUUID()
@@ -126,13 +140,14 @@ export default function StudyAgentTab() {
           <Sparkles className="text-canvas-cyan" size={22} />
           <div><h1 className="text-2xl font-bold text-canvas-text">{t('agent.title')}</h1><p className="mt-1 text-sm text-canvas-muted">{t('agent.intro')}</p></div>
         </div>
-        {!connection?.connected ? <div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={signIn} disabled={busy || !connection || connection?.unavailable} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2.5 font-semibold text-white disabled:opacity-50"><LogIn size={17} />{t('agent.signIn')}</button>{connection?.savedAccount && <button type="button" onClick={forgetAccount} disabled={busy} className="rounded-lg border border-canvas-line px-4 py-2.5 text-sm text-canvas-text disabled:opacity-50">{t('agent.useDifferentAccount')}</button>}</div> : <div className="mt-5 flex flex-wrap items-center gap-3">
+        {!connection?.connected ? <div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={signIn} disabled={busy || !connection || connection?.unavailable || connection?.recoveryRequired} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2.5 font-semibold text-white disabled:opacity-50"><LogIn size={17} />{t('agent.signIn')}</button>{connection?.savedAccount && <button type="button" onClick={forgetAccount} disabled={busy} className="rounded-lg border border-canvas-line px-4 py-2.5 text-sm text-canvas-text disabled:opacity-50">{t('agent.useDifferentAccount')}</button>}</div> : <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="text-sm text-canvas-text">{connection.email || t('agent.connected')}</span>
           <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">{t('agent.planEnabled')}</span>
           <button type="button" onClick={() => desktop().openUsage()} className="inline-flex items-center gap-1 text-xs text-canvas-cyan underline">{t('agent.manageUsage')}<ExternalLink size={12} /></button>
           <button type="button" onClick={signOut} disabled={busy} className="ml-auto inline-flex items-center gap-1 text-xs text-canvas-muted underline"><LogOut size={14} />{t('agent.signOut')}</button>
         </div>}
         {connection?.unavailable && <p className="mt-3 text-sm text-amber-300">{t('agent.secureStorageUnavailable')}</p>}
+        {connection?.recoveryRequired && <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100"><p>{t('agent.credentialsUnreadable')}</p><button type="button" onClick={recoverUnreadableCredentials} disabled={busy} className="mt-3 rounded-lg border border-amber-200/40 px-3 py-2 text-sm disabled:opacity-50">{t('agent.recoverCredentials')}</button></div>}
         {connection?.connected && <p className="mt-3 text-xs text-canvas-muted">{t('agent.localAiSeparate')}</p>}
       </header>
 

@@ -450,6 +450,12 @@ async function main() {
             localStorage.setItem(profileKey, JSON.stringify(profile))
             return profile
           },
+          recoverUnreadableCredentials: async (confirmed) => {
+            window.__credentialRecoveryConfirmed = confirmed
+            const profile = { connected: false, savedAccount: false, recoveredUnreadableCredentials: true, revocationConfirmed: false }
+            localStorage.setItem(profileKey, JSON.stringify(profile))
+            return profile
+          },
           models: async () => [{ slug: 'mock-model', display_name: 'Mock model' }],
           openUsage: async () => {},
           onDelta: (callback) => {
@@ -500,6 +506,13 @@ async function main() {
     page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Use a different account' }).click()
     await page.getByText(/The local account link was removed/).waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.smoke.chatgpt', JSON.stringify({ connected: false, recoveryRequired: true })))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Agent' }).click()
+    await page.getByText(/cannot confirm whether OpenAI still has an active session/).waitFor()
+    await page.getByRole('button', { name: 'Remove unreadable local connection' }).click()
+    await page.getByText(/Remote revocation was not confirmed/).waitFor()
+    assert.equal(await page.evaluate(() => window.__credentialRecoveryConfirmed), true)
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Asistanı' }).click()

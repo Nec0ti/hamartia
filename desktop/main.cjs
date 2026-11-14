@@ -8,12 +8,11 @@ const { backendInvocation } = require('./backendInvocation.cjs')
 const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
+const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
 
 const HOST = '127.0.0.1'
 const CONTROL_TOKEN = randomBytes(32).toString('hex')
 const RESTORE_CHANNEL = 'hamartia:restore-backup'
-const CHATGPT_CHANNEL = 'hamartia:chatgpt'
-const CHATGPT_DELTA_CHANNEL = 'hamartia:chatgpt-delta'
 const restoreCopy = {
   en: {
     pickerTitle: 'Select a Hamartia backup',
@@ -38,7 +37,6 @@ let backend
 let backendUrl
 let stoppingBackend = false
 let chatgpt
-const activeChats = new Map()
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -218,46 +216,14 @@ async function restartBackend(port) {
   await waitUntilReady(backend, backendUrl)
 }
 
-function isTrustedSender(event) {
-  try {
-    return Boolean(backendUrl && event.senderFrame && new URL(event.senderFrame.url).origin === backendUrl)
-  } catch {
-    return false
-  }
-}
-
-function trustedChatGPTHandler(name, handler) {
-  ipcMain.handle(`${CHATGPT_CHANNEL}:${name}`, async (event, ...args) => {
-    if (!isTrustedSender(event)) throw new Error('Untrusted app window.')
-    return handler(event, ...args)
-  })
-}
-
-trustedChatGPTHandler('status', () => chatgpt.status())
-trustedChatGPTHandler('sign-in', () => chatgpt.signIn())
-trustedChatGPTHandler('sign-out', () => chatgpt.signOut())
-trustedChatGPTHandler('forget-account', () => chatgpt.forgetAccount())
-trustedChatGPTHandler('models', () => chatgpt.models())
-trustedChatGPTHandler('open-usage', () => shell.openExternal('https://chatgpt.com/settings/usage'))
-trustedChatGPTHandler('chat', async (event, payload) => {
-  if (!payload || payload.consent !== true) throw new Error('Confirm that this request and a short study summary may be sent to OpenAI.')
-  const requestId = typeof payload.requestId === 'string' && /^[\w-]{20,80}$/.test(payload.requestId) ? payload.requestId : randomUUID()
-  activeChats.set(requestId, event.sender.id)
-  try {
-    return await chatgpt.chat({ message: payload.message, model: payload.model, language: payload.language, requestId }, (id, delta) => {
-      if (activeChats.get(id) === event.sender.id && !event.sender.isDestroyed()) event.sender.send(CHATGPT_DELTA_CHANNEL, { requestId: id, delta })
-    })
-  } finally {
-    activeChats.delete(requestId)
-  }
-})
-trustedChatGPTHandler('cancel', (event, requestId) => {
-  if (typeof requestId === 'string' && activeChats.get(requestId) === event.sender.id) chatgpt.cancel(requestId)
-  return { cancelled: true }
-})
+registerChatGPTIpc({ ipcMain, shell, getBackendUrl: () => backendUrl, chatgpt: { status: (...args) => chatgpt.status(...args), signIn: (...args) => chatgpt.signIn(...args), signOut: (...args) => chatgpt.signOut(...args), forgetAccount: (...args) => chatgpt.forgetAccount(...args), models: (...args) => chatgpt.models(...args), chat: (...args) => chatgpt.chat(...args), cancel: (...args) => chatgpt.cancel(...args) } })
 
 ipcMain.handle(RESTORE_CHANNEL, async (event, language) => {
-  if (!isTrustedSender(event)) return { status: 'failed' }
+  try {
+    if (!backendUrl || event.senderFrame?.parent !== null || new URL(event.senderFrame.url).origin !== backendUrl) return { status: 'failed' }
+  } catch {
+    return { status: 'failed' }
+  }
   const locale = language === 'tr' ? 'tr' : 'en'
   const copy = restoreCopy[locale]
   const window = BrowserWindow.fromWebContents(event.sender)

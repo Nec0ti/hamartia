@@ -19,6 +19,7 @@ from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
 from app.services.storage import StorageError, StorageService, data_mutation_lock
+from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 UPLOAD_DIR = DATA_DIR / "uploads"
@@ -35,19 +36,6 @@ def get_storage():
 
 def _utcnow() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-
-def _checked_upload_root(create=False) -> Path:
-    data_root = Path(DATA_DIR).resolve()
-    upload_root = Path(UPLOAD_DIR)
-    if upload_root.is_symlink():
-        raise HTTPException(status_code=500, detail="Question uploads directory must not be a symbolic link")
-    if create:
-        upload_root.mkdir(parents=True, exist_ok=True)
-    resolved = upload_root.resolve()
-    if resolved != data_root / "uploads":
-        raise HTTPException(status_code=500, detail="Question uploads directory is outside the data folder")
-    return resolved
 
 
 @router.post("", status_code=201)
@@ -137,7 +125,10 @@ async def upload_question(
                 exam_section_total=exam_section_total,
             )
             if safe_name:
-                path = _checked_upload_root(create=True) / safe_name
+                try:
+                    path = resolve_upload_root(DATA_DIR, create=True) / safe_name
+                except UnsafeUploadPath as exc:
+                    raise HTTPException(status_code=500, detail=str(exc)) from exc
                 with path.open("xb") as image_file:
                     image_file.write(contents)
             storage.append_list("questions.json", question, Question)
@@ -187,8 +178,11 @@ async def get_question_image(question_id: str, storage: StorageService = Depends
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    path = (DATA_DIR / question.image_path).resolve()
-    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():
+    try:
+        path = resolve_question_image(DATA_DIR, question.image_path)
+    except UnsafeUploadPath:
+        raise HTTPException(status_code=404, detail="Question image not found")
+    if not path.is_file():
         raise HTTPException(status_code=404, detail="Question image not found")
     return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})
 
@@ -282,13 +276,14 @@ async def delete_question(question_id: str, storage: StorageService = Depends(ge
             for index, question in enumerate(questions):
                 if question.id == question_id:
                     if question.image_path:
-                        upload_root = _checked_upload_root()
-                        candidate = DATA_DIR / question.image_path
-                        resolved = candidate.resolve()
-                        if candidate.is_symlink():
-                            raise HTTPException(status_code=500, detail="Question image path must not be a symbolic link")
-                        if resolved.is_relative_to(upload_root):
-                            image_path = candidate
+                        try:
+                            resolve_upload_root(DATA_DIR)
+                        except UnsafeUploadPath as exc:
+                            raise HTTPException(status_code=500, detail=str(exc)) from exc
+                        try:
+                            image_path = resolve_question_image(DATA_DIR, question.image_path)
+                        except UnsafeUploadPath:
+                            image_path = None
                     deleted.append(questions.pop(index))
                     return True
             return False

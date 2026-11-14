@@ -237,6 +237,39 @@ class QuestionFlowTests(unittest.TestCase):
             asyncio.run(question_api.get_question_image("q2", self.storage))
         self.assertEqual(error.exception.status_code, 404)
 
+    def test_image_route_rejects_symlinked_upload_root_and_image_file(self):
+        outside = self.root.parent / f"{self.root.name}-outside"
+        outside.mkdir()
+        external_image = outside / "q.png"
+        external_image.write_bytes(b"private")
+        try:
+            self.uploads.symlink_to(outside, target_is_directory=True)
+            self.storage.save_list("questions.json", [Question(
+                id="outside-root", image_path="uploads/q.png", image_name="q.png",
+            )])
+            with self.assertRaises(HTTPException) as root_error:
+                asyncio.run(question_api.get_question_image("outside-root", self.storage))
+            self.assertEqual(root_error.exception.status_code, 404)
+            self.uploads.unlink(missing_ok=True)
+
+            self.uploads.mkdir()
+            (self.uploads / "link.png").symlink_to(external_image)
+            self.storage.save_list("questions.json", [Question(
+                id="outside-file", image_path="uploads/link.png", image_name="link.png",
+            )])
+            with self.assertRaises(HTTPException) as file_error:
+                asyncio.run(question_api.get_question_image("outside-file", self.storage))
+            self.assertEqual(file_error.exception.status_code, 404)
+        finally:
+            if self.uploads.is_symlink():
+                self.uploads.unlink(missing_ok=True)
+            elif self.uploads.exists():
+                for child in self.uploads.iterdir():
+                    child.unlink(missing_ok=True)
+                self.uploads.rmdir()
+            external_image.unlink()
+            outside.rmdir()
+
     def test_upload_rejects_unsupported_or_empty_files(self):
         with self.assertRaises(HTTPException) as unsupported:
             asyncio.run(question_api.upload_question(

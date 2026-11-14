@@ -11,6 +11,7 @@
 - Chromium smoke: tamamlanmamış oturum bitişi reddedildi; doğru ve boş artırıldı, sıfır yanlış azaltma 0'da kaldı; duraklatma ve yenileme sonrasında geçen süre sabit kaldı; sürdürme sonrası oturum kaydedildi ve yedeğe giren tamamlanmış kayıt doğrulandı. AI endpoint çağrısı gözlenmedi (`ai_included: false`).
 - Browser süreleri: navigation 2.785 sn, manuel practice persistence 1.372 sn, focused session lifecycle 3.633 sn, capture/review persistence 2.434 sn, exam CRUD 3.105 sn, question edit/delete 0.462 sn, backup download 0.284 sn.
 - Frontend production build başarılı: JS 693.16 KB minified / 197.39 KB gzip; mevcut 500 KB chunk uyarısı sürüyor.
+- GitHub Actions run #65, backend ve frontend işleriyle başarılı.
 
 ## Sınırlamalar
 

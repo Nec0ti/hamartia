@@ -1,0 +1,24 @@
+# Backlog
+
+## P0 — çalışma temelini kur
+
+- [ ] Yerel geliştirme dalını ve GitHub `codex/hamartia-rebuild` dalını güvenilir biçimde eşleştir; kaynak `master` değişmediğini doğrula.
+- [ ] Backend ve frontend bağımlılıklarını kurma/çalıştırma yolunu doğrula; mevcut API ve veri biçimini raporla.
+- [ ] AI dışı smoke/test/benchmark komutlarını belirle; `backend/tests/*.py` ignore kuralını gözden geçir.
+
+## P1 — ilk çalışan öğrenci döngüsü
+
+- [ ] Deneme kaydetme ve düzenleme akışını kullanılabilir hâle getir.
+- [ ] Yanlış soruyu görsel/metin ve ders/konu bağlamıyla yerelde kaydet.
+- [ ] Hataları ders/konu bazında özetleyip tekrar çalışma önerisi için şeffaf, deterministik başlangıç görünümü oluştur.
+- [ ] Dashboard ve yer tutucu sekmelerdeki navigasyonu gerçek, tutarlı akışa bağla.
+
+## P2 — ölçüm ve sağlamlaştırma
+
+- [ ] AI dışı formül, depolama, API ve arayüz akışlarını kapsayan testler ekle.
+- [ ] AI çağrısı içermeyen uygulama benchmarklarını kur ve baseline raporla.
+- [ ] Eski JSON kayıtlarıyla geriye uyumluluğu doğrula.
+
+## Sonraki küçük iş
+
+P0 yerel çalıştırma ve veri sözleşmesi doğrulaması.

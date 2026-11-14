@@ -6,7 +6,55 @@ import sys
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
+
+
+VITE_ORIGINS = frozenset({
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+})
+
+
+class DesktopOriginGuard:
+    """Reject browser cross-site writes to the loopback desktop API."""
+
+    def __init__(self, app, allowed_origins):
+        self.app = app
+        self.allowed_origins = allowed_origins
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] in {"GET", "HEAD", "OPTIONS"}:
+            await self.app(scope, receive, send)
+            return
+
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        origin = headers.get(b"origin")
+        fetch_site = headers.get(b"sec-fetch-site")
+        rejected = origin is not None and (
+            origin == b"null" or origin.decode("latin-1") not in self.allowed_origins
+        )
+        if fetch_site is not None and fetch_site.lower() not in {b"same-origin", b"same-site"}:
+            rejected = True
+
+        if rejected:
+            response = PlainTextResponse("Cross-origin desktop API requests are not allowed.", status_code=403)
+            await response(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
+
+
+def desktop_allowed_origins():
+    try:
+        host, port = desktop_server_settings()
+    except ValueError:
+        # Keep desktop_server importable so its CLI can report invalid env settings.
+        return VITE_ORIGINS
+    if ":" in host:
+        host = f"[{host}]"
+    return VITE_ORIGINS | {f"http://{host}:{port}"}
 
 
 def desktop_server_settings():
@@ -52,6 +100,7 @@ def mount_frontend(app: FastAPI, directory: Path):
 
 
 def configure_frontend(app: FastAPI):
+    app.add_middleware(DesktopOriginGuard, allowed_origins=desktop_allowed_origins())
     directory = frontend_directory()
     if directory is not None:
         mount_frontend(app, directory)

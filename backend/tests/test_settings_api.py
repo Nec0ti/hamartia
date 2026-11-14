@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api import settings
-from app.desktop import desktop_server_settings, frontend_directory, mount_frontend
+from app.desktop import configure_frontend, desktop_server_settings, frontend_directory, mount_frontend
 from app.models.schemas import Settings
 from app.services.storage import StorageService
 
@@ -75,6 +75,73 @@ class SettingsApiTests(unittest.TestCase):
 
 
 class DesktopServerTests(unittest.TestCase):
+    def _guarded_upload_app(self):
+        from fastapi import Request
+
+        app = FastAPI()
+        reached = []
+
+        @app.post("/upload")
+        async def upload(request: Request):
+            reached.append(True)
+            form = await request.form()
+            return {"fields": list(form.keys())}
+
+        configure_frontend(app)
+        return app, reached
+
+    def test_desktop_guard_rejects_cross_site_multipart_before_parsing(self):
+        with patch.dict("os.environ", {"HAMARTIA_HOST": "127.0.0.1", "HAMARTIA_PORT": "8000"}):
+            app, reached = self._guarded_upload_app()
+        client = TestClient(app)
+        response = client.post(
+            "/upload",
+            content=b"not a valid multipart body",
+            headers={
+                "content-type": "multipart/form-data; boundary=broken",
+                "origin": "https://attacker.example",
+                "sec-fetch-site": "cross-site",
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(reached, [])
+        client.close()
+
+    def test_desktop_guard_allows_packaged_origin(self):
+        with patch.dict("os.environ", {"HAMARTIA_HOST": "127.0.0.1", "HAMARTIA_PORT": "43127"}):
+            app, _ = self._guarded_upload_app()
+        client = TestClient(app)
+        response = client.post(
+            "/upload",
+            data={"name": "desktop"},
+            headers={"origin": "http://127.0.0.1:43127", "sec-fetch-site": "same-origin"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"fields": ["name"]})
+        client.close()
+
+    def test_desktop_guard_allows_vite_dev_origin(self):
+        with patch.dict("os.environ", {"HAMARTIA_HOST": "127.0.0.1", "HAMARTIA_PORT": "8000"}):
+            app, _ = self._guarded_upload_app()
+        client = TestClient(app)
+        response = client.post(
+            "/upload",
+            data={"name": "dev"},
+            headers={"origin": "http://localhost:5173", "sec-fetch-site": "same-site"},
+        )
+        self.assertEqual(response.status_code, 200)
+        client.close()
+
+    def test_desktop_guard_rejects_null_origin_but_preserves_originless_cli(self):
+        with patch.dict("os.environ", {}, clear=True):
+            app, _ = self._guarded_upload_app()
+        client = TestClient(app)
+        rejected = client.post("/upload", data={"name": "browser"}, headers={"origin": "null"})
+        allowed = client.post("/upload", data={"name": "cli"})
+        self.assertEqual(rejected.status_code, 403)
+        self.assertEqual(allowed.status_code, 200)
+        client.close()
+
     def test_frontend_directory_uses_override_or_pyinstaller_bundle(self):
         with patch.dict("os.environ", {}, clear=True), patch.object(sys, "frozen", False, create=True):
             self.assertIsNone(frontend_directory())

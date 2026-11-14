@@ -14,7 +14,7 @@
 - [x] Connect the home page and My Mistakes tab to real flows.
 - [x] Derive deterministic study priorities from subject/topic error patterns.
 - [x] Mark a missed question as reviewed, update the plan, and allow undo.
-- [x] Store correct/incorrect attempts with dates and calculate review intervals locally.
+- [x] Store correct/incorrect attempts with the user's explicit local calendar day and calculate review intervals locally; retain UTC-date fallback for legacy records and clients that omit the optional day.
 - [x] Remove the image requirement and provide text-based missed-question capture with a visible entry form.
 - [x] Store TYT/AYT/branch exam types, filter by type, and separate totals.
 - [x] Edit and confirmed-delete existing records throughout exam history.

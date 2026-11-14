@@ -21,6 +21,7 @@
   - Topic-practice summaries: 1,000 sessions in 0.013741 sec; 10,000 in 0.082967 sec. At 10,000 sessions, write took 0.1479 sec and read 0.411784 sec.
 - A source scan found 226 literal translation references and no missing dictionary keys.
 - Browser smoke coverage now checks English default/fallback, persistence, localized dates and chart labels, and existing study flows in both languages. Local execution is blocked because this host lacks `libglib-2.0.so.0`; GitHub Actions must run it before merge.
+- The first PR CI run found that an eagerly evaluated assertion message consumed the seed response body before JSON parsing. The smoke now reads the error body only for a failed response; the rerun is pending.
 - The local GitHub Pages browser smoke has the same missing Chromium system dependency and was not verified locally. The public Pages deployment remains on the existing `master` build until this PR is merged.
 
 ## Limits

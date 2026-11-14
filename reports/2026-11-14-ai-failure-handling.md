@@ -10,6 +10,7 @@
 - Frontend: `npm test` — 4/4 geçti; production build başarılı, JS 695.22 KB / 198.14 KB gzip. 500 KB chunk uyarısı sürüyor.
 - Chromium browser smoke başarıyla geçti; UI, practice, grafik ve backup akışları devam ediyor. Smoke `ai_included: false` ve `/agent`/`analyze` istekleri olmadığını doğrular.
 - Gerçek AI isteği veya AI benchmarkı çalıştırılmadı.
+- GitHub Actions run #69, backend ve frontend işleriyle başarılı.
 
 ## Başka bilgisayarda elle doğrulama
 

@@ -1,0 +1,260 @@
+const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const os = require('node:os')
+const path = require('node:path')
+const test = require('node:test')
+const crypto = require('node:crypto')
+const { exportJWK, generateKeyPair, SignJWT } = require('jose')
+const { API_URL, CALLBACK_PATH, MAX_CONTEXT_LENGTH, REQUIRED_SCOPES, SCOPES, buildAuthorizationUrl, createChatGPT, grantedScopes, summarizeStudyContext } = require('../chatgpt.cjs')
+
+test('authorization uses fresh PKCE-bound OSS plan-use scopes and exact loopback callback', () => {
+  const url = new URL(buildAuthorizationUrl({
+    clientId: 'dynamic_agent_client', redirectUri: `http://127.0.0.1:1234${CALLBACK_PATH}`,
+    state: 'fresh-state', nonce: 'fresh-nonce', verifier: 'fresh-verifier', hostId: 'urn:uuid:test-host',
+  }))
+  assert.equal(url.origin, 'https://auth.openai.com')
+  assert.equal(url.searchParams.get('client_id'), 'dynamic_agent_client')
+  assert.equal(url.searchParams.get('scope'), SCOPES.join(' '))
+  assert.deepEqual(grantedScopes(url.searchParams.get('scope')).has('chatgpt.tokens.use.direct'), true)
+  assert.equal(url.searchParams.get('resource'), API_URL)
+  assert.equal(url.searchParams.get('redirect_uri'), `http://127.0.0.1:1234${CALLBACK_PATH}`)
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256')
+  assert.equal(url.searchParams.get('code_challenge'), require('node:crypto').createHash('sha256').update('fresh-verifier').digest('base64url'))
+  assert.equal(url.searchParams.get('state'), 'fresh-state')
+  assert.equal(url.searchParams.get('nonce'), 'fresh-nonce')
+  assert.equal(url.searchParams.get('ext_agent_host_id'), 'urn:uuid:test-host')
+  assert.equal(REQUIRED_SCOPES.includes('chatgpt.tokens.use.direct'), true)
+})
+
+test('local study context is summarized and bounded without question text', () => {
+  const result = summarizeStudyContext({ pending_questions: 9, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: { gap: 1 }, ocr_text: 'secret question text' }] }, [])
+  assert.ok(result.length <= MAX_CONTEXT_LENGTH)
+  assert.match(result, /Functions/)
+  assert.doesNotMatch(result, /secret question text/)
+})
+
+async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true } = {}) {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-siwc-'))
+  const { publicKey, privateKey } = await generateKeyPair('RS256')
+  const jwk = await exportJWK(publicKey)
+  jwk.kid = 'test-key'
+  jwk.use = 'sig'
+  jwk.alg = 'RS256'
+  let nonceForToken = ''
+  let tokenResponse = null
+  let callbackError = ''
+  let callbackMutator = (url) => url
+  let responseStatus = 200
+  let responseErrorCode = ''
+  let refreshGate = null
+  let revocationStatus = 200
+  let revocationRequests = 0
+  let streamMode = 'complete'
+  let responseRequest
+  const tokenBodies = []
+  const calls = []
+  const encryptionKey = crypto.randomBytes(32)
+  const safeStorage = {
+    isEncryptionAvailable: () => encryptionAvailable,
+    getSelectedStorageBackend: () => backend,
+    encryptString: (value) => {
+      const iv = crypto.randomBytes(12)
+      const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey, iv)
+      const encrypted = Buffer.concat([cipher.update(value), cipher.final()])
+      return Buffer.concat([iv, cipher.getAuthTag(), encrypted])
+    },
+    decryptString: (value) => {
+      const encrypted = Buffer.from(value)
+      const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey, encrypted.subarray(0, 12))
+      decipher.setAuthTag(encrypted.subarray(12, 28))
+      return Buffer.concat([decipher.update(encrypted.subarray(28)), decipher.final()]).toString()
+    },
+  }
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), options })
+    if (String(url).includes('.well-known/openid-configuration')) return Response.json({ revocation_endpoint: 'https://auth.openai.com/api/accounts/oauth/revoke' })
+    if (String(url).endsWith('/oauth/revoke')) {
+      revocationRequests += 1
+      return new Response(null, { status: revocationStatus })
+    }
+    if (String(url).includes('.well-known/jwks.json')) return Response.json({ keys: [jwk] })
+    if (String(url).includes('/oauth/token')) {
+      const body = new URLSearchParams(options.body)
+      tokenBodies.push(body)
+      if (body.get('grant_type') === 'refresh_token' && refreshGate) await refreshGate
+      if (typeof tokenResponse === 'function') return Response.json(await tokenResponse(body, { nonce: nonceForToken, privateKey }))
+      return Response.json(tokenResponse || {
+        access_token: 'access-secret', refresh_token: 'refresh-secret', id_token: await new SignJWT({ nonce: nonceForToken, email: 'student@example.test' }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://auth.openai.com').setAudience('oaiapp_test').setSubject('student-123').setIssuedAt().setExpirationTime('1h').sign(privateKey),
+        expires_in: 3600, scope: SCOPES.join(' '),
+      })
+    }
+    if (String(url) === `${API_URL}/models`) return Response.json({ models: [{ slug: 'model-a', display_name: 'Model A', visibility: 'list' }, { slug: 'hidden', display_name: 'Hidden', visibility: 'private' }] })
+    if (String(url) === `${API_URL}/responses`) {
+      responseRequest = JSON.parse(options.body)
+      if (responseStatus !== 200) return Response.json({ error: { code: responseErrorCode } }, { status: responseStatus })
+      if (streamMode === 'cancel') return new Response(new ReadableStream({ start(controller) {
+        options.signal.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')))
+      } }), { headers: { 'content-type': 'text/event-stream' } })
+      const events = [
+        { type: 'response.output_text.delta', delta: 'Review this topic.' },
+        { type: 'response.completed', response: { id: 'response-1' } },
+      ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
+      return new Response(events, { headers: { 'content-type': 'text/event-stream' } })
+    }
+    if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({ pending_questions: 3, scheduled_questions: 2, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: {} }] })
+    if (String(url) === 'http://127.0.0.1:43210/practice/insights') return Response.json([])
+    throw new Error(`Unexpected mock request: ${url}`)
+  }
+  const client = createChatGPT({
+    app: { getPath: () => directory }, safeStorage, fetchImpl, getBackendUrl: () => 'http://127.0.0.1:43210',
+    shell: { openExternal: async (value) => {
+      const url = new URL(value)
+      nonceForToken = url.searchParams.get('nonce')
+      const callback = `${url.searchParams.get('redirect_uri')}?${callbackError ? `error=${callbackError}&` : 'code=one-time&'}state=${url.searchParams.get('state')}&client_id=oaiapp_test`
+      await fetch(callbackMutator(callback))
+    } },
+  })
+  return {
+    client, directory, safeStorage, calls, tokenBodies, getResponseRequest: () => responseRequest,
+    setStreamMode: (value) => { streamMode = value }, setTokenResponse: (value) => { tokenResponse = value },
+    setCallbackError: (value) => { callbackError = value }, setCallbackMutator: (value) => { callbackMutator = value },
+    setResponseError: (status, code) => { responseStatus = status; responseErrorCode = code },
+    setRevocationStatus: (value) => { revocationStatus = value },
+    getRevocationRequests: () => revocationRequests,
+    setRefreshGate: (value) => { refreshGate = value },
+    expireCredentials: async () => {
+      const file = path.join(directory, 'chatgpt-credentials.bin')
+      const credentials = JSON.parse(safeStorage.decryptString(await fs.readFile(file)))
+      credentials.expires_at = 0
+      await fs.writeFile(file, safeStorage.encryptString(JSON.stringify(credentials)), { mode: 0o600 })
+    },
+  }
+}
+
+test('mocked sign-in stores only encrypted credentials and streams direct Responses to completion', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  assert.deepEqual(await testApp.client.signIn(), { connected: true, email: 'student@example.test', planUse: true })
+  assert.equal((await testApp.client.status()).planUse, true)
+  const saved = await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))
+  assert.doesNotMatch(saved.toString(), /access-secret|refresh-secret|student@example/)
+  assert.equal((await fs.stat(path.join(testApp.directory, 'chatgpt-credentials.bin'))).mode & 0o777, 0o600)
+  assert.equal(testApp.tokenBodies[0].get('client_id'), 'oaiapp_test')
+  assert.equal(testApp.tokenBodies[0].get('code_verifier')?.length > 40, true)
+  assert.equal(testApp.tokenBodies[0].has('client_secret'), false)
+  assert.deepEqual(await testApp.client.models(), [{ slug: 'model-a', display_name: 'Model A' }])
+  const deltas = []
+  assert.deepEqual(await testApp.client.chat({ requestId: 'request-test-000001', message: 'How should I review?', model: 'model-a', language: 'en' }, (_id, delta) => deltas.push(delta)), { status: 'completed' })
+  assert.equal(deltas.join(''), 'Review this topic.')
+  const request = testApp.getResponseRequest()
+  assert.equal(request.store, false)
+  assert.equal(request.stream, true)
+  assert.equal(request.model, 'model-a')
+  assert.match(request.input[0].content, /Functions/)
+  assert.equal(testApp.calls.some(({ url }) => url.includes('backend-api')), false)
+})
+
+test('plan-use cannot proceed when secure storage is unavailable or Linux falls back to basic_text', async (t) => {
+  const testApp = await setup({ backend: 'basic_text' })
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  assert.deepEqual(await testApp.client.status(), { connected: false, unavailable: true })
+  await assert.rejects(testApp.client.signIn(), /Protected credential storage is unavailable/)
+  assert.equal(await fs.readdir(testApp.directory).then((files) => files.length), 0)
+  const unavailable = await setup({ encryptionAvailable: false })
+  t.after(() => fs.rm(unavailable.directory, { recursive: true, force: true }))
+  assert.deepEqual(await unavailable.client.status(), { connected: false, unavailable: true })
+  await assert.rejects(unavailable.client.signIn(), /Protected credential storage is unavailable/)
+  assert.equal(await fs.readdir(unavailable.directory).then((files) => files.length), 0)
+})
+
+test('sign-in rejects callback state mismatch, denied consent, missing scope, and invalid ID-token nonce', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  testApp.setCallbackMutator((callback) => callback.replace(/state=[^&]+/, 'state=wrong-state'))
+  await assert.rejects(testApp.client.signIn(), /could not be verified/)
+  assert.equal(testApp.tokenBodies.length, 0)
+  testApp.setCallbackMutator((callback) => callback)
+  testApp.setCallbackError('access_denied')
+  await assert.rejects(testApp.client.signIn(), /permission was not granted/)
+  assert.equal(testApp.tokenBodies.length, 0)
+  testApp.setCallbackError('')
+  testApp.setTokenResponse(async (_body, { nonce, privateKey }) => ({
+    access_token: 'access', refresh_token: 'refresh', expires_in: 3600, scope: 'openid offline_access resource.invoke',
+    id_token: await new SignJWT({ nonce }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://auth.openai.com').setAudience('oaiapp_test').setSubject('student-123').setIssuedAt().setExpirationTime('1h').sign(privateKey),
+  }))
+  await assert.rejects(testApp.client.signIn(), /did not grant the required/)
+  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  testApp.setTokenResponse(async (_body, { privateKey }) => ({
+    access_token: 'access', refresh_token: 'refresh', expires_in: 3600, scope: SCOPES.join(' '),
+    id_token: await new SignJWT({ nonce: 'wrong-nonce' }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://auth.openai.com').setAudience('oaiapp_test').setSubject('student-123').setIssuedAt().setExpirationTime('1h').sign(privateKey),
+  }))
+  await assert.rejects(testApp.client.signIn(), /nonce did not match|identity validation failed/)
+  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+})
+
+test('rotating refresh credentials are serialized across concurrent model requests', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  await testApp.expireCredentials()
+  let releaseRefresh
+  testApp.setRefreshGate(new Promise((resolve) => { releaseRefresh = resolve }))
+  testApp.setTokenResponse((body) => body.get('grant_type') === 'refresh_token'
+    ? { access_token: 'rotated-access', refresh_token: 'rotated-refresh', expires_in: 3600 }
+    : { access_token: 'access-secret', refresh_token: 'refresh-secret', id_token: 'unused', expires_in: 3600, scope: SCOPES.join(' ') })
+  const first = testApp.client.models()
+  const second = testApp.client.models()
+  while (testApp.tokenBodies.filter((body) => body.get('grant_type') === 'refresh_token').length === 0) await new Promise((resolve) => setTimeout(resolve, 1))
+  releaseRefresh()
+  assert.equal((await first)[0].slug, 'model-a')
+  assert.equal((await second)[0].slug, 'model-a')
+  assert.equal(testApp.tokenBodies.filter((body) => body.get('grant_type') === 'refresh_token').length, 1)
+  const credentials = JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))))
+  assert.equal(credentials.refresh_token, 'rotated-refresh')
+})
+
+test('usage-limit response is an error and never falls back to a local provider', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  testApp.setResponseError(429, 'subscription_sharing_usage_limit_exceeded')
+  const result = await testApp.client.chat({ requestId: 'request-quota-000001', message: 'Explain this', model: 'model-a', language: 'en' }, () => {})
+  assert.equal(result.status, 'failed')
+  assert.match(result.detail, /limit/i)
+  assert.equal(testApp.calls.some(({ url }) => /localhost:4000|litellm|ollama/i.test(url)), false)
+})
+
+test('sign-out revokes the renewable session before clearing encrypted local tokens', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  assert.deepEqual(await testApp.client.signOut(), { connected: false, revocationConfirmed: true })
+  assert.equal(testApp.getRevocationRequests(), 1)
+  const body = new URLSearchParams(testApp.calls.find(({ url }) => url.endsWith('/oauth/revoke')).options.body)
+  assert.equal(body.get('token'), 'refresh-secret')
+  assert.equal(body.get('token_type_hint'), 'refresh_token')
+  assert.equal(body.get('client_id'), 'oaiapp_test')
+  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  assert.equal((await testApp.client.status()).connected, false)
+})
+
+test('sign-out clears local tokens and reports unconfirmed remote revocation after retryable failures', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  testApp.setRevocationStatus(503)
+  assert.deepEqual(await testApp.client.signOut(), { connected: false, revocationConfirmed: false })
+  assert.equal(testApp.getRevocationRequests(), 3)
+  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+})
+
+test('chat cancellation aborts the in-flight Responses stream', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  testApp.setStreamMode('cancel')
+  const operation = testApp.client.chat({ requestId: 'request-cancel-000001', message: 'Explain this topic', model: 'model-a', language: 'en' }, () => {})
+  while (!testApp.getResponseRequest()) await new Promise((resolve) => setTimeout(resolve, 1))
+  testApp.client.cancel('request-cancel-000001')
+  assert.deepEqual(await operation, { status: 'cancelled' })
+})

@@ -28,6 +28,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "chatgpt.cjs",
       "backendInvocation.cjs",
       "restoreFlow.cjs",
       "shutdownFlow.cjs",
@@ -63,5 +64,8 @@
   "devDependencies": {
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "jose": "6.2.17"
   }
 }

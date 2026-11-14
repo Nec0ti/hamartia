@@ -51,9 +51,9 @@
 
 - [x] Provide English (default) and Turkish application UI, with a persistent language selector.
 - [x] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
-- [ ] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory.
-- [ ] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...).
-- [ ] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
+- [x] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory. NSIS and `.deb` install, app launch, and cleanup checks passed on Windows Server 2022 and Ubuntu 22.04; a separate frozen-backend smoke verified persistence on both. Consumer Windows 10/11 and separate Debian desktop installs remain manual checks.
+- [x] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...). PR #5 produced ARETE-001 automatically; later sequential allocation still needs another merged PR to exercise it again.
+- [x] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
 
 ## P5 — study agent
 
@@ -62,4 +62,4 @@
 
 ## Next small task
 
-The bilingual EN/TR interface is implemented on `codex/hamartia-ui-language`; run PR CI and merge it. Next: package Windows 10/11, `.deb`, and AppImage builds with merged-PR release automation, then implement the ChatGPT-backed study agent in a separate PR.
+Next: implement explicit-consent Sign in with ChatGPT subscription usage as the primary study agent, retaining local AI as a separate option for later testing on another computer. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.

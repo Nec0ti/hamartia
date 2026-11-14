@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agent, backup, cosmos, exams, practice, questions, settings
+from app.api import backup, cosmos, exams, practice, questions, settings
 from app.core.config import DATA_DIR
 from app.services.data_lock import DataDirectoryLock
 
@@ -49,7 +49,6 @@ app.include_router(questions.router)
 # which breaks a plain `from app.api import user`.
 app.include_router(__import__("app.api.user", fromlist=["router"]).router)
 app.include_router(cosmos.router)
-app.include_router(agent.router)
 app.include_router(settings.router)
 app.include_router(backup.router)
 

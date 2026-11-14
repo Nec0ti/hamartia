@@ -49,6 +49,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
   let refreshGate = null
   let revocationStatus = 200
   let revocationRequests = 0
+  const authorizationUrls = []
   let streamMode = 'complete'
   let responseRequest
   const tokenBodies = []
@@ -108,6 +109,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
   const client = createChatGPT({
     app: { getPath: () => directory }, safeStorage, fetchImpl, getBackendUrl: () => 'http://127.0.0.1:43210',
     shell: { openExternal: async (value) => {
+      authorizationUrls.push(value)
       const url = new URL(value)
       nonceForToken = url.searchParams.get('nonce')
       const callback = `${url.searchParams.get('redirect_uri')}?${callbackError ? `error=${callbackError}&` : 'code=one-time&'}state=${url.searchParams.get('state')}&client_id=oaiapp_test`
@@ -121,6 +123,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
     setResponseError: (status, code) => { responseStatus = status; responseErrorCode = code },
     setRevocationStatus: (value) => { revocationStatus = value },
     getRevocationRequests: () => revocationRequests,
+    getAuthorizationUrls: () => authorizationUrls,
     setRefreshGate: (value) => { refreshGate = value },
     expireCredentials: async () => {
       const file = path.join(directory, 'chatgpt-credentials.bin')
@@ -234,8 +237,14 @@ test('sign-out revokes the renewable session before clearing encrypted local tok
   assert.equal(body.get('token'), 'refresh-secret')
   assert.equal(body.get('token_type_hint'), 'refresh_token')
   assert.equal(body.get('client_id'), 'oaiapp_test')
-  assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  const mapping = JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))))
+  assert.deepEqual(mapping, { client_id: 'oaiapp_test', subject: 'student-123', email: 'student@example.test' })
   assert.equal((await testApp.client.status()).connected, false)
+  await testApp.client.signIn()
+  const reauthorization = new URL(testApp.getAuthorizationUrls()[1])
+  assert.equal(reauthorization.searchParams.get('client_id'), 'oaiapp_test')
+  assert.equal(reauthorization.searchParams.has('agent_name_hint'), false)
+  assert.equal(reauthorization.searchParams.has('id_token_hint'), false)
 })
 
 test('sign-out clears local tokens and reports unconfirmed remote revocation after retryable failures', async (t) => {
@@ -245,7 +254,21 @@ test('sign-out clears local tokens and reports unconfirmed remote revocation aft
   testApp.setRevocationStatus(503)
   assert.deepEqual(await testApp.client.signOut(), { connected: false, revocationConfirmed: false })
   assert.equal(testApp.getRevocationRequests(), 3)
+  const mapping = JSON.parse(testApp.safeStorage.decryptString(await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))))
+  assert.deepEqual(mapping, { client_id: 'oaiapp_test', subject: 'student-123', email: 'student@example.test' })
+})
+
+test('forgetting a signed-out account keeps the host ID and permits a fresh dynamic registration', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  await testApp.client.signOut()
+  const hostBefore = await fs.readFile(path.join(testApp.directory, 'chatgpt-host-id'), 'utf8')
+  await testApp.client.forgetAccount()
   assert.equal(await fs.readdir(testApp.directory).then((files) => files.includes('chatgpt-credentials.bin')), false)
+  assert.equal(await fs.readFile(path.join(testApp.directory, 'chatgpt-host-id'), 'utf8'), hostBefore)
+  await testApp.client.signIn()
+  assert.equal(new URL(testApp.getAuthorizationUrls()[1]).searchParams.get('client_id'), 'dynamic_agent_client')
 })
 
 test('chat cancellation aborts the in-flight Responses stream', async (t) => {

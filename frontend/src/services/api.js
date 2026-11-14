@@ -5,7 +5,7 @@
  * the Vite env var VITE_API_BASE so the same code works in dev (where Vite
  * proxies to the backend) and after a production deploy. Endpoints mirror the
  * router mount paths on the backend exactly: /exams, /questions, /cosmos,
- * /agent, /settings, /healthcheck.
+ * /settings, /healthcheck.
  */
 import axios from 'axios'
 import { handleApiError } from './apiError.js'
@@ -85,21 +85,6 @@ export const cosmos = {
     client.post(`/cosmos/sectors/${sector}`).then((r) => r.data),
 }
 
-/* -------------------------------- agent --------------------------------- */
-
-export const agent = {
-  chat: (message) =>
-    client.post('/agent/chat', { message }).then((r) => r.data),
-  ingest: (file) => {
-    const fd = new FormData()
-    fd.append('file', file, file.name)
-    return client.post('/agent/documents', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      transformRequest: [(d) => d],
-    }).then((r) => r.data)
-  },
-}
-
 /* -------------------------------- user / profile ----------------------- */
 
 export const user = {
@@ -128,4 +113,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, practice, questions, cosmos, agent, user, settings, health }
+export default { exams, practice, questions, cosmos, user, settings, health }

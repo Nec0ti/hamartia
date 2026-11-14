@@ -236,6 +236,7 @@ function trustedChatGPTHandler(name, handler) {
 trustedChatGPTHandler('status', () => chatgpt.status())
 trustedChatGPTHandler('sign-in', () => chatgpt.signIn())
 trustedChatGPTHandler('sign-out', () => chatgpt.signOut())
+trustedChatGPTHandler('forget-account', () => chatgpt.forgetAccount())
 trustedChatGPTHandler('models', () => chatgpt.models())
 trustedChatGPTHandler('open-usage', () => shell.openExternal('https://chatgpt.com/settings/usage'))
 trustedChatGPTHandler('chat', async (event, payload) => {

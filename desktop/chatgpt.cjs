@@ -244,6 +244,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     if (signingOut) throw new Error('ChatGPT is signing out. Try again when it has finished.')
     const credentials = await readCredentials()
     if (!credentials) throw new Error('Sign in with ChatGPT before sending a study question.')
+    if (!credentials.access_token || !credentials.refresh_token) throw new Error('Sign in with ChatGPT before sending a study question.')
     if (!REQUIRED_SCOPES.every((scope) => credentials.scopes.includes(scope))) throw new Error('ChatGPT plan usage permission is missing. Sign in again and grant it before continuing.')
     if (credentials.expires_at > now() + 30_000) return { credentials, accessToken: credentials.access_token }
     if (!refreshInFlight) {
@@ -262,7 +263,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
   async function status() {
     if (!storageAvailable()) return { connected: false, unavailable: true }
     const credentials = await readCredentials()
-    return credentials ? { connected: true, email: credentials.email, planUse: credentials.scopes.includes('chatgpt.tokens.use.direct') && credentials.scopes.includes('resource.invoke') } : { connected: false }
+    return credentials?.access_token ? { connected: true, savedAccount: true, email: credentials.email, planUse: credentials.scopes?.includes('chatgpt.tokens.use.direct') && credentials.scopes?.includes('resource.invoke') } : { connected: false, savedAccount: Boolean(credentials?.client_id), email: credentials?.email || '' }
   }
 
   async function signOut() {
@@ -301,7 +302,8 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       }
     } finally {
       try {
-        await fs.rm(file, { force: true })
+        if (credentials) await writeCredentials({ client_id: credentials.client_id, subject: credentials.subject, email: credentials.email })
+        else await fs.rm(file, { force: true })
       } catch (error) {
         storageBlocked = true
         throw new Error('ChatGPT tokens could not be removed from this device. Close the app and try again.')
@@ -309,6 +311,13 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       signingOut = false
     }
     return { connected: false, revocationConfirmed }
+  }
+
+  async function forgetAccount() {
+    const credentials = await readCredentials()
+    if (credentials?.access_token || credentials?.refresh_token) throw new Error('Sign out before switching the saved ChatGPT account.')
+    await fs.rm(file, { force: true })
+    return { connected: false, savedAccount: false }
   }
 
   async function models(signal) {
@@ -388,7 +397,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     chats.get(requestId)?.abort()
   }
 
-  return { status, signIn, signOut, models, chat, cancel }
+  return { status, signIn, signOut, forgetAccount, models, chat, cancel }
 }
 
 module.exports = { API_URL, CALLBACK_PATH, ISSUER, MAX_CONTEXT_LENGTH, MAX_MESSAGE_LENGTH, REQUIRED_SCOPES, RESOURCE, SCOPES, buildAuthorizationUrl, createChatGPT, grantedScopes, safeError, summarizeStudyContext }

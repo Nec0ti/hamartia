@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('hamartiaDesktop', Object.freeze({
     status: () => ipcRenderer.invoke('hamartia:chatgpt:status'),
     signIn: () => ipcRenderer.invoke('hamartia:chatgpt:sign-in'),
     signOut: () => ipcRenderer.invoke('hamartia:chatgpt:sign-out'),
+    forgetAccount: () => ipcRenderer.invoke('hamartia:chatgpt:forget-account'),
     models: () => ipcRenderer.invoke('hamartia:chatgpt:models'),
     openUsage: () => ipcRenderer.invoke('hamartia:chatgpt:open-usage'),
     chat: (payload) => ipcRenderer.invoke('hamartia:chatgpt:chat', payload),

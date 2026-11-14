@@ -18,4 +18,5 @@
 - 2026-11-14: Deneme girişi ISO tarih ve 0-59 saniye aralığıyla sınırlandı; 14 backend testi, frontend test/build ve GitHub Actions geçti.
 - 2026-11-14: Yanlış soru tekrar edildi durumu, geri alma ve bekleyen konu önceliği eklendi. 16 backend, 3 frontend testi ve model çağrısız benchmark geçti; ilk yeni CI akışı başarılı.
 - Yeni AI dışı soru-flow ölçümü: `reports/2026-11-14-storage-and-study-plan.md`.
+- 2026-11-14: Review undo ve docs commit'lerinde GitHub Actions frontend/backend işleri başarılı; local ve remote branch tree'leri eşleşti, `master` değişmedi.
 - Ölçüm raporu: `reports/2026-11-14-storage-and-study-plan.md`.

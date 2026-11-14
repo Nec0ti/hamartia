@@ -25,8 +25,8 @@
 | --- | ---: |
 | Backend testleri | 16/16 geçti |
 | Frontend formatter testleri | 3/3 geçti |
-| Frontend production build | geçti, 21.38 sn |
-| Build ana JS | 659.95 KB minified / 190.16 KB gzip |
+| Frontend production build (review status akışı dahil) | geçti, 21.46 sn |
+| Build ana JS | 661.61 KB minified / 190.49 KB gzip |
 | 100 yanlış yükleme benchmarkı | 0.8692 sn / 115.04 kayıt/sn |
 | 100 soru listeleme | 0.0017 sn |
 | 100 kayıtlı çalışma önceliği hesabı | 0.0031 sn |
@@ -60,7 +60,8 @@ npm run build
 - Görsel başlığı doğrulanır, piksel akışı decode edilmez; bozuk ama imza taşıyan dosya kabul edilebilir.
 - JSON append her eklemede tüm dosyayı yeniden yazıyor. 1.000 kayıt ölçümü bu maliyeti gösteriyor; eşzamanlı process/çok worker veya büyüyen geçmiş için SQLite'a geçiş gerekir.
 - Bundle 500 KB eşiğini aşıyor. Bu çalışma diliminde code-splitting yapılmadı.
-- GitHub Actions `feat: add a local mistake review loop` commit'inde frontend ve backend job'larını başarıyla tamamladı. Review undo follow-up commit'inin CI sonucu bekliyor. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
+- GitHub Actions `feat: add a local mistake review loop`, review undo ve son dokümantasyon commit'lerinde frontend/backend job'larını başarıyla tamamladı. Tarayıcı tabanlı uçtan uca akış çalıştırılmadı.
+- Yerel `git write-tree` ve GitHub ilerleme dalının tree SHA'sı `55fcba2eb952846ef60936e6bf9bb978daf132c6` ile eşleşti; kaynak `master` `c5642d0` kaldı.
 
 ## Model sınırı
 

@@ -64,7 +64,7 @@ Benchmark dışı: model yükleme/çalıştırma, prompt kalitesi, AI yanıt kal
 - `npm ci --offline --ignore-scripts` sandbox'ta paket kurulum script'lerini çalıştırmadan geçti; build/test başarılı. `npm audit --offline` mevcut cache'de 0 bulgu verdi; bu güncel online audit değildir.
 - Vite 6.4.6'ya geçildi. Resmi GHSA-p4f5-76q4-ffq7 duyurusu 6.4.5 ve altını etkiliyor; uzaktaki istemcilerden erişilebilen dev server koşulu varsa kritik risk oluşuyor. Hamartia dev server'ı varsayılan localhost ayarıyla bırakıyor.
 - `README.md` yerel çalıştırma, veri dizini, AI endpoint ayarı ve AI dışı doğrulama komutlarını açıklar. Remote model davranışı başka bilgisayarda hâlâ doğrulanmalı.
-- GitHub Actions `feat: add a local mistake review loop` commit'inde frontend ve backend işlerindeki tüm adımları başarıyla bitirdi; işaret geri alma follow-up commit'i sırada. Normal `git push/fetch` DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
+- GitHub Actions `feat: add a local mistake review loop` ve review geri alma commit'lerinde frontend/backend işleri başarıyla bitti. Yerel Git tree ile GitHub `codex/hamartia-rebuild` tree SHA'sı eşleşiyor; kaynak `master` `c5642d0` olarak kaldı. Normal Git taşıması DNS nedeniyle kullanılamıyor; branch GitHub API üzerinden commitleniyor.
 
 ## Açık kararlar
 

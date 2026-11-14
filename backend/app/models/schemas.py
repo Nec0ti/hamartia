@@ -144,6 +144,8 @@ class CouncilAnalysis(BaseModel):
 class ReviewAttempt(BaseModel):
     attempted_at: str
     correct: bool
+    # Explicit user's calendar date. Older records omit it and keep their UTC-date interpretation.
+    attempt_day: str = ""
 
 
 class Question(BaseModel):

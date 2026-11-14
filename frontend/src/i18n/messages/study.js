@@ -36,6 +36,7 @@ export default {
   'study.addQuestionToStart': { en: 'Save a question in the Missed Questions tab to create priorities.', tr: 'Öncelik oluşturmak için önce Yanlışlarım sekmesinden soru kaydet.' },
   'study.pendingWrongCount': { en: '{{count}} missed questions due', tr: '{{count}} bekleyen yanlış' },
   'study.focusOnTopic': { en: 'Start focused practice · {{subject}} / {{topic}}', tr: 'Odaklı çalış · {{subject}} / {{topic}}' },
+  'study.focusNeedsLabels': { en: 'Add a subject and topic to this question before starting focused practice.', tr: 'Odaklı çalışmayı başlatmak için önce bu soruya ders ve konu ekle.' },
   'study.lastSeen': { en: 'Last saved: {{date}}', tr: 'Son kayıt: {{date}}' },
   'study.finishOrCancelActive': { en: 'Finish or cancel the current session first.', tr: 'Bitirmeden önce açık oturumu tamamla veya iptal et.' },
   'study.confirmDeleteSession': { en: 'Delete the {{subject}} / {{topic}} practice set from {{date}}?', tr: '{{date}} · {{subject}} / {{topic}} seti silinsin mi?' },

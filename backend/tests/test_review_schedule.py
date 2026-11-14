@@ -83,6 +83,39 @@ class ReviewScheduleTests(unittest.TestCase):
             ReviewAttempt(attempted_at="2026-11-14T10:00:00Z", correct=False),
         ), today + timedelta(days=1))["due"])
 
+    def test_saved_user_calendar_day_wins_over_utc_date_at_positive_and_negative_offsets(self):
+        # These represent the same UTC instant on either side of local midnight.
+        positive_offset = question(ReviewAttempt(
+            attempted_at="2026-11-14T22:30:00Z", attempt_day="2026-11-15", correct=False,
+        ))
+        negative_offset = question(ReviewAttempt(
+            attempted_at="2026-11-14T22:30:00Z", attempt_day="2026-11-14", correct=False,
+        ))
+
+        positive_state = review_state(positive_offset, date(2026, 11, 15))
+        negative_state = review_state(negative_offset, date(2026, 11, 14))
+        positive_plan = topic_priorities([positive_offset], today=date(2026, 11, 15))
+        negative_plan = topic_priorities([negative_offset], today=date(2026, 11, 14))
+
+        self.assertEqual(positive_state["due_date"], "2026-11-16")
+        self.assertEqual(negative_state["due_date"], "2026-11-15")
+        self.assertEqual(positive_plan["today_incorrect"], 1)
+        self.assertEqual(negative_plan["today_incorrect"], 1)
+
+    def test_local_day_persists_across_utc_midnight_and_legacy_uses_utc(self):
+        local_attempt = question(ReviewAttempt(
+            attempted_at="2026-11-14T23:59:00Z", attempt_day="2026-11-15", correct=True,
+        ))
+        legacy_attempt = question(ReviewAttempt(
+            attempted_at="2026-11-14T23:59:00Z", correct=True,
+        ))
+
+        self.assertFalse(review_state(local_attempt, date(2026, 11, 15))["due"])
+        self.assertEqual(review_state(local_attempt, date(2026, 11, 15))["due_date"], "2026-11-16")
+        self.assertEqual(review_state(legacy_attempt, date(2026, 11, 15))["due_date"], "2026-11-15")
+        self.assertEqual(topic_priorities([local_attempt], today=date(2026, 11, 15))["today_correct"], 1)
+        self.assertEqual(topic_priorities([legacy_attempt], today=date(2026, 11, 15))["today_correct"], 0)
+
     def test_consecutive_correct_answers_expand_review_intervals(self):
         today = date(2026, 11, 14)
         state = review_state(question(
@@ -148,6 +181,12 @@ class ReviewScheduleTests(unittest.TestCase):
         )], today=date(2026, 11, 14))
 
         self.assertEqual((plan["today_questions"], plan["today_correct"], plan["today_incorrect"]), (0, 0, 0))
+
+    def test_missing_subject_and_topic_stay_neutral_in_insights(self):
+        plan = topic_priorities([Question(id="unlabelled")], today=date(2026, 11, 14))
+
+        self.assertEqual(plan["topics"][0]["subject"], "")
+        self.assertEqual(plan["topics"][0]["topic"], "")
 
 
 if __name__ == "__main__":

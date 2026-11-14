@@ -3,7 +3,7 @@ import { BookOpenCheck, CheckCircle2, Clock3, FileText, Tags, ThumbsDown, Thumbs
 import api, { API_BASE, handleApiError } from '../services/api'
 import PracticeSessions from './PracticeSessions.jsx'
 import { useI18n } from '../i18n.jsx'
-import { fmtDate } from '../utils/formatters.js'
+import { fmtDate, labelOr, localDateToday } from '../utils/formatters.js'
 
 const newFocusTopic = (topic) => ({ subject: topic.subject, topic: topic.topic, requestedAt: Date.now() })
 
@@ -14,7 +14,7 @@ export default function StudyPlanTab() {
   const [busyId, setBusyId] = useState('')
   const [focusTopic, setFocusTopic] = useState(null)
 
-  const load = useCallback(() => api.questions.insights().then(setPlan).catch((e) => setError(handleApiError(e, t).detail)), [t])
+  const load = useCallback(() => api.questions.insights(localDateToday()).then(setPlan).catch((e) => setError(handleApiError(e, t).detail)), [t])
 
   useEffect(() => { load() }, [load])
 
@@ -22,7 +22,7 @@ export default function StudyPlanTab() {
     setBusyId(question.id)
     setError('')
     try {
-      await api.questions.attempt(question.id, correct)
+      await api.questions.attempt(question.id, correct, localDateToday())
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -91,13 +91,13 @@ export default function StudyPlanTab() {
         ) : plan.reviews.slice(0, 6).map((question) => (
           <article key={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[200px_1fr]">
             {question.has_image ? (
-              <img src={`${API_BASE}/questions/${question.id}/image`} alt={t('study.questionImageAlt', { subject: question.subject, topic: question.topic })} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
+                <img src={`${API_BASE}/questions/${question.id}/image`} alt={t('study.questionImageAlt', { subject: labelOr(question.subject, t('common.subjectNotSpecified')), topic: labelOr(question.topic, t('common.topicNotSpecified')) })} className="max-h-56 w-full rounded-lg bg-canvas-base object-contain" />
             ) : (
               <div role="img" aria-label={t('questions.textQuestionWithoutImage')} className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg bg-canvas-base text-sm text-canvas-muted"><FileText size={22} />{t('questions.textQuestion')}</div>
             )}
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-canvas-muted">{question.subject} · {question.topic}</p>
+                <p className="text-xs text-canvas-muted">{labelOr(question.subject, t('common.subjectNotSpecified'))} · {labelOr(question.topic, t('common.topicNotSpecified'))}</p>
                 <h3 className="font-semibold text-canvas-text">{tagLabel(question.hamartia_tag, t)}</h3>
               </div>
               {question.ocr_text && <p className="whitespace-pre-wrap text-sm text-canvas-muted">{question.ocr_text}</p>}
@@ -126,13 +126,17 @@ export default function StudyPlanTab() {
               <div className="flex items-start gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-canvas-raise text-sm font-semibold text-canvas-cyan">{index + 1}</span>
                 <div>
-                  <h3 className="font-semibold text-canvas-text">{topic.topic}</h3>
-                  <p className="text-sm text-canvas-muted">{topic.subject}</p>
+                  <h3 className="font-semibold text-canvas-text">{labelOr(topic.topic, t('common.topicNotSpecified'))}</h3>
+                  <p className="text-sm text-canvas-muted">{labelOr(topic.subject, t('common.subjectNotSpecified'))}</p>
                 </div>
               </div>
               <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{t('study.pendingWrongCount', { count: formatInt(topic.pending_count, locale) })}</span>
             </div>
-            <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">{t('study.focusOnTopic', { subject: topic.subject, topic: topic.topic })}</button>
+            {topic.subject.trim() && topic.topic.trim() ? (
+              <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">{t('study.focusOnTopic', { subject: topic.subject, topic: topic.topic })}</button>
+            ) : (
+              <p className="mt-3 text-sm text-canvas-muted">{t('study.focusNeedsLabels')}</p>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(topic.tags).map(([tag, count]) => (
                 <span key={tag} className="rounded-md bg-canvas-base px-2 py-1 text-xs text-canvas-muted">{tagLabel(tag, t)}: {formatInt(count, locale)}</span>

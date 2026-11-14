@@ -17,7 +17,7 @@ from fastapi import UploadFile
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
-from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Settings, UserStats
+from app.models.schemas import CosmosData, Exam, PracticeSession, Question, ReviewAttempt, Settings, UserStats
 from app.services.backup import BackupError, JSON_MODELS, create_backup, extract_backup, restore_backup
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService, data_mutation_lock
@@ -116,6 +116,22 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(len(restored), 1)
         self.assertEqual([section.subject for section in restored[0].sections], ["Türkçe", "Matematik"])
         self.assertEqual((restored[0].correct, restored[0].incorrect, restored[0].blank), (55, 13, 12))
+
+    def test_review_attempt_calendar_day_survives_backup_restore(self):
+        question = Question(
+            id="q-local-day", review_attempts=[ReviewAttempt(
+                attempted_at="2026-11-14T22:30:00Z", attempt_day="2026-11-15", correct=True,
+            )],
+        )
+        StorageService(self.source).save_list("questions.json", [question])
+        archive_path = self.root / "local-day.zip"
+        create_backup(self.source, archive_path)
+        target = self.root / "local-day-restored"
+
+        restore_backup(archive_path, target)
+
+        restored = StorageService(target).load_list("questions.json", Question)
+        self.assertEqual(restored[0].review_attempts[0].attempt_day, "2026-11-15")
 
     def test_restore_accepts_legacy_backup_without_practice_sessions(self):
         legacy = self.root / "legacy.zip"

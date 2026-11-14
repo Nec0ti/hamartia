@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Flame, Orbit, Sparkles } from 'lucide-react'
 import api, { handleApiError } from '../services/api'
-import { fmtInt, levelForXp, xpProgress, xpToNextLevel } from '../utils/formatters'
+import { fmtInt, labelOr, levelForXp, localDateToday, xpProgress, xpToNextLevel } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
 
 export default function CosmosTab() {
@@ -10,7 +10,7 @@ export default function CosmosTab() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([api.user.get(), api.questions.insights()])
+    Promise.all([api.user.get(), api.questions.insights(localDateToday())])
       .then(([profile, plan]) => setData({ profile, plan }))
       .catch((e) => setError(handleApiError(e, t).key))
   }, [])
@@ -58,7 +58,7 @@ export default function CosmosTab() {
             {plan.topics.slice(0, 9).map((topic, index) => (
               <article key={`${topic.subject}-${topic.topic}`} className="flex min-h-36 items-center gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4">
                 <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border ${index === 0 ? 'border-canvas-cyan/60 bg-canvas-cyan/10 text-canvas-cyan' : 'border-canvas-line bg-canvas-raise text-canvas-muted'}`}><Orbit size={20} /></div>
-                <div className="min-w-0"><p className="truncate text-xs text-canvas-muted">{topic.subject}</p><h3 className="truncate font-semibold text-canvas-text">{topic.topic}</h3><p className="mt-1 text-xs text-canvas-muted">{t('study.pendingWrongCount', { count: new Intl.NumberFormat(locale).format(topic.pending_count) })}</p></div>
+                <div className="min-w-0"><p className="truncate text-xs text-canvas-muted">{labelOr(topic.subject, t('common.subjectNotSpecified'))}</p><h3 className="truncate font-semibold text-canvas-text">{labelOr(topic.topic, t('common.topicNotSpecified'))}</h3><p className="mt-1 text-xs text-canvas-muted">{t('study.pendingWrongCount', { count: new Intl.NumberFormat(locale).format(topic.pending_count) })}</p></div>
               </article>
             ))}
           </div>

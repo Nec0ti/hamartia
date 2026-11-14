@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import date
 from statistics import median
 
-from app.core.review_schedule import attempt_day, review_state
+from app.core.review_schedule import review_day, review_state
 
 
 def _question_order_insights(questions, exams):
@@ -53,7 +53,7 @@ def topic_priorities(questions, today=None, exams=()):
     today_incorrect = 0
     for question in questions:
         for attempt in question.review_attempts:
-            if attempt_day(attempt.attempted_at) == today:
+            if review_day(attempt) == today:
                 today_question_ids.add(question.id)
                 if attempt.correct:
                     today_correct += 1
@@ -66,8 +66,8 @@ def topic_priorities(questions, today=None, exams=()):
             continue
         pending_questions += 1
         unclassified_questions += not question.subject.strip() or not question.topic.strip()
-        subject = question.subject.strip() or "Ders belirtilmedi"
-        topic = question.topic.strip() or "Konu belirtilmedi"
+        subject = question.subject.strip()
+        topic = question.topic.strip()
         key = (subject.casefold(), topic.casefold())
         group = groups.setdefault(key, {
             "subject": subject,

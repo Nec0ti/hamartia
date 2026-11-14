@@ -162,6 +162,7 @@ class Question(BaseModel):
     question_number: int | None = Field(default=None, ge=1)
     solve_order: int | None = Field(default=None, ge=1)
     time_spent_seconds: int | None = Field(default=None, ge=1)
+    exam_section_total: int | None = Field(default=None, ge=1)
 
 
 # ---------------------------------------------------------------------------

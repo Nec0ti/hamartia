@@ -39,6 +39,26 @@ class ReviewScheduleTests(unittest.TestCase):
 
         self.assertEqual(topic_priorities([question_with_old_exam])["question_order"], [])
 
+    def test_sectioned_exam_order_insights_use_saved_subject_and_section_size(self):
+        exam = Exam(
+            id="mock", date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
+            correct=30, incorrect=4, blank=16,
+            sections=[
+                {"subject": "Matematik", "correct": 10, "incorrect": 2, "blank": 8},
+                {"subject": "Fen", "correct": 20, "incorrect": 2, "blank": 8},
+            ],
+        )
+        question = Question(
+            id="q1", subject="Matematik", exam_id="mock", solve_order=18,
+            time_spent_seconds=42, exam_section_total=20,
+        )
+
+        order = topic_priorities([question], exams=[exam])["question_order"]
+
+        self.assertEqual(len(order), 1)
+        self.assertEqual((order[0]["exam_type"], order[0]["subject"]), ("tyt", "Matematik"))
+        self.assertEqual(order[0]["late"], {"wrong_count": 1, "median_seconds": 42})
+
     def test_new_question_is_due_and_legacy_review_flag_stays_archived(self):
         today = date(2026, 11, 14)
 

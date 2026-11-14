@@ -116,6 +116,35 @@ class QuestionFlowTests(unittest.TestCase):
             ))
         self.assertEqual(error.exception.status_code, 422)
 
+    def test_sectioned_exam_question_uses_selected_subject_size(self):
+        exam = Exam(
+            id="mock", date="2026-11-14", exam_type="tyt", subject="TYT Geneli",
+            correct=30, incorrect=4, blank=16,
+            sections=[
+                {"subject": "Matematik", "correct": 10, "incorrect": 2, "blank": 8},
+                {"subject": "Fen", "correct": 20, "incorrect": 2, "blank": 8},
+            ],
+        )
+        self.storage.save_list("exams.json", [exam])
+
+        created = asyncio.run(question_api.upload_question(
+            None, "Fonksiyon sorusu", "matematik", "Fonksiyon", self.storage,
+            exam_id="mock", question_number=20, solve_order=18, time_spent_seconds=42,
+        ))
+        self.assertEqual(created.exam_section_total, 20)
+
+        with self.assertRaises(HTTPException) as out_of_section:
+            asyncio.run(question_api.upload_question(
+                None, "Soru", "Matematik", "", self.storage,
+                exam_id="mock", question_number=21,
+            ))
+        with self.assertRaises(HTTPException) as unknown_subject:
+            asyncio.run(question_api.upload_question(
+                None, "Soru", "Fizik", "", self.storage, exam_id="mock",
+            ))
+        self.assertEqual(out_of_section.exception.status_code, 422)
+        self.assertEqual(unknown_subject.exception.status_code, 422)
+
     def test_invalid_exam_reference_does_not_leave_uploaded_image(self):
         with self.assertRaises(HTTPException):
             asyncio.run(question_api.upload_question(
@@ -127,8 +156,9 @@ class QuestionFlowTests(unittest.TestCase):
     def test_legacy_question_json_defaults_order_fields(self):
         question = Question.model_validate({"id": "legacy", "subject": "Matematik"})
 
-        self.assertEqual((question.exam_id, question.question_number, question.solve_order, question.time_spent_seconds),
-                         ("", None, None, None))
+        self.assertEqual((question.exam_id, question.question_number, question.solve_order,
+                          question.time_spent_seconds, question.exam_section_total),
+                         ("", None, None, None, None))
 
     def test_upload_requires_either_an_image_or_text(self):
         with self.assertRaises(HTTPException) as error:

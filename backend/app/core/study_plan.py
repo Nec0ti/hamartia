@@ -15,10 +15,11 @@ def _question_order_insights(questions, exams):
         exam = exam_by_id.get(question.exam_id)
         if not exam or question.solve_order is None:
             continue
-        size = exam.correct + exam.incorrect + exam.blank
+        size = question.exam_section_total or exam.correct + exam.incorrect + exam.blank
         if size < 1 or question.solve_order > size:
             continue
-        key = (getattr(exam, "exam_type", "branch"), exam.subject)
+        subject = question.subject if question.exam_section_total else exam.subject
+        key = (getattr(exam, "exam_type", "branch"), subject)
         group = groups.setdefault(key, {"exam_ids": set(), **{label: {"wrong_count": 0, "times": []} for label in labels}})
         stage = labels[min(2, ((question.solve_order - 1) * 3) // size)]
         group["exam_ids"].add(exam.id)

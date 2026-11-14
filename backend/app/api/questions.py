@@ -51,14 +51,26 @@ async def upload_question(
 ):
     """Store an uploaded question image, OCR text, and study labels."""
     exam_id = exam_id.strip()
+    exam_section_total = None
+    size_label = "exam size"
     if exam_id:
         exams = storage.load_list("exams.json", Exam)
         exam = next((item for item in exams if item.id == exam_id), None)
         if exam is None:
             raise HTTPException(status_code=404, detail="Exam not found")
         total_questions = exam.correct + exam.incorrect + exam.blank
+        if exam.sections:
+            section = next((
+                item for item in exam.sections
+                if item.subject.casefold() == subject.strip().casefold()
+            ), None)
+            if section is None:
+                raise HTTPException(status_code=422, detail="Choose a subject section from this mock exam")
+            total_questions = section.correct + section.incorrect + section.blank
+            exam_section_total = total_questions
+            size_label = "selected section size"
         if any(value is not None and value > total_questions for value in (question_number, solve_order)):
-            raise HTTPException(status_code=422, detail="Question number and solve order cannot exceed the exam size")
+            raise HTTPException(status_code=422, detail=f"Question number and solve order cannot exceed the {size_label}")
     elif any(value is not None for value in (question_number, solve_order, time_spent_seconds)):
         raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
 
@@ -108,6 +120,7 @@ async def upload_question(
         question_number=question_number,
         solve_order=solve_order,
         time_spent_seconds=time_spent_seconds,
+        exam_section_total=exam_section_total,
     )
     try:
         storage.append_list("questions.json", question, Question)

@@ -4,7 +4,7 @@ Handles image upload, OCR text capture, council-analysis triggering, and
 mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 from pathlib import Path
 from uuid import uuid4
@@ -139,11 +139,14 @@ async def list_questions(storage: StorageService = Depends(get_storage)):
 
 
 @router.get("/insights", response_model=dict)
-async def question_insights(storage: StorageService = Depends(get_storage)):
+async def question_insights(
+    storage: StorageService = Depends(get_storage),
+    today: date | None = None,
+):
     """Rank repeated mistake topics without calling a model."""
     questions = storage.load_list("questions.json", Question)
     exams = storage.load_list("exams.json", Exam)
-    return topic_priorities(questions, exams=exams)
+    return topic_priorities(questions, today=today, exams=exams)
 
 
 @router.get("/{question_id}", response_model=Question)
@@ -213,6 +216,7 @@ class ReviewRequest(BaseModel):
 
 class AttemptRequest(BaseModel):
     correct: bool
+    attempt_day: date | None = None
 
 
 class QuestionUpdate(BaseModel):
@@ -327,7 +331,12 @@ async def record_question_attempt(
     storage: StorageService = Depends(get_storage),
 ):
     """Record a manual solve result and reopen the question for spaced review."""
-    attempt = ReviewAttempt(attempted_at=_utcnow(), correct=payload.correct)
+    attempted_at = _utcnow()
+    # Older API clients that omit the user's calendar date keep a deterministic UTC fallback.
+    attempt_day = payload.attempt_day or datetime.fromisoformat(attempted_at.replace("Z", "+00:00")).date()
+    attempt = ReviewAttempt(
+        attempted_at=attempted_at, correct=payload.correct, attempt_day=attempt_day.isoformat(),
+    )
     updated = []
 
     def save_attempt(questions):

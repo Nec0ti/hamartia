@@ -12,6 +12,19 @@ def attempt_day(value):
         return None
 
 
+def review_day(attempt):
+    """Use the saved user-calendar day, falling back to UTC for legacy records."""
+    value = getattr(attempt, "attempt_day", "")
+    try:
+        parsed = date.fromisoformat(value)
+        if parsed.isoformat() == value:
+            return parsed
+    except (TypeError, ValueError):
+        pass
+    # Historical records contain only an instant; their original local day cannot be recovered.
+    return attempt_day(attempt.attempted_at)
+
+
 def review_state(question, today=None):
     """Return the due date and correctness streak without mutating a question."""
     today = today or date.today()
@@ -22,7 +35,7 @@ def review_state(question, today=None):
         return {"due_date": today.isoformat(), "due": True, "streak": 0, "last_correct": None}
 
     last = attempts[-1]
-    last_day = attempt_day(last.attempted_at)
+    last_day = review_day(last)
     if last_day is None:
         return {"due_date": today.isoformat(), "due": True, "streak": 0, "last_correct": last.correct}
 

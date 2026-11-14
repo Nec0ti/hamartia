@@ -61,6 +61,13 @@ export const fmtDate = (value, locale = 'en-US', options = { dateStyle: 'medium'
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(date)
 }
 
+/** Serialize the user's current calendar day without converting it to UTC. */
+export const localDateToday = (now = new Date()) =>
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+/** Present missing saved labels in the selected language without changing stored values. */
+export const labelOr = (value, fallback) => value?.trim() || fallback
+
 /** Format a whole number of minutes with leading zero padding. */
 export const fmtDuration = (minutes, seconds) => {
   const m = Math.max(0, Math.floor(minutes))

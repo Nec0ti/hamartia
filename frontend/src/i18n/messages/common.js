@@ -4,6 +4,7 @@ export default {
   'common.topic': { en: 'Topic', tr: 'Konu' },
   'common.unlabelled': { en: 'Unlabelled', tr: 'Etiketsiz' },
   'common.subjectNotSpecified': { en: 'Subject not specified', tr: 'Ders belirtilmedi' },
+  'common.topicNotSpecified': { en: 'Topic not specified', tr: 'Konu belirtilmedi' },
   'common.branchExam': { en: 'Branch exam', tr: 'Branş' },
   'common.seconds': { en: '{{count}} sec', tr: '{{count}} sn' },
   'common.secondsLabel': { en: 'Seconds', tr: 'Saniye' },

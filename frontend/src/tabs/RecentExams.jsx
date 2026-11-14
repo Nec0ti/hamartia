@@ -11,12 +11,12 @@ const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
  * "double-click Incorrect to upload" behaviour from the spec.
  */
 export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onDelete, recentError }) {
-  const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)).slice(0, 8), [exams])
+  const recent = useMemo(() => exams.slice().sort((a, b) => (b.date < a.date ? 1 : -1)), [exams])
 
   if (recent.length === 0) {
     return (
       <Panel>
-        <Header title="Son denemeler" />
+        <Header title="Deneme geçmişi" />
         <p className="py-10 text-center text-sm text-canvas-muted">
           Henüz deneme kaydı yok. İlk denemeni eklemek için “Deneme ekle”ye tıkla.
         </p>
@@ -26,7 +26,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
 
   return (
     <Panel>
-      <Header title="Son denemeler" />
+      <Header title="Deneme geçmişi" />
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>

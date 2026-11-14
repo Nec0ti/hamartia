@@ -13,3 +13,4 @@ Her inceleme, test veya benchmark raporunu tarihli bir Markdown dosyası olarak 
 - [2026-11-14 deneme sırası ve yanlış soru süresi](2026-11-14-question-order-insights.md)
 - [2026-11-14 konu çalışma setleri uygulama planı](2026-11-14-practice-sessions-plan.md)
 - [2026-11-14 konu çalışma seti metriği doğrulaması](2026-11-14-practice-sessions.md)
+- [2026-11-14 odaklı konu çalışma oturumu uygulama planı](2026-11-14-focused-practice-plan.md)

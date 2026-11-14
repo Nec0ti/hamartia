@@ -22,6 +22,7 @@
 - [x] Çalışma planında bugün denenmiş farklı soruları ve tüm doğru/yanlış yanıtlarını göster.
 - [x] Deneme bağlamından yanlış eklerken soru numarası, çözüm sırası ve soru süresini sakla; kaydedilen yanlışların sıra ve süre dağılımını göster.
 - [x] Tamamlanan konu çalışma setlerini ayrı kayıt et; yalnızca bu setlerden net, cevaplanan soru doğruluğu ve konu trendi üret.
+- [ ] Öncelikli konudan odaklı çalışma oturumu başlat; süre ve doğru/yanlış/boş sayaçlarını takip edip bitince mevcut set kaydına dönüştür.
 - [x] Yerel API ve frontend'i tek komutla başlat; readiness ve port çakışmasını kontrol et.
 
 ## P2 — doğrulama ve sağlamlaştırma
@@ -43,4 +44,4 @@
 
 ## Sonraki küçük iş
 
-Bir sonraki küçük iş: ayrı bilgisayarda OpenAI uyumlu endpoint/model ve multimodal görsel aktarımını doğrula.
+Odaklı konu çalışma oturumu: [uygulama planı](reports/2026-11-14-focused-practice-plan.md). Diğer bilgisayardaki AI doğrulaması oturum ekipmanı hazır olduğunda yapılacak.

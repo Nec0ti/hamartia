@@ -1,5 +1,7 @@
 # Backlog günlüğü
 
+- 2026-11-14: Sonraki dilim planlandı: öncelikli konuya bağlı süreli odaklı oturum, doğru/yanlış/boş sayaçları ve bitince mevcut çalışma seti API'sine kayıt. Oturum taslağının sekme yenilenince geri gelmesi ve model çağrısı içermemesi kabul ölçütlerine eklendi.
+
 - 2026-11-14: Konu çalışma seti kaydı tamamlandı. Doğru/yanlış/boş, süre, net ve yalnızca cevaplanan sorular üzerinden doğruluk saklanıyor; konu özeti set kayıtlarından hesaplanıyor. Yedekleme eski ZIP biçimiyle uyumlu. 72 backend testi, frontend 4/4, build ve gerçek tarayıcı smoke geçti. AI'siz 1k/10k benchmarkı eklendi. GitHub Actions run #63 (`c1da9aa`) backend/frontend ve tüm benchmark adımlarıyla başarılı.
 
 - 2026-11-14: Konu bazında gerçek çalışma ilerlemesi için doğru/yanlış/boş ve süreyle tamamlanmış set kaydı planlandı. Doğruluk yalnızca cevaplanan sorulara bölünecek; yanlış defteri sayısı payda yapılmayacak. Tasarım: `reports/2026-11-14-practice-sessions-plan.md`.

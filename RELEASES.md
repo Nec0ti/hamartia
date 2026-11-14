@@ -15,3 +15,17 @@ Masaüstü sürüm iş akışı etkinleştikten sonra birleştirilen her PR içi
 İş akışı yayımladığı her iki dilli notu bu dosyaya ekler. İş akışı eklenmeden önce birleştirilmiş PR'lar geriye dönük olarak release tetikleyemez.
 
 Güncel indirme dosyaları ve notlar için [GitHub Releases sayfasına](https://github.com/Nec0ti/hamartia/releases) bak.
+
+## ARETE-001
+
+## English
+
+`ARETE-001` includes the changes merged in [PR #5: feat: ship desktop packages and automated releases](https://github.com/Nec0ti/hamartia/pull/5).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-001` sürümü, [#5 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/5) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

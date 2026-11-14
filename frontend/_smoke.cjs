@@ -5,10 +5,9 @@ const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
 
-const baseUrl = 'http://127.0.0.1:5174'
 const apiUrl = 'http://127.0.0.1:8000'
 
-async function waitForServer(child, url) {
+async function waitForServer(child, url, name) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (child.exitCode !== null) throw new Error(`Server exited early (${child.exitCode})`)
     try {
@@ -17,11 +16,12 @@ async function waitForServer(child, url) {
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  throw new Error('Timed out waiting for Vite')
+  throw new Error(`Timed out waiting for ${name}`)
 }
 
 async function main() {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-browser-'))
+  const baseUrl = 'http://127.0.0.1:5174'
   const uploads = path.join(dataDir, 'uploads')
   await fs.mkdir(uploads)
   await fs.writeFile(path.join(dataDir, 'questions.json'), JSON.stringify([{
@@ -31,23 +31,17 @@ async function main() {
   }]))
   await fs.writeFile(path.join(uploads, 'q1.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL6sAAAAASUVORK5CYII=', 'base64'))
   const python = process.env.HAMARTIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')
-  const backend = spawn(python, ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000'], {
-    cwd: path.resolve(__dirname, '../backend'),
-    env: { ...process.env, HAMARTIA_DATA_DIR: dataDir },
-    stdio: ['ignore', 'ignore', 'pipe'],
-  })
-  const frontend = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5174', '--strictPort'], {
-    cwd: __dirname,
-    env: { ...process.env, VITE_API_BASE: apiUrl },
+  const launcher = spawn(python, [path.resolve(__dirname, '../scripts/dev.py')], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, HAMARTIA_DATA_DIR: dataDir, HAMARTIA_FRONTEND_PORT: '5174', VITE_API_BASE: apiUrl },
     stdio: ['ignore', 'ignore', 'pipe'],
   })
   let serverErrors = ''
-  backend.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
-  frontend.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
+  launcher.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
   let browser
   try {
-    await waitForServer(backend, `${apiUrl}/healthcheck/health`)
-    await waitForServer(frontend, baseUrl)
+    await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
+    await waitForServer(launcher, baseUrl, 'frontend')
     browser = await chromium.launch({
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
@@ -174,8 +168,10 @@ async function main() {
     throw error
   } finally {
     await browser?.close()
-    backend.kill('SIGTERM')
-    frontend.kill('SIGTERM')
+    if (launcher.exitCode === null) {
+      launcher.kill('SIGTERM')
+      await new Promise((resolve) => launcher.once('exit', resolve))
+    }
     await fs.rm(dataDir, { recursive: true, force: true })
   }
 }

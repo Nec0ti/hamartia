@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 TAG_PATTERN = re.compile(r"^ARETE-(\d+)$")
+REQUIRED_ASSET_SUFFIXES = {".exe", ".deb", ".appimage"}
 
 
 def next_arete_code(tags):
@@ -54,6 +55,40 @@ def append_release_content(content, code, notes):
 
 def existing_release_for_pull_request(releases, pull_url):
     return next((release for release in releases if pull_url in release.get("body", "")), None)
+
+
+def missing_release_assets(release, artifact_paths):
+    available = {path.suffix.lower(): path for path in artifact_paths}
+    missing = REQUIRED_ASSET_SUFFIXES - {
+        Path(asset["name"]).suffix.lower() for asset in release.get("assets", [])
+    }
+    unavailable = missing - available.keys()
+    if unavailable:
+        raise RuntimeError(f"Missing package artifacts for release: {', '.join(sorted(unavailable))}")
+    return [available[suffix] for suffix in sorted(missing)]
+
+
+def validate_artifacts(artifact_paths):
+    missing = REQUIRED_ASSET_SUFFIXES - {path.suffix.lower() for path in artifact_paths}
+    if missing:
+        raise RuntimeError(f"Missing release package artifacts: {', '.join(sorted(missing))}")
+
+
+def fetch_release(code):
+    return json.loads(subprocess.check_output([
+        "gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/releases/tags/{code}",
+    ], text=True))
+
+
+def ensure_release_assets(code, release, artifacts):
+    missing = missing_release_assets(release, artifacts)
+    if missing:
+        subprocess.run(["gh", "release", "upload", code, *map(str, missing)], check=True)
+        release = fetch_release(code)
+        missing = missing_release_assets(release, artifacts)
+        if missing:
+            raise RuntimeError(f"Release {code} is still missing required assets after upload")
+    return release
 
 
 def discover(pulls_path, github_output):
@@ -107,8 +142,7 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
     if pull is None:
         raise SystemExit("No merged pull request found for this commit")
     artifacts = sorted(path for path in artifact_dir.iterdir() if path.is_file())
-    if not artifacts:
-        raise SystemExit(f"No release artifacts found in {artifact_dir}")
+    validate_artifacts(artifacts)
 
     pages = json.loads(subprocess.check_output([
         "gh", "api", "--paginate", "--slurp",
@@ -151,6 +185,11 @@ def publish_release(pulls_path, artifact_dir, target_sha, notes_path, github_out
             time.sleep(0.25)
         else:
             raise RuntimeError("Could not allocate an ARETE release code after 20 retries")
+
+    if release is None or "tag_name" not in release:
+        release = fetch_release(code)
+    release = ensure_release_assets(code, release, artifacts)
+    notes_path.write_text(release["body"])
 
     with github_output.open("a") as output:
         output.write(f"tag={code}\npr_number={pull['number']}\n")

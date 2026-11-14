@@ -1,6 +1,8 @@
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 MODULE_PATH = Path(__file__).with_name("release_metadata.py")
@@ -36,6 +38,28 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertIn("## ARETE-001", ledger)
         self.assertIn("## Türkçe", ledger)
         self.assertEqual(module.append_release_content(ledger, "ARETE-001", notes), ledger)
+
+    def test_release_assets_detect_and_repair_missing_packages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            artifact_paths = [Path(directory) / name for name in (
+                "Hamartia-win-x64.exe", "Hamartia-linux-x64.deb", "Hamartia-linux-x64.AppImage",
+            )]
+            for path in artifact_paths:
+                path.touch()
+            release = {"assets": [{"name": "Hamartia-win-x64.exe"}, {"name": "Hamartia-linux-x64.AppImage"}]}
+            missing = module.missing_release_assets(release, artifact_paths)
+            self.assertEqual([path.suffix.lower() for path in missing], [".deb"])
+            completed = {"assets": [{"name": path.name} for path in artifact_paths]}
+            self.assertEqual(module.missing_release_assets(completed, artifact_paths), [])
+            module.validate_artifacts(artifact_paths)
+            with patch.object(module.subprocess, "run") as run, patch.object(module, "fetch_release", return_value=completed):
+                self.assertEqual(module.ensure_release_assets("ARETE-001", release, artifact_paths), completed)
+                self.assertEqual(run.call_args.args[0], ["gh", "release", "upload", "ARETE-001", str(artifact_paths[1])])
+            with patch.object(module.subprocess, "run"), patch.object(module, "fetch_release", return_value=release):
+                with self.assertRaisesRegex(RuntimeError, "still missing required assets"):
+                    module.ensure_release_assets("ARETE-001", release, artifact_paths)
+            with self.assertRaisesRegex(RuntimeError, "Missing release package artifacts: .deb"):
+                module.validate_artifacts([artifact_paths[0], artifact_paths[2]])
 
 
 if __name__ == "__main__":

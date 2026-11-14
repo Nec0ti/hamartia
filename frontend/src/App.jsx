@@ -3,6 +3,7 @@ import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
 import QuestionsTab from './tabs/QuestionsTab.jsx'
 import StudyPlanTab from './tabs/StudyPlanTab.jsx'
+import StudyAgentTab from './tabs/StudyAgentTab.jsx'
 import CosmosTab from './tabs/CosmosTab.jsx'
 import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
@@ -57,6 +58,7 @@ export default function App() {
     }} />
     if (activeTab === 'questions') return <QuestionsTab initialExam={questionExam} />
     if (activeTab === 'studyplan') return <StudyPlanTab />
+    if (activeTab === 'studyagent') return <StudyAgentTab />
     if (activeTab === 'cosmos') return <CosmosTab />
     return <ComingSoon tabId={activeTab} />
   }, [activeTab, questionExam])

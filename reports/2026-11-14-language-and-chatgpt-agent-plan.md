@@ -35,7 +35,7 @@
 - Use the public Responses API with the selected account's OAuth access token. Discover models from that account rather than hardcoding availability. Stream until a completed response; set `store: false`; handle cancellation, auth failure, ineligible accounts, usage limits, network failures, and incomplete responses explicitly.
 - Refresh rotating credentials safely and serialize refreshes. Keep credentials out of React, `settings.json`, backups, source control, logs, analytics, and test reports. Persist them only in a protected local credential store with owner-only access; fail closed if the platform cannot provide the configured protection.
 - Add a small Turkish/English Study Agent screen. It follows the selected UI language and can use a narrow, read-only set of local study tools/context. Show when the ChatGPT plan is in use and link to usage settings. Explain that only the supplied chat/context is sent to OpenAI and that ChatGPT conversations are not imported.
-- Keep the existing local model as a separately selectable option for existing question review; never silently switch providers after an error. Real local model testing stays out of CI and benchmarks.
+- Keep existing local question analysis separate from the Study Agent. A local Study Agent provider is a later phase; never silently switch providers after an error. Real model execution stays out of CI and benchmarks.
 
 ### First release boundary
 
@@ -63,4 +63,4 @@
 - Sign in with ChatGPT open-source plan usage currently applies to eligible accounts and is a distinct consent from identity. Availability, plan policy, and usage limits can differ by account/workspace and may change.
 - Refresh tokens are long-lived secrets. Credential storage and loopback OAuth validation are security boundaries.
 - Hamartia currently runs as a local web app rather than an Electron application; the backend must own the OAuth callback and token custody, while the browser receives status/results only.
-- The current `/agent/chat` implementation has no UI, a JSON/form contract mismatch, and turns errors into success-shaped fallback replies. Fix all three before presenting a ChatGPT agent as usable.
+- Sign-in and inference require native safe-storage and account verification on supported desktop platforms; automated checks use mocks only.

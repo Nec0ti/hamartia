@@ -310,7 +310,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       }
       signingOut = false
     }
-    return { connected: false, revocationConfirmed }
+    return { connected: false, savedAccount: Boolean(credentials?.client_id), email: credentials?.email || '', revocationConfirmed }
   }
 
   async function forgetAccount() {

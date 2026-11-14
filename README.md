@@ -44,6 +44,16 @@ Question text and image bytes are sent to the server shown in Settings. Do not u
 
 For manual verification on another computer, save the server address/model/key; then choose **Review with Local AI** for a text question, followed by the same action on a question with an image. On success, the Council result is saved. An endpoint/model error produces a visible error and leaves the current question label/analysis unchanged. This manual flow is not run by automated tests or benchmarks.
 
+## ChatGPT Study Agent
+
+The packaged desktop app offers **Continue with ChatGPT** for the Study Agent. This is OpenAI's open-source Sign in with ChatGPT plan-use flow. Signing in and allowing plan use are user-controlled; only a token response that grants `chatgpt.tokens.use.direct` and `resource.invoke` enables requests. Availability and plan limits depend on the ChatGPT account.
+
+Before each request, the app asks for consent to send the typed question and a bounded local study summary to OpenAI: pending/scheduled counts, up to eight subject/topic/tag summaries, and up to eight recent practice aggregates (set count, net, and accuracy). Saved question-record text/images and previous chats are excluded. Hamartia stores no Study Agent transcript. The Electron main process sends the request directly to the public Responses API with `store: false` and streaming enabled; there is no remote Hamartia proxy or silent fallback to local AI. The optional local provider above remains separate for question-image analysis.
+
+OAuth uses a loopback callback, state, nonce, PKCE, and verified OpenAI ID tokens. Credentials are encrypted with the operating system's protected credential store; Hamartia disables sign-in when that protection is unavailable (including Linux `basic_text`). Sign out attempts to revoke the renewable session and clears local tokens. It retains the nonsecret account registration so the next sign-in can reuse it. Choose **Use a different account** after sign-out to remove that local registration while keeping the installation host ID; manage any remaining OpenAI app registration in ChatGPT settings. If revocation cannot be confirmed, Hamartia reports that and links the next step to ChatGPT settings.
+
+Automated tests mock the OAuth server, identity keys, model list, and Responses stream. They never use a real ChatGPT account or a local model. A real subscription sign-in and request still need manual verification on a supported desktop with an eligible ChatGPT account and OS credential store.
+
 ## Non-AI verification
 
 Backend tests from the repository root:

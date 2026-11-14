@@ -10,11 +10,13 @@ const TAG_LABELS = {
   '[Time Panic]': 'Zaman baskısı',
 }
 const EXAM_TYPES = { tyt: 'TYT', ayt: 'AYT', branch: 'Branş' }
+const newFocusTopic = (topic) => ({ subject: topic.subject, topic: topic.topic, requestedAt: Date.now() })
 
 export default function StudyPlanTab() {
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState('')
+  const [focusTopic, setFocusTopic] = useState(null)
 
   const load = useCallback(() => api.questions.insights().then(setPlan).catch((e) => setError(handleApiError(e).detail)), [])
 
@@ -50,7 +52,7 @@ export default function StudyPlanTab() {
         <Stat label="Ders veya konusu eksik" value={plan.unclassified_questions} icon={<Tags size={18} />} />
       </div>
 
-      <PracticeSessions />
+      <PracticeSessions startTopic={focusTopic} onStartTopicConsumed={() => setFocusTopic(null)} />
 
       <section aria-label="Bugünkü çalışma" className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
         <h2 className="font-semibold text-canvas-text">Bugün</h2>
@@ -134,6 +136,7 @@ export default function StudyPlanTab() {
               </div>
               <span className="rounded-full border border-canvas-line px-3 py-1 text-xs text-canvas-muted">{topic.pending_count} bekleyen yanlış</span>
             </div>
+            <button type="button" onClick={() => setFocusTopic(newFocusTopic(topic))} className="mt-3 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise">Odaklı çalış · {topic.subject} / {topic.topic}</button>
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(topic.tags).map(([tag, count]) => (
                 <span key={tag} className="rounded-md bg-canvas-base px-2 py-1 text-xs text-canvas-muted">{TAG_LABELS[tag] || tag}: {count}</span>

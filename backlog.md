@@ -1,24 +1,26 @@
 # Backlog
 
-## P0 — çalışma temelini kur
+## P0 — veri bütünlüğü
 
-- [ ] Yerel geliştirme dalını ve GitHub `codex/hamartia-rebuild` dalını güvenilir biçimde eşleştir; kaynak `master` değişmediğini doğrula.
-- [ ] Frontend bağımlılıklarını kurup build/smoke yolunu doğrula; mevcut API ve veri biçimini raporla.
-- [ ] AI dışı smoke/test/benchmark komutlarını belirle; `backend/tests/*.py` ignore kuralını gözden geçir.
+- [ ] Liste okuma bozuk/kısmi JSON'ı sessizce boş veri gibi göstermesin.
+- [ ] Etiketleme, analiz sonucu kaydetme ve silme işlemleri atomik read-modify-write olsun.
+- [ ] Rakip güncellemelerde hiçbir kayıt kaybolmadığını test et.
 
-## P1 — ilk çalışan öğrenci döngüsü
+## P1 — öğrenci döngüsü
 
-- [ ] Deneme kaydını ve geçmişi korumayı backend'de çalışır hâle getir; UI smoke doğrulamasını tamamla.
-- [ ] Yanlış soruyu görsel/metin ve ders/konu bağlamıyla yerelde kaydet.
-- [ ] Hataları ders/konu bazında özetleyip tekrar çalışma önerisi için şeffaf, deterministik başlangıç görünümü oluştur.
-- [ ] Dashboard ve yer tutucu sekmelerdeki navigasyonu gerçek, tutarlı akışa bağla.
+- [x] Deneme girme, geçmişi koruma, yanlış görselini yerel kaydetme ve etiketleme.
+- [x] Ana sayfa ve Yanlışlarım sekmesini gerçek akışa bağlama.
+- [ ] Ders/konu hata örüntülerinden deterministik çalışma önceliği çıkarma.
+- [ ] Cosmos ve Çalışma Koçu yer tutucularını amaca uygun ekranlara dönüştürme.
 
-## P2 — ölçüm ve sağlamlaştırma
+## P2 — doğrulama ve sağlamlaştırma
 
-- [ ] AI dışı formül, depolama, API ve arayüz akışlarını kapsayan testler ekle.
-- [ ] AI çağrısı içermeyen uygulama benchmarklarını kur ve baseline raporla.
-- [ ] Eski JSON kayıtlarıyla geriye uyumluluğu doğrula.
+- [x] Formül, sınır doğrulama, kayıt ve görsel rotası için AI dışı backend testleri.
+- [x] Depolama ve soru iş akışı benchmarkları; frontend test/build baseline'ı.
+- [ ] Gerçek tarayıcı akışında uçtan uca smoke ve erişilebilirlik kontrolü.
+- [ ] Canlı frontend bağımlılık güvenlik güncellemelerini doğrulama.
+- [ ] Mevcut JSON kayıtları için bozuk/kısmi/eski biçim davranışlarını doğrulama.
 
 ## Sonraki küçük iş
 
-P0 yerel çalıştırma ve veri sözleşmesi doğrulaması.
+P0 atomik koleksiyon güncellemeleri ve malformed JSON davranışı.

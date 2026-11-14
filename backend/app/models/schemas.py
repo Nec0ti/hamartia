@@ -8,7 +8,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, computed_field, Field
+from pydantic import BaseModel, computed_field, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
@@ -160,6 +160,26 @@ class Exam(BaseModel):
         from app.core.formulas import xp_for_exam
 
         return xp_for_exam(self)
+
+
+class ExamCreate(BaseModel):
+    """Raw inputs accepted when recording an exam."""
+
+    date: str
+    subject: str
+    correct: int = Field(ge=0)
+    incorrect: int = Field(ge=0)
+    blank: int = Field(ge=0)
+    duration_minutes: int = Field(default=0, ge=0)
+    duration_seconds: int = Field(default=0, ge=0)
+
+    @field_validator("subject")
+    @classmethod
+    def require_subject(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("subject is required")
+        return value
 
 
 def _utcnow_iso() -> str:

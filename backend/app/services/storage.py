@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Any, List, Type, TypeVar
 
 T = TypeVar("T", bound=object)
+# shortcut: locks are process-local, use SQLite before enabling multiple workers.
+_FILE_LOCKS: dict[str, threading.Lock] = {}
+_FILE_LOCKS_GUARD = threading.Lock()
 
 
 class StorageError(RuntimeError):
@@ -27,22 +30,18 @@ class StorageService:
     def __init__(self, data_dir: Path):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        # One lock per file name keeps operations for different files from
-        # blocking each other while still serializing access to the same file.
-        self._locks: dict[str, threading.Lock] = {}
-        self._lock_guard = threading.Lock()
-
     # -- internal helpers ---------------------------------------------------
 
     def _path(self, filename: str) -> Path:
         return self.data_dir / filename
 
     def _lock_for(self, filename: str) -> threading.Lock:
-        with self._lock_guard:
-            lock = self._locks.get(filename)
+        key = str(self._path(filename).resolve())
+        with _FILE_LOCKS_GUARD:
+            lock = _FILE_LOCKS.get(key)
             if lock is None:
                 lock = threading.Lock()
-                self._locks[filename] = lock
+                _FILE_LOCKS[key] = lock
             return lock
 
     def _read_raw(self, filename: str) -> str:
@@ -96,6 +95,22 @@ class StorageService:
         lock = self._lock_for(filename)
         with lock:
             serialized = [item.model_dump(mode="json") for item in items]
+            self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
+
+    def append_list(self, filename: str, item: Any, model_cls: type) -> None:
+        """Append one validated record without losing concurrent updates."""
+        lock = self._lock_for(filename)
+        with lock:
+            raw = self._read_raw(filename)
+            try:
+                data = json.loads(raw) if raw else []
+                if not isinstance(data, list):
+                    raise ValueError("expected a JSON array")
+                items = [model_cls.model_validate(record) for record in data]
+            except (ValueError, TypeError) as exc:
+                raise StorageError(f"Cannot append to invalid {filename}") from exc
+            items.append(model_cls.model_validate(item))
+            serialized = [record.model_dump(mode="json") for record in items]
             self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
 
     # -- typed scalar documents --------------------------------------------

@@ -63,9 +63,6 @@ ENV/
 htmlcov/
 *.log
 
-# Local verification sweep scripts
-backend/tests/*.py
-
 # ==========================================
 # NODE & REACT (FRONTEND)
 # ==========================================

@@ -4,10 +4,13 @@ Net and XP are derived on write/read through `core.formulas`, never stored,
 so the JSON file only ever holds raw inputs.
 """
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import DATA_DIR
-from app.models.schemas import Exam
+from app.models.schemas import Exam, ExamCreate
 from app.services.storage import StorageError, StorageService
 
 router = APIRouter(prefix="/exams", tags=["exams"])
@@ -26,14 +29,22 @@ async def list_exams(storage: StorageService = Depends(get_storage)):
     return storage.load_list("exams.json", Exam)
 
 
-@router.post("", status_code=201)
-async def create_exam(payload: Exam, storage: StorageService = Depends(get_storage)):
-    """Persist a new exam. Net and XP are computed but not stored."""
-    # The payload already carries id/created_at; re-validate so the stored
-    # shape exactly matches what the client sent.
-    stored = Exam.model_validate(payload.model_dump())
-    storage.save_list("exams.json", [stored])
-    return stored
+@router.post("", status_code=201, response_model=Exam)
+async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get_storage)):
+    """Create an exam from UI inputs and preserve the student's history."""
+    exam = Exam(
+        id=f"exam_{uuid4().hex}",
+        date=payload.date,
+        subject=payload.subject,
+        correct=payload.correct,
+        incorrect=payload.incorrect,
+        blank=payload.blank,
+        duration_minutes=payload.duration_minutes,
+        duration_seconds=payload.duration_seconds,
+        created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    )
+    storage.append_list("exams.json", exam, Exam)
+    return exam
 
 
 @router.get("/{exam_id}", response_model=Exam)

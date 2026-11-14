@@ -52,6 +52,7 @@ export const questions = {
       .patch(`/questions/${id}/tag`, { hamartia_tag: hamartiaTag })
       .then((r) => r.data),
   review: (id, reviewed = true) => client.patch(`/questions/${id}/review`, { reviewed }).then((r) => r.data),
+  attempt: (id, correct) => client.post(`/questions/${id}/attempt`, { correct }).then((r) => r.data),
 }
 
 /* -------------------------------- cosmos -------------------------------- */

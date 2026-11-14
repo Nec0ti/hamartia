@@ -18,9 +18,13 @@ test('level threshold matches the backend ladder', () => {
 })
 
 test('level progress resets at thresholds and stays within the bar', () => {
-  assert.equal(xpProgress(499, 1), 0)
+  assert.equal(xpProgress(0, 1), 0)
+  assert.equal(xpProgress(499, 1), 0.998)
+  assert.equal(xpProgress(500, 2), 0)
   assert.equal(xpProgress(750, 2), 0.5)
   assert.equal(xpProgress(1000, 3), 0)
-  assert.equal(xpProgress(1500, 3), 1)
-  assert.equal(xpToNextLevel(2), 1500)
+  assert.equal(xpProgress(1499, 3), 0.998)
+  assert.equal(xpProgress(1500, 4), 0)
+  assert.equal(xpToNextLevel(1), 500)
+  assert.equal(xpToNextLevel(2), 1000)
 })

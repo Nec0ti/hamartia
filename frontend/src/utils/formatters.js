@@ -30,14 +30,12 @@ export const levelForXp = (totalXp) => {
 }
 
 /** XP required to advance from the current level to the next. */
-export const xpToNextLevel = (level) => (level + 1) * 500
+export const xpToNextLevel = (level) => Math.max(1, level) * 500
 
 /** Progress (0..1) toward the next level. 1.0 when already at the cap. */
 export const xpProgress = (totalXp, level) => {
-  if (level <= 1) return 0
-  const earned = totalXp - (level - 1) * 500
-  const needed = 500
-  return Math.min(1, Math.max(0, earned / needed))
+  const earned = totalXp - (Math.max(1, level) - 1) * 500
+  return Math.min(1, Math.max(0, earned / 500))
 }
 
 /* ------------------------------ formatters ------------------------------ */

@@ -8,18 +8,16 @@ the harness defined in the project root `HAMARTIA.md`.
 from __future__ import annotations
 
 import json
-import logging
 from base64 import b64encode
 from pathlib import Path
 
-from openai import AsyncOpenAI, OpenAIError
+from openai import AsyncOpenAI
 
 from app.core.config import DATA_DIR
 from app.core.formulas import net_score
 from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
 from app.services.storage import StorageService
 
-logger = logging.getLogger("hamartia.ai")
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
 IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
@@ -108,17 +106,13 @@ class AIService:
         ]
 
     async def _completions(self, messages: list) -> str:
-        try:
-            client = await self._ensure_async()
-            resp = await client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                temperature=0.2,
-            )
-            return resp.choices[0].message.content or ""
-        except OpenAIError as exc:
-            logger.error("LiteLLM council call failed: %s", exc)
-            return ""
+        client = await self._ensure_async()
+        resp = await client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=0.2,
+        )
+        return resp.choices[0].message.content or ""
 
     # -- parsing ------------------------------------------------------------
 

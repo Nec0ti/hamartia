@@ -12,6 +12,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
+from openai import OpenAIError
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
@@ -164,7 +165,13 @@ async def analyze_question(
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    analysis = await ai.analyze_question(question)
+    try:
+        analysis = await ai.analyze_question(question)
+    except OpenAIError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Yerel model isteği başarısız oldu ({type(exc).__name__}); sunucu adresi, model ve erişim ayarlarını kontrol et.",
+        ) from exc
     updated = []
 
     def save_analysis(items):

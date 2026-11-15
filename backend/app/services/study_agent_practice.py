@@ -43,9 +43,9 @@ def _patterns(field: str) -> list[re.Pattern]:
     if field == "date":
         return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
     if field in {"correct", "incorrect", "blank"}:
-        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,])\b")]
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,]|\s+\d)\b")]
     unit_labels = ALIASES[field]
-    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,])\b")]
+    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,]|\s+\d)\b")]
 
 
 def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, list[str]]]:
@@ -57,6 +57,8 @@ def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, 
             found: list[tuple[str | int, str, bool]] = []
             for pattern in _patterns(field):
                 for match in pattern.finditer(message):
+                    if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} and re.search(r"\d\s+$", message[:match.start(1)]):
+                        continue
                     raw = match.group(1).strip()
                     value = int(raw) if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} else raw
                     quote = match.group(0).strip()

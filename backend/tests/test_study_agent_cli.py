@@ -101,6 +101,7 @@ class StudyAgentCliTests(unittest.TestCase):
             ("duration_minutes", "duration_minutes: 1.5"),
             ("correct", "correct: -5"),
             ("correct", "correct: 1,200"),
+            ("correct", "correct: 1 200"),
         ):
             with self.subTest(field=field, text=text):
                 accepted, _ambiguous = extract_fields([text])
@@ -119,6 +120,23 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertNotIn("topic", result["fields"])
         self.assertIn("topic", result["ambiguous"])
 
+    def test_range_and_date_alternatives_cannot_be_cherry_picked(self):
+        cases = [
+            ("I got 5 or 7 right.", "5 or 7 right", "en"),
+            ("I got 5 or 7 right.", "7 right", "en"),
+            ("I got between 5 and 7 right.", "7 right", "en"),
+            ("5 veya 7 doğru yaptım.", "7 doğru", "tr"),
+        ]
+        for message, quote, language in cases:
+            with self.subTest(message=message, quote=quote):
+                result = prepare_practice([message], language, [{"field": "correct", "quote": quote}])
+                self.assertNotIn("correct", result["fields"])
+                self.assertIn("correct", result["ambiguous"])
+        date_message = "The date was 2026-11-15 or 2026-11-16."
+        date_result = prepare_practice([date_message], "en", [{"field": "date", "quote": "2026-11-15"}])
+        self.assertNotIn("date", date_result["fields"])
+        self.assertIn("date", date_result["ambiguous"])
+
     def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
         self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))
         self.assertIsNone(parse_quote_value("date", "today"))
@@ -127,6 +145,7 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertIsNone(parse_quote_value("duration_minutes", "1:30"))
         self.assertIsNone(parse_quote_value("duration_minutes", "30 minutes", "It took 1 hour 30 minutes."))
         self.assertIsNone(parse_quote_value("duration_minutes", "45 minutes", "It took 45 minutes or 1 hour."))
+        self.assertIsNone(parse_quote_value("duration_minutes", "45 minutes", "It took 45 minutes or 60 seconds."))
         result = prepare_practice(["Today I practiced Functions."], "en", [{"field": "date", "quote": "Today"}])
         self.assertIn("date", result["ambiguous"])
         self.assertFalse(result["write_allowed"])

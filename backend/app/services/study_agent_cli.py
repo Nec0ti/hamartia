@@ -85,6 +85,8 @@ def _number_has_unsafe_boundary(candidate: str, context: str, match: re.Match[st
     end = context_offset + match.end(1)
     if start > 0 and context[start - 1] in "-+.,":
         return True
+    if re.search(r"\d\s+$", context[:start]):
+        return True
     if end < len(context) and context[end] in ".,":
         if end + 1 < len(context) and context[end + 1].isdigit():
             return True
@@ -101,6 +103,14 @@ _UNPUNCTUATED_QUESTION = re.compile(
 )
 _COMPOSITE_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\s+\d+\s*(?:minutes?|mins?|dakika)\b")
 _HOUR_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\b")
+_DATE_CANDIDATES = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+_DURATION_CHUNK = r"\d{1,5}\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b"
+_DURATION_ALTERNATIVE = re.compile(rf"(?i){_DURATION_CHUNK}\s+(?:or|either|veya|ya\s+da)\s+{_DURATION_CHUNK}")
+_COUNT_ALTERNATIVES: dict[str, re.Pattern[str]] = {
+    "correct": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+|answers?\s+)?(?:correct(?:ly)?|right|doğru|dogru)\b"),
+    "incorrect": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+|answers?\s+)?(?:incorrect(?:ly)?|wrong|yanlış|yanlis)\b"),
+    "blank": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+)?(?:blank|boş|bos)\b"),
+}
 
 _COUNT_PATTERNS: dict[str, re.Pattern[str]] = {
     "correct": re.compile(r"(?i)(?<![\w.,+\-])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})(?![\d.,])\s*(?:questions?\s+)?(?:correct(?:ly)?|right|doğru|dogru)(?![\w])"),
@@ -136,6 +146,9 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
         or _UNPUNCTUATED_QUESTION.search(surrounding)
         or _HEDGE_OR_NEGATION.search(surrounding)
         or (field in {"duration_minutes", "duration_seconds"} and (_COMPOSITE_DURATION.search(surrounding) or _HOUR_DURATION.search(surrounding)))
+        or (field in {"duration_minutes", "duration_seconds"} and _DURATION_ALTERNATIVE.search(surrounding))
+        or (field == "date" and len(set(_DATE_CANDIDATES.findall(surrounding))) > 1)
+        or (field in _COUNT_ALTERNATIVES and _COUNT_ALTERNATIVES[field].search(surrounding))
     ):
         return None
     parse_candidate = re.sub(

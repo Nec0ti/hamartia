@@ -500,11 +500,15 @@ class PracticeSession(PracticeSessionData):
 
     id: str
     created_at: str = ""
+    # Old records remain immutable legacy snapshots when the field is absent.
+    scoring_profile: ExamScoringProfile = Field(default_factory=legacy_yks_profile)
 
     @computed_field
     @property
     def net(self) -> float:
-        return self.correct - self.incorrect / 4
+        from app.core.formulas import net_for_scoring_rule
+
+        return net_for_scoring_rule(self.correct, self.incorrect, self.blank, self.scoring_profile.scoring_rule)
 
     @computed_field
     @property
@@ -514,7 +518,16 @@ class PracticeSession(PracticeSessionData):
 
 
 class PracticeSessionCreate(PracticeSessionData):
-    pass
+    scoring_profile_id: str | None = None
+    scoring_profile_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_scoring_profile_reference(self):
+        if (self.scoring_profile_id is None) != (self.scoring_profile_version is None):
+            raise ValueError("scoring profile ID and version must be provided together")
+        if self.scoring_profile_id is not None and not self.scoring_profile_id.strip():
+            raise ValueError("scoring profile ID is required")
+        return self
 
 
 class LearningEvidenceData(BaseModel):
@@ -652,6 +665,7 @@ class PracticeDraft(BaseModel):
     incorrect: int = Field(default=0, ge=0)
     blank: int = Field(default=0, ge=0)
     completion_id: str | None = Field(default=None, min_length=36, max_length=36)
+    scoring_profile: ExamScoringProfile = Field(default_factory=legacy_yks_profile)
 
     @field_validator("completion_id")
     @classmethod

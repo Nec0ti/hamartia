@@ -4,9 +4,11 @@
 def practice_topic_summaries(sessions):
     groups = {}
     for session in sessions:
-        key = (session.subject.strip().casefold(), session.topic.strip().casefold())
+        profile = session.scoring_profile
+        key = (profile.profile_id, profile.version, session.subject.strip().casefold(), session.topic.strip().casefold())
         group = groups.setdefault(key, {
             "subject": session.subject.strip(), "topic": session.topic.strip(),
+            "scoring_profile": profile.model_dump(),
             "sessions": [], "correct": 0, "incorrect": 0, "blank": 0,
         })
         group["sessions"].append(session)
@@ -28,5 +30,8 @@ def practice_topic_summaries(sessions):
             "accuracy": session.accuracy,
         } for session in ordered]
         summaries.append(group)
-    summaries.sort(key=lambda item: (item["subject"].casefold(), item["topic"].casefold()))
+    summaries.sort(key=lambda item: (
+        item["subject"].casefold(), item["topic"].casefold(),
+        item["scoring_profile"]["profile_id"], item["scoring_profile"]["version"],
+    ))
     return summaries

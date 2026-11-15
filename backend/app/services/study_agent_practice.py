@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
-from app.models.schemas import PracticeSessionCreate
+from app.models.schemas import ExamScoringProfile, PracticeSessionCreate, legacy_yks_profile
 
 FIELDS = (
     "date", "subject", "topic", "correct", "incorrect", "blank",
@@ -122,8 +122,11 @@ def complete_payload(messages: list[str]) -> tuple[PracticeSessionCreate | None,
     return payload, raw, {"missing": [], "ambiguous": {}, "issues": [], "evidence": {field: evidence[field].__dict__ for field in evidence}}
 
 
-def preview_digest(payload: PracticeSessionCreate, evidence: dict) -> str:
-    canonical = {"fields": payload.model_dump(), "evidence": evidence}
+def preview_digest(payload: PracticeSessionCreate, evidence: dict, scoring_profile: ExamScoringProfile | None = None) -> str:
+    canonical = {
+        "fields": payload.model_dump(), "evidence": evidence,
+        "scoring_profile": (scoring_profile or legacy_yks_profile()).model_dump(),
+    }
     return hashlib.sha256(json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

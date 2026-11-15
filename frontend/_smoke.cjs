@@ -683,8 +683,16 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Clock' }).click()
     await page.getByText('Paused', { exact: true }).waitFor()
-    await page.getByRole('button', { name: 'Reset' }).click()
-    await page.getByRole('button', { name: 'Stop and clear timer' }).click()
+    const [timerReset] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Reset' }).click(),
+    ])
+    assert.equal(timerReset.ok(), true)
+    const [timerCleared] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.active_timer === null),
+      page.getByRole('button', { name: 'Stop and clear timer' }).click(),
+    ])
+    assert.equal(timerCleared.ok(), true)
     const futureReminder = await page.evaluate(() => {
       const date = new Date(Date.now() + 5 * 60_000)
       date.setSeconds(0, 0)
@@ -697,7 +705,7 @@ async function main() {
     await page.getByLabel('Time', { exact: true }).fill(futureReminder.time)
     await page.getByLabel('Date', { exact: true }).fill(futureReminder.date)
     const [reminderSave] = await Promise.all([
-      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.alarms?.some((alarm) => alarm.label === 'Synthetic reminder')),
       page.getByRole('button', { name: 'Save reminder' }).click(),
     ])
     assert.equal(reminderSave.ok(), true)

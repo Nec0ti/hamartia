@@ -534,7 +534,7 @@ async function main() {
     await page.getByText('student@example.test').waitFor()
     const sendButton = page.getByRole('button', { name: 'Send to OpenAI' })
     await page.getByLabel('Your question').fill('What should I review next?')
-    await page.getByText(/up to 8 topic practice aggregates/).waitFor()
+    await page.getByText(/up to 8 topic-practice aggregates/).waitFor()
     assert.equal(await sendButton.isDisabled(), true)
     await page.getByRole('checkbox').check()
     await sendButton.click()

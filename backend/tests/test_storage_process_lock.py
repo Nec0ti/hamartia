@@ -27,10 +27,10 @@ class StorageProcessLockTests(unittest.TestCase):
                 "StorageService(data).append_list('rows.json', {'id':'after-release'}, dict); done.touch()"
             )
             probe_code = (
-                "import os,sys; from pathlib import Path; data=Path(sys.argv[1]).resolve(); "
+                "import errno,os,sys; from pathlib import Path; data=Path(sys.argv[1]).resolve(); "
                 "path=data.with_name('.'+data.name+'.mutation.lock'); f=path.open('a+b'); "
-                "\nif os.name=='nt':\n import msvcrt; f.seek(0)\n try: msvcrt.locking(f.fileno(),msvcrt.LK_NBLCK,1)\n except OSError: sys.exit(0)\n msvcrt.locking(f.fileno(),msvcrt.LK_UNLCK,1)\n"
-                "\nelse:\n import fcntl\n try: fcntl.flock(f.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)\n except OSError: sys.exit(0)\n fcntl.flock(f.fileno(),fcntl.LOCK_UN)\n"
+                "\nif os.name=='nt':\n import msvcrt; f.seek(0)\n try: msvcrt.locking(f.fileno(),msvcrt.LK_NBLCK,1)\n except OSError as exc:\n  sys.exit(0 if exc.errno==errno.EACCES or getattr(exc,'winerror',None) in (33,36) else 2)\n msvcrt.locking(f.fileno(),msvcrt.LK_UNLCK,1)\n"
+                "\nelse:\n import fcntl\n try: fcntl.flock(f.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)\n except OSError as exc:\n  sys.exit(0 if exc.errno in (errno.EACCES,errno.EAGAIN) else 2)\n fcntl.flock(f.fileno(),fcntl.LOCK_UN)\n"
                 "\nsys.exit(1)\n"
             )
             holder = subprocess.Popen([sys.executable, "-c", holder_code, str(data), str(ready), str(release)], env=env)

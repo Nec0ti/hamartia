@@ -29,7 +29,7 @@ The HTTP measurements include TCP loopback, HTTP serialization, routing, Pydanti
 
 ## Verification
 
-- `PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_storage_process_lock.py -v` — passed (an OS-level nonblocking lock probe failed while held and acquired after release; the writer stayed blocked until release; three writer processes persisted 12 unique records).
+- `PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_storage_process_lock.py -v` — passed (the probe recognized only POSIX `EACCES`/`EAGAIN` or Windows `EACCES`/sharing-violation codes as contention; it could not acquire while held and could acquire after release; three writer processes persisted 12 unique records).
 - Full default benchmark command above — passed; JSON has `ai_included:false`, 32/32 storage rows, exit/recovery evidence, and 32/32 serialized API records.
 - `PYTHONPATH=backend python -m unittest discover -s backend/tests -q` — 120 tests passed.
 - `python -m compileall -q backend/benchmarks/benchmark_system_resilience.py backend/app/services/storage.py` — passed.

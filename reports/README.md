@@ -11,6 +11,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-15 configured Study Agent provider](2026-11-15-configured-study-agent-provider.md)
 - [2026-11-15 GitHub Pages URL diagnosis and AI handoff guide](2026-11-15-pages-url-and-ai-handoff.md)
 - [2026-11-15 backup snapshot and upload boundaries](2026-11-15-backup-snapshot-and-upload-boundaries.md)
+- [2026-11-15 Maarif-aware Study Agent and user-entered curriculum references](2026-11-15-maarif-aware-study-agent.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)

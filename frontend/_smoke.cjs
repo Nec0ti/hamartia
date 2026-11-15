@@ -92,6 +92,17 @@ async function main() {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
     await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    const brandMark = page.getByRole('img', { name: 'Hamartia' })
+    await brandMark.waitFor()
+    assert.equal(await brandMark.evaluate((image) => image.naturalWidth > 0), true)
+    assert.equal((await page.request.get(`${baseUrl}/hamartia-favicon.svg`)).status(), 200)
+    await page.keyboard.press('Tab')
+    const keyboardFocus = await page.evaluate(() => {
+      const outline = getComputedStyle(document.activeElement)
+      return { style: outline.outlineStyle, width: Number.parseFloat(outline.outlineWidth) }
+    })
+    assert.equal(keyboardFocus.style, 'solid')
+    assert(keyboardFocus.width >= 2, `Expected a visible keyboard focus ring, got ${keyboardFocus.width}px`)
     await initialSettingsGetIntercepted
     await page.getByRole('button', { name: 'Open settings' }).click()
     await page.getByRole('status').getByText('Loading saved settings…').waitFor()

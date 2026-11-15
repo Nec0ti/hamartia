@@ -80,7 +80,7 @@ function nextPomodoroPhase(timer, now) {
     ...timer,
     status: 'running',
     phase,
-    cycle_count: cycles,
+    cycle_count: Math.min(1_000_000, cycles),
     duration_ms: duration,
     remaining_ms: remaining,
     deadline_at_ms: anchor + duration,

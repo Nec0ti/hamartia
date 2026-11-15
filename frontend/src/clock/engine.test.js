@@ -62,6 +62,7 @@ test('Pomodoro phase boundaries and long suspension reconcile directly to one fu
   const veryLongPause = reconcileClock({ active_timer: timer, alarms: [] }, 1_000_000_000_000)
   assert.ok(veryLongPause.state.active_timer.deadline_at_ms > 1_000_000_000_000)
   assert.equal(veryLongPause.events.length, 1)
+  assert.equal(veryLongPause.state.active_timer.cycle_count, 1_000_000)
 })
 
 test('alarm expiration is persisted using the schema overdue timestamp and cannot refire', () => {

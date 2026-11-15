@@ -146,8 +146,8 @@ _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl
 _RELATIVE_DATE_OFFSET = rf"(?:(?:(?:in|within)\s+)?{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}(?:\s+(?:later|afterwards?|after(?:\s+that)?|from\s+now|sonra))?)"
 _RELATIVE_DATE_QUALIFIER = r"(?:(?:(?:in|within)\s+)?(?:the\s+)?(?:next|following|upcoming|gelecek|önümüzdeki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat)|bir\s+sonraki\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat))"
 _RELATIVE_DATE_PAST_OFFSET = rf"(?:{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}\s+(?:ago|before|earlier|önce|once))"
-_RELATIVE_DATE_PAST_QUALIFIER = r"(?:yesterday|(?:the\s+)?previous\s+day|(?:the\s+)?day\s+before(?:\s+that)?|dün|dun|(?:bir\s+)?gün\s+önce)"
-_RELATIVE_DATE_COMPACT_OFFSET = r"\d{1,5}(?:d|w|h)(?:\s+(?:later|afterwards?|after(?:\s+that)?|sonra))?"
+_RELATIVE_DATE_PAST_QUALIFIER = r"(?:yesterday|(?:(?:the\s+)?(?:last|past|previous)|geçen|gecen|önceki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat)|(?:the\s+)?day\s+before(?:\s+that)?|dün|dun|(?:bir\s+)?gün\s+önce)"
+_RELATIVE_DATE_COMPACT_OFFSET = r"\d{1,5}(?:d|w|h)(?:\s+(?:later|afterwards?|after(?:\s+that)?|ago|before|earlier|sonra|önce|once))?"
 _DATE_RELATIVE_ALTERNATIVE = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"
     rf"(?:tomorrow|{_RELATIVE_DATE_PAST_QUALIFIER}|{_RELATIVE_DATE_PAST_OFFSET}|{_RELATIVE_DATE_QUALIFIER}|{_RELATIVE_DATE_COMPACT_OFFSET}|(?:the\s+)?(?:next|following)\s+day|(?:the\s+)?day\s+(?:after(?:\s+that)?|afterwards?)|"

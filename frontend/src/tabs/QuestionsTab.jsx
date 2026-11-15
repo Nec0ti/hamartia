@@ -168,13 +168,13 @@ export default function QuestionsTab({ initialExam = null }) {
         <CurriculumReferenceFields value={curriculumReference} onChange={setCurriculumReference} t={t} />
         <div className="flex items-center justify-between gap-3 sm:col-span-2">
           <span className="truncate text-xs text-canvas-muted">{file?.name || t('questions.noImageSelected')}</span>
-          <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">
             <Upload size={16} /> {busy ? t('common.saving') : t('questions.saveQuestion')}
           </button>
         </div>
       </form>
 
-      {error && <p role="alert" className="rounded-lg border border-accent/50 bg-canvas-panel p-3 text-sm text-accent">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-canvas-line/50 bg-canvas-panel p-3 text-sm text-canvas-text">{error}</p>}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -203,7 +203,7 @@ export default function QuestionsTab({ initialExam = null }) {
                   <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.questionText')}<textarea aria-label={t('questions.editQuestionText')} value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /></label>
                   <CurriculumReferenceFields value={editing.curriculum_reference || { ...EMPTY_CURRICULUM_REFERENCE }} onChange={(reference) => setEditing({ ...editing, curriculum_reference: reference })} t={t} />
                   <div className="flex gap-2 sm:col-span-2">
-                    <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-white"><Save size={14} /> {t('common.save')}</button>
+                    <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-canvas-base"><Save size={14} /> {t('common.save')}</button>
                     <button type="button" onClick={() => setEditing(null)} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted"><X size={14} /> {t('common.cancel')}</button>
                   </div>
                 </form>
@@ -224,16 +224,16 @@ export default function QuestionsTab({ initialExam = null }) {
                 </select>
                 {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> {t('questions.reviewWithLocalAI')}</button>}
                 {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> {t('questions.markReviewed')}</button>}
-                {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">{t('questions.undoReview')}</button></>}
+                {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-canvas-raise px-3 py-2 text-xs text-canvas-text"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">{t('questions.undoReview')}</button></>}
                 {hasCurriculumReference(question.curriculum_reference) && <CurriculumReferenceSummary value={question.curriculum_reference} t={t} />}
                 <button type="button" onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text, curriculum_reference: { ...EMPTY_CURRICULUM_REFERENCE, ...(question.curriculum_reference || {}) } })} aria-label={t('questions.editQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> {t('common.edit')}</button>
-                <button type="button" onClick={() => remove(question)} aria-label={t('questions.deleteQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-accent"><Trash2 size={14} /> {t('common.delete')}</button>
+                <button type="button" onClick={() => remove(question)} aria-label={t('questions.deleteQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Trash2 size={14} /> {t('common.delete')}</button>
               </div>
               {question.analysis && (
                 <div className="rounded-lg bg-canvas-base p-3 text-sm">
                   <p className="font-medium text-canvas-text">{question.analysis.verdict.root_cause}</p>
                   <p className="mt-1 text-canvas-muted">{question.analysis.verdict.action_advice}</p>
-                  {question.analysis.counselors?.executor && <p className="mt-2 text-canvas-cyan">{question.analysis.counselors.executor}</p>}
+                  {question.analysis.counselors?.executor && <p className="mt-2 text-canvas-text">{question.analysis.counselors.executor}</p>}
                 </div>
               )}
             </div>
@@ -280,7 +280,7 @@ function CurriculumReferenceSummary({ value, t }) {
     <p className="font-medium text-canvas-text">{t('questions.referenceUserProvided')}</p>
     {details.length > 0 && <p className="mt-1">{details.join(' · ')}</p>}
     {value.learning_outcome && <p className="mt-1">{value.learning_outcome}</p>}
-    {value.source_url && <a href={value.source_url} target="_blank" rel="noreferrer noopener" className="mt-1 inline-block break-all text-canvas-cyan underline">{value.source_url}</a>}
+    {value.source_url && <a href={value.source_url} target="_blank" rel="noreferrer noopener" className="mt-1 inline-block break-all text-canvas-text underline">{value.source_url}</a>}
   </div>
 }
 

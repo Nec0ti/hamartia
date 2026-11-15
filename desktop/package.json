@@ -34,24 +34,37 @@
       "backendInvocation.cjs",
       "restoreFlow.cjs",
       "shutdownFlow.cjs",
+      "windowIcon.cjs",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "../backend/dist/hamartia-backend",
         "to": "backend/hamartia-backend"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icons/hamartia.ico"
+      },
+      {
+        "from": "build/icons/512x512.png",
+        "to": "icons/hamartia.png"
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
+      "icon": "build/icons/512x512.png",
       "maintainer": "Necoti <nec0ti@users.noreply.github.com>",
       "category": "Education",
       "target": [

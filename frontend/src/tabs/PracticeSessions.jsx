@@ -179,7 +179,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         <div className="flex flex-wrap justify-end gap-2">
           {active.running_since ? <button type="button" onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>}
           <button type="button" onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
-          <button type="button" disabled={saving} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
+          <button type="button" disabled={saving} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
         </div>
       </section>}
       <form onSubmit={submit} className="grid gap-3 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-4">
@@ -189,10 +189,10 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         {fields.map(([key, label]) => <label key={key} className="text-xs text-canvas-muted">{t(label)}<input required type="number" min="0" max={key === 'duration_seconds' ? 59 : undefined} value={draft[key]} onChange={(e) => set(key, Number(e.target.value))} className={inputClass} /></label>)}
         <div className="flex items-end justify-end gap-2 sm:col-span-4">
           {editingId && <button type="button" onClick={() => { setDraft(emptyForm()); setEditingId('') }} className={secondaryButton}>{t('common.cancel')}</button>}
-          <button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Plus size={15} />{saving ? t('common.saving') : editingId ? t('study.saveChanges') : t('study.saveSet')}</button>
+          <button disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50"><Plus size={15} />{saving ? t('common.saving') : editingId ? t('study.saveChanges') : t('study.saveSet')}</button>
         </div>
       </form>
-      {error && <p role="alert" className="rounded-lg border border-accent/50 bg-canvas-panel p-3 text-sm text-accent">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-canvas-line/50 bg-canvas-panel p-3 text-sm text-canvas-text">{error}</p>}
       {summaries.length === 0 ? <p className="rounded-lg border border-dashed border-canvas-line p-4 text-sm text-canvas-muted">{t('study.noPracticeSets')}</p> : summaries.map((group) => {
         const chartData = group.trend.map((item) => ({ ...item, accuracy_percent: item.accuracy == null ? null : item.accuracy * 100 }))
         const recent = group.trend.slice(-6).reverse()
@@ -233,7 +233,7 @@ function PracticeTrendChart({ subject, topic, data, metric, t, locale }) {
             labelFormatter={(date) => fmtDate(date, locale)}
             formatter={(value) => [value == null ? t('study.noAccuracy') : accuracy ? `${fmtPercent(value, locale)}%` : formatNumber(value, locale, 2), label]}
           />
-          <Line type="monotone" dataKey={metric} name={label} stroke={accuracy ? '#22d3ee' : '#10b981'} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+          <Line type="monotone" dataKey={metric} name={label} stroke="#d4d4d8" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -249,7 +249,7 @@ function SessionRows({ items, sessions, topic, locale, t, onEdit, onRemove }) {
         <span className="text-canvas-muted">{fmtDate(item.date, locale)} · {t('study.net')} {formatNumber(item.net, locale)}</span>
         {session && <span className="inline-flex gap-1">
           <button type="button" aria-label={t('study.editSet', { date: fmtDate(item.date, locale), topic })} onClick={() => onEdit(session)} className="rounded p-1 text-canvas-muted hover:text-canvas-text"><Pencil size={13} /></button>
-          <button type="button" aria-label={t('study.deleteSet', { date: fmtDate(item.date, locale), topic })} onClick={() => onRemove(session)} className="rounded p-1 text-canvas-muted hover:text-accent"><Trash2 size={13} /></button>
+          <button type="button" aria-label={t('study.deleteSet', { date: fmtDate(item.date, locale), topic })} onClick={() => onRemove(session)} className="rounded p-1 text-canvas-muted hover:text-canvas-text"><Trash2 size={13} /></button>
         </span>}
       </li>
     })}

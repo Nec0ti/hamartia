@@ -161,19 +161,19 @@ export default function SettingsModal({ open, settings, loading, onSave, onClose
               </label>
             )}
           </div>
-          {saved && <p className="text-xs text-emerald-400">{t('settings.saved')}</p>}
-          {(error || loadError) && <p className="text-xs text-accent">{error || loadError}</p>}
+          {saved && <p className="text-xs text-canvas-text">{t('settings.saved')}</p>}
+          {(error || loadError) && <p className="text-xs text-canvas-text">{error || loadError}</p>}
           <div className="rounded-lg border border-canvas-line bg-canvas-base p-3">
             <a
               href={`${API_BASE}/backup`}
               download="hamartia-backup.zip"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-text"
             >
               <Download size={15} /> {t('settings.downloadBackup')}
             </a>
             {desktopRestoreAvailable ? (
               <div className="mt-2">
-                <button type="button" onClick={restoreBackup} disabled={restoring || restoreRefreshPending} className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-accent disabled:opacity-50">
+                <button type="button" onClick={restoreBackup} disabled={restoring || restoreRefreshPending} className="inline-flex items-center gap-2 text-sm font-semibold text-canvas-text hover:text-canvas-text disabled:opacity-50">
                   <RotateCcw size={15} /> {restoring ? t('settings.restoring') : t('settings.restoreButton')}
                 </button>
                 {restoreState && <p role="status" aria-live="polite" className="mt-2 text-xs text-canvas-muted">{t(restoreState)}</p>}
@@ -198,7 +198,7 @@ export default function SettingsModal({ open, settings, loading, onSave, onClose
             type="button"
             onClick={save}
             disabled={loading || saving || restoring || restoreRefreshPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />
             {saving ? t('settings.saving') : t('settings.save')}

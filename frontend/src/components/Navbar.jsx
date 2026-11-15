@@ -5,7 +5,6 @@ import {
   Globe,
   BookOpen,
   Settings,
-  Sparkles,
   MessageCircle,
 } from 'lucide-react'
 import api from '../services/api'
@@ -67,10 +66,8 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
       <div className="flex items-center gap-1 px-4 py-3">
         {/* Brand mark + title. */}
         <div className="mr-2 flex items-center gap-2 sm:mr-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-canvas-accent text-white shadow-crimson">
-            <Sparkles size={16} />
-          </div>
-          <span className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
+          <img src="/hamartia-mark-light.svg" alt="Hamartia" className="h-8 w-8" />
+          <span aria-hidden="true" className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
             Hamartia
           </span>
         </div>
@@ -89,14 +86,14 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
                 className={[
                   'relative flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition sm:px-3',
                   isActive
-                    ? 'text-white'
+                    ? 'text-canvas-text'
                     : 'text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text',
                 ].join(' ')}
               >
                 {isActive && (
                   <span className="absolute left-0 top-1/2 h-5 w-0 -translate-y-1/2 rounded-r-lg bg-canvas-accent/80 transition-all duration-200" />
                 )}
-                <Icon size={16} className={isActive ? 'text-canvas-accent' : ''} />
+                <Icon size={16} className={isActive ? 'text-canvas-text' : ''} />
                 <span className="hidden sm:inline">{t(tab.label)}</span>
               </button>
             )
@@ -112,12 +109,12 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
             >
               <div className="relative hidden h-2 w-16 overflow-hidden rounded-full bg-canvas-line sm:block">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-canvas-indigo to-canvas-cyan transition-all duration-500"
+                  className="h-full rounded-full bg-canvas-text transition-all duration-500"
                   style={{ width: `${Math.round(badge.progress * 100)}%` }}
                 />
               </div>
               <span className="flex flex-col items-end leading-none">
-                <span className="text-xs font-bold text-canvas-cyan">
+                <span className="text-xs font-bold text-canvas-text">
                   {t('navigation.levelAbbreviation')} {new Intl.NumberFormat(locale).format(badge.level)}
                 </span>
                 <span className="text-[10px] text-canvas-muted">

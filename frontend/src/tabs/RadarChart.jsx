@@ -55,17 +55,17 @@ export default function RadarChart({ radar }) {
             <Radar
               name={t('dashboard.chartReference')}
               dataKey="value"
-              stroke="#818cf8"
+              stroke="#d4d4d8"
               strokeOpacity={0.3}
-              polygon={{ fill: '#818cf8', fillOpacity: 0.12 }}
+              polygon={{ fill: '#d4d4d8', fillOpacity: 0.12 }}
             />
             {/* Primary performance layer. */}
             <Radar
               name={t('dashboard.chartActual')}
               dataKey="value"
-              stroke="#22d3ee"
+              stroke="#d4d4d8"
               strokeWidth={2}
-              polygon={{ fill: '#22d3ee', fillOpacity: 0.35 }}
+              polygon={{ fill: '#d4d4d8', fillOpacity: 0.35 }}
             />
           </RechartsRadarChart>
         </ResponsiveContainer>

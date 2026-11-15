@@ -1,5 +1,7 @@
 # Hamartia
 
+![Hamartia review path mark](assets/brand/hamartia-mark.svg)
+
 A local-first study tool for recording missed questions, spotting patterns in mistakes, and turning them into targeted practice and review. Hamartia grew from Turkish mock-exam workflows, including LGS and YKS. The current app supports TYT/AYT full mocks and single-subject exams; subject and topic labels are free text. Its built-in net calculation uses the YKS wrong-answer penalty, so other mock-exam workflows can reuse it when their scoring is compatible; different exam structures or scoring rules may need adaptation through a contribution or fork. The interface currently supports English and Turkish. Hamartia is original software licensed under MIT; contributions and forks are welcome. It does not use content from external platforms.
 
 ## Documentation

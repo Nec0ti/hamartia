@@ -9,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { Panel, Header, Toggle, SubjectSelect } from '../components/ui.jsx'
@@ -48,7 +47,7 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
           }}
           formatter={(v) => [fmtNet(v, locale), t('exams.net')]}
         />
-        <Line type="monotone" dataKey="net" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+        <Line type="monotone" dataKey="net" stroke="#d4d4d8" strokeWidth={2} dot={{ fill: '#d4d4d8', r: 4 }} activeDot={{ r: 6 }} />
       </LineChart>
     ) : (
       <BarChart data={series}>
@@ -65,11 +64,7 @@ export default function TrendChart({ data, toggle, subjectFilter, subjects, onTo
           }}
           formatter={(v) => [fmtNet(v, locale), t('exams.net')]}
         />
-        <Bar dataKey="net" radius={[4, 4, 0, 0]}>
-          {series.map((entry, i) => (
-            <Cell key={i} fill={entry.net >= 0 ? '#10b981' : '#ef4444'} />
-          ))}
-        </Bar>
+        <Bar dataKey="net" fill="#d4d4d8" radius={[4, 4, 0, 0]} />
       </BarChart>
     )
 

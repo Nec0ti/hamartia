@@ -157,7 +157,7 @@ export default function DashboardTab({ onUploadQuestion }) {
             setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
             setShowAdd(true)
           }}
-          className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base shadow-crimson transition hover:opacity-90"
         >
           <Plus size={16} />
           {t('dashboard.addExam')}

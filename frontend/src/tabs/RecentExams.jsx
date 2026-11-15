@@ -70,9 +70,9 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                     ) : subjectLabel(ex.subject, t('common.unlabelled'))}
                   </td>
                   <td className="py-3 pr-4 text-canvas-muted">{t(`exams.type.${ex.exam_type || 'branch'}`)}</td>
-                  <td className="py-3 pr-4 text-emerald-400">{fmtInt(ex.correct, locale)}</td>
+                  <td className="py-3 pr-4 text-canvas-text">{fmtInt(ex.correct, locale)}</td>
                   <td
-                    className="py-3 pr-4 text-accent font-semibold transition hover:underline"
+                    className="py-3 pr-4 text-canvas-text font-semibold transition hover:underline"
                     title={t('exams.doubleClickToAdd')}
                   >
                       <span className="inline-flex items-center gap-1">
@@ -89,15 +89,12 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                   </td>
                   <td className="py-3 pr-4 text-right">
                     <span
-                      className={[
-                        'font-semibold',
-                        net > 0 ? 'text-emerald-400' : net < 0 ? 'text-accent' : 'text-canvas-text',
-                      ].join(' ')}
+                      className="font-semibold text-canvas-text"
                     >
                       {fmtNet(net, locale)}
                     </span>
                   </td>
-                  <td className="py-3 pr-4 text-right text-canvas-cyan">{fmtInt(xp, locale)}</td>
+                  <td className="py-3 pr-4 text-right text-canvas-text">{fmtInt(xp, locale)}</td>
                   <td className="py-3 pr-1 text-right">
                     <div className="inline-flex gap-1">
                       <button
@@ -112,7 +109,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                         type="button"
                         aria-label={t('exams.deleteNamed', { subject: ex.subject, date: fmtDate(ex.date, locale) })}
                         onClick={() => onDelete(ex)}
-                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-accent"
+                        className="rounded p-1.5 text-canvas-muted hover:bg-canvas-raise hover:text-canvas-text"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -125,7 +122,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
         </table>
       </div>
       {recentError && (
-        <div className="mt-3 rounded-lg border border-canvas-line bg-canvas-accent/10 p-3 text-sm text-accent">
+        <div className="mt-3 rounded-lg border border-canvas-line bg-canvas-raise p-3 text-sm text-canvas-text">
           {recentError}
         </div>
       )}

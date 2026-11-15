@@ -193,8 +193,14 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")
     created: list[PracticeSession] = []
     conflict_seen = []
+    choice_key = payload.duplicate_choice or "default"
+    session_id = f"practice_agent_{payload.preview_digest}_{choice_key}"
 
     def append_with_conflict_check(sessions):
+        replay = next((item for item in sessions if item.id == session_id), None)
+        if replay is not None:
+            conflict_seen.append(replay)
+            return False
         conflicts = [
             item for item in sessions
             if (item.date, item.subject.casefold(), item.topic.casefold())
@@ -204,7 +210,7 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         if conflicts and payload.duplicate_choice != "new":
             return False
         session = PracticeSession(
-            id=f"practice_{uuid4().hex}",
+            id=session_id,
             created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
             **parsed.model_dump(),
         )

@@ -213,6 +213,9 @@ class StudyAgentPracticeTests(unittest.TestCase):
         explicit_new = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "new"))
         self.assertEqual(explicit_new.status_code, 201)
         self.assertEqual(len(self.sessions()), 2)
+        replayed_new = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "new"))
+        self.assertEqual(replayed_new.status_code, 409)
+        self.assertEqual(len(self.sessions()), 2)
 
     def test_concurrent_same_preview_saves_create_only_once_without_duplicate_approval(self):
         draft = self.draft().json()

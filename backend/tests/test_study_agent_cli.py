@@ -169,6 +169,11 @@ class StudyAgentCliTests(unittest.TestCase):
                 self.assertIn("date", result["ambiguous"])
         time_text = "I studied on 2026-11-15 or 16:30."
         self.assertEqual(parse_quote_value("date", "on 2026-11-15", time_text), "2026-11-15")
+        dotted_time_text = "I studied on 2026-11-15 or 16.30."
+        self.assertEqual(parse_quote_value("date", "on 2026-11-15", dotted_time_text), "2026-11-15")
+        dotted_time_result = prepare_practice([dotted_time_text], "en", [{"field": "date", "quote": "on 2026-11-15"}])
+        self.assertEqual(dotted_time_result["fields"]["date"], "2026-11-15")
+        self.assertNotIn("date", dotted_time_result["ambiguous"])
 
     def test_duration_alternatives_accept_only_neither_candidate(self):
         for field, context, quote in (

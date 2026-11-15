@@ -72,8 +72,29 @@ def _occurrences(messages: list[str], quote: str) -> list[tuple[int, int, int]]:
 
 def _sentence_context(message: str, start: int, end: int) -> str:
     boundaries = (".", "?", "!", ";", "\n")
-    left_boundary = max((message.rfind(mark, 0, start) for mark in boundaries), default=-1)
-    right_candidates = [message.find(mark, end) for mark in boundaries]
+    def is_numeric_dot(position: int) -> bool:
+        return (
+            message[position] == "."
+            and position > 0
+            and position + 1 < len(message)
+            and message[position - 1].isdigit()
+            and message[position + 1].isdigit()
+        )
+
+    def previous_boundary(mark: str, before: int) -> int:
+        position = message.rfind(mark, 0, before)
+        while position >= 0 and is_numeric_dot(position):
+            position = message.rfind(mark, 0, position)
+        return position
+
+    def next_boundary(mark: str, after: int) -> int:
+        position = message.find(mark, after)
+        while position >= 0 and is_numeric_dot(position):
+            position = message.find(mark, position + 1)
+        return position
+
+    left_boundary = max((previous_boundary(mark, start) for mark in boundaries), default=-1)
+    right_candidates = [next_boundary(mark, end) for mark in boundaries]
     right_boundary = min((position for position in right_candidates if position >= 0), default=len(message))
     left = left_boundary + 1
     right = right_boundary
@@ -96,12 +117,12 @@ def _sentence_context(message: str, start: int, end: int) -> str:
     # with a connector. This catches punctuation-split alternatives without
     # merging ordinary separate statements or explicit corrections.
     if left_boundary >= 0 and re.match(continuation, context) and not re.match(correction_start, context):
-        previous_left_candidates = [message.rfind(mark, 0, left_boundary) for mark in boundaries]
+        previous_left_candidates = [previous_boundary(mark, left_boundary) for mark in boundaries]
         previous_left = max(previous_left_candidates, default=-1) + 1
         context = f"{message[previous_left:left_boundary].strip()} {context}".strip()
     if right_boundary < len(message):
         next_left = right_boundary + 1
-        next_right_candidates = [message.find(mark, next_left) for mark in boundaries]
+        next_right_candidates = [next_boundary(mark, next_left) for mark in boundaries]
         next_right = min((position for position in next_right_candidates if position >= 0), default=len(message))
         following = message[next_left:next_right].strip()
         if re.match(continuation, following) and not re.match(correction_start, following):
@@ -139,7 +160,7 @@ _DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1
 _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?!(?:[01]?\d|2[0-3])\.[0-5]\d(?!\d))(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|sene|saat)"

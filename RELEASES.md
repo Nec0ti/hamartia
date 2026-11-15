@@ -379,3 +379,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-026` sürümü, [#30 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/30) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-027
+
+## English
+
+`ARETE-027` includes the changes merged in [PR #31: Add evidence-only Study Agent provider tools](https://github.com/Nec0ti/hamartia/pull/31).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-027` sürümü, [#31 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/31) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

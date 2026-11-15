@@ -26,6 +26,7 @@ TASKS_PATH = DOCS / "benchmark" / "tasks.json"
 KEY_PATH = DOCS / "benchmark" / "answer_key.json"
 DECOYS_PATH = DOCS / "benchmark" / "decoys.json"
 PROTOCOL_PATH = DOCS / "benchmark" / "README.md"
+CHECKER_PATH = Path(__file__).resolve()
 DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-15-docs-benchmark-results.json"
 LOCALES = ("en", "tr")
 EXPECTED_PAGE_COUNT = 17
@@ -126,14 +127,53 @@ def read_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def files_digest(paths: list[Path], base: Path) -> str:
+def digest_entries(entries: list[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
-    for path in sorted(paths):
-        digest.update(path.relative_to(base).as_posix().encode("utf-8"))
+    for relative_path, content in sorted(entries):
+        digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(content)
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def files_digest(paths: list[Path], base: Path) -> str:
+    return digest_entries([(path.relative_to(base).as_posix(), path.read_bytes()) for path in paths])
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def verify_hash_sensitivity(rendered_files: list[Path]) -> dict:
+    """In-memory perturbations prove each tracked input affects its digest."""
+    task_files = [TASKS_PATH, KEY_PATH, DECOYS_PATH]
+    task_entries = [(path.relative_to(ROOT).as_posix(), path.read_bytes()) for path in task_files]
+    original_task_digest = digest_entries(task_entries)
+    for index, (relative_path, content) in enumerate(task_entries):
+        changed = list(task_entries)
+        changed[index] = (relative_path, content + b"\nbenchmark-hash-sensitivity-probe")
+        if digest_entries(changed) == original_task_digest:
+            raise ValueError(f"Task-pack digest ignored a changed input: {relative_path}")
+
+    rendered_entries = [(path.relative_to(ROOT).as_posix(), path.read_bytes()) for path in rendered_files]
+    original_rendered_digest = digest_entries(rendered_entries)
+    for index, (relative_path, content) in enumerate(rendered_entries):
+        changed = list(rendered_entries)
+        changed[index] = (relative_path, content + b"\nbenchmark-hash-sensitivity-probe")
+        if digest_entries(changed) == original_rendered_digest:
+            raise ValueError(f"Rendered-wiki digest ignored a changed input: {relative_path}")
+
+    for label, path in (("protocol", PROTOCOL_PATH), ("checker", CHECKER_PATH)):
+        content = path.read_bytes()
+        if file_sha256(path) == hashlib.sha256(content + b"\nbenchmark-hash-sensitivity-probe").hexdigest():
+            raise ValueError(f"{label} digest ignored a changed file")
+    return {
+        "task_pack_members": len(task_files),
+        "rendered_wiki_members": len(rendered_files),
+        "protocol_files": 1,
+        "checker_files": 1,
+    }
 
 
 def page_rel(path: Path) -> tuple[str, str]:
@@ -441,11 +481,16 @@ def run_integrity() -> dict:
 
     if errors:
         raise ValueError("\n".join(errors))
+    rendered_files = [path for path in DOCS.rglob("*") if path.is_file() and "benchmark" not in path.relative_to(DOCS).parts]
+    hash_sensitivity = verify_hash_sensitivity(rendered_files)
     return {
         "benchmark": "hamartia-bilingual-docs-integrity-v1",
         "task_set_id": tasks["task_set_id"],
         "task_pack_sha256": files_digest([TASKS_PATH, KEY_PATH, DECOYS_PATH], ROOT),
-        "rendered_wiki_sha256": files_digest([path for path in DOCS.rglob("*") if path.is_file() and "benchmark" not in path.relative_to(DOCS).parts], ROOT),
+        "rendered_wiki_sha256": files_digest(rendered_files, ROOT),
+        "protocol_sha256": file_sha256(PROTOCOL_PATH),
+        "checker_sha256": file_sha256(CHECKER_PATH),
+        "hash_sensitivity_self_checks": hash_sensitivity,
         "mode": "automated_integrity_only",
         "ai_included": False,
         "network_access": False,

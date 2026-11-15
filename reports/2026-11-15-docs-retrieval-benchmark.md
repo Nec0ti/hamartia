@@ -20,8 +20,10 @@ The Python standard-library checker parses the actual rendered HTML pages in `do
 
 The checked-in result is [`2026-11-15-docs-benchmark-results.json`](2026-11-15-docs-benchmark-results.json):
 
-- The static check completed in **0.25 seconds** under Python 3.14.8 on this host. This is checker runtime, not documentation retrieval performance.
+- The static check completed in **0.27 seconds** under Python 3.14.8 on this host. This is checker runtime, not documentation retrieval performance.
 - Task-pack SHA-256: `cc552da13e3102ada36a50bfe611b791eb6bd5fb4c86e8e2a23649118bd482a0`; rendered-wiki SHA-256: `ea5376db9f4f74eb18c94ad16c7b555a8be25980e3a075eef01e619ce803f3d0`.
+- Protocol SHA-256: `d2170c2ed0ab0a1496e613cf2ac7d10d75160f6ba54b6698f70f391aae4db26c`; checker SHA-256: `75af5c987fba221b609884f81cb9c44c94bc8230c0786141f5017e2d8d4d2645`.
+- In-memory sensitivity checks perturbed all three task-pack files, all 37 rendered-wiki files, the protocol, and the checker, and confirmed each corresponding digest changes.
 - 17 rendered pages and 17 navigation routes in each locale; 34 active navigation items checked.
 - 17 paired H2-anchor orders checked.
 - 816 local links/assets checked and 120 external references counted syntactically. External links are **not fetched** and their availability is not asserted.
@@ -33,6 +35,6 @@ The automated result measures wiki/task-pack integrity only. It parses rendered 
 
 ## Reproducibility and boundaries
 
-The task set uses stable IDs and fixed wording, version `1`, and does not sample tasks; the nine retrieval tasks are shuffled from a recorded seed, with the screenshot task last so its paired-language page cannot prime earlier answers. The checker is deterministic and writes the same static result fields for unchanged files. The answer rubric is separate from the prompts to support evaluator-withheld-key administration, but both files are public. Human results should record task ID, locale, rubric points, cited page/anchor, booklet seed, both SHA-256 values, and elapsed time without retaining participant names, private study data, credentials, or screenshots containing personal records.
+The task set uses stable IDs and fixed wording, version `1`, and does not sample tasks; the nine retrieval tasks are shuffled from a recorded seed, with the screenshot task last so its paired-language page cannot prime earlier answers. The checker is deterministic and writes the same static result fields for unchanged files. The answer rubric is separate from the prompts to support evaluator-withheld-key administration, but both files are public. Human results should record task ID, locale, rubric points, cited page/anchor, booklet seed, all four SHA-256 values, and elapsed time without retaining participant names, private study data, credentials, or screenshots containing personal records.
 
 The benchmark does not load or call a model, local AI service, or provider. It has no network dependency and performs no live external-link validation. Browser navigation, screenshot capture at 390×844, visual usability, and human response scoring remain manual work.

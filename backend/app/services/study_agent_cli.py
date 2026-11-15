@@ -627,7 +627,9 @@ def prepare_practice(
     qs = _conversation_questions(language, missing, ambiguous)
     return {
         "status": "ready" if payload else "ambiguous" if ambiguous else "incomplete",
-        "fields": payload.model_dump() if payload else raw_values,
+        # Profile selection belongs to the host UI. Keep it out of the parsed
+        # evidence preview even though the shared create schema can carry it.
+        "fields": payload.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"}) if payload else raw_values,
         "verified_evidence": verified_evidence,
         "evidence_claims": [
             {"field": field, "quote": evidence.quote}

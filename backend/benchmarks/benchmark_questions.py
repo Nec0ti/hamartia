@@ -5,20 +5,25 @@ import json
 import random
 import tempfile
 import time
+from collections import Counter
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
 from app.api import questions
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
-from benchmark_common import emit, seeded_png
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check, seeded_png
 
 SEED = 20261114
+TODAY = date(2026, 11, 14)
 RNG = random.Random(SEED)
+SUBJECTS = ("Matematik", "Türkçe", "Fizik")
+TOPICS = ("Fonksiyonlar", "Paragraf", "Hareket", "Denklemler")
 
 def make_upload(index):
     file = tempfile.SpooledTemporaryFile()
@@ -54,7 +59,10 @@ async def run(count=24, repeats=7, json_output=None):
             for index in range(count):
                 upload = make_upload(index)
                 try:
-                    await questions.upload_question(upload, "Soru metni", "Matematik", "Fonksiyonlar", storage)
+                    await questions.upload_question(
+                        upload, f"Seeded question text {index}", SUBJECTS[(index // 4) % len(SUBJECTS)],
+                        TOPICS[index % len(TOPICS)], storage,
+                    )
                 finally:
                     await upload.close()
             upload_seconds = time.perf_counter() - started
@@ -66,12 +74,24 @@ async def run(count=24, repeats=7, json_output=None):
             list_stats = await _measure_async(lambda: questions.list_questions(storage), repeats)
             assert list_stats.pop("last_result_count") == count
 
+            for index, item in enumerate(saved):
+                if index % 5 == 0:
+                    await questions.tag_question(item.id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
+                elif index % 7 == 0:
+                    await questions.tag_question(item.id, questions.TagRequest(hamartia_tag="[Distractor Trap]"), storage)
+            saved = await questions.list_questions(storage)
+
             started = time.perf_counter()
-            insights = await questions.question_insights(storage)
+            insights = await questions.question_insights(storage, today=TODAY)
             insight_seconds = time.perf_counter() - started
-            assert insights["total_questions"] == count
-            assert insights["topics"][0]["pending_count"] == count
-            insight_stats = await _measure_async(lambda: questions.question_insights(storage), repeats)
+            expected_insights = _expected_insights(saved, TODAY)
+            assert_oracle(insights, expected_insights, "question insights full output")
+            oracle_self_checks = [probe_oracle_self_check(
+                insights, expected_insights,
+                lambda output: output["topics"][0].__setitem__("pending_count", -1),
+                "question pending count corrupted",
+            )]
+            insight_stats = await _measure_async(lambda: questions.question_insights(storage, today=TODAY), repeats)
             assert insight_stats.pop("last_result_count") == count
 
             image = await questions.get_question_image(saved[0].id, storage)
@@ -140,6 +160,29 @@ async def run(count=24, repeats=7, json_output=None):
             section_insight_seconds = time.perf_counter() - started
             assert len(section_insights) == 1 and section_insights[0]["subject"] == "Türkçe"
 
+            # Invalid boundary inputs must fail without leaving partial records.
+            before_rejections = storage.load_list("questions.json", Question)
+            for upload, text, expected_status in (
+                (None, "   ", 422),
+                (UploadFile(filename="bad.png", file=tempfile.SpooledTemporaryFile(),
+                            headers=Headers({"content-type": "image/png"})), "", 415),
+            ):
+                if upload is not None:
+                    upload.file.write(b"not-a-png")
+                    upload.file.seek(0)
+                try:
+                    try:
+                        await questions.upload_question(upload, text, "Matematik", "Boundary", storage)
+                    except HTTPException as error:
+                        assert error.status_code == expected_status
+                    else:
+                        raise AssertionError("invalid question upload was accepted")
+                finally:
+                    if upload is not None:
+                        await upload.close()
+            assert_oracle([q.model_dump(mode="json") for q in storage.load_list("questions.json", Question)],
+                          [q.model_dump(mode="json") for q in before_rejections], "rejected uploads leave storage unchanged")
+
         emit({
             "benchmark": "local_question_flow",
             "seed": SEED,
@@ -164,6 +207,8 @@ async def run(count=24, repeats=7, json_output=None):
             "section_question_upload_seconds": round(section_question_upload_seconds, 4),
             "section_question_insight_seconds": round(section_insight_seconds, 4),
             "correctness": "upload, query, edit, attempt, review, and deletion assertions passed",
+            "oracle_self_checks": oracle_self_checks,
+            "rejected_uploads": ["blank text", "invalid PNG signature"],
             "limitations": "PNG pixels are deterministic synthetic noise; no AI or image-understanding path is called.",
         }, json_output)
 
@@ -191,6 +236,35 @@ async def _update_one(api, storage, question_id):
         api.QuestionUpdate(subject="Matematik", topic="Denklemler", ocr_text="Updated seeded question"),
         storage,
     )
+
+
+def _expected_insights(records, today):
+    groups = {}
+    for item in records:
+        key = (item.subject.strip().casefold(), item.topic.strip().casefold())
+        group = groups.setdefault(key, {
+            "subject": item.subject.strip(), "topic": item.topic.strip(),
+            "pending_count": 0, "last_seen": "", "tags": Counter(),
+        })
+        group["pending_count"] += 1
+        group["last_seen"] = max(group["last_seen"], item.created_at[:10])
+        group["tags"][item.hamartia_tag] += 1
+    topics = [{**group, "tags": dict(group["tags"])} for group in groups.values()]
+    topics.sort(key=lambda row: (-row["pending_count"], row["subject"].casefold(), row["topic"].casefold()))
+    reviews = [{
+        "id": item.id, "subject": item.subject, "topic": item.topic,
+        "hamartia_tag": item.hamartia_tag, "ocr_text": item.ocr_text,
+        "has_image": bool(item.image_path), "due_date": today.isoformat(),
+        "due": True, "streak": 0, "last_correct": None,
+    } for item in records]
+    reviews.sort(key=lambda item: (item["due_date"], item["subject"].casefold(), item["topic"].casefold(), item["id"]))
+    return {
+        "total_questions": len(records), "pending_questions": len(records),
+        "scheduled_questions": 0, "unclassified_questions": 0,
+        "today_questions": 0, "today_correct": 0, "today_incorrect": 0,
+        "question_order": [], "topics": topics, "reviews": reviews,
+        "curriculum_references": [],
+    }
 
 
 if __name__ == "__main__":

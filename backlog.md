@@ -42,6 +42,10 @@
 - [x] Preserve the current data directory as a snapshot before restore and protect directory swap with a process lock.
 - [x] Benchmark backup creation, validation, and restore using representative data, without AI.
 - [x] Replace single-shot benchmark probes with seeded persisted mixed workloads, correctness oracles, repeated percentiles, and machine metadata; keep sequential JSON append labeled as stress-only.
+- [x] Compare complete benchmark outputs against independent expected values; add boundary/skew fixtures, corruption and restore-safety cases, and deterministic wrong-result probes outside timed sections ([report](reports/2026-11-15-benchmark-oracle-hardening.md)).
+- [ ] Extend storage failure and concurrency coverage with multi-process writers, process termination during atomic replacement, and restart/recovery reconciliation. Keep these correctness experiments separate from throughput timing.
+- [ ] Add bounded loopback HTTP API benchmarks that measure serialized request/response and concurrent client paths separately from direct-function microbenchmarks; guarantee no external or AI endpoint request.
+- [ ] Add a blind bilingual documentation retrieval benchmark with versioned EN/TR tasks, citation/answer scoring, stale and broken link fixtures, and fixed-viewport browser/screenshot checks. Do not use AI to answer or score tasks.
 - [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
 - [ ] Add a distinct learning-evidence record for a completed suggested activity: user-entered observation/reflection, date, and optional reference link. Keep it separate from binary `ReviewAttempt`, exam net, and XP; do not infer completion or mastery from AI output.
 

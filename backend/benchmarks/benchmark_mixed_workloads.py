@@ -16,7 +16,7 @@ from app.core.progression import progression_summary
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, PracticeSession, Question, ReviewAttempt
 from app.services.storage import StorageService
-from benchmark_common import emit
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -89,6 +89,7 @@ def fixtures(exam_count, question_count, session_count):
         attempt_count = index % 4
         last_age = 0 if index % 8 == 1 else 1 + index % 30
         all_correct = index % 3 == 1
+        reviewed_at = TODAY.isoformat() if index == 0 else ""
         reference = None
         if index == question_count - 1:
             reference = {
@@ -108,20 +109,26 @@ def fixtures(exam_count, question_count, session_count):
                 "version": "v3", "grade_year": "Year 3", "unit_theme": "Made-up unit C",
                 "learning_outcome": "Explain invented pattern C", "process_component": "Reasoning C",
             }
+        review_attempts = [ReviewAttempt(
+            attempted_at=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat() + "T09:00:00Z",
+            attempt_day=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat(),
+            correct=all_correct if all_correct else offset < attempt_count - 1,
+        ) for offset in range(attempt_count)]
+        if review_attempts and index % 13 == 0:
+            review_attempts[-1].attempt_day = ""  # legacy UTC date fallback
+        subject = "" if index == 3 else section.subject if section else exam.subject
+        topic = "" if index == 3 else f"Konu {index % 40:02d}"
         questions.append(Question(
             id=f"question-{index}", exam_id=exam.id,
             question_number=question_number, solve_order=solve_order,
             time_spent_seconds=15 + index % 150,
-            subject=section.subject if section else exam.subject,
-            topic=f"Konu {index % 40:02d}", ocr_text=f"Seeded question text {index:05d} " + "açıklama " * 12,
+            subject=subject,
+            topic=topic, ocr_text=f"Seeded question text {index:05d} " + "açıklama " * 12,
+            reviewed_at=reviewed_at,
             created_at=(TODAY - timedelta(days=index % 365)).isoformat() + "T12:00:00Z",
             hamartia_tag=rng.choice(("[Knowledge Gap]", "[Reading Slip]", "[Distractor Trap]")),
             exam_section_total=(section.correct + section.incorrect + section.blank) if section else None,
-            review_attempts=[ReviewAttempt(
-                attempted_at=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat() + "T09:00:00Z",
-                attempt_day=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat(),
-                correct=all_correct if all_correct else offset < attempt_count - 1,
-            ) for offset in range(attempt_count)],
+            review_attempts=review_attempts,
             curriculum_reference=reference or {},
         ))
     sessions = [PracticeSession(
@@ -130,6 +137,14 @@ def fixtures(exam_count, question_count, session_count):
         correct=index % 26, incorrect=index % 8, blank=1 + index % 5,
         duration_minutes=10 + index % 60, duration_seconds=index % 60,
     ) for index in range(session_count)]
+    sessions[0] = PracticeSession(
+        id="session-0", date=TODAY.isoformat(), subject=" Matematik ", topic=" Boundary ",
+        correct=0, incorrect=0, blank=6, duration_minutes=0, duration_seconds=59,
+    )
+    sessions[1] = PracticeSession(
+        id="session-1", date=(TODAY - timedelta(days=729)).isoformat(), subject="matematik", topic="boundary",
+        correct=1000, incorrect=4, blank=0, duration_minutes=90, duration_seconds=0,
+    )
     return exams, questions, sessions
 
 
@@ -163,41 +178,64 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             first_service_load[name] = round(time.perf_counter() - started, 6)
             assert len(loaded) == expected
         warm = {
-            name: measure(lambda n=name, m=model, c=count: _assert_count(storage, n, m, c), repeats)
+            name: measure(lambda n=name, m=model: storage.load_list(n, m), repeats)
             for name, model, count in (("exams.json", Exam, exam_count),
                                        ("questions.json", Question, question_count),
                                        ("practice_sessions.json", PracticeSession, session_count))
         }
 
         progression_result = progression_summary(storage.load_list("exams.json", Exam), today=TODAY)
-        assert progression_result == _expected_progression(exams)
-        progression = measure(lambda: _assert_equal(
-            progression_summary(storage.load_list("exams.json", Exam), today=TODAY), _expected_progression(exams)), repeats)
+        expected_progression = _expected_progression(exams)
+        assert_oracle(progression_result, expected_progression, "mixed progression")
+        progression = measure(lambda: progression_summary(
+            storage.load_list("exams.json", Exam), today=TODAY), repeats)
         priority_result = topic_priorities(
             storage.load_list("questions.json", Question), today=TODAY,
             exams=storage.load_list("exams.json", Exam))
         expected_priorities = _expected_priorities(questions, exams)
-        assert priority_result == expected_priorities
+        assert_oracle(priority_result, expected_priorities, "mixed question priorities")
         assert priority_result["pending_questions"] > 0 and priority_result["scheduled_questions"] > 0
         assert priority_result["today_questions"] > 0
         assert priority_result["today_correct"] > 0 and priority_result["today_incorrect"] > 0
-        priorities = measure(lambda: _assert_equal(topic_priorities(
+        priorities = measure(lambda: topic_priorities(
             storage.load_list("questions.json", Question), today=TODAY,
-            exams=storage.load_list("exams.json", Exam)), expected_priorities), repeats)
+            exams=storage.load_list("exams.json", Exam)), repeats)
         expected_practice = _expected_practice(sessions)
-        assert practice_topic_summaries(sessions) == expected_practice
-        summaries = measure(lambda: _assert_equal(practice_topic_summaries(
-            storage.load_list("practice_sessions.json", PracticeSession)), expected_practice), repeats)
+        practice_result = practice_topic_summaries(storage.load_list("practice_sessions.json", PracticeSession))
+        assert_oracle(practice_result, expected_practice, "mixed practice groups")
+        oracle_self_checks = [
+            probe_oracle_self_check(progression_result, expected_progression,
+                                   lambda value: value.__setitem__("total_xp", value["total_xp"] + 1),
+                                   "mixed progression XP corrupted"),
+            probe_oracle_self_check(priority_result, expected_priorities,
+                                   lambda value: value["reviews"].pop(),
+                                   "mixed review row omitted"),
+            probe_oracle_self_check(practice_result, expected_practice,
+                                   lambda rows: rows[0]["trend"].pop(),
+                                   "mixed practice trend omitted"),
+        ]
+        summaries = measure(lambda: practice_topic_summaries(
+            storage.load_list("practice_sessions.json", PracticeSession)), repeats)
 
         update_ids = [f"question-{index}" for index in range(question_count - 11, question_count)]
         update = measure(lambda: _update_question(storage, update_ids.pop(), "[Reading Slip]"), 10)
-        assert all(q.hamartia_tag == "[Reading Slip]" for q in storage.load_list("questions.json", Question)[-11:])
+        mutation_state = storage.load_list("questions.json", Question)
+        assert all(q.hamartia_tag == "[Reading Slip]" for q in mutation_state[-11:])
+        expected_question_rows = [q.model_dump(mode="json") for q in questions]
+        for row in expected_question_rows[-11:]:
+            row["hamartia_tag"] = "[Reading Slip]"
+        assert_oracle([q.model_dump(mode="json") for q in mutation_state], expected_question_rows,
+                      "mixed full question state after update")
 
         delete_ids = [f"question-{index}" for index in range(question_count - 22, question_count - 11)]
         delete = measure(lambda: _delete_question(storage, delete_ids.pop()), 10)
         remaining = storage.load_list("questions.json", Question)
-        assert len(remaining) == question_count - 11
-        assert not any(q.id in {f"question-{i}" for i in range(question_count - 22, question_count - 11)} for q in remaining)
+        removed = {
+            *(f"question-{i}" for i in range(question_count - 22, question_count - 11)),
+        }
+        expected_question_rows = [row for row in expected_question_rows if row["id"] not in removed]
+        assert_oracle([q.model_dump(mode="json") for q in remaining], expected_question_rows,
+                      "mixed full question state after delete")
 
         concurrent = [Exam(
             id=f"concurrent-{i}", date=TODAY.isoformat(), subject="Matematik", correct=1, incorrect=0, blank=0,
@@ -222,6 +260,7 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             "question_update_10_records": update, "question_delete_10_records": delete,
             "concurrent_appends": {"workers": 4, "records": len(concurrent), "seconds": round(concurrent_seconds, 6)},
             "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
+            "oracle_self_checks": oracle_self_checks,
         }, json_output)
 
 
@@ -242,7 +281,7 @@ def _assert_valid_questions(questions, exams):
             scope = (exam.id, section.subject)
         else:
             total = exam.correct + exam.incorrect + exam.blank
-            assert question.subject == exam.subject
+            assert question.subject in ("", exam.subject)
             assert question.question_number <= total
             scope = (exam.id, "")
         assert 1 <= question.solve_order <= total
@@ -278,7 +317,7 @@ def _expected_priorities(questions, exams):
     intervals = (1, 3, 7, 14, 30)
     for question in questions:
         for attempt in question.review_attempts:
-            day = date.fromisoformat(attempt.attempt_day) if attempt.attempt_day else datetime.fromisoformat(attempt.attempted_at.replace("Z", "+00:00")).date()
+            day = _oracle_attempt_day(attempt)
             if day == TODAY:
                 today_ids.add(question.id)
                 today_correct += int(attempt.correct)
@@ -286,7 +325,7 @@ def _expected_priorities(questions, exams):
 
         if question.review_attempts:
             attempts = question.review_attempts
-            last_day = date.fromisoformat(attempts[-1].attempt_day) if attempts[-1].attempt_day else datetime.fromisoformat(attempts[-1].attempted_at.replace("Z", "+00:00")).date()
+            last_day = _oracle_attempt_day(attempts[-1])
             streak = 0
             for attempt in reversed(attempts):
                 if not attempt.correct:
@@ -310,6 +349,8 @@ def _expected_priorities(questions, exams):
         order[stage].append(question.time_spent_seconds)
         if not due:
             scheduled += bool(due_day)
+            continue
+        if question.reviewed_at:
             continue
         pending += 1
         unclassified += not question.subject.strip() or not question.topic.strip()
@@ -379,7 +420,7 @@ def _expected_curriculum_references(questions, limit=8):
 def _expected_practice(sessions):
     groups = {}
     for session in sessions:
-        key = (session.subject.casefold(), session.topic.casefold())
+        key = (session.subject.strip().casefold(), session.topic.strip().casefold())
         group = groups.setdefault(key, {
             "subject": session.subject, "topic": session.topic, "sessions": [],
             "correct": 0, "incorrect": 0, "blank": 0,
@@ -406,6 +447,19 @@ def _expected_practice(sessions):
     return result
 
 
+def _oracle_attempt_day(attempt):
+    try:
+        parsed = date.fromisoformat(attempt.attempt_day)
+        if parsed.isoformat() == attempt.attempt_day:
+            return parsed
+    except (TypeError, ValueError):
+        pass
+    try:
+        return datetime.fromisoformat(attempt.attempted_at.replace("Z", "+00:00")).date()
+    except (AttributeError, ValueError):
+        return None
+
+
 def _assert_count(storage, name, model, count):
     assert len(storage.load_list(name, model)) == count
 
@@ -417,7 +471,7 @@ def _update_question(storage, question_id, tag):
                 item.hamartia_tag = tag
                 return True
         return False
-    assert storage.update_list("questions.json", Question, update)
+    return storage.update_list("questions.json", Question, update)
 
 
 def _delete_question(storage, question_id):
@@ -427,7 +481,7 @@ def _delete_question(storage, question_id):
                 items.pop(index)
                 return True
         return False
-    assert storage.update_list("questions.json", Question, delete)
+    return storage.update_list("questions.json", Question, delete)
 
 
 if __name__ == "__main__":

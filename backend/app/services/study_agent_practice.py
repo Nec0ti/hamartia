@@ -38,7 +38,8 @@ def _patterns(field: str) -> list[re.Pattern]:
     labels = rf"(?<!\w)(?:{ALIASES[field]})(?!\w)"
     correction = r"(?:(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:\s*)?"
     if field in {"subject", "topic"}:
-        return [re.compile(rf"(?im)^\s*{correction}{labels}\s*:\s*([^\n,;]{{1,160}})\s*$")]
+        next_label = "|".join(f"(?:{value})" for value in ALIASES.values())
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(.{{1,160}}?)(?=(?:[,;]\s*|\n\s*)(?:{next_label})\s*:|[;\n]|$)")]
     if field == "date":
         return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
     if field in {"correct", "incorrect", "blank"}:
@@ -52,22 +53,23 @@ def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, 
     accepted: dict[str, Evidence] = {}
     ambiguous: dict[str, list[str]] = {}
     for index, message in enumerate(messages):
-        is_correction = bool(re.search(r"(?im)^\s*(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:", message))
         for field in FIELDS:
-            found: list[tuple[str | int, str]] = []
+            found: list[tuple[str | int, str, bool]] = []
             for pattern in _patterns(field):
                 for match in pattern.finditer(message):
                     raw = match.group(1).strip()
                     value = int(raw) if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} else raw
-                    found.append((value, match.group(0).strip()))
+                    quote = match.group(0).strip()
+                    is_correction = bool(re.match(r"(?i)(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:", quote))
+                    found.append((value, quote, is_correction))
             if not found:
                 continue
-            distinct = {value for value, _ in found}
+            distinct = {value for value, _, _ in found}
             if len(distinct) != 1:
-                ambiguous[field] = list(dict.fromkeys([*ambiguous.get(field, []), *(quote for _, quote in found)]))
+                ambiguous[field] = list(dict.fromkeys([*ambiguous.get(field, []), *(quote for _, quote, _ in found)]))
                 accepted.pop(field, None)
                 continue
-            value, quote = found[-1]
+            value, quote, is_correction = found[-1]
             previous = accepted.get(field)
             if field in ambiguous and not is_correction:
                 ambiguous[field] = list(dict.fromkeys([*ambiguous[field], quote]))

@@ -169,6 +169,14 @@ class StudyAgentPracticeTests(unittest.TestCase):
             with self.subTest(raw=raw), self.assertRaises(ValueError):
                 parse_proposal(raw)
 
+    def test_comma_separated_student_values_keep_field_boundaries_and_quotes(self):
+        message = "date: 2026-11-15, subject: Mathematics, topic: Functions, correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0"
+        response = self.draft([message], FULL_PROPOSAL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["fields"]["subject"], "Mathematics")
+        self.assertEqual(response.json()["fields"]["topic"], "Functions")
+        self.assertEqual(response.json()["evidence"]["topic"]["quote"], "topic: Functions")
+
 
 class ConfiguredStudyAgentProposalTests(unittest.TestCase):
     def setUp(self):

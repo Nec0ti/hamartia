@@ -135,7 +135,8 @@ class AIService:
                         "duration_seconds. Preserve ISO date text and integer counts. Include a field only "
                         "when that exact value is explicitly present after a recognized field label in the "
                         "student messages. Never infer, calculate, normalize, or fill a missing field. "
-                        "Messages use `field: value`; labels may be date/tarih, subject/ders, topic/konu, "
+                        "Messages use `field: value`; fields may be comma-separated or on separate lines. "
+                        "Labels may be date/tarih, subject/ders, topic/konu, "
                         "correct/doğru, incorrect/wrong/yanlış, blank/boş, duration_minutes/minutes/dakika, "
                         "duration_seconds/seconds/saniye. Output no questions or prose."
                     ),

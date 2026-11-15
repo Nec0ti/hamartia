@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -18,13 +18,18 @@ from app.services.study_agent_practice import (
     preview_digest,
 )
 
+PROVIDER_TOOL_NAME = "hamartia_practice_prepare"
+
 
 class EvidenceQuote(BaseModel):
     """A provider-suggested quote; both field and quote must be verified locally."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    field: str
+    field: Literal[
+        "date", "subject", "topic", "correct", "incorrect", "blank",
+        "duration_minutes", "duration_seconds",
+    ]
     quote: str = Field(min_length=1, max_length=500)
 
     @field_validator("field")
@@ -52,6 +57,30 @@ class ProviderToolArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     evidence: list[EvidenceQuote] = Field(max_length=40)
+
+
+def provider_tool_parameters() -> dict[str, Any]:
+    """Return a strict, quote-only schema shared by provider adapters."""
+    return {
+        "type": "object",
+        "properties": {
+            "evidence": {
+                "type": "array",
+                "maxItems": 40,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "field": {"type": "string", "enum": list(FIELDS)},
+                        "quote": {"type": "string", "minLength": 1, "maxLength": 500},
+                    },
+                    "required": ["field", "quote"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["evidence"],
+        "additionalProperties": False,
+    }
 
 
 def _field(value: str) -> str:

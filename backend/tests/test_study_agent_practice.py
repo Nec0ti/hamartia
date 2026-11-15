@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.api import practice, study_agent
 from app.models.schemas import PracticeSession, Settings
 from app.services.storage import StorageService
+from app.services.study_agent_cli import prepare_practice
 from app.services.study_agent_practice import extract_fields, parse_proposal
 
 
@@ -44,11 +46,12 @@ class StudyAgentPracticeTests(unittest.TestCase):
             "messages": messages, "language": language, "proposal": proposal,
         })
 
-    def create_body(self, draft, duplicate_choice=None):
+    def create_body(self, draft, duplicate_choice=None, approval_id=None):
         body = {
             "messages": FULL_MESSAGES, "language": "en", "proposal": FULL_PROPOSAL,
             "fields": dict(draft["fields"]), "evidence": dict(draft["evidence"]),
             "preview_digest": draft["preview_digest"],
+            "approval_id": approval_id or str(uuid.uuid5(uuid.NAMESPACE_URL, f"{draft['preview_digest']}:{duplicate_choice or 'default'}")),
         }
         if duplicate_choice is not None:
             body["duplicate_choice"] = duplicate_choice
@@ -73,6 +76,99 @@ class StudyAgentPracticeTests(unittest.TestCase):
     def test_provider_cannot_add_unknown_field_or_invent_a_value(self):
         response = self.draft(proposal={**FULL_PROPOSAL, "settings": "changed"})
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.sessions(), [])
+
+    def test_quote_tool_draft_resolves_host_transcript_and_create_rechecks_exact_preview(self):
+        messages = [
+            "I completed a practice test on Functions in Mathematics on 2026-11-15. "
+            "I got 12 right, 3 wrong, left 1 blank; it took 45 minutes and 0 seconds."
+        ]
+        evidence_claims = [
+            {"field": "subject", "quote": "in Mathematics"},
+            {"field": "topic", "quote": "on Functions"},
+            {"field": "date", "quote": "on 2026-11-15"},
+            {"field": "correct", "quote": "12 right"},
+            {"field": "incorrect", "quote": "3 wrong"},
+            {"field": "blank", "quote": "left 1 blank"},
+            {"field": "duration_minutes", "quote": "it took 45 minutes"},
+            {"field": "duration_seconds", "quote": "0 seconds"},
+        ]
+        response = self.client.post("/practice/agent-draft", json={
+            "messages": messages, "language": "en", "evidence_claims": evidence_claims,
+        })
+        self.assertEqual(response.status_code, 200)
+        draft = response.json()
+        self.assertEqual(draft["status"], "ready")
+        self.assertEqual(draft["fields"]["correct"], 12)
+        self.assertFalse(draft["proposal_mismatch"])
+        self.assertEqual(self.sessions(), [])
+
+        body = {
+            "messages": messages, "language": "en", "evidence_claims": draft["evidence_claims"],
+            "proposal": draft["proposal"], "fields": draft["fields"], "evidence": draft["evidence"],
+            "preview_digest": draft["preview_digest"], "approval_id": str(uuid.uuid4()),
+        }
+        tampered = {**body, "fields": {**body["fields"], "correct": 13}}
+        rejected = self.client.post("/practice/agent-create", json=tampered)
+        self.assertEqual(rejected.status_code, 422)
+        extra_claim = {**body, "evidence_claims": [
+            *body["evidence_claims"], {"field": "topic", "quote": "a quote absent from the transcript"},
+        ]}
+        self.assertEqual(self.client.post("/practice/agent-create", json=extra_claim).status_code, 422)
+        changed_evidence = {**body, "evidence": {**body["evidence"], "correct": {
+            **body["evidence"]["correct"], "quote": "correct: 13",
+        }}}
+        self.assertEqual(self.client.post("/practice/agent-create", json=changed_evidence).status_code, 422)
+        changed_digest = {**body, "preview_digest": "0" * 64}
+        self.assertEqual(self.client.post("/practice/agent-create", json=changed_digest).status_code, 409)
+        self.assertEqual(self.sessions(), [])
+
+        saved = self.client.post("/practice/agent-create", json=body)
+        self.assertEqual(saved.status_code, 201)
+        self.assertEqual(len(self.sessions()), 1)
+        self.assertEqual(self.sessions()[0].correct, 12)
+        replay = self.client.post("/practice/agent-create", json=body)
+        self.assertEqual(replay.status_code, 201)
+        self.assertEqual(replay.json()["id"], saved.json()["id"])
+        self.assertEqual(len(self.sessions()), 1)
+
+        changed_messages = [messages[0].replace("12 right", "13 right")]
+        changed_claims = [
+            {"field": "subject", "quote": "in Mathematics"},
+            {"field": "topic", "quote": "on Functions"},
+            {"field": "date", "quote": "on 2026-11-15"},
+            {"field": "correct", "quote": "13 right"},
+            {"field": "incorrect", "quote": "3 wrong"},
+            {"field": "blank", "quote": "left 1 blank"},
+            {"field": "duration_minutes", "quote": "it took 45 minutes"},
+            {"field": "duration_seconds", "quote": "0 seconds"},
+        ]
+        changed_draft = self.client.post("/practice/agent-draft", json={
+            "messages": changed_messages, "language": "en", "evidence_claims": changed_claims,
+        }).json()
+        changed_approval = {
+            "messages": changed_messages, "language": "en", "evidence_claims": changed_draft["evidence_claims"],
+            "proposal": changed_draft["proposal"], "fields": changed_draft["fields"],
+            "evidence": changed_draft["evidence"], "preview_digest": changed_draft["preview_digest"],
+            "approval_id": body["approval_id"], "duplicate_choice": "new",
+        }
+        self.assertEqual(self.client.post("/practice/agent-create", json=changed_approval).status_code, 409)
+        self.assertEqual(len(self.sessions()), 1)
+
+        intentional_new = {**body, "approval_id": str(uuid.uuid4()), "duplicate_choice": "new"}
+        self.assertEqual(self.client.post("/practice/agent-create", json=intentional_new).status_code, 201)
+        self.assertEqual(len(self.sessions()), 2)
+
+    def test_quote_tool_cannot_hide_cross_turn_conflict_and_prepare_never_writes(self):
+        response = self.client.post("/practice/agent-draft", json={
+            "messages": ["I got 5 right.", "or 7 right"], "language": "en",
+            "evidence_claims": [{"field": "correct", "quote": "I got 5 right"}],
+        })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "ambiguous")
+        self.assertIn("correct", body["ambiguous"])
+        self.assertIsNone(body["preview_digest"])
         self.assertEqual(self.sessions(), [])
         response = self.draft(proposal={**FULL_PROPOSAL, "correct": 70})
         self.assertEqual(response.status_code, 200)
@@ -142,7 +238,9 @@ class StudyAgentPracticeTests(unittest.TestCase):
         self.assertEqual(len(self.sessions()), 1)
         duplicate = self.draft().json()
         self.assertEqual(len(duplicate["conflicts"]), 1)
-        rejected = self.client.post("/practice/agent-create", json=self.create_body(duplicate))
+        rejected = self.client.post("/practice/agent-create", json=self.create_body(
+            duplicate, approval_id=str(uuid.uuid4()),
+        ))
         self.assertEqual(rejected.status_code, 409)
         self.assertEqual(len(self.sessions()), 1)
         cancelled = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "cancel"))
@@ -151,13 +249,23 @@ class StudyAgentPracticeTests(unittest.TestCase):
         explicit_new = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "new"))
         self.assertEqual(explicit_new.status_code, 201)
         self.assertEqual(len(self.sessions()), 2)
+        replayed_new = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "new"))
+        self.assertEqual(replayed_new.status_code, 201)
+        self.assertEqual(replayed_new.json()["id"], explicit_new.json()["id"])
+        self.assertEqual(len(self.sessions()), 2)
+        intentional_repeat = self.client.post("/practice/agent-create", json=self.create_body(
+            duplicate, "new", approval_id=str(uuid.uuid4()),
+        ))
+        self.assertEqual(intentional_repeat.status_code, 201)
+        self.assertEqual(len(self.sessions()), 3)
 
     def test_concurrent_same_preview_saves_create_only_once_without_duplicate_approval(self):
         draft = self.draft().json()
         body = self.create_body(draft)
         with ThreadPoolExecutor(max_workers=2) as pool:
             responses = list(pool.map(lambda _: self.client.post("/practice/agent-create", json=body), range(2)))
-        self.assertEqual(sorted(response.status_code for response in responses), [201, 409])
+        self.assertEqual(sorted(response.status_code for response in responses), [201, 201])
+        self.assertEqual(responses[0].json()["id"], responses[1].json()["id"])
         self.assertEqual(len(self.sessions()), 1)
 
     def test_closed_provider_json_parser_rejects_tools_and_non_integer_counts(self):
@@ -214,7 +322,7 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.ai_class = self.ai_patch.start()
         self.ai = self.ai_class.return_value
         self.ai.base_url = "http://localhost:4000/v1"
-        self.ai.study_practice_proposal = AsyncMock(return_value='{"fields":{"subject":"Mathematics"}}')
+        self.ai.study_practice_prepare = AsyncMock(return_value=prepare_practice(["subject: Mathematics"], "tr", []))
 
     def tearDown(self):
         self.ai_patch.stop()
@@ -230,26 +338,31 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
             "has_api_key": True, "workflow": "practice-entry", "messages": ["subject: Mathematics"],
         }
 
-    def test_configured_provider_returns_mocked_proposal_and_receives_saved_language_code(self):
+    def test_configured_provider_returns_shared_verified_draft_and_receives_saved_language_code(self):
         response = self.client.post("/study-agent/local", json=self.payload())
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"proposal": {"subject": "Mathematics"}})
-        self.ai.study_practice_proposal.assert_awaited_once_with(["subject: Mathematics"], "tr")
+        self.assertEqual(response.json()["status"], "incomplete")
+        self.assertEqual(response.json()["fields"]["subject"], "Mathematics")
+        self.assertIn("date", response.json()["missing"])
+        self.ai.study_practice_prepare.assert_awaited_once_with(["subject: Mathematics"], "tr")
 
-    def test_configured_provider_proposal_is_untrusted_and_cannot_write(self):
-        self.ai.study_practice_proposal.return_value = '{"fields":{"subject":"Physics"}}'
+    def test_configured_provider_unverified_quote_is_discarded_and_cannot_write(self):
+        self.ai.study_practice_prepare.return_value = prepare_practice(
+            ["subject: Mathematics"], "en", [{"field": "topic", "quote": "topic: Guessed"}],
+        )
         response = self.client.post("/study-agent/local", json=self.payload())
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"proposal": {"subject": "Physics"}})
+        self.assertTrue(response.json()["proposal_mismatch"])
+        self.assertNotIn("topic", response.json()["fields"])
+        self.assertIn("topic", response.json()["missing"])
         self.assertEqual(StorageService(self.data_dir).load_list("practice_sessions.json", PracticeSession), [])
 
     def test_configured_provider_overguess_is_replaced_by_localized_missing_question(self):
-        self.ai.study_practice_proposal.return_value = '{"fields":{"subject":"Mathematics","topic":"Guessed topic"}}'
-        provider_response = self.client.post("/study-agent/local", json={
+        self.ai.study_practice_prepare.return_value = prepare_practice(
+            ["ders: Matematik"], "tr", [{"field": "topic", "quote": "topic: Guessed topic"}],
+        )
+        draft_response = self.client.post("/study-agent/local", json={
             **self.payload(), "message": "ders: Matematik", "language": "tr", "messages": ["ders: Matematik"],
-        })
-        draft_response = self.client.post("/practice/agent-draft", json={
-            "messages": ["ders: Matematik"], "language": "tr", "proposal": provider_response.json()["proposal"],
         })
         self.assertEqual(draft_response.status_code, 200)
         draft = draft_response.json()
@@ -257,7 +370,7 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.assertEqual(draft["fields"]["subject"], "Matematik")
         self.assertNotIn("topic", draft["fields"])
         self.assertIn("topic", draft["missing"])
-        self.assertIn("Lütfen konu bilgisini `topic: değer` biçiminde belirt.", draft["questions"])
+        self.assertIn("Hangi konuda çalıştın?", draft["questions"])
         self.assertEqual(StorageService(self.data_dir).load_list("practice_sessions.json", PracticeSession), [])
 
 

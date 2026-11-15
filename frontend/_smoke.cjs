@@ -649,7 +649,7 @@ async function main() {
     assert.equal(backupDownload.suggestedFilename(), 'hamartia-backup.zip')
     assert.deepEqual((await fs.readFile(await backupDownload.path())).subarray(0, 2), Buffer.from('PK'))
     const backupDownloadMs = Math.round(performance.now() - backupStarted - settingsKeyManagementMs)
-    await page.addInitScript(() => {
+    await page.addInitScript((backendUrl) => {
       const profileKey = 'hamartia.smoke.chatgpt'
       window.hamartiaDesktop = {
         restoreBackup: async () => ({ status: 'cancelled' }),
@@ -685,10 +685,27 @@ async function main() {
           chat: async (payload) => {
             window.__mockAgentPayload = payload
             if (payload.message === 'cancel me') return new Promise((resolve) => { window.__mockCancel = resolve })
-            const response = payload.workflow === 'practice-entry'
-              ? JSON.stringify({ fields: { date: '2026-11-15', subject: 'Mathematics', topic: 'Functions', correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0 } })
-              : 'A mocked study response.'
-            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: response })
+            if (payload.workflow === 'practice-entry') {
+              const fields = ['date', 'subject', 'topic', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds']
+              const evidence_claims = payload.messages.flatMap((message) => [...message.matchAll(/(?:^|,\s*)(date|subject|topic|correct|incorrect|blank|duration_minutes|duration_seconds):\s*([^,]+)/g)]
+                .filter((match) => fields.includes(match[1]))
+                .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
+              const response = await fetch(`${backendUrl}/practice/agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
+              })
+              const responseBody = await response.text()
+              window.__practiceDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
+              window.__practiceDraftResponse = draft
+              if (payload.language === 'en' && payload.messages.length === 1 && payload.messages[0].startsWith('date: 2026-11-15')) {
+                if (JSON.stringify(draft.missing) !== JSON.stringify(['topic'])) throw new Error(`Expected only the topic field to be missing; got ${JSON.stringify(draft.missing)}`)
+                if (JSON.stringify(draft.questions) !== JSON.stringify(['Which topic did you practice?'])) throw new Error(`Unexpected practice clarification: ${JSON.stringify(draft.questions)}`)
+              }
+              return { status: 'completed', draft }
+            }
+            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
           cancel: async () => {
@@ -697,7 +714,7 @@ async function main() {
           },
         },
       }
-    })
+    }, apiUrl)
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()
@@ -725,7 +742,20 @@ async function main() {
     await page.getByLabel('Describe the practice set you completed').fill(practiceEntry)
     await page.getByRole('checkbox').check()
     await page.getByRole('button', { name: 'Send to OpenAI' }).click()
-    await page.getByText('Please provide topic as `topic: value`.').waitFor()
+    try {
+      await page.getByText('Which topic did you practice?').waitFor()
+    } catch (error) {
+      const state = await page.evaluate(() => ({
+        language: localStorage.getItem('hamartia.language'),
+        payload: window.__mockAgentPayload,
+        draftHttp: window.__practiceDraftHttp,
+        draft: window.__practiceDraftResponse,
+        liveText: [...document.querySelectorAll('[aria-live]')].map((element) => element.innerText),
+        bodyText: document.body.innerText.slice(-1200),
+      }))
+      console.error('Practice clarification smoke state:', JSON.stringify({ ...state, pageErrors, failedResponses, appRequests }))
+      throw error
+    }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
     const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)
@@ -1021,6 +1051,10 @@ async function main() {
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 3)
     assert(!appRequests.some((request) => request.path === '/study-agent/local'))
     assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/practice/agent-')).map((request) => request.path), ['/practice/agent-draft', '/practice/agent-draft', '/practice/agent-create'])
+    const approvedAgentRequest = appRequests.find((request) => request.path === '/practice/agent-create')
+    assert.equal(approvedAgentRequest.body.evidence_claims.length, 8)
+    assert.equal(approvedAgentRequest.body.approval_id.length, 36)
+    assert.equal(approvedAgentRequest.body.preview_digest.length, 64)
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
     assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-') && (request.path.includes('/agent') || request.path.endsWith('/analyze'))))

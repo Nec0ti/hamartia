@@ -17,6 +17,7 @@ from app.core.config import DATA_DIR
 from app.core.formulas import net_score
 from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
 from app.services.storage import StorageService
+from app.services.study_agent_cli import PROVIDER_TOOL_NAME, dispatch_provider_tool, provider_tool_parameters
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -120,35 +121,73 @@ class AIService:
             raise ValueError("The configured endpoint returned an empty response.")
         return content
 
-    async def study_practice_proposal(self, messages: list[str], language: str) -> str:
-        """Return an untrusted extraction proposal; the API verifies every value locally."""
+    async def study_practice_prepare(self, messages: list[str], language: str) -> dict:
+        """Run one evidence-only Chat Completions tool cycle and verify quotes locally."""
         client = await self._ensure_async()
+        system = (
+            "You are the Hamartia practice-entry evidence assistant. Use the one available tool exactly once. "
+            "The tool accepts only exact evidence quotes from the supplied student messages; it does not accept "
+            "values, record IDs, transcript text, paths, or write instructions. Return quotes that support each "
+            "practice field and omit fields without clear evidence. Never guess, calculate, resolve conflicts, "
+            "or paraphrase a quote. After the verified tool result, ask the localized question it supplies or "
+            "briefly acknowledge that a verified preview is ready. Answer in "
+            f"{'Turkish' if language == 'tr' else 'English'}."
+        )
+        transcript = {"role": "user", "content": json.dumps({"student_messages": messages}, ensure_ascii=False)}
+        function_tool = {
+            "type": "function",
+            "function": {
+                "name": PROVIDER_TOOL_NAME,
+                "description": "Submit exact student-message quotes for local verification and a read-only practice preview.",
+                "parameters": provider_tool_parameters(),
+                "strict": True,
+            },
+        }
         response = await client.chat.completions.create(
             model=self.model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are preparing a Hamartia practice-set proposal. Return only JSON with one key, "
-                        "fields, whose values are copied from explicitly labeled student messages. Allowed "
-                        "keys: date, subject, topic, correct, incorrect, blank, duration_minutes, "
-                        "duration_seconds. Preserve ISO date text and integer counts. Include a field only "
-                        "when that exact value is explicitly present after a recognized field label in the "
-                        "student messages. Never infer, calculate, normalize, or fill a missing field. "
-                        "Messages use `field: value`; fields may be comma-separated or on separate lines. "
-                        "Labels may be date/tarih, subject/ders, topic/konu, "
-                        "correct/doğru, incorrect/wrong/yanlış, blank/boş, duration_minutes/minutes/dakika, "
-                        "duration_seconds/seconds/saniye. Output no questions or prose."
-                    ),
-                },
-                {"role": "user", "content": json.dumps({"language": language, "student_messages": messages}, ensure_ascii=False)},
-            ],
+            messages=[{"role": "system", "content": system}, transcript],
+            tools=[function_tool],
+            tool_choice={"type": "function", "function": {"name": PROVIDER_TOOL_NAME}},
+            parallel_tool_calls=False,
             temperature=0,
         )
-        content = response.choices[0].message.content
-        if not isinstance(content, str) or not content:
-            raise ValueError("The configured endpoint returned an empty response.")
-        return content
+        message = response.choices[0].message
+        calls = message.tool_calls or []
+        if message.content not in (None, "") or len(calls) != 1:
+            raise ValueError("The configured endpoint did not return exactly one evidence tool call.")
+        call = calls[0]
+        if call.type != "function" or call.function.name != PROVIDER_TOOL_NAME or not call.id:
+            raise ValueError("The configured endpoint returned an unsupported tool call.")
+        try:
+            arguments = json.loads(call.function.arguments)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("The configured endpoint returned malformed evidence arguments.") from exc
+        prepared = dispatch_provider_tool(arguments, messages=messages, language=language)
+        tool_result = {
+            key: prepared[key]
+            for key in ("status", "fields", "verified_evidence", "missing", "ambiguous", "questions", "preview_digest", "write_allowed")
+        }
+        followup = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system},
+                transcript,
+                {"role": "assistant", "tool_calls": [{
+                    "id": call.id,
+                    "type": "function",
+                    "function": {"name": PROVIDER_TOOL_NAME, "arguments": call.function.arguments},
+                }]},
+                {"role": "tool", "tool_call_id": call.id, "content": json.dumps(tool_result, ensure_ascii=False)},
+            ],
+            tools=[function_tool],
+            tool_choice="none",
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        final_message = followup.choices[0].message
+        if final_message.tool_calls:
+            raise ValueError("The configured endpoint attempted an additional tool call.")
+        return prepared
 
     def _build_prompt(self, question: Question) -> list:
         content = [{

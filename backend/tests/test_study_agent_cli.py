@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.hamartia_cli import MAX_LINE_LENGTH, run_json_line
-from app.services.study_agent_cli import EvidenceQuote, ProviderToolArguments, dispatch_cli, dispatch_provider_tool, parse_quote_value, prepare_practice
+from app.services.study_agent_cli import EvidenceQuote, ProviderToolArguments, dispatch_cli, dispatch_provider_tool, parse_quote_value, prepare_practice, provider_tool_parameters
 from app.services.study_agent_practice import extract_fields
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -30,6 +30,16 @@ CLAIMS = [
 
 
 class StudyAgentCliTests(unittest.TestCase):
+    def test_provider_tool_schema_is_strict_and_accepts_only_evidence_quotes(self):
+        schema = provider_tool_parameters()
+        self.assertEqual(schema["required"], ["evidence"])
+        self.assertIs(schema["additionalProperties"], False)
+        evidence = schema["properties"]["evidence"]
+        self.assertEqual(evidence["items"]["required"], ["field", "quote"])
+        self.assertIs(evidence["items"]["additionalProperties"], False)
+        self.assertEqual(set(evidence["items"]["properties"]), {"field", "quote"})
+        self.assertEqual(set(schema["properties"]), {"evidence"})
+
     def test_natural_language_quotes_are_bound_to_source_and_return_ready_preview(self):
         result = prepare_practice(MESSAGES, "en", CLAIMS)
         self.assertEqual(result["status"], "ready")

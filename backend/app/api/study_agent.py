@@ -8,9 +8,9 @@ from pydantic import BaseModel, Field
 
 from app.core.config import DATA_DIR
 from app.models.schemas import Settings
+from app.api.practice import AgentDraftRequest, practice_agent_draft
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
-from app.services.study_agent_practice import parse_proposal
 
 router = APIRouter(prefix="/study-agent", tags=["study-agent"])
 
@@ -73,8 +73,17 @@ async def configured_study_agent(payload: LocalStudyRequest):
         if payload.workflow == "practice-entry":
             if not payload.messages or any(not item.strip() or len(item) > 4000 for item in payload.messages):
                 raise HTTPException(status_code=422, detail="Provide at least one student message of up to 4,000 characters.")
-            proposal = parse_proposal(await ai.study_practice_proposal(payload.messages, payload.language))
-            return {"proposal": proposal}
+            prepared = await ai.study_practice_prepare(payload.messages, payload.language)
+            draft = await practice_agent_draft(
+                AgentDraftRequest(
+                    messages=payload.messages,
+                    language=payload.language,
+                    evidence_claims=prepared["evidence_claims"],
+                ),
+                StorageService(DATA_DIR),
+            )
+            draft["proposal_mismatch"] = bool(prepared["rejected_claims"])
+            return draft
         answer = await ai.study_chat(payload.message.strip(), payload.context, payload.language)
     except HTTPException:
         raise

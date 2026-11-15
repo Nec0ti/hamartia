@@ -77,7 +77,12 @@ PYTHONPATH=backend python backend/benchmarks/benchmark_question_order.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_mixed_workloads.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_clock_api.py
+python3 scripts/benchmark_docs.py
 ```
+
+`benchmark_docs.py` parses the checked-in rendered wiki with Python's standard library and makes no network requests. It validates the 17 EN/TR routes, locale attributes, matching navigation and active items, paired section anchors, local links/assets, and 20 rubric entries against 102 exact excerpts in their cited page sections. It writes `reports/2026-11-15-docs-benchmark-results.json`. External links are counted but not fetched. The output labels `ai_included: false`.
+
+The task workbook contains ten paired natural-language tasks per locale, including cross-page synthesis, false premises, synthetic broken/stale-link decoys, privacy/scope/Clock gates, and fixed-viewport screenshot tasks. `docs/benchmark/answer_key.json` is a separate weighted human rubric with page/anchor evidence. The 90/100 overall, 85% per-locale, and 100% critical-task thresholds apply only to scored human responses; no human runs or screenshots are included in the automated result yet. The task and key files are checked into the repository and therefore inspectable: an evaluator can withhold the key during a session, but this is not a cryptographically sealed or anti-gaming blind test. Screenshots, visual usability, and retrieval accuracy require human administration and scoring.
 
 Frontend:
 

@@ -1,0 +1,31 @@
+{
+  "benchmark": "hamartia-bilingual-docs-integrity-v1",
+  "task_set_id": "hamartia-wiki-retrieval-v1",
+  "task_pack_sha256": "14896622ba050e7cc21559510a338bb96ff7a523fee20aefbf26cd68259a58d6",
+  "rendered_wiki_sha256": "ea5376db9f4f74eb18c94ad16c7b555a8be25980e3a075eef01e619ce803f3d0",
+  "mode": "automated_integrity_only",
+  "ai_included": false,
+  "network_access": false,
+  "rendered_pages": {
+    "en": 17,
+    "tr": 17
+  },
+  "nav_routes_per_locale": 17,
+  "active_nav_items_checked": 34,
+  "paired_h2_anchor_orders_checked": 17,
+  "local_links_and_assets_checked": 816,
+  "external_links_syntactically_counted_not_fetched": 120,
+  "answer_rubrics_checked": 20,
+  "exact_evidence_excerpts_checked": 102,
+  "synthetic_decoys_checked": 3,
+  "task_prompts": 20,
+  "critical_task_pairs": [
+    "clock-limits",
+    "exam-scope",
+    "privacy-boundaries",
+    "progress-claims"
+  ],
+  "human_task_runs": "pending",
+  "fixed_viewport_screenshot_runs": "pending_manual",
+  "errors": []
+}

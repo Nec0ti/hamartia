@@ -54,7 +54,7 @@
 ## P3 — verification on another computer
 
 - [ ] Verify on a separate physical device the OpenAI-compatible endpoint/model settings saved by the app, including the configured-endpoint Study Agent ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
-- [ ] Verify synthetic image transfer to a multimodal endpoint on a separate physical device. First inspect the destination/model in Settings, then manually initiate `Review with Local AI`; this question-analysis flow currently has no separate per-request consent screen (unlike Study Agent, whose consent excludes saved question images). Do not run local AI tests or benchmarks in this repository ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
+- [ ] Verify synthetic image transfer to a multimodal endpoint on a separate physical device. First inspect the host, HTTP/HTTPS transport, model, and configured auth-key state in Settings; question text/OCR, image, and configured key/placeholder may be sent after manually initiating `Review with Local AI`. This flow has no separate per-request consent gate (unlike Study Agent, whose consent excludes saved question images); mark BLOCKED if remote, plaintext, or key transmission is unacceptable. Do not report any real key or value, or run local AI tests/benchmarks here ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 
 ## P4 — product language and delivery
 

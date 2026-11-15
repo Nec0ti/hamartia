@@ -102,16 +102,21 @@ _UNPUNCTUATED_QUESTION = re.compile(
     r"(?i)(?:^\s*(?:did|do|does|is|are|was|were|can|could|would|should|what|when|where|why|how|whether|kaç|ne|hangi|mi|mı|mu|mü)\b|\b(?:mi|mı|mu|mü)\s*$)"
 )
 _DATE_MONTH = r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik)"
+_DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1,2}}[/.-]\d{{1,2}}[/.-]\d{{2,4}}|{_DATE_MONTH}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?(?:,?\s+\d{{4}})?|\d{{1,2}}\s+{_DATE_MONTH}\.?(?:\s+\d{{4}})?)(?!\w)"
 _DATE_CANDIDATES = re.compile(
-    rf"(?i)(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1,2}}[/.-]\d{{1,2}}[/.-]\d{{2,4}}|{_DATE_MONTH}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?(?:,?\s+\d{{4}})?|\d{{1,2}}\s+{_DATE_MONTH}\.?(?:\s+\d{{4}})?)(?!\w)"
+    rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki)"
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s+(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?!\d)")
+_NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _COUNT_CONNECTOR = r"(?:,\s*(?:(?:or|and|to|veya|ya\s+da|ile|ila)\s*)?|\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+)"
 _DURATION_VALUE = rf"(?:{_COUNT_NUMBER}|\d+\s*/\s*\d+|[½¼¾⅓⅔⅛⅜⅝⅞]|half(?:\s+an)?|a\s+half|one\s+and\s+a\s+half|bir\s+buçuk|yarım)"
 _DURATION_CHUNK = rf"{_DURATION_VALUE}\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b"
 _HOUR_DURATION = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:hours?|hrs?|h|saat)\b")
 _DURATION_ALTERNATIVE = re.compile(rf"(?i){_DURATION_CHUNK}(?:\s+(?:or|either|veya|ya\s+da)\s+|\s+(?:or|veya)\s+){_DURATION_CHUNK}")
+_DURATION_ADDITIVE_CONNECTOR = r"(?:and|plus|ve|ile|ek|ilave)"
+_DURATION_MINUTES_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\b")
+_DURATION_SECONDS_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\b")
 _DURATION_FRACTIONAL = re.compile(r"(?i)(?<!\w)(?:\d{1,5}[.,]\d+|\d+\s*/\s*\d+|[½¼¾⅓⅔⅛⅜⅝⅞])\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b")
 _COUNT_ALTERNATIVES: dict[str, re.Pattern[str]] = {
     "correct": re.compile(rf"(?i)(?:\bbetween\s+{_COUNT_NUMBER}\s+(?:and|to)\s+{_COUNT_NUMBER}|\b{_COUNT_NUMBER}{_COUNT_CONNECTOR}{_COUNT_NUMBER})\s*(?:questions?\s+|answers?\s+)?(?:correct(?:ly)?|right|doğru|dogru)\b|\b(?:correct|doğru|dogru)\s*:\s*{_COUNT_NUMBER}{_COUNT_CONNECTOR}{_COUNT_NUMBER}"),
@@ -154,8 +159,10 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
         or _HEDGE_OR_NEGATION.search(surrounding)
         or (field in {"duration_minutes", "duration_seconds"} and _HOUR_DURATION.search(surrounding))
         or (field in {"duration_minutes", "duration_seconds"} and _DURATION_ALTERNATIVE.search(surrounding))
+        or (field == "duration_minutes" and _DURATION_MINUTES_ADDITIVE.search(surrounding))
+        or (field == "duration_seconds" and _DURATION_SECONDS_ADDITIVE.search(surrounding))
         or (field in {"duration_minutes", "duration_seconds"} and _DURATION_FRACTIONAL.search(surrounding))
-        or (field == "date" and len(set(_DATE_CANDIDATES.findall(surrounding))) > 1)
+        or (field == "date" and (len(set(_DATE_CANDIDATES.findall(surrounding))) > 1 or _DATE_SHORTHAND_ALTERNATIVE.search(surrounding)))
         or (field in _COUNT_ALTERNATIVES and _COUNT_ALTERNATIVES[field].search(surrounding))
     ):
         return None

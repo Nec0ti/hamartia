@@ -155,6 +155,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("The date was 2026-11-15 or Nov 16.", "2026-11-15"),
             ("The date was 2026-11-15 or November 16th.", "2026-11-15"),
             ("The date was 2026-11-15 or 2026.11.16.", "2026-11-15"),
+            ("The date was 2026-11-15 or 11/16.", "2026-11-15"),
+            ("The date was November 15 or 16.", "November 15"),
+            ("Tarih 15 Kasım veya 16.", "15 Kasım"),
             ("Tarih 2026-11-15 veya 15 Kasım.", "2026-11-15"),
         ):
             with self.subTest(statement=statement):
@@ -163,23 +166,27 @@ class StudyAgentCliTests(unittest.TestCase):
                 self.assertIn("date", result["ambiguous"])
 
     def test_duration_alternatives_accept_only_neither_candidate(self):
-        for context, quote in (
-            ("It took 45 min or an hour.", "45 min"),
-            ("45 dakika ya da bir saat sürdü.", "45 dakika"),
-            ("It took 45 min or sixty seconds.", "45 min"),
-            ("It took 45 min or half an hour.", "45 min"),
-            ("45 dakika ya da bir buçuk saat sürdü.", "45 dakika"),
-            ("It took 45 min or 1.5 minutes.", "45 min"),
-            ("It took 45 sec or 1.5 seconds.", "45 sec"),
-            ("It took 45 min or 1/2 hour.", "45 min"),
-            ("It took 45 min or ½ hour.", "45 min"),
-            ("It took 45 minutes or a half hour.", "45 minutes"),
-            ("It took one hour and 30 minutes.", "30 minutes"),
-            ("It took 45 minutes plus half an hour.", "45 minutes"),
-            ("45 dakika ve yarım saat sürdü.", "45 dakika"),
+        for field, context, quote in (
+            ("duration_minutes", "It took 45 min or an hour.", "45 min"),
+            ("duration_minutes", "45 dakika ya da bir saat sürdü.", "45 dakika"),
+            ("duration_minutes", "It took 45 min or sixty seconds.", "45 min"),
+            ("duration_minutes", "It took 45 min or half an hour.", "45 min"),
+            ("duration_minutes", "45 dakika ya da bir buçuk saat sürdü.", "45 dakika"),
+            ("duration_minutes", "It took 45 min or 1.5 minutes.", "45 min"),
+            ("duration_seconds", "It took 45 sec or 1.5 seconds.", "45 sec"),
+            ("duration_minutes", "It took 45 min or 1/2 hour.", "45 min"),
+            ("duration_minutes", "It took 45 min or ½ hour.", "45 min"),
+            ("duration_minutes", "It took 45 minutes or a half hour.", "45 minutes"),
+            ("duration_minutes", "It took one hour and 30 minutes.", "30 minutes"),
+            ("duration_minutes", "It took 45 minutes plus half an hour.", "45 minutes"),
+            ("duration_minutes", "45 dakika ve yarım saat sürdü.", "45 dakika"),
+            ("duration_minutes", "It took 45 minutes plus thirty minutes.", "45 minutes"),
+            ("duration_seconds", "It took 45 seconds and thirty seconds.", "45 seconds"),
+            ("duration_minutes", "45 dakika ve otuz dakika sürdü.", "45 dakika"),
+            ("duration_minutes", "It took 45 minutes plus one and a half minutes.", "45 minutes"),
         ):
             with self.subTest(context=context):
-                self.assertIsNone(parse_quote_value("duration_minutes", quote, context))
+                self.assertIsNone(parse_quote_value(field, quote, context))
 
     def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
         self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))

@@ -696,7 +696,11 @@ async function main() {
     await page.getByLabel('Reminder label').fill('Synthetic reminder')
     await page.getByLabel('Time', { exact: true }).fill(futureReminder.time)
     await page.getByLabel('Date', { exact: true }).fill(futureReminder.date)
-    await page.getByRole('button', { name: 'Save reminder' }).click()
+    const [reminderSave] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Save reminder' }).click(),
+    ])
+    assert.equal(reminderSave.ok(), true)
     await page.getByText('Synthetic reminder', { exact: true }).waitFor()
     const savedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
     assert.equal(savedClock.alarms.length, 1)
@@ -709,8 +713,28 @@ async function main() {
     }
     const seededClock = await page.request.patch(`${apiUrl}/clock`, { data: { ...savedClock, alarms: [...savedClock.alarms, dueAlarm] } })
     assert.equal(seededClock.status(), 200)
+    let failDueAlarmWrite = true
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        const alarm = route.request().postDataJSON()?.alarms?.find((item) => item.id === dueAlarm.id)
+        if (alarm?.overdue_at_ms === dueAt && failDueAlarmWrite) {
+          failDueAlarmWrite = false
+          await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional due alarm persistence failure' }) })
+          return
+        }
+      }
+      await route.continue()
+    })
+    const dueAlarmWriteMatch = (response) => new URL(response.url()).pathname === '/clock'
+      && response.request().method() === 'PATCH'
+      && response.request().postDataJSON()?.alarms?.some((alarm) => alarm.id === dueAlarm.id && alarm.overdue_at_ms === dueAt)
+    const failedDueAlarmWrite = page.waitForResponse((response) => dueAlarmWriteMatch(response) && response.status() === 503)
+    const retriedDueAlarmWrite = page.waitForResponse((response) => dueAlarmWriteMatch(response) && response.status() === 200)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Plan' }).click()
+    await failedDueAlarmWrite
+    await retriedDueAlarmWrite
+    await page.unroute(`${apiUrl}/clock`)
     const dueDeadline = Date.now() + 8_000
     let dueState
     while (Date.now() < dueDeadline) {
@@ -739,6 +763,7 @@ async function main() {
     await page.unroute(`${apiUrl}/clock`)
     await page.getByRole('region', { name: 'Clock' }).getByRole('button', { name: 'Retry loading' }).click()
     await page.getByRole('button', { name: 'Start', exact: true }).waitFor({ state: 'visible' })
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => button.innerText.trim() === 'Start' && !button.disabled))
     assert.equal(await page.getByRole('button', { name: 'Start', exact: true }).isDisabled(), false)
     failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
     const expectedClockErrors = consoleErrors.filter((item) => item.location.url !== `${apiUrl}/clock` || !item.text.includes('503 (Service Unavailable)'))

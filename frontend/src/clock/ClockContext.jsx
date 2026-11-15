@@ -128,8 +128,8 @@ export function ClockProvider({ children }) {
       const current = stateRef.current
       const result = reconcileClock(current, Date.now())
       if (JSON.stringify(current) === JSON.stringify(result.state)) return
-      stateRef.current = result.state
-      setState(result.state)
+      // Let updateClock capture the pre-reconcile state for rollback. If the
+      // write fails, its next scheduled pass must see the transition again.
       void updateClock(result.state).catch(() => {})
       for (const event of result.events) {
         const eventKey = `${event.type}:${event.id || event.kind || 'timer'}:${event.at_ms}`

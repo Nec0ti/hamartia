@@ -188,8 +188,11 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or tomorrow."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or the day after."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or the day after that."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or a day later."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or one day later."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15, ya da yarın."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 — ya da bir sonraki gün."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15; ya da bir gün sonra."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or sixty seconds."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or half an hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or 1/2 hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
@@ -236,8 +239,11 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or tomorrow."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or the day after."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or the day after that."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or a day later."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or one day later."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15, ya da yarın."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["Tarih 2026-11-15", "relative date continuation"]),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 — ya da bir sonraki gün."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["Tarih 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15; ya da bir gün sonra."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["Tarih 2026-11-15", "relative date continuation"]),
     ]
     all_fields = ["date", "subject", "topic", "correct", "incorrect", "blank", "duration_minutes", "duration_seconds"]
     for request, field, expected_quotes in transcript_cases:

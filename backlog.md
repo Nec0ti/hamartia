@@ -17,6 +17,8 @@
 - [x] Store correct/incorrect attempts with the user's explicit local calendar day and calculate review intervals locally; retain UTC-date fallback for legacy records and clients that omit the optional day.
 - [x] Remove the image requirement and provide text-based missed-question capture with a visible entry form.
 - [x] Store TYT/AYT/branch exam types, filter by type, and separate totals.
+- [x] Add versioned, editable exact-rational scoring profiles for exam records; snapshot rules on each exam, isolate score trends by profile/version, preserve legacy YKS score/backup behavior, and keep XP based on the same raw-count activity formula ([report](reports/2026-11-15-exam-scoring-profiles.md)).
+- [ ] Extend versioned scoring-profile selection and immutable snapshots to completed PracticeSessions, focused-timer completion/idempotency, topic net/trends, editing, and backups. Until implemented, these practice-set nets remain on the legacy YKS quarter-penalty formula ([report](reports/2026-11-15-exam-scoring-profiles.md)).
 - [x] Edit and confirmed-delete existing records throughout exam history.
 - [x] Save a full TYT/AYT practice exam by subject in one session; count total net and XP once, preserving subject trends and missed-question context.
 - [x] Turn the Cosmos placeholder into a safe, local, AI-free progress flow.

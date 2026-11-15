@@ -45,8 +45,24 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jsonl", action="store_true", required=True, help="read one JSON command per line")
     parser.parse_args(argv)
-    for line in sys.stdin:
-        result = run_json_line(line)
+    stream = getattr(sys.stdin, "buffer", sys.stdin)
+    while True:
+        line = stream.readline(MAX_LINE_LENGTH + 1)
+        if not line:
+            break
+        oversized = len(line) > MAX_LINE_LENGTH
+        newline = b"\n" if isinstance(line, bytes) else "\n"
+        while oversized and line and not line.endswith(newline):
+            line = stream.readline(MAX_LINE_LENGTH + 1)
+        if oversized:
+            result = {"status": "error", "error": "request_too_large"}
+        else:
+            try:
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="strict")
+                result = run_json_line(line)
+            except UnicodeDecodeError:
+                result = {"status": "error", "error": "invalid_or_unsupported_command"}
         sys.stdout.write(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n")
         sys.stdout.flush()
     return 0

@@ -48,23 +48,31 @@ def fixture(index: int) -> tuple[dict, dict]:
         "correct": correct, "incorrect": incorrect, "blank": blank,
         "duration_minutes": minutes, "duration_seconds": seconds,
     }
-    return request, expected
+    expected_evidence = {
+        item["field"]: {
+            "value": expected[item["field"]], "message_index": 0, "quote": item["quote"],
+            "start": message.index(item["quote"]),
+            "end": message.index(item["quote"]) + len(item["quote"]),
+        }
+        for item in evidence
+    }
+    return request, expected, expected_evidence
 
 
 def run_trial(count: int, seed: int) -> dict:
     rng = random.Random(seed)
     fixtures = [fixture(index) for index in range(count)]
     rng.shuffle(fixtures)
-    encoded = [json.dumps(request, ensure_ascii=False, separators=(",", ":")) for request, _ in fixtures]
+    encoded = [json.dumps(request, ensure_ascii=False, separators=(",", ":")) for request, _, _ in fixtures]
     started = time.perf_counter()
-    for index, (line, (_, expected)) in enumerate(zip(encoded, fixtures, strict=True)):
+    for index, (line, (_, expected, expected_evidence)) in enumerate(zip(encoded, fixtures, strict=True)):
         result = run_json_line(line)
         if result.get("status") != "ready" or result.get("fields") != expected:
             raise AssertionError(f"independent CLI oracle mismatch at row {index}")
         if result.get("write_allowed") is not False or result.get("preview_digest") is None:
             raise AssertionError("CLI exposed a write path or omitted the exact-preview digest")
-        if len(result.get("verified_evidence", {})) != len(expected):
-            raise AssertionError("CLI omitted field-level evidence")
+        if result.get("verified_evidence") != expected_evidence:
+            raise AssertionError(f"independent quote/value/offset oracle mismatch at row {index}")
     elapsed = time.perf_counter() - started
 
     negatives = [
@@ -90,7 +98,7 @@ def main(repeats: int = 5, json_output: str | None = None) -> None:
         runs.append({
             **results[-1], "p50_seconds": round(durations[len(durations) // 2], 6),
             "p95_seconds": round(durations[-1], 6),
-            "oracle": "full canonical values and evidence count compared to independent seeded input fixtures",
+            "oracle": "canonical values plus every quote, source index, and character offset compared to independent seeded input fixtures",
         })
     output = {
         "benchmark": "study_agent_cli_prepare", "seed": SEED, "ai_included": False,

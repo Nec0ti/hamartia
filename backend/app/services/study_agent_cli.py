@@ -46,6 +46,14 @@ class PrepareCommand(BaseModel):
     evidence: list[EvidenceQuote] = Field(default_factory=list, max_length=40)
 
 
+class ProviderToolArguments(BaseModel):
+    """Model-callable schema: no transcript, language, index, value, or path."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    evidence: list[EvidenceQuote] = Field(max_length=40)
+
+
 def _field(value: str) -> str:
     if value not in FIELDS:
         raise ValueError("Unsupported practice field.")
@@ -69,17 +77,37 @@ def _sentence_context(message: str, start: int, end: int) -> str:
     return message[left:right].strip()
 
 
+def _number_has_unsafe_boundary(candidate: str, context: str, match: re.Match[str]) -> bool:
+    context_offset = context.find(candidate)
+    if context_offset < 0:
+        context_offset = 0
+    start = context_offset + match.start(1)
+    end = context_offset + match.end(1)
+    if start > 0 and context[start - 1] in "-+.,":
+        return True
+    if end < len(context) and context[end] in ".,":
+        if end + 1 < len(context) and context[end + 1].isdigit():
+            return True
+        if context[end] == ".":
+            return True
+    return False
+
+
 _HEDGE_OR_NEGATION = re.compile(
     r"(?i)(?:\bnot\b|\bno\b|\bnever\b|\bdidn't\b|\bdidnt\b|\bwasn't\b|\bwasnt\b|\bhaven't\b|\bhavent\b|\bmaybe\b|\bperhaps\b|\babout\s+\d|\baround\s+\d|\bat\s+least\s+\d|\bapproximately\b|\bapprox\.?\b|\broughly\b|\bprobably\b|\bi think\b|\bi guess\b|\bif\b|\bwhether\b|\bcould\b|\bwould\b|\bsuppose\b|\bimagine\b|\bhypothetical\b|\bexample\b|\bteacher\s+(?:said|says)\b|\b(?:he|she|they)\s+said\b|\bnet\b|\byaklaşık\b|\bcivarında\b|\bbelki\b|\bsanırım\b|\bgaliba\b|\bdeğil\b|\byok\b|\byapmadım\b|\bhiçbir\b|\bvarsay\w*\b|\bolsaydı\b|\börneğin\b|\böğretmen\w*\s+(?:dedi|söyledi)\b|\b(?:dedi|söyledi)\b)"
 )
+_UNPUNCTUATED_QUESTION = re.compile(
+    r"(?i)(?:^\s*(?:did|do|does|is|are|was|were|can|could|would|should|what|when|where|why|how|whether|kaç|ne|hangi|mi|mı|mu|mü)\b|\b(?:mi|mı|mu|mü)\s*$)"
+)
+_COMPOSITE_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\s+\d+\s*(?:minutes?|mins?|dakika)\b")
 
 _COUNT_PATTERNS: dict[str, re.Pattern[str]] = {
-    "correct": re.compile(r"(?i)(?<![\w])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})\s*(?:questions?\s+)?(?:correct(?:ly)?|right|doğru|dogru)(?![\w])"),
-    "incorrect": re.compile(r"(?i)(?<![\w])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})\s*(?:questions?\s+)?(?:incorrect(?:ly)?|wrong|yanlış|yanlis)(?![\w])"),
-    "blank": re.compile(r"(?i)(?<![\w])(?:(?:i\s+)?(?:left|had|have)\s+)?(\d{1,5})\s*(?:questions?\s+)?(?:blank|boş|bos)(?![\w])"),
+    "correct": re.compile(r"(?i)(?<![\w.,+\-])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})(?![\d.,])\s*(?:questions?\s+)?(?:correct(?:ly)?|right|doğru|dogru)(?![\w])"),
+    "incorrect": re.compile(r"(?i)(?<![\w.,+\-])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})(?![\d.,])\s*(?:questions?\s+)?(?:incorrect(?:ly)?|wrong|yanlış|yanlis)(?![\w])"),
+    "blank": re.compile(r"(?i)(?<![\w.,+\-])(?:(?:i\s+)?(?:left|had|have)\s+)?(\d{1,5})(?![\d.,])\s*(?:questions?\s+)?(?:blank|boş|bos)(?![\w])"),
 }
-_DURATION_MINUTES = re.compile(r"(?i)(?<![\w])(?:(?:it\s+)?(?:took|spent)\s+)?(\d{1,4})\s*(?:minutes?|mins?|dakika)(?![\w])")
-_DURATION_SECONDS = re.compile(r"(?i)(?<![\w])(?:(?:and|plus|ek|ilave)\s+)?(\d{1,4})\s*(?:seconds?|secs?|saniye)(?![\w])")
+_DURATION_MINUTES = re.compile(r"(?i)(?<![\w.,+\-])(?:(?:it\s+)?(?:took|spent)\s+)?(\d{1,4})(?![\d.,])\s*(?:minutes?|mins?|dakika)(?![\w])")
+_DURATION_SECONDS = re.compile(r"(?i)(?<![\w.,+\-])(?:(?:and|plus|ek|ilave)\s+)?(\d{1,4})(?![\d.,])\s*(?:seconds?|secs?|saniye)(?![\w])")
 _DATE = re.compile(r"(?i)(?:\bdate(?:\s*:\s*|\s+)|\btarih(?:\s*:\s*|\s+)|\bon\s+|\bdated\s+|\btarihinde\s+)(\d{4}-\d{2}-\d{2})(?!\d)")
 _SUBJECT_PATTERNS = (
     re.compile(r"(?i)(?:subject|class|course|ders)\s+(?:is|was|:|olarak|im|im:)?\s*([\wÇĞİÖŞÜçğıöşü& -]{2,60})"),
@@ -102,7 +130,13 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
     _field(field)
     candidate = quote.strip()
     surrounding = (context or candidate).strip()
-    if not candidate or "?" in surrounding or _HEDGE_OR_NEGATION.search(surrounding):
+    if (
+        not candidate
+        or "?" in surrounding
+        or _UNPUNCTUATED_QUESTION.search(surrounding)
+        or _HEDGE_OR_NEGATION.search(surrounding)
+        or (field in {"duration_minutes", "duration_seconds"} and _COMPOSITE_DURATION.search(surrounding))
+    ):
         return None
     parse_candidate = re.sub(
         r"(?i)^\s*(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*[:,]?\s*",
@@ -117,17 +151,17 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
 
     if field in _COUNT_PATTERNS:
         matches = list(_COUNT_PATTERNS[field].finditer(parse_candidate))
-        if len(matches) == 1:
+        if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
             return int(matches[0].group(1))
         return None
     if field == "duration_minutes":
         matches = list(_DURATION_MINUTES.finditer(parse_candidate))
-        if len(matches) == 1:
+        if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
             return int(matches[0].group(1))
         return None
     if field == "duration_seconds":
         matches = list(_DURATION_SECONDS.finditer(parse_candidate))
-        if len(matches) == 1:
+        if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
             return int(matches[0].group(1))
         return None
     if field == "date":
@@ -270,6 +304,10 @@ def prepare_practice(
         "status": "ready" if payload else "ambiguous" if ambiguous else "incomplete",
         "fields": payload.model_dump() if payload else raw_values,
         "verified_evidence": verified_evidence,
+        "evidence_claims": [
+            {"field": field, "quote": evidence.quote}
+            for field, evidence in accepted.items()
+        ],
         "missing": missing,
         "ambiguous": ambiguous,
         "questions": qs,
@@ -287,3 +325,11 @@ def dispatch_cli(envelope: Mapping[str, Any]) -> dict[str, Any]:
     if request.language not in {"en", "tr"}:
         raise ValueError("language must be en or tr")
     return prepare_practice(request.messages, request.language, request.evidence)
+
+
+def dispatch_provider_tool(
+    arguments: Mapping[str, Any], *, messages: list[str], language: str,
+) -> dict[str, Any]:
+    """Bind model-supplied evidence hints to host-owned transcript and locale."""
+    tool_args = ProviderToolArguments.model_validate(arguments)
+    return prepare_practice(messages, language, tool_args.evidence)

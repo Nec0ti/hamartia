@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.hamartia_cli import MAX_LINE_LENGTH, run_json_line
-from app.services.study_agent_cli import EvidenceQuote, dispatch_cli, parse_quote_value, prepare_practice
+from app.services.study_agent_cli import EvidenceQuote, ProviderToolArguments, dispatch_cli, dispatch_provider_tool, parse_quote_value, prepare_practice
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -63,15 +63,18 @@ class StudyAgentCliTests(unittest.TestCase):
 
     def test_quote_alone_does_not_override_negation_hedge_hypothetical_or_reported_context(self):
         cases = [
-            "I did not get 5 right.",
-            "Maybe I got about 5 right.",
-            "If I got 5 right, I would be happy.",
-            "My teacher said I got 5 right.",
-            "Could I have got 5 right?",
+            ("I did not get 5 right.", "5 right"),
+            ("Maybe I got about 5 right.", "5 right"),
+            ("If I got 5 right, I would be happy.", "5 right"),
+            ("My teacher said I got 5 right.", "5 right"),
+            ("Could I have got 5 right?", "5 right"),
+            ("Did I get 5 right", "5 right"),
+            ("5 doğru mu", "5 doğru mu"),
         ]
-        for message in cases:
+        for message, quote in cases:
             with self.subTest(message=message):
-                result = prepare_practice([message], "en", [{"field": "correct", "quote": "5 right"}])
+                language = "tr" if "doğru" in message else "en"
+                result = prepare_practice([message], language, [{"field": "correct", "quote": quote}])
                 self.assertNotIn("correct", result["fields"])
                 self.assertIn("correct", result["ambiguous"])
                 self.assertEqual(result["status"], "ambiguous")
@@ -83,6 +86,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("correct", "I got 12 right.", "2"),
             ("correct", "My net is 12.", "12"),
             ("correct", "I got 7 of 10.", "7 of 10"),
+            ("correct", "I got -5 right.", "5 right"),
+            ("correct", "I got 1.5 right.", "5 right"),
+            ("correct", "I got 1,200 right.", "200 right"),
         ]
         for field, message, quote in cases:
             with self.subTest(field=field, message=message, quote=quote):
@@ -94,6 +100,7 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertIsNone(parse_quote_value("date", "on 11/15/2026"))
         self.assertIsNone(parse_quote_value("duration_minutes", "about 45 minutes"))
         self.assertIsNone(parse_quote_value("duration_minutes", "1:30"))
+        self.assertIsNone(parse_quote_value("duration_minutes", "30 minutes", "It took 1 hour 30 minutes."))
         result = prepare_practice(["Today I practiced Functions."], "en", [{"field": "date", "quote": "Today"}])
         self.assertIn("date", result["ambiguous"])
         self.assertFalse(result["write_allowed"])
@@ -134,6 +141,33 @@ class StudyAgentCliTests(unittest.TestCase):
             with self.subTest(claim=claim), self.assertRaises(ValidationError):
                 EvidenceQuote.model_validate(claim)
 
+    def test_provider_tool_arguments_never_choose_transcript_or_language(self):
+        with self.assertRaises(ValidationError):
+            ProviderToolArguments.model_validate({
+                "evidence": [{"field": "correct", "quote": "9 right"}],
+                "messages": ["I got 9 right."],
+            })
+        with self.assertRaises(ValidationError):
+            ProviderToolArguments.model_validate({
+                "evidence": [{"field": "correct", "quote": "5 right"}],
+                "language": "en",
+            })
+        with self.assertRaises(ValidationError):
+            ProviderToolArguments.model_validate({
+                "evidence": [{"field": "correct", "quote": "5 right"}],
+                "message_index": 99,
+            })
+        result = dispatch_provider_tool(
+            {"evidence": [{"field": "correct", "quote": "5 right"}]},
+            messages=["I got 5 right."], language="tr",
+        )
+        self.assertEqual(result["fields"]["correct"], 5)
+        fabricated = dispatch_provider_tool(
+            {"evidence": [{"field": "correct", "quote": "9 right"}]},
+            messages=["I got 5 right."], language="en",
+        )
+        self.assertNotIn("correct", fabricated["fields"])
+
     def test_cli_jsonl_dispatch_has_only_read_only_prepare_command(self):
         request = {
             "command": "study.practice.prepare", "language": "en",
@@ -156,6 +190,17 @@ class StudyAgentCliTests(unittest.TestCase):
         result = json.loads(process.stdout)
         self.assertEqual(result["status"], "ready")
         self.assertFalse(result["write_allowed"])
+
+    def test_cli_process_bounds_and_drains_oversized_lines(self):
+        request = {"command": "study.practice.prepare", "language": "en", "messages": MESSAGES, "evidence": CLAIMS}
+        process = subprocess.run(
+            [sys.executable, "-m", "app.hamartia_cli", "--jsonl"],
+            input='{"padding":"' + ("x" * MAX_LINE_LENGTH) + '"}\n' + json.dumps(request) + "\n",
+            text=True, capture_output=True, cwd=BACKEND_DIR, check=True, timeout=5,
+        )
+        lines = [json.loads(line) for line in process.stdout.splitlines()]
+        self.assertEqual(lines[0], {"status": "error", "error": "request_too_large"})
+        self.assertEqual(lines[1]["status"], "ready")
 
     def test_cli_rejects_oversized_envelope_without_processing(self):
         result = run_json_line('{"payload":"' + ("x" * MAX_LINE_LENGTH) + '"}')

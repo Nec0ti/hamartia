@@ -26,6 +26,13 @@ class StorageProcessLockTests(unittest.TestCase):
                 "data,started,done=map(Path,sys.argv[1:]); started.touch(); "
                 "StorageService(data).append_list('rows.json', {'id':'after-release'}, dict); done.touch()"
             )
+            probe_code = (
+                "import os,sys; from pathlib import Path; data=Path(sys.argv[1]).resolve(); "
+                "path=data.with_name('.'+data.name+'.mutation.lock'); f=path.open('a+b'); "
+                "\nif os.name=='nt':\n import msvcrt; f.seek(0)\n try: msvcrt.locking(f.fileno(),msvcrt.LK_NBLCK,1)\n except OSError: sys.exit(0)\n msvcrt.locking(f.fileno(),msvcrt.LK_UNLCK,1)\n"
+                "\nelse:\n import fcntl\n try: fcntl.flock(f.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)\n except OSError: sys.exit(0)\n fcntl.flock(f.fileno(),fcntl.LOCK_UN)\n"
+                "\nsys.exit(1)\n"
+            )
             holder = subprocess.Popen([sys.executable, "-c", holder_code, str(data), str(ready), str(release)], env=env)
             writer = None
             try:
@@ -37,11 +44,14 @@ class StorageProcessLockTests(unittest.TestCase):
                 while not started.exists() and time.monotonic() < deadline:
                     time.sleep(.005)
                 self.assertTrue(started.exists(), "contending writer did not start")
-                time.sleep(.2)
+                blocked = subprocess.run([sys.executable, "-c", probe_code, str(data)], env=env, timeout=10)
+                self.assertEqual(blocked.returncode, 0, "OS lock probe must confirm the held lock blocks acquisition")
                 self.assertFalse(done.exists(), "writer must remain blocked while another process holds the lock")
             finally:
                 release.touch()
             self.assertEqual(holder.wait(timeout=10), 0)
+            available = subprocess.run([sys.executable, "-c", probe_code, str(data)], env=env, timeout=10)
+            self.assertEqual(available.returncode, 1, "OS lock probe must acquire the lock after holder release")
             self.assertEqual(writer.wait(timeout=10), 0)
             self.assertTrue(done.exists(), "writer should finish after lock release")
             records = json.loads((data / "rows.json").read_text(encoding="utf-8"))

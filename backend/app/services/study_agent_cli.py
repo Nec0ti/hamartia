@@ -80,11 +80,9 @@ def _sentence_context(message: str, start: int, end: int) -> str:
 
     # Explicit correction markers can occur inline after a comma or dash, not
     # only at the beginning of a new sentence or transcript turn.
-    correction_marker = re.compile(
-        r"(?i)(?P<marker>(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme))\b"
-    )
-    for correction in correction_marker.finditer(message, left, right):
-        marker_start = correction.start("marker")
+    sentence = message[left:right]
+    for correction in _CORRECTION_MARKER.finditer(sentence):
+        marker_start = left + correction.start("marker")
         if marker_start < start:
             left = marker_start
         elif marker_start >= end:
@@ -92,7 +90,7 @@ def _sentence_context(message: str, start: int, end: int) -> str:
             break
     context = message[left:right].strip()
     continuation = r"(?i)^\s*,?\s*(?:or|either|veya|ya\s+da|plus|and|ve|ile|ek|ilave|maybe|perhaps|alternatively|belki|galiba)\b"
-    correction_start = r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b"
+    correction_start = rf"(?i)^\s*(?:and\s+)?{_CORRECTION_CUE}"
 
     # Keep a neighboring clause with the quoted statement only when it begins
     # with a connector. This catches punctuation-split alternatives without
@@ -184,6 +182,10 @@ _TOPIC_PATTERNS = (
     re.compile(r"(?i)\bon\s+(?:the\s+)?([\wÇĞİÖŞÜçğıöşü& -]{2,70}?)(?=\s+in\s+|[,.;!?]|$)"),
     re.compile(r"(?i)dersinde\s+([\wÇĞİÖŞÜçğıöşü& -]{2,70}?)\s+(?:çalıştım|çalıştık|çözdüm|çözdük)\b"),
     re.compile(r"(?i)([\wÇĞİÖŞÜçğıöşü& -]{2,70}?)\s+(?:konusunu|konusunda|konusundan)\b"),
+)
+_CORRECTION_CUE = r"(?:(?:actually|aslında)\b|(?:correction|update|düzeltme|duzeltme|güncelleme|guncelleme)\s*:)"
+_CORRECTION_MARKER = re.compile(
+    rf"(?i)(?:^|[,;.!?—–-]\s*)(?P<marker>(?:and\s+)?{_CORRECTION_CUE})"
 )
 
 
@@ -302,10 +304,7 @@ def _context_field_values(field: str, context: str) -> tuple[bool, set[str | int
 
 
 def _is_explicit_correction(context: str) -> bool:
-    return bool(re.match(
-        r"(?i)^\s*(?:[,;.!?—–-]\s*)?(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b",
-        context,
-    ))
+    return bool(re.match(rf"(?i)^\s*(?:and\s+)?{_CORRECTION_CUE}", context))
 
 
 def _transcript_field_resolution(field: str, messages: list[str]) -> tuple[bool, Evidence | None, list[str]]:

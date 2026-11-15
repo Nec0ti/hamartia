@@ -252,6 +252,18 @@ class StudyAgentCliTests(unittest.TestCase):
         )
         self.assertNotIn("correct", omitted_conflict_hint["fields"])
         self.assertIn("correct", omitted_conflict_hint["ambiguous"])
+        for ordinary_phrase in (
+            "We studied error correction, and I got 7 right.",
+            "Correction methods were reviewed; I got 7 right.",
+            "Update chapter; I got 7 right.",
+        ):
+            with self.subTest(ordinary_phrase=ordinary_phrase):
+                ordinary_correction_phrase = prepare_practice(
+                    ["I got 5 right.", ordinary_phrase], "en",
+                    [{"field": "correct", "quote": "5 right"}],
+                )
+                self.assertEqual(ordinary_correction_phrase["status"], "ambiguous")
+                self.assertEqual(ordinary_correction_phrase["ambiguous"]["correct"], ["I got 5 right", "I got 7 right"])
         omitted_correction_hint = prepare_practice(
             ["I got 5 right.", "Correction: I got 7 right."], "en",
             [{"field": "correct", "quote": "5 right"}],

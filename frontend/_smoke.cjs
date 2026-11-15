@@ -734,7 +734,7 @@ async function main() {
     await page.getByLabel('Describe the practice set you completed').fill(practiceEntry)
     await page.getByRole('checkbox').check()
     await page.getByRole('button', { name: 'Send to OpenAI' }).click()
-    await page.getByText('Which topic did you study?').waitFor()
+    await page.getByText('Which topic did you practice?').waitFor()
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
     const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)

@@ -47,20 +47,21 @@
 - [x] Extend storage failure and concurrency coverage with multi-process writers, process termination during atomic replacement, and restart/recovery reconciliation. Keep these correctness experiments separate from throughput timing ([report](reports/2026-11-15-system-resilience-benchmark.md)).
 - [x] Add bounded loopback HTTP API benchmarks that measure serialized request/response and concurrent client paths separately from direct-function microbenchmarks; guarantee no external or AI endpoint request ([report](reports/2026-11-15-system-resilience-benchmark.md)).
 - [x] Add a versioned paired EN/TR documentation task workbook, separate human answer rubrics with page/anchor evidence, synthetic stale/broken-link decoys, and an offline rendered-route/link/evidence integrity checker; task and key files are public and inspectable, so this is not a cryptographically sealed blind gate ([report](reports/2026-11-15-docs-retrieval-benchmark.md)).
-- [ ] Run human blind retrieval/usability tasks with the key withheld during administration; score answers/citations against the published 90/100 overall, 85% per-locale, and 100% critical-case thresholds, and evaluate fixed-viewport screenshots. No AI or provider scoring.
+- [ ] Run human retrieval/usability tasks with the public key withheld during administration; score answers/citations against the published 90/100 overall, 85% per-locale, and 100% critical-case thresholds, and evaluate fixed-viewport screenshots. This is not a sealed blind gate; no AI/provider scoring ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 - [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
 - [x] Add a distinct learning-evidence record for a completed suggested activity: user-entered observation/reflection, date, and optional reference link. Keep it separate from binary `ReviewAttempt`, exam net, and XP; do not infer completion or mastery from AI output ([report](reports/2026-11-15-learning-evidence-record.md)).
 
 ## P3 — verification on another computer
 
-- [ ] Verify on a separate computer the OpenAI-compatible endpoint/model settings saved by the app, including the configured-endpoint Study Agent.
-- [ ] Verify image transfer to a multimodal endpoint with a real model; do not run local AI tests or benchmarks in this repository.
+- [ ] Verify on a separate physical device the OpenAI-compatible endpoint/model settings saved by the app, including the configured-endpoint Study Agent ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
+- [ ] Verify synthetic image transfer to a multimodal endpoint on a separate physical device. First inspect the host, HTTP/HTTPS transport, model, and configured auth-key state in Settings; question text/OCR, image, and configured key/placeholder may be sent after manually initiating `Review with Local AI`. This flow has no separate per-request consent gate (unlike Study Agent, whose consent excludes saved question images); mark BLOCKED if remote, plaintext, or key transmission is unacceptable. Do not report any real key or value, or run local AI tests/benchmarks here ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 
 ## P4 — product language and delivery
 
 - [x] Provide English (default) and Turkish application UI, with a persistent language selector.
 - [x] Publish a user-focused English/Turkish guide with GitHub Pages; keep planning notes and internal reports off the public site.
-- [x] Package for Windows 10/11, Debian (`.deb`), and AppImage; store user data in the platform's per-user application data directory. NSIS and `.deb` install, app launch, and cleanup checks passed on Windows Server 2022 and Ubuntu 22.04; a separate frozen-backend smoke verified persistence on both. Consumer Windows 10/11 and separate Debian desktop installs remain manual checks.
+- [x] Build Windows 10/11-targeted, Debian (`.deb`), and AppImage packages with app data scoped to each platform's per-user directory. CI package-install/launch/cleanup checks passed on Windows Server 2022 and Ubuntu 22.04; separate frozen-backend smokes verified persistence on those CI environments.
+- [ ] Manually verify install, launch, and synthetic-record persistence on separate physical consumer devices running Windows 10 and Windows 11 individually, plus a separate physical Debian desktop for `.deb` install and AppImage launch/persistence; CI runner results do not complete these checks ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 - [x] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...). PR #5 produced ARETE-001 and PR #8 produced ARETE-004 automatically; later sequential allocations can be verified by subsequent merged PRs.
 - [x] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
 
@@ -70,7 +71,7 @@
 - [x] Show per-request endpoint consent and trust warnings for the configured Study Agent; keep the saved API key in the backend and disclose when it is sent for authentication.
 - [x] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
 - [x] Verify native packaged Electron `safeStorage` behavior on Ubuntu 22.04 (GNOME Secret Service accepted; `basic_text` rejected) and Windows Server 2022 (native Windows protected storage round-trip) in CI; see [the 2026-11-15 verification report](reports/2026-11-15-chatgpt-plan-study-agent.md).
-- [ ] Complete a real SIWC login/inference/sign-out on a user's desktop; verify package behavior on consumer Windows 10/11 and a separate Debian desktop. Never include account tokens in test data or reports.
+- [ ] Complete real SIWC login/inference/cancel/sign-out/revocation/reauthorization on a separate physical user's device. Verify package behavior on consumer Windows 10/11 and Debian as separate P4 checks. Never include account tokens in test data or reports ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 
 ## P6 — product experience follow-up
 
@@ -82,4 +83,4 @@
 
 ## Next small task
 
-Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Clock and wiki docs are implemented; continue P6 with stronger system benchmarks, then add the blind docs retrieval benchmark last. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete the P5 real SIWC and consumer-device package checks, then manually verify the configured Study Agent endpoint on a separate physical device. Keep all real provider execution and quality outside CI and benchmarks. Clock and wiki docs are implemented; continue P6 with stronger system benchmarks, then administer the public human docs retrieval/usability tasks with the answer key withheld during sessions, noting this is not a sealed blind test. Verify subsequent ARETE numbering on a later merged PR.

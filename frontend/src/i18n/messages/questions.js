@@ -20,7 +20,7 @@ export default {
   'questions.curriculumUnitTheme': { en: 'Unit / theme', tr: 'Ünite / tema' },
   'questions.curriculumOutcome': { en: 'Your short learning-outcome note or paraphrase', tr: 'Kendi kısa öğrenme çıktısı notun veya başka sözcüklerle anlatımın' },
   'questions.curriculumProcess': { en: 'Process component', tr: 'Süreç bileşeni' },
-  'questions.curriculumSourceUrl': { en: 'Optional source URL (not fetched or verified by Hamartia)', tr: 'İsteğe bağlı kaynak adresi (Hamartia almaz veya doğrulamaz)' },
+  'questions.curriculumSourceUrl': { en: 'Optional source URL (not fetched or verified by Hamartia)', tr: 'İsteğe bağlı kaynak adresi (otomatik alınmaz veya doğrulanmaz)' },
   'questions.curriculumSubjectHelp': { en: 'Course / subject uses the subject field above.', tr: 'Ders / konu alanı yukarıdaki ders alanını kullanır.' },
   'questions.referenceUserProvided': { en: 'User-provided reference · unverified', tr: 'Kullanıcının girdiği referans · doğrulanmadı' },
   'questions.search': { en: 'Search mistakes and curriculum references', tr: 'Hatalarda ve program referanslarında ara' },

@@ -259,7 +259,7 @@ async function main() {
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
     await page.getByLabel('Konu').fill('Paragraf')
-    await page.locator('textarea').fill('Metin tabanlı deneme sorusu')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('Metin tabanlı deneme sorusu')
     await page.getByText('İsteğe bağlı program referansı', { exact: true }).click()
     await page.getByLabel('Program çerçevesi').fill('Synthetic study framework')
     await page.getByLabel('Kaynak adı').fill('Browser fixture')
@@ -268,7 +268,7 @@ async function main() {
     await page.getByLabel('Ünite / tema').fill('Made-up patterns')
     await page.getByLabel('Kendi kısa öğrenme çıktısı notun veya başka sözcüklerle anlatımın').fill('Identify a made-up pattern')
     await page.getByLabel('Süreç bileşeni').fill('Explain reasoning')
-    await page.getByLabel('İsteğe bağlı kaynak adresi (gösterilir, açılmaz)').fill('https://example.invalid/reference')
+    await page.getByLabel('İsteğe bağlı kaynak adresi (otomatik alınmaz veya doğrulanmaz)').fill('https://example.invalid/reference')
     const [createdQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
@@ -310,7 +310,7 @@ async function main() {
     await page.getByLabel('Sınavdaki soru no').fill('2')
     await page.getByLabel('Çözüm sırası').fill('1')
     await page.getByLabel('Soruda harcanan saniye').fill('32')
-    await page.locator('textarea').fill('Denemeye bağlı yanlış soru')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('Denemeye bağlı yanlış soru')
     const [linkedQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),

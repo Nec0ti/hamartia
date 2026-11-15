@@ -22,6 +22,8 @@ from benchmark_common import assert_oracle, emit, probe_detects_mutation, seeded
 SEED = 20261114
 TODAY = date(2026, 11, 14)
 RNG = random.Random(SEED)
+SUBJECTS = ("Matematik", "Türkçe", "Fizik")
+TOPICS = ("Fonksiyonlar", "Paragraf", "Hareket", "Denklemler")
 
 def make_upload(index):
     file = tempfile.SpooledTemporaryFile()
@@ -57,7 +59,10 @@ async def run(count=24, repeats=7, json_output=None):
             for index in range(count):
                 upload = make_upload(index)
                 try:
-                    await questions.upload_question(upload, "Soru metni", "Matematik", "Fonksiyonlar", storage)
+                    await questions.upload_question(
+                        upload, f"Seeded question text {index}", SUBJECTS[(index // 4) % len(SUBJECTS)],
+                        TOPICS[index % len(TOPICS)], storage,
+                    )
                 finally:
                     await upload.close()
             upload_seconds = time.perf_counter() - started
@@ -68,6 +73,13 @@ async def run(count=24, repeats=7, json_output=None):
             assert len(saved) == count
             list_stats = await _measure_async(lambda: questions.list_questions(storage), repeats)
             assert list_stats.pop("last_result_count") == count
+
+            for index, item in enumerate(saved):
+                if index % 5 == 0:
+                    await questions.tag_question(item.id, questions.TagRequest(hamartia_tag="[Reading Slip]"), storage)
+                elif index % 7 == 0:
+                    await questions.tag_question(item.id, questions.TagRequest(hamartia_tag="[Distractor Trap]"), storage)
+            saved = await questions.list_questions(storage)
 
             started = time.perf_counter()
             insights = await questions.question_insights(storage, today=TODAY)
@@ -227,11 +239,18 @@ async def _update_one(api, storage, question_id):
 
 
 def _expected_insights(records, today):
-    tag_counts = Counter(item.hamartia_tag for item in records)
-    topic = {
-        "subject": "Matematik", "topic": "Fonksiyonlar", "pending_count": len(records),
-        "last_seen": max(item.created_at[:10] for item in records), "tags": dict(tag_counts),
-    }
+    groups = {}
+    for item in records:
+        key = (item.subject.strip().casefold(), item.topic.strip().casefold())
+        group = groups.setdefault(key, {
+            "subject": item.subject.strip(), "topic": item.topic.strip(),
+            "pending_count": 0, "last_seen": "", "tags": Counter(),
+        })
+        group["pending_count"] += 1
+        group["last_seen"] = max(group["last_seen"], item.created_at[:10])
+        group["tags"][item.hamartia_tag] += 1
+    topics = [{**group, "tags": dict(group["tags"])} for group in groups.values()]
+    topics.sort(key=lambda row: (-row["pending_count"], row["subject"].casefold(), row["topic"].casefold()))
     reviews = [{
         "id": item.id, "subject": item.subject, "topic": item.topic,
         "hamartia_tag": item.hamartia_tag, "ocr_text": item.ocr_text,
@@ -243,7 +262,7 @@ def _expected_insights(records, today):
         "total_questions": len(records), "pending_questions": len(records),
         "scheduled_questions": 0, "unclassified_questions": 0,
         "today_questions": 0, "today_correct": 0, "today_incorrect": 0,
-        "question_order": [], "topics": [topic], "reviews": reviews,
+        "question_order": [], "topics": topics, "reviews": reviews,
         "curriculum_references": [],
     }
 

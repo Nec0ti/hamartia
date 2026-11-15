@@ -21,12 +21,12 @@ def main(count=1000, repeats=7, json_output=None):
     rng = random.Random(SEED)
     with tempfile.TemporaryDirectory() as directory:
         storage = StorageService(Path(directory))
-        started = time.perf_counter()
         expected = []
+        append_records = []
         for index in range(count):
             sectioned = index % 100 == 0
             correct, incorrect, blank = ((0, 0, 0) if index == 2 else
-                                         (1 + index % 31, index % 7, index % 4))
+                                         (1 + index % 31, 1 + index % 7, index % 4))
             exam_date = (date(2026, 11, 14) - timedelta(days=index)).isoformat() if index < 3 else "2025-11-14"
             subject = "TYT Geneli" if sectioned else rng.choice(("Matematik", "Türkçe", "Fizik", "Kimya"))
             sections = ([
@@ -45,13 +45,10 @@ def main(count=1000, repeats=7, json_output=None):
                 "duration_seconds": index % 60, "created_at": "", "sections": sections,
             }
             expected.append(record)
-            storage.append_list(
-                "exams.json",
-                Exam(
-                    **record,
-                ),
-                Exam,
-            )
+            append_records.append(Exam(**record))
+        started = time.perf_counter()
+        for item in append_records:
+            storage.append_list("exams.json", item, Exam)
         append_seconds = time.perf_counter() - started
 
         started = time.perf_counter()
@@ -60,36 +57,48 @@ def main(count=1000, repeats=7, json_output=None):
         assert_oracle([item.model_dump(mode="json") for item in loaded], expected, "storage append/read records")
         sectioned_count = sum(bool(exam.sections) for exam in loaded)
         assert sectioned_count == (count + 99) // 100
-        warm_read = measure(lambda: _assert_count(storage, count), repeats)
+        warm_read = measure(lambda: storage.load_list("exams.json", Exam), repeats)
+        assert len(storage.load_list("exams.json", Exam)) == count
         def update_first(exams):
             exam = next((item for item in exams if item.id == "exam-0"), None)
             if exam is None:
                 return False
             exam.duration_minutes += 1
             return True
-        update_stats = measure(lambda: _assert_updated(storage, update_first), repeats)
+        update_stats = measure(lambda: storage.update_list("exams.json", Exam, update_first), repeats)
         updated = storage.load_list("exams.json", Exam)
         expected_duration = expected[0]["duration_minutes"] + repeats + 1  # warmup plus measured samples
-        assert updated[0].duration_minutes == expected_duration
-        assert all(item.id == expected[index]["id"] for index, item in enumerate(updated))
+        expected_after_update = [dict(item) for item in expected]
+        expected_after_update[0]["duration_minutes"] = expected_duration
+        expected_after_update[0]["xp"] = _record_xp(expected_after_update[0])
+        assert_oracle([item.model_dump(mode="json") for item in updated], expected_after_update,
+                      "storage full state after update")
 
         delete_ids = [f"exam-{index}" for index in range(count - 1, count - repeats - 2, -1)]
-        delete_stats = measure(lambda: _delete_one(storage, delete_ids.pop()), repeats)
+        delete_stats = measure(lambda: storage.update_list("exams.json", Exam, _delete_callback(delete_ids.pop())), repeats)
         remaining = storage.load_list("exams.json", Exam)
         deleted = {f"exam-{index}" for index in range(count - repeats - 1, count)}
-        assert [item.id for item in remaining] == [item["id"] for item in expected if item["id"] not in deleted]
+        expected_after_delete = [item for item in expected_after_update if item["id"] not in deleted]
+        assert_oracle([item.model_dump(mode="json") for item in remaining], expected_after_delete,
+                      "storage full state after delete")
 
         def add_xp(user):
             user.total_xp += 1
             return True
 
-        document_stats = measure(lambda: _assert_doc_updated(storage, add_xp), repeats)
-        assert storage.load_doc("user.json", UserStats).total_xp == repeats + 1
+        document_stats = measure(lambda: storage.update_doc("user.json", UserStats, add_xp), repeats)
+        expected_user = {
+            "total_xp": repeats + 1, "level": 1, "streak_days": 1,
+            "last_active_date": "2026-10-07",
+            "radar_stats": {"speed": 50, "focus": 50, "precision": 50, "stamina": 50},
+        }
+        assert_oracle(storage.load_doc("user.json", UserStats).model_dump(mode="json"), expected_user,
+                      "storage full user document")
 
         progression_stats = measure(lambda: progression_summary(
             storage.load_list("exams.json", Exam), today=date(2026, 11, 14)), repeats)
         progression = progression_summary(storage.load_list("exams.json", Exam), today=date(2026, 11, 14))
-        progression_expected = _expected_progression(expected, set(deleted))
+        progression_expected = _expected_progression(expected_after_update, set(deleted))
         assert_oracle(progression, progression_expected, "storage progression")
         mutation_probes = [probe_detects_mutation(
             progression, progression_expected,
@@ -129,26 +138,14 @@ def main(count=1000, repeats=7, json_output=None):
         }, json_output)
 
 
-def _assert_count(storage, count):
-    assert len(storage.load_list("exams.json", Exam)) == count
-
-
-def _assert_updated(storage, update):
-    assert storage.update_list("exams.json", Exam, update)
-
-
-def _delete_one(storage, question_id):
+def _delete_callback(question_id):
     def delete(exams):
         for index, exam in enumerate(exams):
             if exam.id == question_id:
                 exams.pop(index)
                 return True
         return False
-    assert storage.update_list("exams.json", Exam, delete)
-
-
-def _assert_doc_updated(storage, update):
-    assert storage.update_doc("user.json", UserStats, update)
+    return delete
 
 
 def _expected_progression(records, deleted):
@@ -156,10 +153,7 @@ def _expected_progression(records, deleted):
     xp = 0
     days = set()
     for row in active:
-        correct, incorrect = row["correct"], row["incorrect"]
-        duration = row["duration_minutes"] or 1
-        net = correct - incorrect / 4
-        xp += max(0, int(net * correct * 1.5 - duration * incorrect * 0.25))
+        xp += _record_xp(row)
         days.add(date.fromisoformat(row["date"]))
     today = date(2026, 11, 14)
     last = max((day for day in days if day <= today), default=None)
@@ -173,6 +167,12 @@ def _expected_progression(records, deleted):
         "streak_days": streak,
         "last_active_date": last.isoformat() if last else "",
     }
+
+
+def _record_xp(row):
+    duration = row["duration_minutes"] or 1
+    net = row["correct"] - row["incorrect"] / 4
+    return max(0, int(net * row["correct"] * 1.5 - duration * row["incorrect"] * 0.25))
 
 
 if __name__ == "__main__":

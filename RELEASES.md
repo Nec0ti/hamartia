@@ -155,3 +155,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-010` sürümü, [#14 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/14) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-011
+
+## English
+
+`ARETE-011` includes the changes merged in [PR #15: docs: document Maarif scope and manual AI handoffs](https://github.com/Nec0ti/hamartia/pull/15).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-011` sürümü, [#15 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/15) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

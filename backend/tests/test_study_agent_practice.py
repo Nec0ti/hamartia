@@ -108,6 +108,16 @@ class StudyAgentPracticeTests(unittest.TestCase):
         tampered = {**body, "fields": {**body["fields"], "correct": 13}}
         rejected = self.client.post("/practice/agent-create", json=tampered)
         self.assertEqual(rejected.status_code, 422)
+        extra_claim = {**body, "evidence_claims": [
+            *body["evidence_claims"], {"field": "topic", "quote": "a quote absent from the transcript"},
+        ]}
+        self.assertEqual(self.client.post("/practice/agent-create", json=extra_claim).status_code, 422)
+        changed_evidence = {**body, "evidence": {**body["evidence"], "correct": {
+            **body["evidence"]["correct"], "quote": "correct: 13",
+        }}}
+        self.assertEqual(self.client.post("/practice/agent-create", json=changed_evidence).status_code, 422)
+        changed_digest = {**body, "preview_digest": "0" * 64}
+        self.assertEqual(self.client.post("/practice/agent-create", json=changed_digest).status_code, 409)
         self.assertEqual(self.sessions(), [])
 
         saved = self.client.post("/practice/agent-create", json=body)

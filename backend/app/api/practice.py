@@ -178,11 +178,16 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         values = prepared["fields"]
         evidence = prepared["verified_evidence"]
         digest = prepared["preview_digest"]
+        claims_match = (
+            not prepared["rejected_claims"]
+            and [item.model_dump() for item in payload.evidence_claims] == prepared["evidence_claims"]
+        )
     else:
         parsed, values, details = complete_payload(payload.messages)
         evidence = details["evidence"]
         digest = preview_digest(parsed, evidence) if parsed else None
-    if parsed is None or values != payload.proposal or parsed.model_dump() != payload.fields.model_dump() or evidence != payload.evidence:
+        claims_match = True
+    if not claims_match or parsed is None or values != payload.proposal or parsed.model_dump() != payload.fields.model_dump() or evidence != payload.evidence:
         raise HTTPException(status_code=422, detail="The approved preview is incomplete or no longer matches the source messages.")
     if digest != payload.preview_digest:
         raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")

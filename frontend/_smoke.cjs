@@ -773,6 +773,64 @@ async function main() {
     await page.getByRole('button', { name: 'Start', exact: true }).waitFor({ state: 'visible' })
     await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => button.innerText.trim() === 'Start' && !button.disabled))
     assert.equal(await page.getByRole('button', { name: 'Start', exact: true }).isDisabled(), false)
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    const evidenceSuggestionResponse = await page.context().request.post(`${apiUrl}/questions`, { multipart: {
+      ocr_text: 'Synthetic evidence suggestion fixture', subject: 'Fizik', topic: 'Mercekler',
+      curriculum_reference_json: '{}',
+    } })
+    assert.equal(evidenceSuggestionResponse.status(), 201)
+    const evidenceSuggestionQuestion = await evidenceSuggestionResponse.json()
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    let evidenceRegion = page.getByRole('region', { name: 'Önerilen bir konu üzerine düşün' })
+    await evidenceRegion.waitFor()
+    await evidenceRegion.getByLabel('Konu önerisi').selectOption({ label: 'Fizik · Mercekler' })
+    const evidenceDate = await page.evaluate(() => {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    })
+    await evidenceRegion.getByLabel('Tarih').fill(evidenceDate)
+    await evidenceRegion.getByLabel('Tamamladığın çalışma').fill('Üç yeni mercek sorusu çözdüm')
+    await evidenceRegion.getByLabel('Ne gözlemledin?').fill('Işın çizimini önce çizince odağı daha hızlı buldum.')
+    await evidenceRegion.getByLabel('Kaynak bağlantısı (isteğe bağlı)').fill('https://0x7f000001/lens-notes')
+    const [savedEvidenceResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/learning-evidence' && response.request().method() === 'POST'),
+      evidenceRegion.getByRole('button', { name: 'Yansımayı kaydet' }).click(),
+    ])
+    assert.equal(savedEvidenceResponse.status(), 201)
+    let savedEvidence = await savedEvidenceResponse.json()
+    const savedEvidenceId = savedEvidence.id
+    assert.equal(savedEvidence.subject, 'Fizik')
+    assert.equal(savedEvidence.topic, 'Mercekler')
+    assert.equal(savedEvidence.date, evidenceDate)
+    assert.equal(savedEvidence.activity, 'Üç yeni mercek sorusu çözdüm')
+    assert.equal(savedEvidence.reference_url, 'https://0x7f000001/lens-notes')
+    await evidenceRegion.getByRole('link', { name: 'Kaynağı aç (127.0.0.1)' }).waitFor()
+    await evidenceRegion.getByText('Işın çizimini önce çizince odağı daha hızlı buldum.').waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Plan' }).click()
+    const englishEvidenceRegion = page.getByRole('region', { name: 'Reflect on a suggested topic' })
+    await englishEvidenceRegion.getByRole('link', { name: 'Open reference (127.0.0.1)' }).waitFor()
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    evidenceRegion = page.getByRole('region', { name: 'Önerilen bir konu üzerine düşün' })
+    await evidenceRegion.waitFor()
+    await evidenceRegion.getByRole('button', { name: 'Üç yeni mercek sorusu çözdüm yansımasını düzenle' }).click()
+    await evidenceRegion.getByLabel('Ne gözlemledin?').fill('Yeni örneklerde de odağı daha hızlı buldum.')
+    const [updatedEvidenceResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === `/learning-evidence/${savedEvidence.id}` && response.request().method() === 'PUT'),
+      evidenceRegion.getByRole('button', { name: 'Değişiklikleri kaydet' }).click(),
+    ])
+    savedEvidence = await updatedEvidenceResponse.json()
+    assert.equal(savedEvidence.observation, 'Yeni örneklerde de odağı daha hızlı buldum.')
+    assert.equal(savedEvidence.id, savedEvidenceId)
+    assert.deepEqual(Object.keys(savedEvidence).sort(), ['activity', 'created_at', 'date', 'id', 'observation', 'reference_url', 'subject', 'topic'])
+    await evidenceRegion.getByRole('button', { name: 'Üç yeni mercek sorusu çözdüm yansımasını sil' }).click()
+    await evidenceRegion.getByText('Henüz yansıma kaydedilmedi.').waitFor()
+    assert.deepEqual(await (await fetch(`${apiUrl}/learning-evidence`)).json(), [])
+    assert.equal((await page.context().request.delete(`${apiUrl}/questions/${evidenceSuggestionQuestion.id}`)).status(), 200)
     failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
     const expectedClockErrors = consoleErrors.filter((item) => item.location.url !== `${apiUrl}/clock` || !item.text.includes('503 (Service Unavailable)'))
     consoleErrors.splice(0, consoleErrors.length, ...expectedClockErrors)

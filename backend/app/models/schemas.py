@@ -6,15 +6,45 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 """
 
 from datetime import datetime
+import ipaddress
+import re
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
+import idna
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
 # ---------------------------------------------------------------------------
+
+
+def _valid_http_hostname(hostname: str) -> bool:
+    """Accept IP literals and UTS46 non-transitional IDNA DNS names."""
+    if not hostname:
+        return False
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        pass
+    try:
+        ascii_hostname = idna.encode(hostname, uts46=True, transitional=False, std3_rules=True).decode("ascii")
+    except idna.IDNAError:
+        return False
+    if ascii_hostname.endswith("."):
+        ascii_hostname = ascii_hostname[:-1]
+    if not ascii_hostname or len(ascii_hostname) > 253:
+        return False
+    labels = ascii_hostname.split(".")
+    for label in labels:
+        if (
+            len(label) > 63
+            or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) is None
+        ):
+            return False
+    return True
 
 
 class Settings(BaseModel):
@@ -395,6 +425,71 @@ class PracticeSession(PracticeSessionData):
 
 
 class PracticeSessionCreate(PracticeSessionData):
+    pass
+
+
+class LearningEvidenceData(BaseModel):
+    """A user's reflection on an activity completed from a suggested topic."""
+
+    model_config = {"extra": "forbid"}
+
+    date: str
+    subject: str = Field(min_length=1, max_length=120)
+    topic: str = Field(min_length=1, max_length=160)
+    activity: str = Field(min_length=1, max_length=500)
+    observation: str = Field(min_length=1, max_length=3000)
+    reference_url: str = Field(default="", max_length=2048)
+
+    @field_validator("date")
+    @classmethod
+    def require_iso_date(cls, value: str) -> str:
+        try:
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("date must use YYYY-MM-DD") from exc
+        if parsed.strftime("%Y-%m-%d") != value:
+            raise ValueError("date must use YYYY-MM-DD")
+        return value
+
+    @field_validator("subject", "topic", "activity", "observation", "reference_url")
+    @classmethod
+    def trim_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("subject", "topic", "activity", "observation")
+    @classmethod
+    def require_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("This field is required")
+        return value
+
+    @field_validator("reference_url")
+    @classmethod
+    def require_http_reference(cls, value: str) -> str:
+        if not value:
+            return value
+        try:
+            parsed = urlsplit(value)
+            _ = parsed.port
+            valid = (
+                parsed.scheme in {"http", "https"}
+                and _valid_http_hostname(parsed.hostname or "")
+                and parsed.username is None
+                and parsed.password is None
+            )
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("reference_url must be an absolute HTTP(S) URL without credentials")
+        return value
+
+
+class LearningEvidence(LearningEvidenceData):
+    id: str
+    created_at: str = ""
+
+
+class LearningEvidenceCreate(LearningEvidenceData):
     pass
 
 

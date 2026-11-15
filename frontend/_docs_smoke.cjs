@@ -75,6 +75,14 @@ async function main() {
             assert.equal(article.includes(label), true, `${route} missing visible UI label ${label}`)
           }
         }
+        if (route.includes('learning-evidence/')) {
+          const article = await page.locator('main article').innerText()
+          for (const phrase of lang === 'en'
+            ? ['activity you completed', 'your own report', 'pass hostname syntax checks', 'host as your browser parses it', 'does not fetch links']
+            : ['tamamladığın çalışmayı', 'kendi beyanındır', 'ana bilgisayar adı sözdizimi denetimini', 'tarayıcının yorumladığı ana bilgisayar adını', 'bağlantıları getirmez']) {
+            assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing learning evidence boundary: ${phrase}`)
+          }
+        }
 
         const languageLink = page.locator('.header-actions .language-link')
         const target = new URL(await languageLink.getAttribute('href'), page.url())

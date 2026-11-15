@@ -49,7 +49,7 @@
 - [x] Add a versioned paired EN/TR documentation task workbook, separate human answer rubrics with page/anchor evidence, synthetic stale/broken-link decoys, and an offline rendered-route/link/evidence integrity checker; task and key files are public and inspectable, so this is not a cryptographically sealed blind gate ([report](reports/2026-11-15-docs-retrieval-benchmark.md)).
 - [ ] Run human blind retrieval/usability tasks with the key withheld during administration; score answers/citations against the published 90/100 overall, 85% per-locale, and 100% critical-case thresholds, and evaluate fixed-viewport screenshots. No AI or provider scoring.
 - [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
-- [ ] Add a distinct learning-evidence record for a completed suggested activity: user-entered observation/reflection, date, and optional reference link. Keep it separate from binary `ReviewAttempt`, exam net, and XP; do not infer completion or mastery from AI output.
+- [x] Add a distinct learning-evidence record for a completed suggested activity: user-entered observation/reflection, date, and optional reference link. Keep it separate from binary `ReviewAttempt`, exam net, and XP; do not infer completion or mastery from AI output ([report](reports/2026-11-15-learning-evidence-record.md)).
 
 ## P3 — verification on another computer
 

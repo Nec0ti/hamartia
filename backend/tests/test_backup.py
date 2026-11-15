@@ -18,7 +18,7 @@ from starlette.datastructures import Headers
 
 from app.api import questions as question_api
 from app.models.schemas import (
-    ActiveClockTimer, ClockAlarm, ClockState, CosmosData, Exam, PracticeSession,
+    ActiveClockTimer, ClockAlarm, ClockState, CosmosData, Exam, LearningEvidence, PracticeSession,
     PracticeDraft, Question, ReviewAttempt, Settings, UserStats,
 )
 from app.services.backup import (
@@ -78,6 +78,32 @@ class BackupTests(unittest.TestCase):
             self.assertEqual(json.loads(archive.read("practice_sessions.json"))[0]["id"], "practice1")
             self.assertEqual(json.loads(archive.read("settings.json"))["api_key"], "")
             self.assertNotIn(b"must-not-be-exported", archive.read("settings.json"))
+
+    def test_learning_evidence_round_trips_and_legacy_backup_defaults_empty(self):
+        evidence = LearningEvidence(
+            id="learning_evidence_1", created_at="2026-11-15T10:00:00Z", date="2026-11-14",
+            subject="Math", topic="Quadratics", activity="Solved fresh examples",
+            observation="I corrected the sign error.", reference_url="https://example.org/work",
+        )
+        StorageService(self.source).save_list("learning_evidence.json", [evidence])
+        create_backup(self.source, self.archive)
+        restored = self.root / "evidence-restored"
+        restore_backup(self.archive, restored)
+        self.assertEqual(StorageService(restored).load_list("learning_evidence.json", LearningEvidence), [evidence])
+
+        legacy = self.root / "legacy-evidence.zip"
+        with zipfile.ZipFile(self.archive) as archive:
+            files = {name: archive.read(name) for name in archive.namelist() if name != "manifest.json"}
+            manifest = json.loads(archive.read("manifest.json"))
+        files.pop("learning_evidence.json")
+        manifest["files"] = [item for item in manifest["files"] if item["path"] != "learning_evidence.json"]
+        with zipfile.ZipFile(legacy, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, raw in files.items():
+                archive.writestr(name, raw)
+            archive.writestr("manifest.json", json.dumps(manifest))
+        legacy_restored = self.root / "legacy-evidence-restored"
+        restore_backup(legacy, legacy_restored)
+        self.assertEqual(StorageService(legacy_restored).load_list("learning_evidence.json", LearningEvidence), [])
 
     def test_backup_snapshot_freezes_running_timers_at_snapshot_time(self):
         state = ClockState(active_timer=ActiveClockTimer(

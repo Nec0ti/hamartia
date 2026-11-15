@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BookOpenCheck, CheckCircle2, Clock3, FileText, Tags, ThumbsDown, ThumbsUp } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
 import PracticeSessions from './PracticeSessions.jsx'
+import LearningEvidence from './LearningEvidence.jsx'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, labelOr, localDateToday } from '../utils/formatters.js'
 
@@ -151,6 +152,8 @@ export default function StudyPlanTab() {
           </article>
         ))}
       </section>
+
+      <LearningEvidence topics={plan.topics} />
     </div>
   )
 }

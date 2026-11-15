@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from app.models.schemas import ClockState, CosmosData, Exam, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
-from app.services.storage import data_mutation_lock
+from app.services.storage import data_mutation_guard
 
 BACKUP_FORMAT = "hamartia-local-backup"
 BACKUP_VERSION = 1
@@ -253,7 +253,7 @@ def create_backup(data_dir, destination):
     destination = Path(destination)
     with tempfile.TemporaryDirectory(prefix="hamartia-backup-snapshot-") as temp_root:
         snapshot_dir = Path(temp_root)
-        with data_mutation_lock(data_dir):
+        with data_mutation_guard(data_dir):
             _capture_backup_snapshot(data_dir, snapshot_dir)
         return _write_backup_archive(snapshot_dir, destination)
 

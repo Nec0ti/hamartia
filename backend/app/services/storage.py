@@ -11,8 +11,10 @@ Guarantees:
 from __future__ import annotations
 
 import json
+import errno
 import os
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, List, TypeVar
@@ -22,6 +24,7 @@ T = TypeVar("T", bound=object)
 _FILE_LOCKS: dict[str, threading.Lock] = {}
 _FILE_LOCKS_GUARD = threading.Lock()
 _DATA_MUTATION_LOCKS: dict[str, threading.RLock] = {}
+_PROCESS_MUTATION_DEPTH = threading.local()
 
 
 def data_mutation_lock(data_dir: Path) -> threading.RLock:
@@ -37,26 +40,50 @@ def data_mutation_lock(data_dir: Path) -> threading.RLock:
 
 @contextmanager
 def _process_mutation_lock(data_dir: Path):
-    path = Path(data_dir).with_name(f".{Path(data_dir).name}.mutation.lock")
+    canonical_dir = Path(data_dir).resolve()
+    path = canonical_dir.with_name(f".{canonical_dir.name}.mutation.lock")
+    key = str(canonical_dir)
+    depths = getattr(_PROCESS_MUTATION_DEPTH, "by_directory", None)
+    if depths is None:
+        depths = _PROCESS_MUTATION_DEPTH.by_directory = {}
+    if depths.get(key, 0):
+        depths[key] += 1
+        try:
+            yield
+        finally:
+            depths[key] -= 1
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as lock_file:
         lock_file.seek(0, os.SEEK_END)
         if lock_file.tell() == 0:
             lock_file.write(b"\0")
             lock_file.flush()
+        if os.name == "nt":
+            import msvcrt
+            lock_file.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as exc:
+                    if exc.errno not in (errno.EACCES, errno.EDEADLK) and getattr(exc, "winerror", None) not in (33, 36):
+                        raise StorageError(f"Cannot lock data directory {data_dir}: {exc}") from exc
+                    time.sleep(0.05)
+        else:
+            import fcntl
+            while True:
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                    break
+                except OSError as exc:
+                    if exc.errno != errno.EINTR:
+                        raise StorageError(f"Cannot lock data directory {data_dir}: {exc}") from exc
         try:
-            if os.name == "nt":
-                import msvcrt
-                lock_file.seek(0)
-                msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
-        except OSError as exc:
-            raise StorageError(f"Cannot lock data directory {data_dir}: {exc}") from exc
-        try:
+            depths[key] = 1
             yield
         finally:
+            depths.pop(key, None)
             if os.name == "nt":
                 lock_file.seek(0)
                 msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
@@ -67,6 +94,13 @@ def _process_mutation_lock(data_dir: Path):
 @contextmanager
 def _mutation_locks(data_dir: Path):
     with data_mutation_lock(data_dir), _process_mutation_lock(data_dir):
+        yield
+
+
+@contextmanager
+def data_mutation_guard(data_dir: Path):
+    """Serialize a multi-file operation against local and other-process writes."""
+    with _mutation_locks(data_dir):
         yield
 
 

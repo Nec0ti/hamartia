@@ -14,7 +14,7 @@ A system for locally tracking practice exam results, missed questions, and error
 
 ## Current repository (GitHub `master`, reviewed 2026-11-15)
 
-- Backend: Python/FastAPI, Pydantic, JSON file storage (`backend/app`). Storage mutations combine thread/per-file locks with a blocking OS process lock on a sibling `.mutation.lock` file; API startup still reserves the data directory for its lifetime, so multi-worker API hosting remains unsupported.
+- Backend: Python/FastAPI, Pydantic, JSON file storage (`backend/app`). Storage mutations combine thread/per-file locks with a canonical-path OS process lock on a sibling `.mutation.lock` file; multi-file question upload/delete and backup snapshot capture use the same reentrant process guard. API startup still reserves the data directory for its lifetime, so multi-worker API hosting remains unsupported.
 - Frontend: React 18, Vite, Tailwind, Recharts, Axios (`frontend`).
 - Existing API areas: exams, questions, user/progression, Cosmos gamification, AI chat/analysis, settings, health check.
 - `backend/app/core/formulas.py`: YKS net, XP, level, and average-net formulas.

@@ -9,6 +9,44 @@ from pathlib import Path
 
 
 class StorageProcessLockTests(unittest.TestCase):
+    def test_held_process_lock_blocks_writer_until_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            data = root / "data"
+            ready, started, release, done = [root / name for name in ("ready", "started", "release", "done")]
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.pathsep.join([str(Path(__file__).resolve().parents[1]), env.get("PYTHONPATH", "")])
+            holder_code = (
+                "import sys,time; from pathlib import Path; from app.services.storage import data_mutation_guard; "
+                "data,ready,release=map(Path,sys.argv[1:]); "
+                "\nwith data_mutation_guard(data):\n ready.touch()\n while not release.exists(): time.sleep(.01)\n"
+            )
+            writer_code = (
+                "import sys; from pathlib import Path; from app.services.storage import StorageService; "
+                "data,started,done=map(Path,sys.argv[1:]); started.touch(); "
+                "StorageService(data).append_list('rows.json', {'id':'after-release'}, dict); done.touch()"
+            )
+            holder = subprocess.Popen([sys.executable, "-c", holder_code, str(data), str(ready), str(release)], env=env)
+            writer = None
+            try:
+                deadline = time.monotonic() + 10
+                while not ready.exists() and time.monotonic() < deadline:
+                    time.sleep(.005)
+                self.assertTrue(ready.exists(), "lock holder did not acquire the process lock")
+                writer = subprocess.Popen([sys.executable, "-c", writer_code, str(data), str(started), str(done)], env=env)
+                while not started.exists() and time.monotonic() < deadline:
+                    time.sleep(.005)
+                self.assertTrue(started.exists(), "contending writer did not start")
+                time.sleep(.2)
+                self.assertFalse(done.exists(), "writer must remain blocked while another process holds the lock")
+            finally:
+                release.touch()
+            self.assertEqual(holder.wait(timeout=10), 0)
+            self.assertEqual(writer.wait(timeout=10), 0)
+            self.assertTrue(done.exists(), "writer should finish after lock release")
+            records = json.loads((data / "rows.json").read_text(encoding="utf-8"))
+            self.assertEqual(records, [{"id": "after-release"}])
+
     def test_independent_processes_append_without_losing_records(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

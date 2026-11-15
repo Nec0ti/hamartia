@@ -11,6 +11,7 @@ export default function StudyPlanTab() {
   const { t, locale } = useI18n()
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [busyId, setBusyId] = useState('')
   const [focusTopic, setFocusTopic] = useState(null)
 
@@ -21,8 +22,10 @@ export default function StudyPlanTab() {
   const recordAttempt = async (question, correct) => {
     setBusyId(question.id)
     setError('')
+    setFeedback('')
     try {
       await api.questions.attempt(question.id, correct, localDateToday())
+      setFeedback(t(correct ? 'study.selfCheckSavedCorrect' : 'study.selfCheckSavedIncorrect'))
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -31,7 +34,7 @@ export default function StudyPlanTab() {
     }
   }
 
-  if (error) return <p role="alert" className="rounded-lg border border-accent/50 bg-canvas-panel p-3 text-sm text-accent">{error}</p>
+  if (error) return <p role="alert" className="rounded-lg border border-canvas-line/50 bg-canvas-panel p-3 text-sm text-canvas-text">{error}</p>
   if (!plan) return <p className="py-20 text-center text-sm text-canvas-muted">{t('study.loading')}</p>
 
   return (
@@ -40,6 +43,8 @@ export default function StudyPlanTab() {
         <h1 className="text-2xl font-bold text-canvas-text">{t('study.title')}</h1>
         <p className="mt-1 text-sm text-canvas-muted">{t('study.intro')}</p>
       </header>
+
+      {feedback && <p role="status" aria-live="polite" className="rounded-lg border border-canvas-line bg-canvas-panel px-3 py-2 text-sm text-canvas-text">{feedback}</p>}
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Stat label={t('study.stat.saved')} value={formatInt(plan.total_questions, locale)} icon={<BookOpenCheck size={18} />} />
@@ -124,7 +129,7 @@ export default function StudyPlanTab() {
           <article key={`${topic.subject}-${topic.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-canvas-raise text-sm font-semibold text-canvas-cyan">{index + 1}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-canvas-raise text-sm font-semibold text-canvas-text">{index + 1}</span>
                 <div>
                   <h3 className="font-semibold text-canvas-text">{labelOr(topic.topic, t('common.topicNotSpecified'))}</h3>
                   <p className="text-sm text-canvas-muted">{labelOr(topic.subject, t('common.subjectNotSpecified'))}</p>
@@ -153,7 +158,7 @@ export default function StudyPlanTab() {
 function Stat({ label, value, icon }) {
   return (
     <article className="flex items-center gap-3 rounded-xl border border-canvas-line bg-canvas-panel p-4">
-      <div className="rounded-lg bg-canvas-raise p-2 text-canvas-cyan">{icon}</div>
+      <div className="rounded-lg bg-canvas-raise p-2 text-canvas-text">{icon}</div>
       <div><p className="text-xs text-canvas-muted">{label}</p><p className="text-xl font-bold text-canvas-text">{value}</p></div>
     </article>
   )

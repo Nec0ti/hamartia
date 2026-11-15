@@ -295,3 +295,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-020` sürümü, [#24 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/24) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-021
+
+## English
+
+`ARETE-021` includes the changes merged in [PR #25: Clarify local OpenAI-compatible Study Agent option](https://github.com/Nec0ti/hamartia/pull/25).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-021` sürümü, [#25 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/25) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

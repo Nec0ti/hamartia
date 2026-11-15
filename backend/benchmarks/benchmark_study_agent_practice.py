@@ -63,7 +63,11 @@ def create_entry(messages, fields, storage):
         evidence=draft["evidence"], preview_digest=draft["preview_digest"],
         approval_id=approval_id,
     )
-    return asyncio.run(practice.practice_agent_create(request, storage)), approval_id, request
+    started_at = datetime.now(timezone.utc)
+    saved = asyncio.run(practice.practice_agent_create(request, storage))
+    finished_at = datetime.now(timezone.utc)
+    validate_saved_timestamp(saved.created_at, started_at, finished_at)
+    return saved, approval_id, request
 
 
 def forbid_provider_calls():
@@ -183,7 +187,11 @@ def create_evidence_entry(messages, language, claims, fields, storage, duplicate
         approval_id=approval_id,
         duplicate_choice=duplicate_choice,
     )
-    return asyncio.run(practice.practice_agent_create(request, storage)), draft["preview_digest"], approval_id, request
+    started_at = datetime.now(timezone.utc)
+    saved = asyncio.run(practice.practice_agent_create(request, storage))
+    finished_at = datetime.now(timezone.utc)
+    validate_saved_timestamp(saved.created_at, started_at, finished_at)
+    return saved, draft["preview_digest"], approval_id, request
 
 
 def run_evidence_tool_protocol():
@@ -192,7 +200,6 @@ def run_evidence_tool_protocol():
         data_dir = Path(directory)
         storage = StorageService(data_dir)
         with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
-            started_at = datetime.now(timezone.utc)
             messages_a, fields_a, claims_a = evidence_fixture(12)
             rejected = asyncio.run(practice.practice_agent_draft(
                 practice.AgentDraftRequest(
@@ -252,6 +259,8 @@ def run_evidence_tool_protocol():
             else:
                 if replayed.id != saved_b.id:
                     raise AssertionError("replayed explicit approval did not return the existing record")
+                if replayed.created_at != saved_b.created_at:
+                    raise AssertionError("idempotent replay changed the original creation timestamp")
                 if replayed.id != independently_expected_record_id(approval_b, replay_request):
                     raise AssertionError("replayed ID differs from the independent approval fingerprint")
 
@@ -327,11 +336,8 @@ def run_evidence_tool_protocol():
                 raise AssertionError("Turkish multi-message record is not bound to the explicit approval key")
             expected_tr = expected_row(fields_tr, saved_tr, independently_expected_record_id(approval_tr, request_tr))
 
-            finished_at = datetime.now(timezone.utc)
             persisted = storage.load_list("practice_sessions.json", PracticeSession)
             actual = [item.model_dump() for item in persisted]
-            for item in persisted:
-                validate_saved_timestamp(item.created_at, started_at, finished_at)
             assert_oracle(actual, [expected_a, expected_b, expected_c, expected_tr], "provider-free evidence tool full persisted rows")
             return {
                 "records_checked": 4,
@@ -354,7 +360,6 @@ def run_trial(count):
         data_dir = Path(directory)
         storage = StorageService(data_dir)
         seen_ids = set()
-        started_at = datetime.now(timezone.utc)
         with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
             started = time.perf_counter()
             expected = []
@@ -367,14 +372,11 @@ def run_trial(count):
                     raise AssertionError("stored ID differs from the independent approval fingerprint")
                 expected.append(expected_row(fields, saved, expected_id))
             elapsed = time.perf_counter() - started
-            finished_at = datetime.now(timezone.utc)
 
             persisted = storage.load_list("practice_sessions.json", PracticeSession)
             actual = [item.model_dump() for item in persisted]
             if len(seen_ids) != count or len({item.id for item in persisted}) != count:
                 raise AssertionError("persisted benchmark IDs are not unique across every row")
-            for item in persisted:
-                validate_saved_timestamp(item.created_at, started_at, finished_at)
             assert_oracle(actual, expected, "practice-entry full persisted rows")
             oracle_probe = probe_oracle_self_check(
                 actual, expected,

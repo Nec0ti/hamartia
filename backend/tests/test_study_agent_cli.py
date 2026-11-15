@@ -156,6 +156,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("The date was 2026-11-15 or November 16th.", "2026-11-15"),
             ("The date was 2026-11-15 or 2026.11.16.", "2026-11-15"),
             ("The date was 2026-11-15 or 11/16.", "2026-11-15"),
+            ("The date was 2026-11-15, or 16.", "2026-11-15"),
+            ("The date was 2026-11-15; or 16.", "2026-11-15"),
+            ("The date was 2026-11-15\nor 16.", "2026-11-15"),
             ("The date was November 15 or 16.", "November 15"),
             ("Tarih 15 Kasım veya 16.", "15 Kasım"),
             ("Tarih 2026-11-15 veya 15 Kasım.", "2026-11-15"),
@@ -164,6 +167,8 @@ class StudyAgentCliTests(unittest.TestCase):
                 result = prepare_practice([statement], "tr" if statement.startswith("Tarih") else "en", [{"field": "date", "quote": quote}])
                 self.assertNotIn("date", result["fields"])
                 self.assertIn("date", result["ambiguous"])
+        time_text = "I studied on 2026-11-15 or 16:30."
+        self.assertEqual(parse_quote_value("date", "on 2026-11-15", time_text), "2026-11-15")
 
     def test_duration_alternatives_accept_only_neither_candidate(self):
         for field, context, quote in (
@@ -184,9 +189,22 @@ class StudyAgentCliTests(unittest.TestCase):
             ("duration_seconds", "It took 45 seconds and thirty seconds.", "45 seconds"),
             ("duration_minutes", "45 dakika ve otuz dakika sürdü.", "45 dakika"),
             ("duration_minutes", "It took 45 minutes plus one and a half minutes.", "45 minutes"),
+            ("duration_minutes", "It took 45 minutes, plus thirty minutes.", "45 minutes"),
+            ("duration_seconds", "It took 45 seconds, and thirty seconds.", "45 seconds"),
+            ("duration_minutes", "45 dakika, ve otuz dakika sürdü.", "45 dakika"),
         ):
             with self.subTest(context=context):
                 self.assertIsNone(parse_quote_value(field, quote, context))
+
+        for message, field, quote in (
+            ("I spent 45 minutes; plus 30 minutes.", "duration_minutes", "45 minutes"),
+            ("I spent 45 minutes\nplus 30 minutes.", "duration_minutes", "45 minutes"),
+            ("The date was 2026-11-15; or 16.", "date", "2026-11-15"),
+            ("The date was 2026-11-15\nor 16.", "date", "2026-11-15"),
+        ):
+            with self.subTest(message=message):
+                result = prepare_practice([message], "en", [{"field": field, "quote": quote}])
+                self.assertIn(field, result["ambiguous"])
 
     def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
         self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))

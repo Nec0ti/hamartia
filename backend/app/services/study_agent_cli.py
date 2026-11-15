@@ -71,10 +71,30 @@ def _occurrences(messages: list[str], quote: str) -> list[tuple[int, int, int]]:
 
 
 def _sentence_context(message: str, start: int, end: int) -> str:
-    left = max((message.rfind(mark, 0, start) for mark in (".", "?", "!", ";", "\n")), default=-1) + 1
-    rights = [message.find(mark, end) for mark in (".", "?", "!", ";", "\n")]
-    right = min((position for position in rights if position >= 0), default=len(message))
-    return message[left:right].strip()
+    boundaries = (".", "?", "!", ";", "\n")
+    left_boundary = max((message.rfind(mark, 0, start) for mark in boundaries), default=-1)
+    right_candidates = [message.find(mark, end) for mark in boundaries]
+    right_boundary = min((position for position in right_candidates if position >= 0), default=len(message))
+    left = left_boundary + 1
+    right = right_boundary
+    context = message[left:right].strip()
+    continuation = r"(?i)^\s*,?\s*(?:or|either|veya|ya\s+da|plus|and|ve|ile|ek|ilave)\b"
+
+    # Keep a neighboring clause with the quoted statement only when it begins
+    # with a connector. This catches punctuation-split alternatives without
+    # merging ordinary separate statements or explicit corrections.
+    if left_boundary >= 0 and re.match(continuation, context):
+        previous_left_candidates = [message.rfind(mark, 0, left_boundary) for mark in boundaries]
+        previous_left = max(previous_left_candidates, default=-1) + 1
+        context = f"{message[previous_left:left_boundary].strip()} {context}".strip()
+    if right_boundary < len(message):
+        next_left = right_boundary + 1
+        next_right_candidates = [message.find(mark, next_left) for mark in boundaries]
+        next_right = min((position for position in next_right_candidates if position >= 0), default=len(message))
+        following = message[next_left:next_right].strip()
+        if re.match(continuation, following):
+            context = f"{context} {following}".strip()
+    return context
 
 
 def _number_has_unsafe_boundary(candidate: str, context: str, match: re.Match[str]) -> bool:
@@ -106,7 +126,7 @@ _DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1
 _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s+(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?!\d)")
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;]?\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _COUNT_CONNECTOR = r"(?:,\s*(?:(?:or|and|to|veya|ya\s+da|ile|ila)\s*)?|\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+)"
@@ -115,8 +135,8 @@ _DURATION_CHUNK = rf"{_DURATION_VALUE}\s*(?:hours?|hrs?|h|saat|minutes?|mins?|da
 _HOUR_DURATION = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:hours?|hrs?|h|saat)\b")
 _DURATION_ALTERNATIVE = re.compile(rf"(?i){_DURATION_CHUNK}(?:\s+(?:or|either|veya|ya\s+da)\s+|\s+(?:or|veya)\s+){_DURATION_CHUNK}")
 _DURATION_ADDITIVE_CONNECTOR = r"(?:and|plus|ve|ile|ek|ilave)"
-_DURATION_MINUTES_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\b")
-_DURATION_SECONDS_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\b")
+_DURATION_MINUTES_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\s*[,;]?\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:minutes?|mins?|dakika)\b")
+_DURATION_SECONDS_ADDITIVE = re.compile(rf"(?i){_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\s*[,;]?\s+{_DURATION_ADDITIVE_CONNECTOR}\s+{_DURATION_VALUE}\s*(?:seconds?|secs?|saniye)\b")
 _DURATION_FRACTIONAL = re.compile(r"(?i)(?<!\w)(?:\d{1,5}[.,]\d+|\d+\s*/\s*\d+|[½¼¾⅓⅔⅛⅜⅝⅞])\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b")
 _COUNT_ALTERNATIVES: dict[str, re.Pattern[str]] = {
     "correct": re.compile(rf"(?i)(?:\bbetween\s+{_COUNT_NUMBER}\s+(?:and|to)\s+{_COUNT_NUMBER}|\b{_COUNT_NUMBER}{_COUNT_CONNECTOR}{_COUNT_NUMBER})\s*(?:questions?\s+|answers?\s+)?(?:correct(?:ly)?|right|doğru|dogru)\b|\b(?:correct|doğru|dogru)\s*:\s*{_COUNT_NUMBER}{_COUNT_CONNECTOR}{_COUNT_NUMBER}"),

@@ -160,7 +160,7 @@ _DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1
 _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?!(?:[01]?\d|2[0-3])\.(?:1[3-9]|[2-5]\d)(?!\d))(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?P<alternative>\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|sene|saat)"
@@ -219,6 +219,21 @@ _CORRECTION_MARKER = re.compile(
 )
 
 
+def _has_date_shorthand_alternative(context: str) -> bool:
+    for match in _DATE_SHORTHAND_ALTERNATIVE.finditer(context):
+        alternative = match.group("alternative")
+        dotted = re.fullmatch(r"(\d{1,2})\.(\d{1,2})", alternative)
+        if dotted:
+            first, second = map(int, dotted.groups())
+            valid_clock = 0 <= first <= 23 and 0 <= second <= 59
+            valid_dmy = 1 <= first <= 31 and 1 <= second <= 12
+            valid_mdy = 1 <= first <= 12 and 1 <= second <= 31
+            if valid_clock and not (valid_dmy or valid_mdy):
+                continue
+        return True
+    return False
+
+
 def parse_quote_value(field: str, quote: str, context: str | None = None) -> str | int | None:
     """Derive one value from a narrowly supported statement; never trust model values."""
     _field(field)
@@ -235,7 +250,7 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
         or (field == "duration_minutes" and _DURATION_MINUTES_ADDITIVE.search(surrounding))
         or (field == "duration_seconds" and _DURATION_SECONDS_ADDITIVE.search(surrounding))
         or (field in {"duration_minutes", "duration_seconds"} and _DURATION_FRACTIONAL.search(surrounding))
-        or (field == "date" and (len(set(_DATE_CANDIDATES.findall(surrounding))) > 1 or _DATE_SHORTHAND_ALTERNATIVE.search(surrounding) or _DATE_RELATIVE_ALTERNATIVE.search(surrounding)))
+        or (field == "date" and (len(set(_DATE_CANDIDATES.findall(surrounding))) > 1 or _has_date_shorthand_alternative(surrounding) or _DATE_RELATIVE_ALTERNATIVE.search(surrounding)))
         or (field in _COUNT_ALTERNATIVES and _COUNT_ALTERNATIVES[field].search(surrounding))
     ):
         return None

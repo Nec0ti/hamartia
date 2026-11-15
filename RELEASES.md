@@ -211,3 +211,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-014` sürümü, [#18 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/18) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-015
+
+## English
+
+`ARETE-015` includes the changes merged in [PR #19: bench: add fault probes and realistic persisted fixtures](https://github.com/Nec0ti/hamartia/pull/19).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-015` sürümü, [#19 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/19) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

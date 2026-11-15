@@ -4,6 +4,13 @@ const { createServer } = require('node:net')
 const path = require('node:path')
 const { chromium } = require('playwright')
 
+const pages = [
+  '', 'system-architecture/', 'purpose-and-scope/', 'study-workflows/', 'cosmos-and-progression/', 'mistakes-and-review/',
+  'exam-formats-and-maarif/', 'install/', 'study-agent/', 'privacy-and-consent/',
+  'backup-and-restore/', 'clock-and-reminders/', 'accessibility-and-language/',
+  'learning-evidence/', 'faq/', 'troubleshooting/', 'contributing/',
+]
+
 async function freePort() {
   const server = createServer()
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -37,57 +44,70 @@ async function main() {
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
     })
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    const localeSnapshots = { en: [], tr: [] }
     const externalRequests = []
     page.on('request', request => {
       if (!request.url().startsWith(base)) externalRequests.push(request.url())
     })
+
+    for (const lang of ['en', 'tr']) {
+      const prefix = lang === 'tr' ? 'tr/' : ''
+      for (let index = 0; index < pages.length; index += 1) {
+        const route = `${prefix}${pages[index]}`
+        await page.goto(new URL(route, base).href, { waitUntil: 'networkidle' })
+        assert.equal(await page.locator('html').getAttribute('lang'), lang, `${route} language`)
+        assert.equal(await page.locator('main#content h1').count(), 1, `${route} has exactly one H1`)
+        assert.equal(await page.locator('.sidebar [aria-current="page"]').count(), 1, `${route} has one active nav item`)
+        assert.equal(await page.locator('.sidebar li').count(), pages.length, `${route} nav parity`)
+        assert.equal(await page.locator('.sidebar li:first-child a').getAttribute('href'), index === 0 ? './' : '../', `${route} starts with Getting Started`)
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at 390px`)
+        assert.equal(await page.locator('main article h2').count() >= 1, true, `${route} contains article sections`)
+
+        if (route.includes('cosmos-and-progression/')) {
+          const article = await page.locator('main article').innerText()
+          assert.match(article, lang === 'en' ? /XP, level, streak, and orbit position do not establish knowledge, mastery/ : /XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı/)
+        }
+        if (route.includes('mistakes-and-review/')) {
+          const article = await page.locator('main article').innerText()
+          for (const label of lang === 'en'
+            ? ['Knowledge gap', 'Distractor trap', 'Misread the question', 'Time pressure']
+            : ['Konu eksiği', 'Çeldirici tuzağı', 'Soruyu yanlış okuma', 'Zaman baskısı']) {
+            assert.equal(article.includes(label), true, `${route} missing visible UI label ${label}`)
+          }
+        }
+
+        const languageLink = page.locator('.header-actions .language-link')
+        const target = new URL(await languageLink.getAttribute('href'), page.url())
+        assert.equal(target.pathname, lang === 'en'
+          ? `/tr/${pages[index]}`
+          : `/${pages[index]}`, `${route} language counterpart`)
+
+        const sectionIds = await page.locator('main article h2').evaluateAll(nodes => nodes.map(node => node.id))
+        localeSnapshots[lang].push({ route, sectionIds })
+
+        const hrefs = await page.locator('a[href]').evaluateAll(nodes => nodes.map(node => node.href))
+        for (const href of hrefs) {
+          const url = new URL(href)
+          if (url.origin !== new URL(base).origin) continue
+          const response = await fetch(url.href)
+          assert.equal(response.ok, true, `${route} broken internal link ${url.pathname}`)
+        }
+      }
+
+    }
+
+    for (let index = 0; index < pages.length; index += 1) {
+      assert.deepEqual(localeSnapshots.en[index].sectionIds, localeSnapshots.tr[index].sectionIds,
+        `${pages[index]} heading/anchor parity`)
+    }
+
     await page.goto(base, { waitUntil: 'networkidle' })
-    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
-    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://nec0ti.github.io/hamartia/')
-    assert.equal(await page.locator('link[rel="icon"]').getAttribute('href'), './assets/hamartia-favicon.svg')
-    assert.equal(await page.locator('.topbar .brand img').getAttribute('src'), './assets/hamartia-mark.svg')
-    await page.waitForFunction(() => document.querySelector('.topbar .brand img')?.naturalWidth > 0)
-    await page.getByRole('heading', { name: 'Study with a clearer picture.' }).waitFor()
-    assert.equal(await page.getByRole('link', { name: 'Download Hamartia' }).getAttribute('href'), 'https://github.com/Nec0ti/hamartia/releases/latest')
-    await page.getByText(/Windows 10\/11 or Linux x64/).waitFor()
-    await page.getByText(/ChatGPT sign-in is available in the packaged desktop app/).waitFor()
-    await page.getByRole('heading', { name: 'Check your OpenAI-compatible service.' }).waitFor()
-    await page.getByRole('heading', { name: 'Check ChatGPT sign-in and sign-out.' }).waitFor()
-    await page.getByText(/curriculum-reference categories/).waitFor()
-    await page.getByText(/disposable text-only missed question with a fictional curriculum reference/).waitFor()
-    await page.getByRole('heading', { name: 'Learning patterns, with room for the learning process.' }).waitFor()
-    await page.getByText(/not an official or verified Maarif alignment system/).waitFor()
-    await page.getByText(/The endpoint operator may have its own retention rules/).waitFor()
-    await page.getByText(/built-in net calculation uses the YKS wrong-answer penalty/).waitFor()
-    await page.getByRole('link', { name: 'MIT license ↗' }).waitFor()
-    await page.getByText('Restore backup', { exact: true }).waitFor()
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, await page.evaluate(() => [...document.querySelectorAll('*')].filter(node => node.getBoundingClientRect().right > innerWidth).map(node => `${node.tagName}.${node.className}=${Math.round(node.getBoundingClientRect().right)}`).slice(0, 5).join(', ')))
-    await page.getByRole('link', { name: /Türkçe/ }).click()
-    assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
-    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://nec0ti.github.io/hamartia/tr/')
-    assert.equal(await page.locator('link[rel="icon"]').getAttribute('href'), '../assets/hamartia-favicon.svg')
-    assert.equal(await page.locator('.topbar .brand img').getAttribute('src'), '../assets/hamartia-mark.svg')
-    await page.waitForFunction(() => document.querySelector('.topbar .brand img')?.naturalWidth > 0)
-    await page.getByRole('heading', { name: 'Daha net bir tabloyla çalış.' }).waitFor()
-    await page.getByText(/Yanlış sorularını kaydet, hatalarındaki örüntüleri gör/).waitFor()
-    assert.equal(await page.getByRole('link', { name: "Hamartia'yı indir" }).getAttribute('href'), 'https://github.com/Nec0ti/hamartia/releases/latest')
-    await page.getByText(/Windows 10\/11 veya Linux x64/).waitFor()
-    await page.getByText(/ChatGPT ile giriş, masaüstü uygulamasında kullanılabilir/).waitFor()
-    await page.getByRole('heading', { name: 'OpenAI uyumlu hizmetini kontrol et.' }).waitFor()
-    await page.getByRole('heading', { name: 'ChatGPT giriş ve çıkışını kontrol et.' }).waitFor()
-    await page.getByText(/program referansı kategorilerini/).waitFor()
-    await page.getByText(/Uydurma bir program referansı/).waitFor()
-    await page.getByRole('heading', { name: 'Öğrenme örüntüleri ve öğrenme süreci.' }).waitFor()
-    await page.getByText(/resmî veya doğrulanmış Maarif eşleştirmesi yapmaz/).waitFor()
-    assert.equal(await page.getByText(/Kaynak adresini otomatik olarak alıp doğrulamaz; istersen bağlantıyı kendin açabilirsin/).count() > 0, true)
-    await page.getByText(/Yerleşik net hesabı YKS yanlış-ceza kuralını kullanır/).waitFor()
-    await page.getByRole('link', { name: 'MIT lisansı ↗' }).waitFor()
-    await page.getByText('Yedeği geri yükle', { exact: true }).waitFor()
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, await page.evaluate(() => [...document.querySelectorAll('*')].filter(node => node.getBoundingClientRect().right > innerWidth).map(node => `${node.tagName}.${node.className}=${Math.round(node.getBoundingClientRect().right)}`).slice(0, 5).join(', ')))
-    await page.getByRole('link', { name: /English/ }).click()
-    assert.equal(new URL(page.url()).pathname, '/')
-    assert.deepEqual(externalRequests, [])
-    console.log('Docs smoke passed: English default, Turkish navigation, language tags, mobile layout, and no external requests.')
+    await page.keyboard.press('Tab')
+    assert.equal(await page.evaluate(() => document.activeElement.classList.contains('skip-link')), true, 'first keyboard stop is Skip to content')
+    await page.getByRole('link', { name: 'Skip to content' }).click()
+    assert.equal(new URL(page.url()).hash, '#content')
+    assert.deepEqual(externalRequests, [], 'page load must not make external requests')
+    console.log(`Docs browser smoke passed: ${pages.length * 2} pages, reciprocal locale links, section parity, internal links, 390px layout, and keyboard skip link.`)
   } finally {
     if (browser) await browser.close()
     server.kill('SIGTERM')

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Masaüstü uygulaması, yerel API, kayıtlı veriler ve isteğe bağlı sağlayıcıların ilişkisi."><link rel="canonical" href="https://nec0ti.github.io/hamartia/tr/system-architecture/">
+  <link rel="icon" type="image/svg+xml" href="../../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../../styles.css"><title>Sistem mimarisi · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">İçeriğe geç</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">Kullanım kılavuzu</span><a class="language-link" href="../../system-architecture/" lang="en" hreflang="en">English</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Dokümantasyon</p><nav aria-label="Dokümantasyon sayfaları"><ol><li><a href="../">Başlarken</a></li><li><a href="../system-architecture/" aria-current="page">Sistem mimarisi</a></li><li><a href="../purpose-and-scope/">Amaç ve kapsam</a></li><li><a href="../study-workflows/">Çalışma akışları</a></li><li><a href="../cosmos-and-progression/">Cosmos ve ilerleme</a></li><li><a href="../mistakes-and-review/">Yanlışlar ve tekrar</a></li><li><a href="../exam-formats-and-maarif/">Sınav biçimleri ve Maarif</a></li><li><a href="../install/">İşletim sistemine göre kurulum</a></li><li><a href="../study-agent/">Çalışma Asistanı ve sağlayıcılar</a></li><li><a href="../privacy-and-consent/">Gizlilik ve onay</a></li><li><a href="../backup-and-restore/">Yedekleme ve geri yükleme</a></li><li><a href="../clock-and-reminders/">Saat ve hatırlatıcılar</a></li><li><a href="../accessibility-and-language/">Erişilebilirlik ve dil</a></li><li><a href="../learning-evidence/">Öğrenme kanıtı ve iddialar</a></li><li><a href="../faq/">Sık sorulan sorular</a></li><li><a href="../troubleshooting/">Sorun giderme</a></li><li><a href="../contributing/">Katkı</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">En son sürüm ↗</a><a href="https://github.com/Nec0ti/hamartia">Kaynak kod ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">Türkçe / Sistem mimarisi</p><h1>Sistem mimarisi</h1><p class="page-description">Masaüstü uygulaması, yerel API, kayıtlı veriler ve isteğe bağlı sağlayıcıların ilişkisi.</p><article>
+<p class="lead">Hamartia; yerel web arayüzü ve yalnızca loopback'e bağlı backend'i olan bir masaüstü uygulamasıdır. Çalışma verileri aynı bilgisayarda saklanır; isteğe bağlı sağlayıcı istekleri ayrı dış bağlantılardır.</p>
+<h2 id="desktop">Masaüstü uygulaması ve yerel API</h2><p>Paketlenmiş uygulama arayüzü açmak ve paketlenmiş backend'i başlatmak için Electron kullanır. Backend dinamik seçilen yerel bağlantı noktasında loopback adresine bağlanır; genel internete açılmak üzere tasarlanmamıştır. Renderer deneme, soru, çalışma, Saat, ayarlar ve yedek işlemleri için yerel API ile iletişim kurar. Electron masaüstüne özel ChatGPT giriş ve geri yükleme akışlarını sağlar.</p>
+<h2 id="storage">Yerel kayıtlar ve dosyalar</h2><p>Backend doğrulanmış JSON belgelerini geçerli işletim sistemi kullanıcısının Hamartia veri dizininde saklar. Yazmalarda dosya başına atomik değiştirme ve ortak değişiklikler için kilitler kullanılır. Soru görselleri ve diğer yüklemeler aynı yerel veri dizinindedir. Uygulama bu verileri otomatik olarak sunucuyla eşitlemez.</p>
+<h2 id="providers">İsteğe bağlı sağlayıcı sınırı</h2><p>Çoğu ekran AI gerektirmez. Çalışma Asistanı istekleri onaydan sonra açıkça seçilen ChatGPT abonelik akışına veya yapılandırılmış OpenAI uyumlu uç noktaya gider. Yapılandırılmış adres uzakta olabilir. Soru analizi ayrı bir istektir ve soru metni/görselini bu uç noktaya gönderebilir. Sağlayıcı kimlik bilgilerinin saklama kuralları farklıdır; <a href="../study-agent/">Çalışma Asistanı ve sağlayıcılar</a> ile <a href="../privacy-and-consent/">Gizlilik ve onay</a> sayfalarına bak.</p>
+<h2 id="backup">Yedek sınırı</h2><p>ZIP dışa aktarımı doğrulanmış çalışma belgelerini ve başvurulan yüklemeleri tek bir zaman noktasından alır. Yapılandırılmış API anahtarını ve ChatGPT giriş kimlik bilgilerini dışarıda bırakır. Geri yükleme arşivi doğrulayıp hazırlar, mevcut veri dizinini kopya olarak korur ve sonra değiştirir. Saat zamanlayıcıları duraklatılmış, hatırlatıcılar kapalı geri yüklenir. <a href="../backup-and-restore/">Yedekleme ve geri yükleme</a> sayfasına bak.</p>
+</article>
+      <nav class="page-switch" aria-label="Dil sürümleri"><a href="../../system-architecture/" lang="en" hreflang="en">Bu sayfayı şu dilde oku English</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">Lisans</a><span>Doküman güncellemesi: 2026-11-15</span></footer>
+</body></html>

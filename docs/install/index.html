@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Choose the packaged desktop installer for Windows or Linux."><link rel="canonical" href="https://nec0ti.github.io/hamartia/install/">
+  <link rel="icon" type="image/svg+xml" href="../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../styles.css"><title>Install by operating system · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="../tr/install/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="../">Getting Started</a></li><li><a href="../system-architecture/">System architecture</a></li><li><a href="../purpose-and-scope/">Purpose and scope</a></li><li><a href="../study-workflows/">Study workflows</a></li><li><a href="../cosmos-and-progression/">Cosmos and progression</a></li><li><a href="../mistakes-and-review/">Mistakes and review</a></li><li><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="../install/" aria-current="page">Install by operating system</a></li><li><a href="../study-agent/">Study Agent and providers</a></li><li><a href="../privacy-and-consent/">Privacy and consent</a></li><li><a href="../backup-and-restore/">Backup and restore</a></li><li><a href="../clock-and-reminders/">Clock and reminders</a></li><li><a href="../accessibility-and-language/">Accessibility and language</a></li><li><a href="../learning-evidence/">Learning evidence and claims</a></li><li><a href="../faq/">FAQ</a></li><li><a href="../troubleshooting/">Troubleshooting</a></li><li><a href="../contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / Install by operating system</p><h1>Install by operating system</h1><p class="page-description">Choose the packaged desktop installer for Windows or Linux.</p><article>
+<p class="lead">Hamartia publishes a Windows installer, Debian package, and Linux AppImage. Download the current files from <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a>. Packages are for x64; no macOS package is currently documented.</p>
+<h2 id="windows">Windows 10/11</h2><ol><li>Download the Windows <code>.exe</code> installer.</li><li>Run it and follow the installer prompts. Choose the install folder if desired.</li><li>Launch Hamartia from the installed shortcut. User data is kept separately in the current Windows user's application-data directory.</li></ol><p>If Windows blocks or warns about the installer, verify the file came from the project’s Releases page before deciding whether to continue. Do not download a similarly named binary elsewhere.</p>
+<h2 id="debian">Debian and compatible distributions</h2><p>Download the release <code>.deb</code> file. Open it with the system package installer, or from the directory containing the file run:</p><pre><code>sudo apt install ./Hamartia-linux-x64.deb</code></pre><p>Use the actual downloaded filename if it differs. The package manager may ask to install dependencies.</p>
+<h2 id="appimage">Linux AppImage</h2><p>Download the AppImage and run these commands from its directory:</p><pre><code>chmod +x Hamartia-linux-x64.AppImage
+./Hamartia-linux-x64.AppImage</code></pre><p>Use the actual filename. Some desktops require FUSE or system integration support; consult your distribution if it does not start.</p>
+<h2 id="first-run">First launch</h2><p>The app starts in English. Change language in Settings. Study data is stored separately from the installer files in the OS user's application-data area. Before uninstalling or moving computers, make a backup rather than assuming that reinstalling will recover it. See <a href="../backup-and-restore/">Backup and restore</a> and <a href="../troubleshooting/">Troubleshooting</a>.</p>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="../tr/install/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

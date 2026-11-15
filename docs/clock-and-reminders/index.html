@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Use the local clock, one shared timer, and optional due notifications."><link rel="canonical" href="https://nec0ti.github.io/hamartia/clock-and-reminders/">
+  <link rel="icon" type="image/svg+xml" href="../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../styles.css"><title>Clock and reminders · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="../tr/clock-and-reminders/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="../">Getting Started</a></li><li><a href="../system-architecture/">System architecture</a></li><li><a href="../purpose-and-scope/">Purpose and scope</a></li><li><a href="../study-workflows/">Study workflows</a></li><li><a href="../cosmos-and-progression/">Cosmos and progression</a></li><li><a href="../mistakes-and-review/">Mistakes and review</a></li><li><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="../install/">Install by operating system</a></li><li><a href="../study-agent/">Study Agent and providers</a></li><li><a href="../privacy-and-consent/">Privacy and consent</a></li><li><a href="../backup-and-restore/">Backup and restore</a></li><li><a href="../clock-and-reminders/" aria-current="page">Clock and reminders</a></li><li><a href="../accessibility-and-language/">Accessibility and language</a></li><li><a href="../learning-evidence/">Learning evidence and claims</a></li><li><a href="../faq/">FAQ</a></li><li><a href="../troubleshooting/">Troubleshooting</a></li><li><a href="../contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / Clock and reminders</p><h1>Clock and reminders</h1><p class="page-description">Use the local clock, one shared timer, and optional due notifications.</p><article>
+<p class="lead">Clock shows local date/time and offers Pomodoro, countdown, stopwatch/laps, and one-off or weekday reminders. Study Plan focused practice and Clock use one shared active timer; a second active timer cannot run in parallel.</p>
+<h2 id="timers">Pomodoro, countdown, and stopwatch</h2><p>Set Pomodoro work/break durations, then start, pause, resume, reset, or skip a phase. The default interval is a convenience, not a claim of an optimal study schedule. Countdown accepts a duration. Stopwatch records elapsed time and laps. The display is derived from saved timestamps rather than counting UI ticks.</p>
+<h2 id="practice">Focused practice</h2><p>Starting focused practice from a Study Plan topic uses the shared timer. Correct, incorrect, and blank counters belong to that practice draft. Finish saves one completed practice set; cancelling discards the draft after confirmation. If a Clock timer is already active, resolve it before starting another.</p>
+<h2 id="alarms">One-off and recurring reminders</h2><p>Reminders use the device's local time zone. Recurrences can select weekdays. Choose whether to allow Web Notifications; keep reminders enabled only if you want alerts. Due events are reconciled while the app is running, including when another Hamartia tab is selected. Overdue reminders remain visible in Clock. After missed recurring occurrences, the app advances to the next future time rather than replaying a burst.</p>
+<h2 id="limits">Delivery limits</h2><p>Notifications are checked only while the app is open and the device is awake. Hamartia cannot wake the device and does not promise delivery after the app closes. OS notification settings can suppress alerts. Daylight-saving gaps/folds follow the documented local JavaScript date behavior; other regions depend on the device time-zone database.</p>
+<h2 id="backup">Restart and backup</h2><p>Timer state is saved locally and restored after app restart. ZIP backup freezes timers at export time; restore pauses those timers and disables imported alarms. Review them before use. See <a href="../backup-and-restore/">Backup and restore</a>.</p>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="../tr/clock-and-reminders/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

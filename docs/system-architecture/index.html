@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How the desktop app, local API, stored records, and optional providers fit together."><link rel="canonical" href="https://nec0ti.github.io/hamartia/system-architecture/">
+  <link rel="icon" type="image/svg+xml" href="../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../styles.css"><title>System architecture · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="../tr/system-architecture/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="../">Getting Started</a></li><li><a href="../system-architecture/" aria-current="page">System architecture</a></li><li><a href="../purpose-and-scope/">Purpose and scope</a></li><li><a href="../study-workflows/">Study workflows</a></li><li><a href="../cosmos-and-progression/">Cosmos and progression</a></li><li><a href="../mistakes-and-review/">Mistakes and review</a></li><li><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="../install/">Install by operating system</a></li><li><a href="../study-agent/">Study Agent and providers</a></li><li><a href="../privacy-and-consent/">Privacy and consent</a></li><li><a href="../backup-and-restore/">Backup and restore</a></li><li><a href="../clock-and-reminders/">Clock and reminders</a></li><li><a href="../accessibility-and-language/">Accessibility and language</a></li><li><a href="../learning-evidence/">Learning evidence and claims</a></li><li><a href="../faq/">FAQ</a></li><li><a href="../troubleshooting/">Troubleshooting</a></li><li><a href="../contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / System architecture</p><h1>System architecture</h1><p class="page-description">How the desktop app, local API, stored records, and optional providers fit together.</p><article>
+<p class="lead">Hamartia is a desktop application with a local web interface and a loopback-only backend. Study data is stored on the same computer; optional provider requests are separate outbound actions.</p>
+<h2 id="desktop">Desktop app and local API</h2><p>The packaged app uses Electron to open the interface and start the bundled backend. The backend binds to a loopback address on a dynamically selected local port; it is not intended to be exposed to the public internet. The renderer talks to that local API for exam, question, practice, Clock, settings, and backup operations. Electron provides the desktop-only ChatGPT sign-in and restore flows.</p>
+<h2 id="storage">Local records and files</h2><p>The backend stores validated JSON documents under the current OS user's Hamartia data directory. Writes use per-file atomic replacement and locks for shared mutations. Question images and other uploaded data are stored under the same local data directory. The app does not automatically sync this data to a server.</p>
+<h2 id="providers">Optional provider boundary</h2><p>Most screens need no AI. Study Agent requests go to the explicitly selected ChatGPT subscription flow or configured OpenAI-compatible endpoint after consent. The configured URL may be remote. Question analysis is a distinct request and may send question text or an image to that endpoint. Provider credentials have different storage rules; see <a href="../study-agent/">Study Agent and providers</a> and <a href="../privacy-and-consent/">Privacy and consent</a>.</p>
+<h2 id="backup">Backup boundary</h2><p>The ZIP export captures validated study documents and referenced uploads as one point-in-time snapshot. It excludes the configured API key and ChatGPT sign-in credentials. Restore validates and stages the archive, preserves the current data directory as a snapshot, then replaces it. Clock timers restore paused and reminders disabled. See <a href="../backup-and-restore/">Backup and restore</a>.</p>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="../tr/system-architecture/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

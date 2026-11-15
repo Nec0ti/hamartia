@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Recover from install, endpoint, restore, timer, and notification problems."><link rel="canonical" href="https://nec0ti.github.io/hamartia/troubleshooting/">
+  <link rel="icon" type="image/svg+xml" href="../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../styles.css"><title>Troubleshooting · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="../tr/troubleshooting/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="../">Getting Started</a></li><li><a href="../system-architecture/">System architecture</a></li><li><a href="../purpose-and-scope/">Purpose and scope</a></li><li><a href="../study-workflows/">Study workflows</a></li><li><a href="../cosmos-and-progression/">Cosmos and progression</a></li><li><a href="../mistakes-and-review/">Mistakes and review</a></li><li><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="../install/">Install by operating system</a></li><li><a href="../study-agent/">Study Agent and providers</a></li><li><a href="../privacy-and-consent/">Privacy and consent</a></li><li><a href="../backup-and-restore/">Backup and restore</a></li><li><a href="../clock-and-reminders/">Clock and reminders</a></li><li><a href="../accessibility-and-language/">Accessibility and language</a></li><li><a href="../learning-evidence/">Learning evidence and claims</a></li><li><a href="../faq/">FAQ</a></li><li><a href="../troubleshooting/" aria-current="page">Troubleshooting</a></li><li><a href="../contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / Troubleshooting</p><h1>Troubleshooting</h1><p class="page-description">Recover from install, endpoint, restore, timer, and notification problems.</p><article>
+<h2 id="install">The installer or app will not open</h2><p>Confirm you downloaded the matching package from the official Releases page and that the OS/architecture are supported. For AppImage, check the executable bit and your distribution's FUSE requirements. On Debian, install the downloaded <code>.deb</code> with apt or the system installer. If it still fails, record OS version and exact error text without private paths or tokens.</p>
+<h2 id="endpoint">Study Agent or endpoint fails</h2><p>Check the selected provider. For ChatGPT, confirm the desktop app is used, sign-in is connected, and the account can access the chosen model. For a configured endpoint, verify exact URL, model name, network/service availability, authentication, and the endpoint's format. Read any remote-host or HTTP warning. Hamartia does not silently fall back to another provider.</p>
+<h2 id="backup">Backup will not restore</h2><p>Keep the original ZIP and check that it is a Hamartia backup, complete, and not modified. Restore from Settings in the packaged desktop app. Do not manually unpack files into the live data folder. A failed validation should preserve existing data; keep the timestamped pre-restore snapshot and seek help before deleting data.</p>
+<h2 id="clock">Timer or reminder appears late</h2><p>Clock reconciles deadlines when the app runs and after it returns from suspension. Check the Clock tab for overdue items and verify device local date/time and time zone. OS notifications can be disabled or suppressed. The app cannot wake a sleeping device or notify after it closes.</p>
+<h2 id="report">Ask for help safely</h2><p>Include app version, OS, language, steps, expected result, and exact non-sensitive error. Never share API keys, ChatGPT tokens, real question images, or unredacted backup files. See <a href="../privacy-and-consent/">Privacy</a> and <a href="../contributing/">Contributing</a>.</p>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="../tr/troubleshooting/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

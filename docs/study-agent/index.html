@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Select the desktop Study Agent provider and understand its controls."><link rel="canonical" href="https://nec0ti.github.io/hamartia/study-agent/">
+  <link rel="icon" type="image/svg+xml" href="../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../styles.css"><title>Study Agent and providers · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="../tr/study-agent/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="../">Getting Started</a></li><li><a href="../system-architecture/">System architecture</a></li><li><a href="../purpose-and-scope/">Purpose and scope</a></li><li><a href="../study-workflows/">Study workflows</a></li><li><a href="../cosmos-and-progression/">Cosmos and progression</a></li><li><a href="../mistakes-and-review/">Mistakes and review</a></li><li><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="../install/">Install by operating system</a></li><li><a href="../study-agent/" aria-current="page">Study Agent and providers</a></li><li><a href="../privacy-and-consent/">Privacy and consent</a></li><li><a href="../backup-and-restore/">Backup and restore</a></li><li><a href="../clock-and-reminders/">Clock and reminders</a></li><li><a href="../accessibility-and-language/">Accessibility and language</a></li><li><a href="../learning-evidence/">Learning evidence and claims</a></li><li><a href="../faq/">FAQ</a></li><li><a href="../troubleshooting/">Troubleshooting</a></li><li><a href="../contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / Study Agent and providers</p><h1>Study Agent and providers</h1><p class="page-description">Select the desktop Study Agent provider and understand its controls.</p><article>
+<p class="lead">The Study Agent is optional and available in the packaged desktop app. Question analysis is a separate optional action in My Mistakes. Neither is needed for ordinary exam, review, practice, or Clock flows.</p>
+<h2 id="chatgpt">ChatGPT subscription</h2><p>The desktop Study Agent defaults to ChatGPT subscription. Select sign-in, complete the ChatGPT flow, and separately approve OpenAI's request to use the ChatGPT plan. Available models and usage limits depend on the account. Hamartia does not silently switch providers if a request fails. Sign out attempts remote revocation; follow the app's instructions if OpenAI cannot confirm it.</p>
+<h2 id="endpoint">Configured OpenAI-compatible endpoint</h2><p>In Settings, enter the endpoint URL, model name, and optional API key. Select the configured endpoint explicitly in Study Agent. It may run on this computer or on a remote host: Hamartia does not verify that it is a local model or isolated from the network. Review the exact URL, transport warnings, and per-request consent. The operator may retain requests under its own policy. The API key is stored unencrypted in local app settings and is omitted from backups and API responses.</p>
+<h2 id="consent">Consent and request content</h2><p>Before each Study Agent request, Hamartia displays a consent screen. It sends the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references. Saved question text and images and Study Agent conversation history are not included or stored by Hamartia. The consent screen describes the destination and data categories. Read it before sending and decline if you do not want the request sent.</p>
+<h2 id="analysis">Question analysis</h2><p>“Review with Local AI” uses the configured OpenAI-compatible endpoint and may send that saved question's text or image. The endpoint can be remote; “local” in the control label is not a locality guarantee. The actual model behavior and local machine setup have not been verified by this documentation. See <a href="../privacy-and-consent/">Privacy and consent</a>.</p>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="../tr/study-agent/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

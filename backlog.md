@@ -74,7 +74,7 @@
 
 - [ ] Add an optional Clock tab for local focus timing, with clear pause/cancel controls and no streak pressure or exit friction.
 - [ ] Add repository wiki documentation for the system architecture, data/backup boundaries, study workflows, and provider consent.
-- [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded.
+- [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The current benchmark quality pass adds full question post-mutation oracles, two named untimed persistence fault probes, and skewed mixed-size persisted fixtures ([report](reports/2026-11-15-benchmark-quality-followup.md)); multi-process/crash recovery and loopback HTTP remain open.
 - [ ] Redesign the public guide layout in a separate phase, then add a docs benchmark last to check navigation, accessibility, and task completion without telemetry.
 
 ## Next small task

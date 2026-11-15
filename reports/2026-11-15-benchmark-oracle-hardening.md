@@ -12,7 +12,20 @@ The backend suite also keeps sequential JSON append explicitly stress-only. Mult
 
 ## Validation
 
-Ran the six default benchmark commands in sequence from the repository root with `PYTHONPATH=backend` in an isolated Python 3.14.8 environment. Combined wall time was about 46 seconds. All six completed successfully; every JSON result included `"ai_included": false` and seed `20261114`.
+Ran the six default benchmark commands in sequence from the repository root with `PYTHONPATH=backend` in an isolated Python 3.14.8 environment. All six completed successfully; every JSON result included `"ai_included": false` and seed `20261114`.
+
+Commands:
+
+```sh
+PYTHONPATH=backend python backend/benchmarks/benchmark_storage.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_questions.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_backup.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_question_order.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_mixed_workloads.py
+```
+
+Measured combined wall time for the sequence was 54.34 seconds on this host (`/usr/bin/time -p`, output discarded for this timing-only rerun).
 
 | Workload | Size | Observed result |
 |---|---:|---|
@@ -24,6 +37,8 @@ Ran the six default benchmark commands in sequence from the repository root with
 | Mixed persisted history | 1,500 exams, 2,500 questions, 4,000 sessions; 4,249,174 JSON bytes | Progression, full question insights, review activity and practice trends matched; 16/16 threaded appends preserved; update/delete state matched. |
 
 Environment: Linux `7.3.0-x86_64`, Python `3.14.8`, 8 logical CPUs reported, processor string unavailable. These are local synthetic-data measurements, not performance thresholds or a production corpus. PNG pixels are seeded synthetic noise. Hosted CI has different hardware/software; compare only within a pinned runner and workload manifest.
+
+Mutation probes rejected by the corresponding full-output oracle were: progression XP changed by one; question pending count corrupted; one backup question omitted; question-order median overwritten; practice aggregate net changed; mixed progression XP changed; a mixed review row omitted; and a mixed practice trend row omitted. Probe checks ran outside all timed sections.
 
 ## Follow-up
 

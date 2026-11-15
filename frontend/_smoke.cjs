@@ -684,7 +684,7 @@ async function main() {
     await page.getByRole('button', { name: 'Clock' }).click()
     await page.getByText('Paused', { exact: true }).waitFor()
     const [timerReset] = await Promise.all([
-      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.active_timer?.status === 'paused'),
       page.getByRole('button', { name: 'Reset' }).click(),
     ])
     assert.equal(timerReset.ok(), true)

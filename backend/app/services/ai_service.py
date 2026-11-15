@@ -120,6 +120,36 @@ class AIService:
             raise ValueError("The configured endpoint returned an empty response.")
         return content
 
+    async def study_practice_proposal(self, messages: list[str], language: str) -> str:
+        """Return an untrusted extraction proposal; the API verifies every value locally."""
+        client = await self._ensure_async()
+        response = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are preparing a Hamartia practice-set proposal. Return only JSON with one key, "
+                        "fields, whose values are copied from explicitly labeled student messages. Allowed "
+                        "keys: date, subject, topic, correct, incorrect, blank, duration_minutes, "
+                        "duration_seconds. Preserve ISO date text and integer counts. Include a field only "
+                        "when that exact value is explicitly present after a recognized field label in the "
+                        "student messages. Never infer, calculate, normalize, or fill a missing field. "
+                        "Messages use `field: value`; fields may be comma-separated or on separate lines. "
+                        "Labels may be date/tarih, subject/ders, topic/konu, "
+                        "correct/doğru, incorrect/wrong/yanlış, blank/boş, duration_minutes/minutes/dakika, "
+                        "duration_seconds/seconds/saniye. Output no questions or prose."
+                    ),
+                },
+                {"role": "user", "content": json.dumps({"language": language, "student_messages": messages}, ensure_ascii=False)},
+            ],
+            temperature=0,
+        )
+        content = response.choices[0].message.content
+        if not isinstance(content, str) or not content:
+            raise ValueError("The configured endpoint returned an empty response.")
+        return content
+
     def _build_prompt(self, question: Question) -> list:
         content = [{
             "type": "text",

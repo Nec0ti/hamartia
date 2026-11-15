@@ -40,6 +40,8 @@ export const examProfiles = {
 export const practice = {
   list: () => client.get('/practice').then((r) => r.data),
   insights: () => client.get('/practice/insights').then((r) => r.data),
+  agentDraft: (payload) => client.post('/practice/agent-draft', payload).then((r) => r.data),
+  agentCreate: (payload) => client.post('/practice/agent-create', payload).then((r) => r.data),
   create: (payload, idempotencyKey = null) => client.post('/practice', payload, {
     ...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
   }).then((r) => r.data),

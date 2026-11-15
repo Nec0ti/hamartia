@@ -4,7 +4,7 @@ const { registerChatGPTIpc } = require('../chatgptIpc.cjs')
 
 function setup() {
   const handlers = new Map()
-  const calls = { chat: 0, cancel: [], sent: [] }
+  const calls = { chat: 0, payload: null, cancel: [], sent: [] }
   const ipcMain = { handle: (name, handler) => handlers.set(name, handler) }
   let completeChat
   const chatgpt = {
@@ -14,8 +14,9 @@ function setup() {
     forgetAccount: async () => ({}),
     recoverUnreadableCredentials: async () => ({}),
     models: async () => [],
-    chat: async (_payload, onDelta) => {
+    chat: async (payload, onDelta) => {
       calls.chat += 1
+      calls.payload = payload
       completeChat = () => {
         onDelta('request-012345678901', 'safe delta')
         return { status: 'completed' }
@@ -54,6 +55,21 @@ test('ChatGPT IPC requires explicit consent before the provider is called', asyn
   await assert.rejects(chat(testApp.event(), { message: 'A question' }), /Confirm that this request/)
   await assert.rejects(chat(testApp.event(), { message: 'A question', consent: false }), /Confirm that this request/)
   assert.equal(testApp.calls.chat, 0)
+})
+
+test('ChatGPT IPC forwards the bounded create-only workflow and canonical language', async () => {
+  const testApp = setup()
+  const messages = ['date: 2026-11-15']
+  const pending = testApp.handlers.get('hamartia:chatgpt:chat')(testApp.event(), {
+    requestId: 'request-012345678901', consent: true, message: messages[0], model: 'model-a', language: 'tr',
+    workflow: 'practice-entry', messages,
+  })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(testApp.calls.payload.workflow, 'practice-entry')
+  assert.equal(testApp.calls.payload.language, 'tr')
+  assert.deepEqual(testApp.calls.payload.messages, messages)
+  testApp.finishChat()
+  await pending
 })
 
 test('only the webContents that started a ChatGPT request can cancel it or receive deltas', async () => {

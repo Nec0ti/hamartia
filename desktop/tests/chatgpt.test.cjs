@@ -185,6 +185,25 @@ test('mocked sign-in stores only encrypted credentials and streams direct Respon
   assert.equal(testApp.calls.some(({ url }) => url.includes('backend-api')), false)
 })
 
+test('practice-entry sends only student messages and requests the closed untrusted proposal schema', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['subject: Matematik', 'correct: 7']
+  const deltas = []
+  const result = await testApp.client.chat({
+    requestId: 'request-practice-000001', message: messages.at(-1), model: 'model-a', language: 'tr',
+    workflow: 'practice-entry', messages,
+  }, (_id, delta) => deltas.push(delta))
+  assert.deepEqual(result, { status: 'completed' })
+  const request = testApp.getResponseRequest()
+  assert.match(request.instructions, /Return only a JSON object with the single key "fields"/)
+  assert.match(request.instructions, /Never guess, infer, calculate, resolve contradictions/)
+  assert.match(request.instructions, /Turkish/)
+  assert.deepEqual(request.input, [{ role: 'user', content: JSON.stringify({ student_messages: messages }, null, 2) }])
+  assert.equal(testApp.calls.some(({ url }) => url === 'http://127.0.0.1:43210/questions/insights' || url === 'http://127.0.0.1:43210/practice/insights'), false)
+})
+
 test('newly issued client registration is retained when code exchange fails and reused on retry', async (t) => {
   const testApp = await setup()
   t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))

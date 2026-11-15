@@ -407,21 +407,27 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return summarizeStudyContext(await insightsResponse.json(), await sessionsResponse.json())
   }
 
-  async function chat({ requestId, message, model, language }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [] }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
+    if (!['chat', 'practice-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
+    if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
     const controller = new AbortController()
     chats.set(requestId, controller)
     try {
       const { accessToken } = await validAccessToken()
-      const context = await studyContext(controller.signal)
+      const context = workflow === 'practice-entry' ? '' : await studyContext(controller.signal)
       if (!(await models(controller.signal)).some((item) => item.slug === model)) throw new Error('Choose a model available to the signed-in ChatGPT account.')
       const response = await fetchImpl(`${API_URL}/responses`, {
         method: 'POST',
         headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json', accept: 'text/event-stream' },
         body: JSON.stringify({
           model,
-          instructions: `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`,
-          input: [{ role: 'user', content: `Local study summary (may be empty):\n${context}\n\nStudent question:\n${message}` }],
+          instructions: workflow === 'practice-entry'
+            ? `Return only a JSON object with the single key "fields". Extract only explicitly stated values from the student's messages. Allowed fields: date, subject, topic, correct, incorrect, blank, duration_minutes, duration_seconds. Accept field labels date/tarih, subject/ders, topic/konu, correct/doğru, incorrect/wrong/yanlış, blank/boş, duration_minutes/minutes/dakika, duration_seconds/seconds/saniye. Fields may be comma-separated or on separate lines. Copy date and label values exactly; counts and durations must be integers. Omit any field not explicitly supplied. Never guess, infer, calculate, resolve contradictions, or include fields, tool calls, or prose outside this schema. The app will independently verify each value against the student messages. Use the student's selected language (${language === 'tr' ? 'Turkish' : 'English'}) only for error handling outside the JSON; do not add prose.`
+            : `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`,
+          input: [{ role: 'user', content: workflow === 'practice-entry'
+            ? JSON.stringify({ student_messages: messages }, null, 2)
+            : `Local study summary (may be empty):\n${context}\n\nStudent question:\n${message}` }],
           store: false,
           stream: true,
         }),

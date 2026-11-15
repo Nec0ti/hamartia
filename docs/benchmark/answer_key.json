@@ -461,7 +461,7 @@
         },
         {
           "points": 1,
-          "claim": "The Study Agent requires explicit consent. Study-guidance requests send the typed prompt plus a bounded saved-study summary and up to eight curriculum references; Prepare a practice set sends only that entry conversation's student messages. Both exclude saved question text/images and conversation history.",
+          "claim": "Study-guidance requests require explicit consent and send the typed prompt plus a bounded saved-study summary and up to eight curriculum references; saved question text/images and conversation history are excluded. Question analysis is separate and can send the selected question text/image.",
           "evidence": [
             {
               "locale": "en",
@@ -473,31 +473,31 @@
               "locale": "en",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "The Prepare a practice set mode is different: it sends only student messages from that practice-entry conversation, without the saved summary."
-            },
-            {
-              "locale": "en",
-              "page": "study-agent",
-              "anchor": "consent",
               "quote": "Saved question text and images and Study Agent conversation history are not included or stored by Hamartia."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Question analysis is separate and can send the selected question text/image, unlike the Study Agent summary payload.",
-          "evidence": [
+            },
             {
               "locale": "en",
               "page": "privacy-and-consent",
               "anchor": "question-data",
               "quote": "Question analysis is a separate user-triggered request. It can send the selected question's text/image to the configured OpenAI-compatible endpoint."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Prepare a practice set requires consent and sends only the current entry conversation's student messages, with no saved study records or summary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Before each Study Agent request, Hamartia displays a consent screen."
             },
             {
               "locale": "en",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Study-guidance requests send the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
+              "quote": "The Prepare a practice set mode is different: it sends only student messages from that practice-entry conversation, with no saved study records or summary."
             }
           ]
         }
@@ -552,7 +552,7 @@
         },
         {
           "points": 1,
-          "claim": "Çalışma Asistanı açık onay ister. Çalışma rehberliği istekleri yazılan istemle sınırlı kayıtlı çalışma özetini ve en fazla sekiz program referansını gönderir; Çalışma seti hazırla yalnızca bu kayıt girişindeki öğrenci mesajlarını gönderir. İki akış da kayıtlı soru metni/görsellerini ve sohbet geçmişini göndermez.",
+          "claim": "Çalışma rehberliği istekleri açık onay ister ve yazılan istemle sınırlı kayıtlı çalışma özetini ve en fazla sekiz program referansını gönderir; kayıtlı soru metni/görselleri ve sohbet geçmişi gönderilmez. Soru analizi ayrı bir istektir ve seçilen soru metni/görselini gönderebilir.",
           "evidence": [
             {
               "locale": "tr",
@@ -564,31 +564,31 @@
               "locale": "tr",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Çalışma seti hazırla modu farklıdır: bu konuşmada yalnızca öğrenci mesajlarını gönderir, kayıtlı özeti göndermez."
-            },
-            {
-              "locale": "tr",
-              "page": "study-agent",
-              "anchor": "consent",
               "quote": "Kaydedilmiş soru metinleri ve görselleri ile Çalışma Asistanı konuşma geçmişi gönderilmez veya Hamartia tarafından saklanmaz."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Soru analizi ayrı bir istektir ve seçilen soru metni/görselini gönderebilir; Çalışma Asistanı farklı bir özet gönderir.",
-          "evidence": [
+            },
             {
               "locale": "tr",
               "page": "privacy-and-consent",
               "anchor": "question-data",
               "quote": "Soru analizi kullanıcı tarafından ayrı başlatılan bir istektir. Seçilen sorunun metnini/görselini yapılandırılmış OpenAI uyumlu uç noktaya gönderebilir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma seti hazırla açık onay ister ve yalnızca o kayıt girişindeki öğrenci mesajlarını, kayıtlı çalışma verisi veya özeti olmadan gönderir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir."
             },
             {
               "locale": "tr",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Çalışma rehberliği istekleri yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
+              "quote": "Çalışma seti hazırla modu farklıdır: bu konuşmada yalnızca öğrenci mesajlarını, kayıtlı çalışma verisi veya özeti olmadan gönderir."
             }
           ]
         }

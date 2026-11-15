@@ -9,6 +9,7 @@ import statistics
 import tempfile
 import time
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -33,17 +34,22 @@ def percentile(samples, value):
     return ordered[min(len(ordered) - 1, round((len(ordered) - 1) * value))]
 
 
-def add_profile(client, name, rule):
+def add_profile(client, name, rule, expected_rule):
     response = client.post("/exam-profiles", json={
         "display_name": name, "country_label": "Synthetic benchmark fixture", "scoring_rule": rule,
     })
     require(response.status_code == 201, f"profile create failed: {response.text}")
     profile = response.json()
     require(profile["profile_id"].startswith("profile_") and profile["version"] == 1, "profile reference shape changed")
-    return profile
+    expected = {
+        "profile_id": profile["profile_id"], "version": 1, "display_name": name,
+        "country_label": "Synthetic benchmark fixture", "scoring_rule": expected_rule,
+    }
+    require(profile == expected, f"profile create differs from literal oracle: {profile} != {expected}")
+    return expected
 
 
-def update_profile(client, profile, name, rule):
+def update_profile(client, profile, name, rule, expected_rule):
     response = client.put(f"/exam-profiles/{profile['profile_id']}", json={
         "display_name": name, "country_label": "Synthetic benchmark fixture", "scoring_rule": rule,
     })
@@ -51,7 +57,12 @@ def update_profile(client, profile, name, rule):
     revised = response.json()
     require(revised["profile_id"] == profile["profile_id"] and revised["version"] == profile["version"] + 1,
             "profile update did not append the next version")
-    return revised
+    expected = {
+        "profile_id": profile["profile_id"], "version": profile["version"] + 1,
+        "display_name": name, "country_label": "Synthetic benchmark fixture", "scoring_rule": expected_rule,
+    }
+    require(revised == expected, f"profile update differs from literal oracle: {revised} != {expected}")
+    return expected
 
 
 def payload(date, subject, topic, correct, incorrect, blank, profile=None, minutes=2, seconds=7):
@@ -165,18 +176,19 @@ def run(repeats=3):
                 require([negative_count.status_code, zero_questions.status_code, sixty_seconds.status_code] == [422, 422, 422],
                         "negative, zero-question, or invalid-second boundary was accepted")
 
+                started_at = datetime.now(timezone.utc)
                 half_v1 = add_profile(client, "Half penalty and blank credit", {
                     "correct_points": "1", "wrong_penalty": "1/2", "blank_points": "1/4",
-                })
+                }, {"correct_points": "1/1", "wrong_penalty": "1/2", "blank_points": "1/4"})
                 rational = add_profile(client, "Exact thirds fifths sevenths", {
                     "correct_points": "2/6", "wrong_penalty": "2/10", "blank_points": "1/7",
-                })
+                }, {"correct_points": "1/3", "wrong_penalty": "1/5", "blank_points": "1/7"})
                 require(rational["scoring_rule"] == {
                     "correct_points": "1/3", "wrong_penalty": "1/5", "blank_points": "1/7",
                 }, "rational weights did not canonicalize exactly")
                 blank_profile = add_profile(client, "Blank credit", {
                     "correct_points": "0", "wrong_penalty": "0", "blank_points": "1/2",
-                })
+                }, {"correct_points": "0/1", "wrong_penalty": "0/1", "blank_points": "1/2"})
 
                 first_values = payload(TODAY, "Mathematics", "Fractions", 12, 4, 4, half_v1)
                 first_response = client.post("/practice", json=first_values)
@@ -188,7 +200,7 @@ def run(repeats=3):
 
                 half_v2 = update_profile(client, half_v1, "Full penalty", {
                     "correct_points": "1", "wrong_penalty": "1", "blank_points": "0",
-                })
+                }, {"correct_points": "1/1", "wrong_penalty": "1/1", "blank_points": "0/1"})
                 second_values = payload("2026-11-14", "Mathematics", "Fractions", 12, 4, 4, half_v2)
                 second_actual = client.post("/practice", json=second_values).json()
                 records.append(expected_row(second_actual, {key: value for key, value in second_values.items()
@@ -293,9 +305,38 @@ def run(repeats=3):
                 altered_retry = client.post("/practice", json={**focus_values, "correct": 3}, headers={"Idempotency-Key": completion_id})
                 require(altered_retry.status_code == 409, "same idempotency key accepted different practice content")
 
+                # Exercise the browser timer's millisecond truncation and minute carry boundaries
+                # against an explicit table, while comparing every resulting persisted row below.
+                timer_cases = [(0, (0, 0)), (999, (0, 0)), (1000, (0, 1)),
+                               (59_999, (0, 59)), (60_000, (1, 0)), (60_999, (1, 0))]
+                for index, (timer_ms, expected_duration) in enumerate(timer_cases):
+                    whole_seconds = timer_ms // 1000
+                    actual_duration = (whole_seconds // 60, whole_seconds % 60)
+                    require(actual_duration == expected_duration,
+                            f"elapsed timer conversion failed for {timer_ms}ms: {actual_duration}")
+                    timer_completion_id = str(uuid4())
+                    timer_values = payload("2026-11-10", "Timer boundaries", f"Elapsed {timer_ms}ms",
+                                           1, 0, 0, half_v1, *actual_duration)
+                    timer_response = client.post("/practice", json=timer_values,
+                                                 headers={"Idempotency-Key": timer_completion_id})
+                    timer_actual = timer_response.json()
+                    timer_row_values = {key: value for key, value in timer_values.items()
+                                        if key not in ("scoring_profile_id", "scoring_profile_version")}
+                    records.append(expected_row(timer_actual, timer_row_values, half_v1, 1.0, 1.0))
+                    require(timer_response.status_code == 201 and timer_actual == records[-1],
+                            f"timer boundary {timer_ms}ms persisted row differs from oracle")
+
                 persisted = client.get("/practice")
                 require(persisted.status_code == 200 and persisted.json() == records,
                         "persisted practice list differs from complete independent full-row oracle")
+                ended_at = datetime.now(timezone.utc)
+                identifiers = [row["id"] for row in records]
+                require(len(identifiers) == len(set(identifiers)) and all(identifiers),
+                        "persisted record IDs are empty or duplicated")
+                for row in records:
+                    created_at = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+                    require(started_at - timedelta(seconds=1) <= created_at <= ended_at + timedelta(seconds=1),
+                            f"persisted timestamp falls outside benchmark execution bounds: {row['created_at']}")
                 expected_groups = group_oracle(records)
                 insights = client.get("/practice/insights")
                 require(insights.status_code == 200 and insights.json() == expected_groups,
@@ -330,12 +371,8 @@ def run(repeats=3):
                     require([item.model_dump(mode="json") for item in restored_records] == records,
                             "current backup restore changed full practice snapshots")
                     restored_profiles = restored_storage.load_list("exam_profiles.json", ExamScoringProfile)
-                    expected_profiles = [half_v1, half_v2, rational, blank_profile]
-                    require({(item.profile_id, item.version, item.model_dump(mode="json")["scoring_rule"]["correct_points"])
-                             for item in restored_profiles} == {
-                                 (item["profile_id"], item["version"], item["scoring_rule"]["correct_points"])
-                                 for item in expected_profiles
-                             },
+                    expected_profiles = [half_v1, rational, blank_profile, half_v2]
+                    require([item.model_dump(mode="json") for item in restored_profiles] == expected_profiles,
                             "current backup restore changed the shared append-only profile catalog")
                     restored_clock = json.loads((restored_dir / "clock.json").read_text(encoding="utf-8"))
                     require(restored_clock["active_timer"]["practice_draft"]["scoring_profile"] == half_v1,
@@ -348,8 +385,22 @@ def run(repeats=3):
                     old_rows = StorageService(legacy_restore).load_list("practice_sessions.json", PracticeSession)
                     require(len(old_rows) == len(records) and all(row.scoring_profile.profile_id == "legacy-yks" for row in old_rows),
                             "legacy archive did not receive immutable legacy YKS snapshots")
-                    require(old_rows[0].net == 9.0 and old_rows[3].accuracy is None,
-                            "legacy archive fallback formula or all-blank accuracy changed")
+                    legacy_profile = {
+                        "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
+                        "country_label": "Türkiye", "scoring_rule": {
+                            "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+                        },
+                    }
+                    expected_legacy_rows = []
+                    for row in records:
+                        expected_legacy = dict(row)
+                        expected_legacy["scoring_profile"] = legacy_profile
+                        expected_legacy["net"] = row["correct"] - row["incorrect"] / 4
+                        answered = row["correct"] + row["incorrect"]
+                        expected_legacy["accuracy"] = row["correct"] / answered if answered else None
+                        expected_legacy_rows.append(expected_legacy)
+                    require([row.model_dump(mode="json") for row in old_rows] == expected_legacy_rows,
+                            "legacy archive restore differs from complete independently scored row oracle")
                     old_profiles = StorageService(legacy_restore).load_list("exam_profiles.json", ExamScoringProfile)
                     require(old_profiles == [], "legacy archive unexpectedly restored a custom profile catalog")
                     old_clock = json.loads((legacy_restore / "clock.json").read_text(encoding="utf-8"))
@@ -366,12 +417,13 @@ def run(repeats=3):
                     "summary_seconds": {
                         "p50": statistics.median(summary_samples), "p95": percentile(summary_samples, 0.95),
                     },
-                    "correctness": "literal exact-rational scores, complete rows, profile-version groups, legacy/current backup round-trips and focus retry matched independent fixtures",
+                    "correctness": "literal full profile snapshots, exact-rational scores, bounded unique metadata, complete rows and groups, legacy/current backup round-trips and focus retry matched independent fixtures",
                     "timer_boundary": {"elapsed_ms": elapsed_ms, "duration_minutes": duration_minutes,
-                                       "duration_seconds": duration_seconds, "same_key_retry": "same row; altered payload rejected"},
+                                       "duration_seconds": duration_seconds,
+                                       "cases_ms": [case[0] for case in timer_cases],
+                                       "same_key_retry": "same row; altered payload rejected"},
                     "ai_included": False,
-                    "provider_calls": 0,
-                    "network_access": False,
+                    "provider_routes_mounted": False,
                 }
         finally:
             for module, name, value in originals:

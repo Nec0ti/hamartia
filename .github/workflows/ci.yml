@@ -69,3 +69,4 @@ jobs:
       - run: python backend/benchmarks/benchmark_clock_api.py
         env:
           PYTHONPATH: backend
+      - run: python scripts/benchmark_docs.py

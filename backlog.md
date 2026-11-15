@@ -46,7 +46,8 @@
 - [x] Add a deterministic Clock benchmark with seeded timer-oracle scenarios, 128-alarm/DST/missed-event controls, separate persisted API timing, failed-write checks, and backup/restore safety ([report](reports/2026-11-15-student-clock.md)); no AI included.
 - [ ] Extend storage failure and concurrency coverage with multi-process writers, process termination during atomic replacement, and restart/recovery reconciliation. Keep these correctness experiments separate from throughput timing.
 - [ ] Add bounded loopback HTTP API benchmarks that measure serialized request/response and concurrent client paths separately from direct-function microbenchmarks; guarantee no external or AI endpoint request.
-- [ ] Add a blind bilingual documentation retrieval benchmark with versioned EN/TR tasks, citation/answer scoring, stale and broken link fixtures, and fixed-viewport browser/screenshot checks. Do not use AI to answer or score tasks.
+- [x] Add a versioned paired EN/TR documentation task workbook, separate human answer rubrics with page/anchor evidence, synthetic stale/broken-link decoys, and an offline rendered-route/link/evidence integrity checker; task and key files are public and inspectable, so this is not a cryptographically sealed blind gate ([report](reports/2026-11-15-docs-retrieval-benchmark.md)).
+- [ ] Run human blind retrieval/usability tasks with the key withheld during administration; score answers/citations against the published 90/100 overall, 85% per-locale, and 100% critical-case thresholds, and evaluate fixed-viewport screenshots. No AI or provider scoring.
 - [x] Verify compatibility of old records/backups, UI, and section-sized missed-question limits for TYT/AYT sessions with subject sections.
 - [ ] Add a distinct learning-evidence record for a completed suggested activity: user-entered observation/reflection, date, and optional reference link. Keep it separate from binary `ReviewAttempt`, exam net, and XP; do not infer completion or mastery from AI output.
 
@@ -77,7 +78,7 @@
 - [x] Publish a 17-page EN/TR static wiki for Getting Started, system architecture, study workflows, Cosmos/progression, mistake/review behavior, exam/Maarif scope, OS installs, providers/consent/privacy, backup, Clock, accessibility/language, learning-evidence boundaries, FAQ, troubleshooting, and contribution; validate route and translation parity ([report](reports/2026-11-15-bilingual-wiki-docs.md)).
 - [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The current benchmark quality pass adds full question post-mutation oracles, two named untimed persistence fault probes, and skewed mixed-size persisted fixtures ([report](reports/2026-11-15-benchmark-quality-followup.md)); multi-process/crash recovery and loopback HTTP remain open.
 - [x] Redesign the public guide as a responsive, keyboard-navigable bilingual wiki; validate navigation, links, mobile width, and page parity without telemetry.
-- [ ] Add the blind bilingual docs retrieval benchmark only after the wiki release and system-benchmark work; do not add it in this docs phase.
+- [x] Add the paired bilingual docs task pack and offline integrity benchmark after the wiki and system benchmark releases. Human retrieval scoring and screenshot evaluation remain open; no AI answer or scoring path is included.
 
 ## Next small task
 

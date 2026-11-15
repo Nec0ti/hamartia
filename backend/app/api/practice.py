@@ -11,6 +11,7 @@ from app.core.config import DATA_DIR
 from app.core.practice import practice_topic_summaries
 from app.models.schemas import PracticeSession, PracticeSessionCreate
 from app.services.storage import StorageService
+from app.services.study_agent_cli import EvidenceQuote, dispatch_provider_tool
 from app.services.study_agent_practice import FIELDS, complete_payload, preview_digest, questions
 
 router = APIRouter(prefix="/practice", tags=["practice"])
@@ -21,7 +22,8 @@ class AgentDraftRequest(BaseModel):
 
     messages: list[str] = Field(min_length=1, max_length=30)
     language: Literal["en", "tr"]
-    proposal: dict[str, str | int]
+    proposal: dict[str, str | int] | None = None
+    evidence_claims: list[EvidenceQuote] | None = None
 
     @field_validator("messages")
     @classmethod
@@ -33,6 +35,8 @@ class AgentDraftRequest(BaseModel):
     @field_validator("proposal", mode="before")
     @classmethod
     def reject_untrusted_proposal_extras(cls, proposal):
+        if proposal is None:
+            return proposal
         if not isinstance(proposal, dict) or set(proposal) - set(FIELDS):
             raise ValueError("Provider proposal contains unsupported fields.")
         if any(type(value) not in {str, int} for value in proposal.values()):
@@ -113,9 +117,32 @@ async def create_session(
 
 @router.post("/agent-draft")
 async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageService = Depends(get_storage)):
-    parsed, values, details = complete_payload(payload.messages)
-    evidence = details["evidence"]
-    digest = preview_digest(parsed, evidence) if parsed else None
+    if payload.evidence_claims is not None:
+        prepared = dispatch_provider_tool(
+            {"evidence": [item.model_dump() for item in payload.evidence_claims]},
+            messages=payload.messages,
+            language=payload.language,
+        )
+        parsed = PracticeSessionCreate.model_validate(prepared["fields"]) if prepared["status"] == "ready" else None
+        values = prepared["fields"]
+        evidence = prepared["verified_evidence"]
+        missing = prepared["missing"]
+        ambiguous = prepared["ambiguous"]
+        issues = []
+        proposal_mismatch = bool(prepared["rejected_claims"])
+        digest = prepared["preview_digest"]
+        proposal = values
+    else:
+        if payload.proposal is None:
+            raise HTTPException(status_code=422, detail="Provide verified evidence claims.")
+        parsed, values, details = complete_payload(payload.messages)
+        evidence = details["evidence"]
+        missing = details["missing"]
+        ambiguous = details["ambiguous"]
+        issues = details.get("issues", [])
+        proposal_mismatch = payload.proposal != values
+        digest = preview_digest(parsed, evidence) if parsed else None
+        proposal = values
     conflicts = []
     if parsed:
         conflicts = [
@@ -125,13 +152,15 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
             == (parsed.date, parsed.subject.casefold(), parsed.topic.casefold())
         ]
     return {
+        "status": prepared["status"] if payload.evidence_claims is not None else "ready" if parsed else "ambiguous" if ambiguous else "incomplete",
         "fields": parsed.model_dump() if parsed else values,
-        "proposal": values,
-        "proposal_mismatch": payload.proposal != values,
+        "proposal": proposal,
+        "proposal_mismatch": proposal_mismatch,
         "evidence": evidence,
-        "missing": details["missing"],
-        "ambiguous": details["ambiguous"],
-        "questions": questions(payload.language, details["missing"], details["ambiguous"], details.get("issues", [])),
+        "evidence_claims": prepared["evidence_claims"] if payload.evidence_claims is not None else None,
+        "missing": missing,
+        "ambiguous": ambiguous,
+        "questions": prepared["questions"] if payload.evidence_claims is not None else questions(payload.language, missing, ambiguous, issues),
         "preview_digest": digest,
         "conflicts": conflicts,
     }
@@ -139,10 +168,23 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
 
 @router.post("/agent-create", status_code=201, response_model=PracticeSession)
 async def practice_agent_create(payload: AgentCreateRequest, storage: StorageService = Depends(get_storage)):
-    parsed, values, details = complete_payload(payload.messages)
-    if parsed is None or values != payload.proposal or parsed.model_dump() != payload.fields.model_dump() or details["evidence"] != payload.evidence:
+    if payload.evidence_claims is not None:
+        prepared = dispatch_provider_tool(
+            {"evidence": [item.model_dump() for item in payload.evidence_claims]},
+            messages=payload.messages,
+            language=payload.language,
+        )
+        parsed = PracticeSessionCreate.model_validate(prepared["fields"]) if prepared["status"] == "ready" else None
+        values = prepared["fields"]
+        evidence = prepared["verified_evidence"]
+        digest = prepared["preview_digest"]
+    else:
+        parsed, values, details = complete_payload(payload.messages)
+        evidence = details["evidence"]
+        digest = preview_digest(parsed, evidence) if parsed else None
+    if parsed is None or values != payload.proposal or parsed.model_dump() != payload.fields.model_dump() or evidence != payload.evidence:
         raise HTTPException(status_code=422, detail="The approved preview is incomplete or no longer matches the source messages.")
-    if preview_digest(parsed, details["evidence"]) != payload.preview_digest:
+    if digest != payload.preview_digest:
         raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")
     created: list[PracticeSession] = []
     conflict_seen = []

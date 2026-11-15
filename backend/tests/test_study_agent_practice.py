@@ -74,6 +74,58 @@ class StudyAgentPracticeTests(unittest.TestCase):
         response = self.draft(proposal={**FULL_PROPOSAL, "settings": "changed"})
         self.assertEqual(response.status_code, 422)
         self.assertEqual(self.sessions(), [])
+
+    def test_quote_tool_draft_resolves_host_transcript_and_create_rechecks_exact_preview(self):
+        messages = [
+            "I completed a practice test on Functions in Mathematics on 2026-11-15. "
+            "I got 12 right, 3 wrong, left 1 blank; it took 45 minutes and 0 seconds."
+        ]
+        evidence_claims = [
+            {"field": "subject", "quote": "in Mathematics"},
+            {"field": "topic", "quote": "on Functions"},
+            {"field": "date", "quote": "on 2026-11-15"},
+            {"field": "correct", "quote": "12 right"},
+            {"field": "incorrect", "quote": "3 wrong"},
+            {"field": "blank", "quote": "left 1 blank"},
+            {"field": "duration_minutes", "quote": "it took 45 minutes"},
+            {"field": "duration_seconds", "quote": "0 seconds"},
+        ]
+        response = self.client.post("/practice/agent-draft", json={
+            "messages": messages, "language": "en", "evidence_claims": evidence_claims,
+        })
+        self.assertEqual(response.status_code, 200)
+        draft = response.json()
+        self.assertEqual(draft["status"], "ready")
+        self.assertEqual(draft["fields"]["correct"], 12)
+        self.assertFalse(draft["proposal_mismatch"])
+        self.assertEqual(self.sessions(), [])
+
+        body = {
+            "messages": messages, "language": "en", "evidence_claims": draft["evidence_claims"],
+            "proposal": draft["proposal"], "fields": draft["fields"], "evidence": draft["evidence"],
+            "preview_digest": draft["preview_digest"],
+        }
+        tampered = {**body, "fields": {**body["fields"], "correct": 13}}
+        rejected = self.client.post("/practice/agent-create", json=tampered)
+        self.assertEqual(rejected.status_code, 422)
+        self.assertEqual(self.sessions(), [])
+
+        saved = self.client.post("/practice/agent-create", json=body)
+        self.assertEqual(saved.status_code, 201)
+        self.assertEqual(len(self.sessions()), 1)
+        self.assertEqual(self.sessions()[0].correct, 12)
+
+    def test_quote_tool_cannot_hide_cross_turn_conflict_and_prepare_never_writes(self):
+        response = self.client.post("/practice/agent-draft", json={
+            "messages": ["I got 5 right.", "or 7 right"], "language": "en",
+            "evidence_claims": [{"field": "correct", "quote": "I got 5 right"}],
+        })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "ambiguous")
+        self.assertIn("correct", body["ambiguous"])
+        self.assertIsNone(body["preview_digest"])
+        self.assertEqual(self.sessions(), [])
         response = self.draft(proposal={**FULL_PROPOSAL, "correct": 70})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["proposal_mismatch"])

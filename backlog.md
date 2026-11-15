@@ -74,7 +74,7 @@
 ## P6 — product experience follow-up
 
 - [x] Add a Clock tab for local time, shared practice/Pomodoro/countdown/stopwatch timing, alarms/reminders, and safe backup/restart reconciliation; no streak pressure or exit friction.
-- [x] Publish a 16-page EN/TR static wiki for Getting Started, system architecture, study workflows, mistake/review behavior, exam/Maarif scope, OS installs, providers/consent/privacy, backup, Clock, accessibility/language, learning-evidence boundaries, FAQ, troubleshooting, and contribution; validate route and translation parity ([report](reports/2026-11-15-bilingual-wiki-docs.md)).
+- [x] Publish a 17-page EN/TR static wiki for Getting Started, system architecture, study workflows, Cosmos/progression, mistake/review behavior, exam/Maarif scope, OS installs, providers/consent/privacy, backup, Clock, accessibility/language, learning-evidence boundaries, FAQ, troubleshooting, and contribution; validate route and translation parity ([report](reports/2026-11-15-bilingual-wiki-docs.md)).
 - [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The current benchmark quality pass adds full question post-mutation oracles, two named untimed persistence fault probes, and skewed mixed-size persisted fixtures ([report](reports/2026-11-15-benchmark-quality-followup.md)); multi-process/crash recovery and loopback HTTP remain open.
 - [x] Redesign the public guide as a responsive, keyboard-navigable bilingual wiki; validate navigation, links, mobile width, and page parity without telemetry.
 - [ ] Add the blind bilingual docs retrieval benchmark only after the wiki release and system-benchmark work; do not add it in this docs phase.

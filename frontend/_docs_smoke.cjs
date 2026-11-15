@@ -5,7 +5,7 @@ const path = require('node:path')
 const { chromium } = require('playwright')
 
 const pages = [
-  '', 'system-architecture/', 'purpose-and-scope/', 'study-workflows/', 'mistakes-and-review/',
+  '', 'system-architecture/', 'purpose-and-scope/', 'study-workflows/', 'cosmos-and-progression/', 'mistakes-and-review/',
   'exam-formats-and-maarif/', 'install/', 'study-agent/', 'privacy-and-consent/',
   'backup-and-restore/', 'clock-and-reminders/', 'accessibility-and-language/',
   'learning-evidence/', 'faq/', 'troubleshooting/', 'contributing/',
@@ -62,6 +62,19 @@ async function main() {
         assert.equal(await page.locator('.sidebar li:first-child a').getAttribute('href'), index === 0 ? './' : '../', `${route} starts with Getting Started`)
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at 390px`)
         assert.equal(await page.locator('main article h2').count() >= 1, true, `${route} contains article sections`)
+
+        if (route.includes('cosmos-and-progression/')) {
+          const article = await page.locator('main article').innerText()
+          assert.match(article, lang === 'en' ? /XP, level, streak, and orbit position do not establish knowledge, mastery/ : /XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı/)
+        }
+        if (route.includes('mistakes-and-review/')) {
+          const article = await page.locator('main article').innerText()
+          for (const label of lang === 'en'
+            ? ['Knowledge gap', 'Distractor trap', 'Misread the question', 'Time pressure']
+            : ['Konu eksiği', 'Çeldirici tuzağı', 'Soruyu yanlış okuma', 'Zaman baskısı']) {
+            assert.equal(article.includes(label), true, `${route} missing visible UI label ${label}`)
+          }
+        }
 
         const languageLink = page.locator('.header-actions .language-link')
         const target = new URL(await languageLink.getAttribute('href'), page.url())

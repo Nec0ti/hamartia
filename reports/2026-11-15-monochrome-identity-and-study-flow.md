@@ -35,7 +35,7 @@ These are token-pair checks, not a claim of full WCAG conformance. Keyboard beha
 
 ## Deferred work
 
-The public documentation layout redesign and the Clock tab are intentionally outside this identity pass. The next work is listed in `backlog.md` in this order: an optional Clock tab, repository wiki documentation, stronger system-level non-AI benchmarks, and a docs benchmark last. The current feature keeps its existing session/pause/cancel behavior; no new plan-order preference or engagement mechanic is introduced.
+The public documentation layout redesign and Clock implementation are outside this identity pass. Clock has since been implemented as the next phase; the remaining sequence is repository wiki documentation, stronger system-level non-AI benchmarks, then a docs benchmark. This identity pass introduced no new plan-order preference or engagement mechanic.
 
 ## Verification
 

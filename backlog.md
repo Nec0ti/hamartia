@@ -43,6 +43,7 @@
 - [x] Benchmark backup creation, validation, and restore using representative data, without AI.
 - [x] Replace single-shot benchmark probes with seeded persisted mixed workloads, correctness oracles, repeated percentiles, and machine metadata; keep sequential JSON append labeled as stress-only.
 - [x] Compare complete benchmark outputs against independent expected values; add boundary/skew fixtures, corruption and restore-safety cases, and deterministic wrong-result probes outside timed sections ([report](reports/2026-11-15-benchmark-oracle-hardening.md)).
+- [x] Add a deterministic Clock benchmark with seeded timer-oracle scenarios, 128-alarm/DST/missed-event controls, separate persisted API timing, failed-write checks, and backup/restore safety ([report](reports/2026-11-15-student-clock.md)); no AI included.
 - [ ] Extend storage failure and concurrency coverage with multi-process writers, process termination during atomic replacement, and restart/recovery reconciliation. Keep these correctness experiments separate from throughput timing.
 - [ ] Add bounded loopback HTTP API benchmarks that measure serialized request/response and concurrent client paths separately from direct-function microbenchmarks; guarantee no external or AI endpoint request.
 - [ ] Add a blind bilingual documentation retrieval benchmark with versioned EN/TR tasks, citation/answer scoring, stale and broken link fixtures, and fixed-viewport browser/screenshot checks. Do not use AI to answer or score tasks.
@@ -72,11 +73,11 @@
 
 ## P6 — product experience follow-up
 
-- [ ] Add an optional Clock tab for local focus timing, with clear pause/cancel controls and no streak pressure or exit friction.
+- [x] Add a Clock tab for local time, shared practice/Pomodoro/countdown/stopwatch timing, alarms/reminders, and safe backup/restart reconciliation; no streak pressure or exit friction.
 - [ ] Add repository wiki documentation for the system architecture, data/backup boundaries, study workflows, and provider consent.
 - [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The current benchmark quality pass adds full question post-mutation oracles, two named untimed persistence fault probes, and skewed mixed-size persisted fixtures ([report](reports/2026-11-15-benchmark-quality-followup.md)); multi-process/crash recovery and loopback HTTP remain open.
 - [ ] Redesign the public guide layout in a separate phase, then add a docs benchmark last to check navigation, accessibility, and task completion without telemetry.
 
 ## Next small task
 
-Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. After those release checks, work through P6 in order: Clock, wiki docs, stronger system benchmarks, then the docs benchmark. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Clock is implemented; continue P6 with repository wiki docs, stronger system benchmarks, then the docs benchmark. Verify subsequent ARETE numbering on a later merged PR.

@@ -144,9 +144,11 @@ _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|saat)"
 _RELATIVE_DATE_OFFSET = rf"(?:(?:in\s+)?{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}(?:\s+(?:later|afterwards?|after(?:\s+that)?|from\s+now|sonra))?)"
+_RELATIVE_DATE_QUALIFIER = r"(?:(?:the\s+)?(?:next|following|upcoming|gelecek|önümüzdeki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|saat))"
+_RELATIVE_DATE_COMPACT_OFFSET = r"\d{1,5}(?:d|w|h)(?:\s+(?:later|afterwards?|after(?:\s+that)?|sonra))?"
 _DATE_RELATIVE_ALTERNATIVE = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"
-    rf"(?:tomorrow|(?:the\s+)?(?:next|following)\s+day|(?:the\s+)?day\s+(?:after(?:\s+that)?|afterwards?)|"
+    rf"(?:tomorrow|{_RELATIVE_DATE_QUALIFIER}|{_RELATIVE_DATE_COMPACT_OFFSET}|(?:the\s+)?(?:next|following)\s+day|(?:the\s+)?day\s+(?:after(?:\s+that)?|afterwards?)|"
     rf"(?:a|one)\s+day\s+(?:later|after(?:\s+that)?|afterwards?)|yarın|yarin|(?:bir\s+)?sonraki\s+gün|ertesi\s+gün|"
     rf"{_RELATIVE_DATE_OFFSET})\b"
 )

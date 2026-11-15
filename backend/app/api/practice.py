@@ -1,5 +1,7 @@
 """CRUD and summaries for completed subject/topic practice sets."""
 
+import hashlib
+import json
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
@@ -52,6 +54,7 @@ class AgentCreateRequest(AgentDraftRequest):
     fields: StrictPracticeSessionCreate
     evidence: dict
     preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approval_id: UUID
     duplicate_choice: Literal["new", "cancel"] | None = None
 
 
@@ -193,13 +196,32 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")
     created: list[PracticeSession] = []
     conflict_seen = []
-    choice_key = payload.duplicate_choice or "default"
-    session_id = f"practice_agent_{payload.preview_digest}_{choice_key}"
+    approval_prefix = f"practice_agent_{payload.approval_id.hex}_"
+    approval_payload = {
+        "language": payload.language,
+        "messages": payload.messages,
+        "proposal": payload.proposal,
+        "fields": payload.fields.model_dump(),
+        "evidence": payload.evidence,
+        "evidence_claims": [item.model_dump() for item in payload.evidence_claims] if payload.evidence_claims is not None else None,
+        "preview_digest": payload.preview_digest,
+        "duplicate_choice": payload.duplicate_choice,
+    }
+    approval_fingerprint = hashlib.sha256(json.dumps(
+        approval_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    session_id = f"{approval_prefix}{approval_fingerprint}"
 
     def append_with_conflict_check(sessions):
-        replay = next((item for item in sessions if item.id == session_id), None)
-        if replay is not None:
-            conflict_seen.append(replay)
+        prior_approval = [item for item in sessions if item.id.startswith(approval_prefix)]
+        if prior_approval:
+            replay = next((item for item in prior_approval if item.id == session_id), None)
+            if replay is not None and all(
+                getattr(replay, field) == value for field, value in parsed.model_dump().items()
+            ):
+                created.append(replay)
+                return True
+            conflict_seen.extend(prior_approval)
             return False
         conflicts = [
             item for item in sessions

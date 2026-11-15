@@ -15,6 +15,48 @@ const REQUIRED_SCOPES = ['openid', 'offline_access', 'resource.invoke', 'chatgpt
 const RESOURCE = `${API_URL}`
 const MAX_MESSAGE_LENGTH = 4000
 const MAX_CONTEXT_LENGTH = 6000
+const PRACTICE_FIELDS = ['date', 'subject', 'topic', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds']
+const PRACTICE_TOOL_NAME = 'hamartia_practice_prepare'
+
+function practiceToolParameters() {
+  return {
+    type: 'object',
+    properties: {
+      evidence: {
+        type: 'array',
+        maxItems: 40,
+        items: {
+          type: 'object',
+          properties: {
+            field: { type: 'string', enum: PRACTICE_FIELDS },
+            quote: { type: 'string', minLength: 1, maxLength: 500 },
+          },
+          required: ['field', 'quote'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['evidence'],
+    additionalProperties: false,
+  }
+}
+
+function validatePracticeToolArguments(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some((key) => key !== 'evidence')) {
+    throw new Error('ChatGPT returned unsupported practice evidence arguments.')
+  }
+  if (!Array.isArray(value.evidence) || value.evidence.length > 40) throw new Error('ChatGPT returned invalid practice evidence arguments.')
+  for (const item of value.evidence) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).some((key) => !['field', 'quote'].includes(key))
+      || Object.keys(item).length !== 2
+      || !PRACTICE_FIELDS.includes(item.field)
+      || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > 500) {
+      throw new Error('ChatGPT returned invalid practice evidence arguments.')
+    }
+  }
+  return value
+}
 
 function randomValue(bytes = 32) {
   return crypto.randomBytes(bytes).toString('base64url')
@@ -407,9 +449,46 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return summarizeStudyContext(await insightsResponse.json(), await sessionsResponse.json())
   }
 
+  async function requestResponses(body, signal, requestId, onDelta, accessToken) {
+    const response = await fetchImpl(`${API_URL}/responses`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json', accept: 'text/event-stream' },
+      body: JSON.stringify(body),
+      signal,
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(safeError(response.status, data.error?.code))
+    }
+    if (!response.body) throw new Error('The ChatGPT response did not include a stream.')
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let completion = null
+    while (true) {
+      const { value, done } = await reader.read()
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done }).replace(/\r\n/g, '\n')
+      const events = buffer.split('\n\n')
+      buffer = events.pop() || ''
+      for (const event of events) {
+        const line = event.split('\n').find((part) => part.startsWith('data:'))
+        if (!line) continue
+        const data = JSON.parse(line.slice(5).trim())
+        if (data.type === 'response.output_text.delta' && data.delta && onDelta) onDelta(requestId, data.delta)
+        if (data.type === 'response.failed') throw new Error(safeError(0, data.response?.error?.code))
+        if (data.type === 'response.incomplete') throw new Error('ChatGPT returned an incomplete response. Please try again.')
+        if (data.type === 'response.completed') completion = data.response || null
+      }
+      if (done) break
+    }
+    if (!completion) throw new Error('ChatGPT stream ended before the response was complete.')
+    return completion
+  }
+
   async function chat({ requestId, message, model, language, workflow = 'chat', messages = [] }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
     if (!['chat', 'practice-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
+    if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
     if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
     const controller = new AbortController()
     chats.set(requestId, controller)
@@ -417,48 +496,79 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
       const { accessToken } = await validAccessToken()
       const context = workflow === 'practice-entry' ? '' : await studyContext(controller.signal)
       if (!(await models(controller.signal)).some((item) => item.slug === model)) throw new Error('Choose a model available to the signed-in ChatGPT account.')
-      const response = await fetchImpl(`${API_URL}/responses`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json', accept: 'text/event-stream' },
-        body: JSON.stringify({
+      if (workflow === 'practice-entry') {
+        const instructions = (
+          `Prepare a practice-entry draft in ${language === 'tr' ? 'Turkish' : 'English'}. Use the available ${PRACTICE_TOOL_NAME} function exactly once. `
+          + 'Provide only exact quotes and their field names from the supplied student messages. Do not send field values, transcript text, language, IDs, paths, or actions. '
+          + 'After the function result, ask only the localized questions returned by Hamartia, or briefly say the verified preview is ready. Do not repeat or infer unverified data.'
+        )
+        const inputTranscript = { role: 'user', content: JSON.stringify({ student_messages: messages }) }
+        const additionalTools = [{
+          type: 'function',
+          name: PRACTICE_TOOL_NAME,
+          description: 'Submit exact student-message quotes for local verification and a read-only practice preview.',
+          parameters: practiceToolParameters(),
+          strict: true,
+        }]
+        const initial = await requestResponses({
+          model, instructions, input: [inputTranscript], additional_tools: additionalTools,
+          store: false, stream: true,
+        }, controller.signal, requestId, null, accessToken)
+        const calls = Array.isArray(initial.output) ? initial.output.filter((item) => item?.type === 'function_call') : []
+        if (calls.length !== 1) throw new Error('ChatGPT did not return exactly one practice evidence tool call.')
+        const call = calls[0]
+        if (call.name !== PRACTICE_TOOL_NAME || typeof call.call_id !== 'string' || !call.call_id) throw new Error('ChatGPT returned an unsupported practice tool call.')
+        let argumentsValue
+        try {
+          argumentsValue = validatePracticeToolArguments(JSON.parse(call.arguments))
+        } catch (error) {
+          if (error instanceof SyntaxError) throw new Error('ChatGPT returned malformed practice evidence arguments.')
+          throw error
+        }
+        const backendUrl = getBackendUrl()
+        if (!backendUrl) throw new Error('Hamartia could not verify the practice evidence. Nothing was saved.')
+        const verifiedResponse = await fetchImpl(`${backendUrl}/practice/agent-draft`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ messages, language, evidence_claims: argumentsValue.evidence }),
+          signal: controller.signal,
+        })
+        const draft = await verifiedResponse.json().catch(() => ({}))
+        if (!verifiedResponse.ok) throw new Error('Hamartia could not verify the practice evidence. Nothing was saved.')
+        const safeToolResult = {
+          status: draft.status,
+          fields: draft.fields,
+          evidence: draft.evidence,
+          missing: draft.missing,
+          ambiguous: draft.ambiguous,
+          questions: draft.questions,
+          preview_digest: draft.preview_digest,
+          write_allowed: false,
+        }
+        const functionItem = { type: 'function_call', call_id: call.call_id, name: call.name, arguments: call.arguments }
+        const followup = await requestResponses({
           model,
-          instructions: workflow === 'practice-entry'
-            ? `Return only a JSON object with the single key "fields". Extract only explicitly stated values from the student's messages. Allowed fields: date, subject, topic, correct, incorrect, blank, duration_minutes, duration_seconds. Accept field labels date/tarih, subject/ders, topic/konu, correct/doğru, incorrect/wrong/yanlış, blank/boş, duration_minutes/minutes/dakika, duration_seconds/seconds/saniye. Fields may be comma-separated or on separate lines. Copy date and label values exactly; counts and durations must be integers. Omit any field not explicitly supplied. Never guess, infer, calculate, resolve contradictions, or include fields, tool calls, or prose outside this schema. The app will independently verify each value against the student messages. Use the student's selected language (${language === 'tr' ? 'Turkish' : 'English'}) only for error handling outside the JSON; do not add prose.`
-            : `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`,
-          input: [{ role: 'user', content: workflow === 'practice-entry'
-            ? JSON.stringify({ student_messages: messages }, null, 2)
-            : `Local study summary (may be empty):\n${context}\n\nStudent question:\n${message}` }],
+          instructions,
+          input: [
+            inputTranscript,
+            functionItem,
+            { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(safeToolResult) },
+          ],
+          additional_tools: additionalTools,
           store: false,
           stream: true,
-        }),
-        signal: controller.signal,
-      })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(safeError(response.status, data.error?.code))
-      }
-      if (!response.body) throw new Error('The ChatGPT response did not include a stream.')
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let completed = false
-      while (true) {
-        const { value, done } = await reader.read()
-        buffer += decoder.decode(value || new Uint8Array(), { stream: !done }).replace(/\r\n/g, '\n')
-        const events = buffer.split('\n\n')
-        buffer = events.pop() || ''
-        for (const event of events) {
-          const line = event.split('\n').find((part) => part.startsWith('data:'))
-          if (!line) continue
-          const data = JSON.parse(line.slice(5).trim())
-          if (data.type === 'response.output_text.delta' && data.delta) onDelta(requestId, data.delta)
-          if (data.type === 'response.failed') throw new Error(safeError(0, data.response?.error?.code))
-          if (data.type === 'response.incomplete') throw new Error('ChatGPT returned an incomplete response. Please try again.')
-          if (data.type === 'response.completed') completed = true
+        }, controller.signal, requestId, null, accessToken)
+        if (Array.isArray(followup.output) && followup.output.some((item) => item?.type === 'function_call')) {
+          throw new Error('ChatGPT attempted an additional practice tool call.')
         }
-        if (done) break
+        return { status: 'completed', draft }
       }
-      if (!completed) throw new Error('ChatGPT stream ended before the response was complete.')
+      const instructions = `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`
+      await requestResponses({
+        model, instructions,
+        input: [{ role: 'user', content: `Local study summary (may be empty):\n${context}\n\nStudent question:\n${message}` }],
+        store: false, stream: true,
+      }, controller.signal, requestId, onDelta, accessToken)
       return { status: 'completed' }
     } catch (error) {
       if (controller.signal.aborted || error.name === 'AbortError') return { status: 'cancelled' }

@@ -34,7 +34,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
   const [studentMessages, setStudentMessages] = useState([])
   const [pendingPreview, setPendingPreview] = useState(null)
   const requestId = useRef('')
-  const responseText = useRef('')
+  const approvalRef = useRef(null)
   const workflowRef = useRef(workflow)
   workflowRef.current = workflow
   const consentedSettings = useRef(null)
@@ -61,7 +61,6 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     }).catch((e) => setError(e.message))
     return chatgptApi.onDelta(({ requestId: id, delta }) => {
       if (id === requestId.current) {
-        responseText.current += delta
         if (workflowRef.current !== 'practice-entry') setAnswer((text) => text + delta)
       }
     })
@@ -141,7 +140,6 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     const id = window.crypto.randomUUID()
     const nextMessages = workflow === 'practice-entry' ? [...studentMessages, message.trim()] : null
     requestId.current = id
-    responseText.current = ''
     setAnswer('')
     setError('')
     setNotice('')
@@ -165,7 +163,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
           has_api_key: settings.has_api_key,
         })
         if (workflow === 'practice-entry') {
-          await updatePracticeDraft(nextMessages, result.proposal)
+          displayPracticeDraft(nextMessages, result)
         } else {
           setAnswer(result.answer)
           setMessage('')
@@ -175,13 +173,8 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
         if (result.status === 'failed') setError(result.detail)
         if (result.status === 'cancelled') setNotice(t('agent.cancelled'))
         if (result.status === 'completed' && workflow === 'practice-entry') {
-          let proposal
-          try {
-            proposal = JSON.parse(responseText.current)
-          } catch {
-            throw new Error(t('agent.practiceProposalInvalid'))
-          }
-          await updatePracticeDraft(nextMessages, proposal.fields)
+          if (!result.draft || !Array.isArray(result.draft.questions)) throw new Error(t('agent.practiceProposalInvalid'))
+          displayPracticeDraft(nextMessages, result.draft)
         } else if (result.status === 'completed') setMessage('')
       }
     } catch (e) {
@@ -193,8 +186,8 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     }
   }
 
-  async function updatePracticeDraft(messages, proposal) {
-    const draft = await api.practice.agentDraft({ messages, language, proposal })
+  function displayPracticeDraft(messages, draft) {
+    approvalRef.current = null
     setStudentMessages(messages)
     setMessage('')
     setPendingPreview(draft.preview_digest ? draft : null)
@@ -208,6 +201,10 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
 
   async function approvePractice(duplicateChoice = null) {
     if (!pendingPreview || !window.confirm(t('agent.confirmPracticeSave'))) return
+    const approvalKey = `${pendingPreview.preview_digest}:${duplicateChoice || 'default'}`
+    if (approvalRef.current?.key !== approvalKey) {
+      approvalRef.current = { key: approvalKey, id: window.crypto.randomUUID() }
+    }
     setBusy(true)
     setError('')
     try {
@@ -217,9 +214,12 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
         proposal: pendingPreview.proposal,
         fields: pendingPreview.fields,
         evidence: pendingPreview.evidence,
+        evidence_claims: pendingPreview.evidence_claims,
         preview_digest: pendingPreview.preview_digest,
+        approval_id: approvalRef.current.id,
         duplicate_choice: duplicateChoice,
       })
+      approvalRef.current = null
       setPendingPreview(null)
       setStudentMessages([])
       setAnswer(t('agent.practiceSaved'))

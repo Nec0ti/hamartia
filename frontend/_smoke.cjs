@@ -685,10 +685,19 @@ async function main() {
           chat: async (payload) => {
             window.__mockAgentPayload = payload
             if (payload.message === 'cancel me') return new Promise((resolve) => { window.__mockCancel = resolve })
-            const response = payload.workflow === 'practice-entry'
-              ? JSON.stringify({ fields: { date: '2026-11-15', subject: 'Mathematics', topic: 'Functions', correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0 } })
-              : 'A mocked study response.'
-            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: response })
+            if (payload.workflow === 'practice-entry') {
+              const fields = ['date', 'subject', 'topic', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds']
+              const evidence_claims = payload.messages.flatMap((message) => [...message.matchAll(/(?:^|,\s*)(date|subject|topic|correct|incorrect|blank|duration_minutes|duration_seconds):\s*([^,]+)/g)]
+                .filter((match) => fields.includes(match[1]))
+                .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
+              const response = await fetch(`${apiUrl}/practice/agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
+              })
+              if (!response.ok) return { status: 'failed', detail: await response.text() }
+              return { status: 'completed', draft: await response.json() }
+            }
+            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
           cancel: async () => {
@@ -725,7 +734,7 @@ async function main() {
     await page.getByLabel('Describe the practice set you completed').fill(practiceEntry)
     await page.getByRole('checkbox').check()
     await page.getByRole('button', { name: 'Send to OpenAI' }).click()
-    await page.getByText('Please provide topic as `topic: value`.').waitFor()
+    await page.getByText('Which topic did you study?').waitFor()
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
     const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)
@@ -1021,6 +1030,10 @@ async function main() {
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 3)
     assert(!appRequests.some((request) => request.path === '/study-agent/local'))
     assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/practice/agent-')).map((request) => request.path), ['/practice/agent-draft', '/practice/agent-draft', '/practice/agent-create'])
+    const approvedAgentRequest = appRequests.find((request) => request.path === '/practice/agent-create')
+    assert.equal(approvedAgentRequest.body.evidence_claims.length, 8)
+    assert.equal(approvedAgentRequest.body.approval_id.length, 36)
+    assert.equal(approvedAgentRequest.body.preview_digest.length, 64)
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
     assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-') && (request.path.includes('/agent') || request.path.endsWith('/analyze'))))

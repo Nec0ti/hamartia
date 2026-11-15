@@ -62,6 +62,15 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
   const authorizationUrls = []
   let streamMode = 'complete'
   let responseRequest
+  const responseRequests = []
+  const responseStreams = []
+  let practiceDraft = {
+    status: 'incomplete', fields: { subject: 'Mathematics' }, proposal: { subject: 'Mathematics' },
+    proposal_mismatch: false, evidence: { subject: { value: 'Mathematics', message_index: 0, quote: 'subject: Mathematics', start: 0, end: 19 } },
+    evidence_claims: [{ field: 'subject', quote: 'subject: Mathematics' }], missing: ['date'], ambiguous: {},
+    questions: ['Which date did you complete this set?'], preview_digest: null, conflicts: [],
+  }
+  const practiceDraftRequests = []
   const tokenBodies = []
   const calls = []
   const encryptionKey = crypto.randomBytes(32)
@@ -106,15 +115,20 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
     if (String(url) === `${API_URL}/models`) return Response.json({ models: [{ slug: 'model-a', display_name: 'Model A', visibility: 'list' }, { slug: 'hidden', display_name: 'Hidden', visibility: 'private' }] })
     if (String(url) === `${API_URL}/responses`) {
       responseRequest = JSON.parse(options.body)
+      responseRequests.push(responseRequest)
       if (responseStatus !== 200) return Response.json({ error: { code: responseErrorCode } }, { status: responseStatus })
       if (streamMode === 'cancel') return new Response(new ReadableStream({ start(controller) {
         options.signal.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')))
       } }), { headers: { 'content-type': 'text/event-stream' } })
-      const events = [
+      const events = (responseStreams.shift() || [
         { type: 'response.output_text.delta', delta: 'Review this topic.' },
-        { type: 'response.completed', response: { id: 'response-1' } },
-      ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
+        { type: 'response.completed', response: { id: 'response-1', output: [{ type: 'message', role: 'assistant', content: [] }] } },
+      ]).map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
       return new Response(events, { headers: { 'content-type': 'text/event-stream' } })
+    }
+    if (String(url) === 'http://127.0.0.1:43210/practice/agent-draft') {
+      practiceDraftRequests.push(JSON.parse(options.body))
+      return Response.json(practiceDraft)
     }
     if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({
       pending_questions: 3, scheduled_questions: 2,
@@ -137,6 +151,11 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
   })
   return {
     client, directory, safeStorage, calls, tokenBodies, getResponseRequest: () => responseRequest,
+    getResponseRequests: () => responseRequests,
+    setResponseStreams: (values) => { responseStreams.push(...values) },
+    setPracticeDraft: (value) => { practiceDraft = value },
+    getPracticeDraft: () => practiceDraft,
+    getPracticeDraftRequests: () => practiceDraftRequests,
     setStreamMode: (value) => { streamMode = value }, setTokenResponse: (value) => { tokenResponse = value },
     setCallbackError: (value) => { callbackError = value }, setCallbackMutator: (value) => { callbackMutator = value },
     setResponseError: (status, code) => { responseStatus = status; responseErrorCode = code },
@@ -185,23 +204,106 @@ test('mocked sign-in stores only encrypted credentials and streams direct Respon
   assert.equal(testApp.calls.some(({ url }) => url.includes('backend-api')), false)
 })
 
-test('practice-entry sends only student messages and requests the closed untrusted proposal schema', async (t) => {
+test('practice-entry calls one strict evidence tool, verifies host transcript, and returns only its draft', async (t) => {
   const testApp = await setup()
   t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
   await testApp.client.signIn()
   const messages = ['subject: Matematik', 'correct: 7']
+  const argumentsText = JSON.stringify({ evidence: [{ field: 'subject', quote: 'subject: Matematik' }] })
+  const functionCall = { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText, status: 'completed' }
+  testApp.setResponseStreams([
+    [{ type: 'response.completed', response: { id: 'response-1', output: [functionCall] } }],
+    [{ type: 'response.completed', response: { id: 'response-2', output: [{ type: 'message', role: 'assistant', content: [] }] } }],
+  ])
   const deltas = []
   const result = await testApp.client.chat({
     requestId: 'request-practice-000001', message: messages.at(-1), model: 'model-a', language: 'tr',
     workflow: 'practice-entry', messages,
   }, (_id, delta) => deltas.push(delta))
-  assert.deepEqual(result, { status: 'completed' })
-  const request = testApp.getResponseRequest()
-  assert.match(request.instructions, /Return only a JSON object with the single key "fields"/)
-  assert.match(request.instructions, /Never guess, infer, calculate, resolve contradictions/)
+  assert.equal(result.status, 'completed')
+  assert.deepEqual(result.draft, testApp.getPracticeDraft())
+  const [request, followup] = testApp.getResponseRequests()
+  assert.match(request.instructions, /Provide only exact quotes/)
   assert.match(request.instructions, /Turkish/)
-  assert.deepEqual(request.input, [{ role: 'user', content: JSON.stringify({ student_messages: messages }, null, 2) }])
+  assert.equal(request.store, false)
+  assert.equal(request.stream, true)
+  assert.equal(request.additional_tools.length, 1)
+  assert.equal(request.additional_tools[0].name, 'hamartia_practice_prepare')
+  assert.equal(request.additional_tools[0].strict, true)
+  assert.deepEqual(request.additional_tools[0].parameters.required, ['evidence'])
+  assert.equal(request.additional_tools[0].parameters.additionalProperties, false)
+  assert.deepEqual(request.input, [{ role: 'user', content: JSON.stringify({ student_messages: messages }) }])
+  assert.deepEqual(followup.input[0], request.input[0])
+  assert.match(followup.instructions, /Turkish/)
+  assert.deepEqual(followup.input[1], { type: 'function_call', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText })
+  assert.equal(followup.input[2].type, 'function_call_output')
+  assert.equal(followup.input[2].call_id, 'call_1')
+  assert.equal(JSON.parse(followup.input[2].output).write_allowed, false)
+  assert.equal(followup.store, false)
+  assert.equal(followup.stream, true)
+  assert.equal(Object.hasOwn(followup, 'previous_response_id'), false)
+  assert.deepEqual(testApp.getPracticeDraftRequests(), [{
+    messages, language: 'tr', evidence_claims: [{ field: 'subject', quote: 'subject: Matematik' }],
+  }])
+  assert.deepEqual(deltas, [])
   assert.equal(testApp.calls.some(({ url }) => url === 'http://127.0.0.1:43210/questions/insights' || url === 'http://127.0.0.1:43210/practice/insights'), false)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/practice/agent-create')), false)
+})
+
+test('practice-entry rejects malformed, spoofed, value-bearing, unsupported, and multiple tool calls', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['correct: 5']
+  const invalid = [
+    { name: 'hamartia_practice_prepare', arguments: 'not-json' },
+    { name: 'hamartia_practice_prepare', arguments: JSON.stringify({ evidence: [], messages }) },
+    { name: 'hamartia_practice_prepare', arguments: JSON.stringify({ evidence: [], language: 'tr' }) },
+    { name: 'hamartia_practice_prepare', arguments: JSON.stringify({ evidence: [{ field: 'correct', quote: 'correct: 5', value: 5 }] }) },
+    { name: 'write_record', arguments: JSON.stringify({ evidence: [] }) },
+  ]
+  for (const [index, call] of invalid.entries()) {
+    testApp.setResponseStreams([[{
+      type: 'response.completed', response: { id: `invalid-${index}`, output: [{ type: 'function_call', call_id: `invalid-call-${index}`, ...call }] },
+    }]])
+    const result = await testApp.client.chat({
+      requestId: `request-invalid-${String(index).padStart(6, '0')}`, message: messages[0], model: 'model-a', language: 'en',
+      workflow: 'practice-entry', messages,
+    }, () => assert.fail('Practice tool output must never stream to the renderer.'))
+    assert.equal(result.status, 'failed')
+  }
+  testApp.setResponseStreams([[{
+    type: 'response.completed', response: { id: 'multiple', output: [
+      { type: 'function_call', call_id: 'multiple-1', name: 'hamartia_practice_prepare', arguments: '{"evidence":[]}' },
+      { type: 'function_call', call_id: 'multiple-2', name: 'hamartia_practice_prepare', arguments: '{"evidence":[]}' },
+    ] },
+  }]])
+  const result = await testApp.client.chat({
+    requestId: 'request-multiple-0001', message: messages[0], model: 'model-a', language: 'en',
+    workflow: 'practice-entry', messages,
+  }, () => assert.fail('Practice tool output must never stream to the renderer.'))
+  assert.equal(result.status, 'failed')
+  assert.equal(testApp.getPracticeDraftRequests().length, 0)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/practice/agent-create')), false)
+})
+
+test('practice-entry rejects an additional tool turn after verified tool output', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['subject: Mathematics']
+  const args = JSON.stringify({ evidence: [{ field: 'subject', quote: 'subject: Mathematics' }] })
+  testApp.setResponseStreams([
+    [{ type: 'response.completed', response: { id: 'first', output: [{ type: 'function_call', call_id: 'call-1', name: 'hamartia_practice_prepare', arguments: args }] } }],
+    [{ type: 'response.completed', response: { id: 'second', output: [{ type: 'function_call', call_id: 'call-2', name: 'hamartia_practice_prepare', arguments: args }] } }],
+  ])
+  const result = await testApp.client.chat({
+    requestId: 'request-extra-tool-0001', message: messages[0], model: 'model-a', language: 'en',
+    workflow: 'practice-entry', messages,
+  }, () => assert.fail('Practice tool output must never stream to the renderer.'))
+  assert.equal(result.status, 'failed')
+  assert.equal(testApp.getPracticeDraftRequests().length, 1)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/practice/agent-create')), false)
 })
 
 test('newly issued client registration is retained when code exchange fails and reused on retry', async (t) => {

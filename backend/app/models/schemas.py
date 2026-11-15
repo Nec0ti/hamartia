@@ -28,6 +28,10 @@ def _valid_http_hostname(hostname: str) -> bool:
         return True
     except ValueError:
         pass
+    # Browsers can parse noncanonical numeric hosts as IPv4 addresses even
+    # when ipaddress rejects them (for example, integer or zero-padded forms).
+    if re.fullmatch(r"[0-9.]+", hostname):
+        return False
     try:
         ascii_hostname = hostname.encode("idna").decode("ascii")
     except UnicodeError:
@@ -37,11 +41,20 @@ def _valid_http_hostname(hostname: str) -> bool:
     if not ascii_hostname or len(ascii_hostname) > 253:
         return False
     labels = ascii_hostname.split(".")
-    return all(
-        len(label) <= 63
-        and re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) is not None
-        for label in labels
-    )
+    for label in labels:
+        if (
+            len(label) > 63
+            or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) is None
+        ):
+            return False
+        if label.lower().startswith("xn--"):
+            try:
+                round_trip = label.encode("ascii").decode("idna").encode("idna").decode("ascii")
+            except UnicodeError:
+                return False
+            if round_trip.lower() != label.lower():
+                return False
+    return True
 
 
 class Settings(BaseModel):

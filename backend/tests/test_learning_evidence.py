@@ -46,7 +46,8 @@ class LearningEvidenceTests(unittest.TestCase):
             {"reference_url": "https://user:pass@example.org"}, {"activity": "x" * 501},
             {"observation": "x" * 3001}, {"reference_url": "https://exa mple.com"},
             {"reference_url": "https://bad_host.example"}, {"reference_url": "https://bad!.example"},
-            {"reference_url": "https://-bad.example"},
+            {"reference_url": "https://-bad.example"}, {"reference_url": "https://xn--a.example"},
+            {"reference_url": "https://2130706433"}, {"reference_url": "https://127.000.000.001"},
         ):
             with self.subTest(updates=updates), self.assertRaises(ValidationError):
                 payload(**updates)

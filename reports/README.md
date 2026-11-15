@@ -5,6 +5,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-15 bilingual user documentation wiki](2026-11-15-bilingual-wiki-docs.md)
 - [2026-11-15 user-entered learning-evidence records](2026-11-15-learning-evidence-record.md)
 - [2026-11-15 local OpenAI-compatible server option clarity](2026-11-15-local-openai-compatible-server-clarity.md)
+- [2026-11-15 external manual verification run template](2026-11-15-external-manual-verification-template.md)
 
 - [2026-11-14 product language, GitHub Pages, desktop delivery, and ChatGPT study agent plan](2026-11-14-language-and-chatgpt-agent-plan.md)
 - [2026-11-14 English and Turkish application interface](2026-11-14-english-turkish-interface.md)

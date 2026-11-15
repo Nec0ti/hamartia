@@ -86,6 +86,30 @@ class AIService:
         analysis.analyzed_at = question.created_at
         return analysis
 
+    async def study_chat(self, message: str, context: str, language: str) -> str:
+        """Answer a Study Agent request without applying the Council prompt."""
+        client = await self._ensure_async()
+        response = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Hamartia's study assistant. Answer in "
+                        f"{'Turkish' if language == 'tr' else 'English'}. Use only the supplied "
+                        "student message and study summary. Do not claim to have seen specific "
+                        "questions or conversations. Be clear and concise."
+                    ),
+                },
+                {"role": "user", "content": f"Local study summary (may be empty):\n{context}\n\nStudent question:\n{message}"},
+            ],
+            temperature=0.2,
+        )
+        content = response.choices[0].message.content
+        if not isinstance(content, str) or not content:
+            raise ValueError("The configured endpoint returned an empty response.")
+        return content
+
     def _build_prompt(self, question: Question) -> list:
         content = [{
             "type": "text",

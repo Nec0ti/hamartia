@@ -45,4 +45,5 @@ The public documentation layout redesign and the Clock tab are intentionally out
 - `npm run test:browser` with Nix Chromium and the existing temporary backend workflow: passed with `ai_included: false`; the smoke explicitly asserts there is no `/study-agent/local` request. It also checks loaded app mark/favicon, keyboard focus outline, persistence flows, and the existing EN/TR app interactions.
 - Static checks: `git diff --check`, synchronized SVG copy comparison, and visual rendering of brand assets at 16/32/512 px.
 - `node --test desktop/tests/windowIcon.test.cjs`: 3 passed for development/packaged Windows and Linux paths and unsupported-platform handling.
+- The code and package configuration select/copy the correct platform icon, but these checks do not prove how the native title bar or task switcher renders it. Confirm that appearance manually in Windows and Linux packaged apps.
 - No model, AI endpoint, local provider, or AI benchmark was run.

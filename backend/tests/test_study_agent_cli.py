@@ -153,6 +153,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("The date was 2026-11-15 or 16.11.2026.", "2026-11-15"),
             ("The date was 2026-11-15 or 16-11-2026.", "2026-11-15"),
             ("The date was 2026-11-15 or Nov 16.", "2026-11-15"),
+            ("The date was 2026-11-15 or November 16th.", "2026-11-15"),
+            ("The date was 2026-11-15 or 2026.11.16.", "2026-11-15"),
             ("Tarih 2026-11-15 veya 15 Kasım.", "2026-11-15"),
         ):
             with self.subTest(statement=statement):
@@ -172,6 +174,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("It took 45 min or 1/2 hour.", "45 min"),
             ("It took 45 min or ½ hour.", "45 min"),
             ("It took 45 minutes or a half hour.", "45 minutes"),
+            ("It took one hour and 30 minutes.", "30 minutes"),
+            ("It took 45 minutes plus half an hour.", "45 minutes"),
+            ("45 dakika ve yarım saat sürdü.", "45 dakika"),
         ):
             with self.subTest(context=context):
                 self.assertIsNone(parse_quote_value("duration_minutes", quote, context))

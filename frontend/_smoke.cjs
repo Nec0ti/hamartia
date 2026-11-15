@@ -611,6 +611,76 @@ async function main() {
     await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
     const missingLabelDelete = await fetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
     assert.equal(missingLabelDelete.ok, true)
+
+    // A legacy practice draft is removed only after the durable clock PATCH succeeds.
+    await page.evaluate(() => {
+      localStorage.setItem('hamartia.language', 'en')
+      localStorage.setItem('hamartia.active-practice-session', JSON.stringify({
+        date: '2026-11-15', subject: 'Synthetic Math', topic: 'Migration check',
+        correct: 2, incorrect: 1, blank: 0, elapsed_seconds: 9, running_since: Date.now() - 2_000,
+      }))
+    })
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional persistence failure' }) })
+      } else await route.continue()
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByRole('alert').getByText('Clock state could not be saved or loaded. Your previous saved state remains available.').waitFor()
+    assert.ok(await page.evaluate(() => localStorage.getItem('hamartia.active-practice-session')))
+    failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
+    const expectedConsoleErrors = consoleErrors.filter((item) => !(item.location.url === `${apiUrl}/clock` && item.text.includes('503 (Service Unavailable)')))
+    consoleErrors.splice(0, consoleErrors.length, ...expectedConsoleErrors)
+    await page.unroute(`${apiUrl}/clock`)
+    await page.getByRole('button', { name: 'Retry loading' }).click()
+    await page.getByLabel('Elapsed time').waitFor()
+    await page.waitForFunction(() => localStorage.getItem('hamartia.active-practice-session') === null)
+    const migratedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(migratedClock.active_timer.kind, 'practice')
+    assert.equal(migratedClock.active_timer.practice_draft.topic, 'Migration check')
+    assert.equal(migratedClock.active_timer.status, 'running')
+    await page.getByRole('button', { name: 'Study Plan' }).click()
+    const migratedPractice = page.getByRole('region', { name: 'Focused practice session' })
+    await migratedPractice.waitFor()
+    await migratedPractice.getByText('Focused practice · Synthetic Math / Migration check').waitFor()
+    await migratedPractice.getByRole('button', { name: 'Cancel session' }).click()
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByRole('button', { name: 'Countdown' }).click()
+    await page.getByLabel('Minutes').fill('0')
+    await page.getByLabel('Seconds').fill('3')
+    const [clockStart] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Start', exact: true }).click(),
+    ])
+    assert.equal(clockStart.ok(), true)
+    await page.getByRole('button', { name: 'Pause' }).click()
+    await page.waitForLoadState('networkidle')
+    const pausedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(pausedClock.active_timer.status, 'paused')
+    assert(pausedClock.active_timer.remaining_ms > 0 && pausedClock.active_timer.remaining_ms <= 3_000)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByText('Paused', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Reset' }).click()
+    await page.getByRole('button', { name: 'Stop and clear timer' }).click()
+    const futureReminder = await page.evaluate(() => {
+      const date = new Date(Date.now() + 5 * 60_000)
+      date.setSeconds(0, 0)
+      return {
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        time: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`,
+      }
+    })
+    await page.getByLabel('Reminder label').fill('Synthetic reminder')
+    await page.getByLabel('Time', { exact: true }).fill(futureReminder.time)
+    await page.getByLabel('Date', { exact: true }).fill(futureReminder.date)
+    await page.getByRole('button', { name: 'Save reminder' }).click()
+    await page.getByText('Synthetic reminder', { exact: true }).waitFor()
+    const savedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(savedClock.alarms.length, 1)
+    assert.equal(savedClock.alarms[0].kind, 'once')
+    assert.equal(savedClock.alarms[0].enabled, true)
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
@@ -624,6 +694,8 @@ async function main() {
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 2)
     assert(!appRequests.some((request) => request.path === '/study-agent/local'))
+    assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
+    assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])

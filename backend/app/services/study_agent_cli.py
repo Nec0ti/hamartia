@@ -77,6 +77,19 @@ def _sentence_context(message: str, start: int, end: int) -> str:
     right_boundary = min((position for position in right_candidates if position >= 0), default=len(message))
     left = left_boundary + 1
     right = right_boundary
+
+    # Explicit correction markers can occur inline after a comma or dash, not
+    # only at the beginning of a new sentence or transcript turn.
+    correction_marker = re.compile(
+        r"(?i)(?P<marker>(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme))\b"
+    )
+    for correction in correction_marker.finditer(message, left, right):
+        marker_start = correction.start("marker")
+        if marker_start < start:
+            left = marker_start
+        elif marker_start >= end:
+            right = marker_start
+            break
     context = message[left:right].strip()
     continuation = r"(?i)^\s*,?\s*(?:or|either|veya|ya\s+da|plus|and|ve|ile|ek|ilave|maybe|perhaps|alternatively|belki|galiba)\b"
     correction_start = r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b"
@@ -129,7 +142,11 @@ _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
 _DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
-_DATE_RELATIVE_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:(?:the\s+)?(?:next|following)\s+day|(?:ertesi|sonraki)\s+gün)")
+_DATE_RELATIVE_ALTERNATIVE = re.compile(
+    rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"
+    r"(?:tomorrow|(?:the\s+)?(?:next|following)\s+day|the\s+day\s+after(?:\s+that)?|"
+    r"yarın|yarin|(?:bir\s+)?sonraki\s+gün|ertesi\s+gün)\b"
+)
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _COUNT_CONNECTOR = r"(?:,\s*(?:(?:or|and|to|veya|ya\s+da|ile|ila)\s*)?|\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+)"
@@ -286,7 +303,7 @@ def _context_field_values(field: str, context: str) -> tuple[bool, set[str | int
 
 def _is_explicit_correction(context: str) -> bool:
     return bool(re.match(
-        r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b",
+        r"(?i)^\s*(?:[,;.!?—–-]\s*)?(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b",
         context,
     ))
 
@@ -340,8 +357,10 @@ def _transcript_field_resolution(field: str, messages: list[str]) -> tuple[bool,
         seen: set[tuple[int, int]] = set()
         for pattern in patterns:
             for match in pattern.finditer(message):
-                if field in {"subject", "topic"} and re.fullmatch(r"(?:\d{4}-\d{2}-\d{2}|\d+)", match.group(1).strip()):
-                    continue
+                if field in {"subject", "topic"}:
+                    candidate_value = match.group(1).strip()
+                    if re.fullmatch(r"(?:\d{4}-\d{2}-\d{2}|\d+)", candidate_value) or _DATE_CANDIDATES.search(candidate_value):
+                        continue
                 start, end = match.span()
                 if (start, end) in seen:
                     continue
@@ -352,8 +371,14 @@ def _transcript_field_resolution(field: str, messages: list[str]) -> tuple[bool,
 
     if field == "date":
         joined = "\n".join(messages)
-        if _DATE_RELATIVE_ALTERNATIVE.search(joined):
-            events.append((len(messages), 0, None, False, "relative date continuation"))
+        message_starts: list[int] = []
+        offset = 0
+        for message in messages:
+            message_starts.append(offset)
+            offset += len(message) + 1
+        for match in _DATE_RELATIVE_ALTERNATIVE.finditer(joined):
+            index = max((i for i, start in enumerate(message_starts) if start <= match.start()), default=0)
+            events.append((index, match.start() - message_starts[index], None, False, "relative date continuation"))
 
     events.sort(key=lambda item: (item[0], item[1]))
     current: Evidence | None = None

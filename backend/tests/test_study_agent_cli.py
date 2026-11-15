@@ -265,17 +265,40 @@ class StudyAgentCliTests(unittest.TestCase):
         )
         self.assertEqual(joined_correction["fields"]["correct"], 7)
         self.assertEqual(joined_correction["verified_evidence"]["correct"]["quote"], "and Correction: I got 7 right")
+        for message, expected_quote in (
+            ("I got 5 right, actually I got 7 right.", "actually I got 7 right"),
+            ("I got 5 right — Correction: I got 7 right.", "Correction: I got 7 right"),
+        ):
+            with self.subTest(message=message):
+                result = prepare_practice([message], "en", [{"field": "correct", "quote": "5 right"}])
+                self.assertEqual(result["fields"]["correct"], 7)
+                self.assertNotIn("correct", result["ambiguous"])
+                self.assertEqual(result["verified_evidence"]["correct"]["quote"], expected_quote)
         for later in ("Maybe 7 right.", "Perhaps 7 right.", "Alternatively 7 right."):
             with self.subTest(later=later):
                 result = prepare_practice(["I got 5 right.", later], "en", [{"field": "correct", "quote": "5 right"}])
                 self.assertIn("correct", result["ambiguous"])
-        for later, language in (("or the next day", "en"), ("ya da ertesi gün", "tr")):
-            with self.subTest(later=later):
-                result = prepare_practice(
-                    ["I studied on 2026-11-15." if language == "en" else "Tarih 2026-11-15.", later], language,
-                    [{"field": "date", "quote": "on 2026-11-15" if language == "en" else "Tarih 2026-11-15"}],
-                )
+        relative_date_cases = (
+            ("I studied on 2026-11-15, or tomorrow.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15 — or the day after.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15, or the day after that.", "en", "on 2026-11-15"),
+            ("Tarih 2026-11-15, ya da yarın.", "tr", "Tarih 2026-11-15"),
+            ("Tarih 2026-11-15 — ya da bir sonraki gün.", "tr", "Tarih 2026-11-15"),
+            ("I studied on 2026-11-15.\nor the next day.", "en", "on 2026-11-15"),
+        )
+        for message, language, quote in relative_date_cases:
+            with self.subTest(message=message):
+                result = prepare_practice([message], language, [{"field": "date", "quote": quote}])
+                self.assertEqual(result["status"], "ambiguous")
                 self.assertIn("date", result["ambiguous"])
+                self.assertFalse(result["write_allowed"])
+        corrected_relative_date = prepare_practice(
+            ["I studied on 2026-11-15 or tomorrow.", "Correction: I studied on 2026-11-16."], "en",
+            [{"field": "date", "quote": "on 2026-11-15"}],
+        )
+        self.assertEqual(corrected_relative_date["fields"]["date"], "2026-11-16")
+        self.assertNotIn("date", corrected_relative_date["ambiguous"])
+        self.assertEqual(corrected_relative_date["verified_evidence"]["date"]["quote"], "Correction: I studied on 2026-11-16")
         unrelated_clause = prepare_practice(
             ["I got 5 right; I practiced Functions."], "en",
             [{"field": "correct", "quote": "5 right"}],

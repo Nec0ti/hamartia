@@ -28,13 +28,18 @@ test('safeStorage smoke emits only native metadata for a protected round-trip', 
 })
 
 test('basic_text smoke uses the production guard and expects protected storage rejection', async () => {
+  const safeStorage = storageFixture('basic_text')
+  safeStorage.isEncryptionAvailable = () => false
+  safeStorage.encryptString = () => { throw new Error('Rejected mode must not encrypt.') }
+  safeStorage.decryptString = () => { throw new Error('Rejected mode must not decrypt.') }
   const result = await probeSafeStorage({
-    safeStorage: storageFixture('basic_text'),
+    safeStorage,
     chatgpt: { status: async () => ({ unavailable: true }) },
     platform: 'linux', mode: 'rejected', expectedBackend: 'basic_text',
   })
 
-  assert.equal(result.roundTrip, true)
+  assert.equal(result.available, false)
+  assert.equal(result.roundTrip, false)
   assert.equal(result.protectedStorageAvailable, false)
 })
 

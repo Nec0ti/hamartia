@@ -6,7 +6,7 @@ async function probeSafeStorage({ safeStorage, chatgpt, platform = process.platf
   const available = safeStorage.isEncryptionAvailable()
   let roundTrip = false
 
-  if (available) {
+  if (mode === 'protected' && available) {
     try {
       const sample = crypto.randomBytes(32).toString('base64url')
       const encrypted = safeStorage.encryptString(sample)
@@ -18,7 +18,9 @@ async function probeSafeStorage({ safeStorage, chatgpt, platform = process.platf
 
   const status = await chatgpt.status()
   const protectedStorageAvailable = status.unavailable !== true
-  if (!available || !roundTrip) throw new Error('Native safeStorage encryption is unavailable or failed its in-memory round-trip.')
+  if (mode === 'protected' && (!available || !roundTrip)) {
+    throw new Error('Native safeStorage encryption is unavailable or failed its in-memory round-trip.')
+  }
   if (expectedBackend && backend !== expectedBackend) throw new Error(`Unexpected native safeStorage backend: ${backend || 'unknown'}.`)
   if (protectedStorageAvailable !== (mode === 'protected')) {
     throw new Error(`The production credential-storage policy did not match the ${mode} smoke expectation.`)

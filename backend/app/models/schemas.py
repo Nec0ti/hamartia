@@ -8,6 +8,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 from datetime import datetime
 from typing import Any, Literal
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
@@ -466,6 +467,17 @@ class PracticeDraft(BaseModel):
     correct: int = Field(default=0, ge=0)
     incorrect: int = Field(default=0, ge=0)
     blank: int = Field(default=0, ge=0)
+    completion_id: str | None = Field(default=None, min_length=36, max_length=36)
+
+    @field_validator("completion_id")
+    @classmethod
+    def validate_completion_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return str(UUID(value))
+        except (ValueError, AttributeError) as exc:
+            raise ValueError("completion_id must be a UUID") from exc
 
     @field_validator("date")
     @classmethod

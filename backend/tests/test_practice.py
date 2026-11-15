@@ -2,6 +2,7 @@ import asyncio
 import tempfile
 import unittest
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -50,7 +51,7 @@ class PracticeSessionTests(unittest.TestCase):
         self.assertEqual(asyncio.run(practice.list_sessions(self.storage)), [])
 
     def test_create_update_delete_persist_sessions_and_preserve_identity(self):
-        created = asyncio.run(practice.create_session(payload(), self.storage))
+        created = asyncio.run(practice.create_session(payload(), self.storage, None))
         self.assertTrue(created.id.startswith("practice_"))
         self.assertEqual(len(asyncio.run(practice.list_sessions(self.storage))), 1)
 
@@ -61,6 +62,17 @@ class PracticeSessionTests(unittest.TestCase):
         result = asyncio.run(practice.delete_session(created.id, self.storage))
         self.assertEqual(result, {"deleted": created.id})
         self.assertEqual(asyncio.run(practice.list_sessions(self.storage)), [])
+
+    def test_focus_completion_idempotency_prevents_duplicate_on_retry(self):
+        key = str(uuid4())
+        completed = asyncio.run(practice.create_session(payload(), self.storage, key))
+        retried = asyncio.run(practice.create_session(payload(), self.storage, key))
+        self.assertEqual(retried.id, completed.id)
+        self.assertEqual(len(asyncio.run(practice.list_sessions(self.storage))), 1)
+        with self.assertRaises(HTTPException) as error:
+            asyncio.run(practice.create_session(payload(correct=7), self.storage, key))
+        self.assertEqual(error.exception.status_code, 409)
+        self.assertEqual(len(asyncio.run(practice.list_sessions(self.storage))), 1)
 
     def test_update_missing_session_returns_404(self):
         with self.assertRaises(HTTPException) as error:

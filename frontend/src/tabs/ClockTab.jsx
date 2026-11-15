@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bell, BellOff, CircleStop, Pause, Play, RotateCcw, SkipForward } from 'lucide-react'
 import { useI18n } from '../i18n.jsx'
 import { useClock } from '../clock/ClockContext.jsx'
 import {
   elapsedMilliseconds, localDateTime, millisecondsLabel, nextWeekdayOccurrence,
-  pauseTimer, reconcileClock, remainingMilliseconds, resumeTimer,
+  pauseTimer, remainingMilliseconds, resumeTimer,
 } from '../clock/engine.js'
 
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -12,7 +12,7 @@ const modes = ['pomodoro', 'countdown', 'stopwatch']
 
 export default function ClockTab() {
   const { t, locale } = useI18n()
-  const { state, loaded, savingError, updateClock, reload } = useClock()
+  const { state, loaded, loading, savingError, updateClock, reload } = useClock()
   const [now, setNow] = useState(Date.now())
   const [selectedMode, setSelectedMode] = useState('pomodoro')
   const [countdownMinutes, setCountdownMinutes] = useState(5)
@@ -27,48 +27,10 @@ export default function ClockTab() {
   const [alarmDays, setAlarmDays] = useState([])
   const [editingAlarm, setEditingAlarm] = useState('')
   const [formError, setFormError] = useState('')
-  const stateRef = useRef(state)
-  stateRef.current = state
-
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(interval)
   }, [])
-
-  const notify = useCallback((event) => {
-    if (!stateRef.current.preferences.notifications_opt_in
-      || typeof window.Notification === 'undefined'
-      || window.Notification.permission !== 'granted') return
-    const title = event.type === 'alarm' ? t('clock.reminders') : t('clock.title')
-    const body = event.type === 'alarm'
-      ? t('clock.alarmNotification', { label: event.label })
-      : t('clock.timerNotification')
-    try { new window.Notification(title, { body, tag: `hamartia-clock-${event.type}-${event.id || event.kind || 'timer'}` }) } catch {}
-  }, [t])
-
-  const reconcile = useCallback(() => {
-    const current = stateRef.current
-    const result = reconcileClock(current, Date.now())
-    if (JSON.stringify(current) !== JSON.stringify(result.state)) {
-      stateRef.current = result.state
-      void updateClock(result.state).catch(() => {})
-      result.events.forEach(notify)
-    }
-  }, [notify, updateClock])
-
-  useEffect(() => {
-    if (!loaded) return undefined
-    reconcile()
-    const interval = window.setInterval(reconcile, 1000)
-    const onVisibility = () => { if (document.visibilityState === 'visible') reconcile() }
-    window.addEventListener('focus', reconcile)
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      window.clearInterval(interval)
-      window.removeEventListener('focus', reconcile)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [loaded, state, reconcile])
 
   useEffect(() => {
     setPomodoroWork(state.preferences.pomodoro_work_minutes)
@@ -280,7 +242,7 @@ export default function ClockTab() {
       <h1 id="clock-heading" className="text-2xl font-bold text-canvas-text">{t('clock.title')}</h1>
       <p className="text-sm text-canvas-muted">{t('clock.subtitle')}</p>
     </header>
-    {!loaded && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.loading')}</p>}
+    {loading && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.loading')}</p>}
     {(savingError || formError) && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted"><span>{t(formError || savingError)}</span>{savingError && <button type="button" onClick={reload} className={secondary}>{t('clock.reload')}</button>}</div>}
 
     <section aria-label={t('clock.localTime')} className="rounded-xl border border-canvas-line bg-canvas-panel p-5">
@@ -302,12 +264,12 @@ export default function ClockTab() {
         </ol>}
         <div className="mt-4 flex flex-wrap gap-2">
           {currentTimer.status === 'running'
-            ? <button type="button" onClick={() => void save((current) => ({ ...current, active_timer: pauseTimer(current.active_timer, Date.now()) }))} className={secondary}><Pause size={15} className="mr-1 inline" />{t('clock.pause')}</button>
-            : <button type="button" disabled={currentTimer.status === 'overdue'} onClick={() => void save((current) => ({ ...current, active_timer: resumeTimer(current.active_timer, Date.now()) }))} className={secondary}><Play size={15} className="mr-1 inline" />{t('clock.resume')}</button>}
-          {currentTimer.kind === 'stopwatch' && <button type="button" onClick={() => void save((current) => ({ ...current, active_timer: { ...current.active_timer, laps: [...current.active_timer.laps, { elapsed_ms: elapsedMilliseconds(current.active_timer, Date.now()), recorded_at_ms: Date.now() }].slice(-100) } }))} className={secondary}>{t('clock.lap')}</button>}
-          {currentTimer.kind === 'pomodoro' && <button type="button" onClick={skipPhase} className={secondary}><SkipForward size={15} className="mr-1 inline" />{t('clock.skipPhase')}</button>}
-          <button type="button" onClick={resetTimer} className={secondary}><RotateCcw size={15} className="mr-1 inline" />{t('clock.reset')}</button>
-          {currentTimer.kind !== 'practice' && <button type="button" onClick={clearTimer} className={secondary}><CircleStop size={15} className="mr-1 inline" />{t('clock.clearTimer')}</button>}
+            ? <button type="button" disabled={!loaded} onClick={() => void save((current) => ({ ...current, active_timer: pauseTimer(current.active_timer, Date.now()) }))} className={secondary}><Pause size={15} className="mr-1 inline" />{t('clock.pause')}</button>
+            : <button type="button" disabled={!loaded || currentTimer.status === 'overdue'} onClick={() => void save((current) => ({ ...current, active_timer: resumeTimer(current.active_timer, Date.now()) }))} className={secondary}><Play size={15} className="mr-1 inline" />{t('clock.resume')}</button>}
+          {currentTimer.kind === 'stopwatch' && <button type="button" disabled={!loaded} onClick={() => void save((current) => ({ ...current, active_timer: { ...current.active_timer, laps: [...current.active_timer.laps, { elapsed_ms: elapsedMilliseconds(current.active_timer, Date.now()), recorded_at_ms: Date.now() }].slice(-100) } }))} className={secondary}>{t('clock.lap')}</button>}
+          {currentTimer.kind === 'pomodoro' && <button type="button" disabled={!loaded} onClick={skipPhase} className={secondary}><SkipForward size={15} className="mr-1 inline" />{t('clock.skipPhase')}</button>}
+          <button type="button" disabled={!loaded} onClick={resetTimer} className={secondary}><RotateCcw size={15} className="mr-1 inline" />{t('clock.reset')}</button>
+          {currentTimer.kind !== 'practice' && <button type="button" disabled={!loaded} onClick={clearTimer} className={secondary}><CircleStop size={15} className="mr-1 inline" />{t('clock.clearTimer')}</button>}
         </div>
       </> : <>
         <div className="flex flex-wrap gap-2" role="group" aria-label={t('clock.title')}>
@@ -348,7 +310,7 @@ export default function ClockTab() {
         const overdue = alarm.overdue_at_ms ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(alarm.overdue_at_ms)) : ''
         return <li key={alarm.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-canvas-line bg-canvas-base p-3">
           <div><p className="font-medium text-canvas-text">{alarm.label}</p><p className="text-xs text-canvas-muted">{overdue ? t('clock.overdueReminder', { time: overdue }) : t(alarm.enabled ? 'clock.nextReminder' : 'clock.disabled', { time: occurrence })}</p></div>
-          <div className="flex flex-wrap gap-1"><button type="button" aria-label={t(alarm.enabled ? 'clock.enabled' : 'clock.disabled')} onClick={() => toggleAlarm(alarm)} className={secondary}>{t(alarm.enabled ? 'clock.enabled' : 'clock.disabled')}</button><button type="button" onClick={() => editAlarm(alarm)} className={secondary}>{t('common.edit')}</button>{alarm.overdue_at_ms && <button type="button" onClick={() => dismissOverdue(alarm)} className={secondary}>{t('clock.dismissOverdue')}</button>}<button type="button" aria-label={t('clock.deleteReminder', { label: alarm.label })} onClick={() => deleteAlarm(alarm)} className={secondary}>{t('common.delete')}</button></div>
+          <div className="flex flex-wrap gap-1"><button type="button" disabled={!loaded} aria-label={t(alarm.enabled ? 'clock.enabled' : 'clock.disabled')} onClick={() => toggleAlarm(alarm)} className={secondary}>{t(alarm.enabled ? 'clock.enabled' : 'clock.disabled')}</button><button type="button" disabled={!loaded} onClick={() => editAlarm(alarm)} className={secondary}>{t('common.edit')}</button>{alarm.overdue_at_ms && <button type="button" disabled={!loaded} onClick={() => dismissOverdue(alarm)} className={secondary}>{t('clock.dismissOverdue')}</button>}<button type="button" disabled={!loaded} aria-label={t('clock.deleteReminder', { label: alarm.label })} onClick={() => deleteAlarm(alarm)} className={secondary}>{t('common.delete')}</button></div>
         </li>
       })}</ul>}
     </section>

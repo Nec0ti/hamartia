@@ -34,7 +34,9 @@ export const exams = {
 export const practice = {
   list: () => client.get('/practice').then((r) => r.data),
   insights: () => client.get('/practice/insights').then((r) => r.data),
-  create: (payload) => client.post('/practice', payload).then((r) => r.data),
+  create: (payload, idempotencyKey = null) => client.post('/practice', payload, {
+    ...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
+  }).then((r) => r.data),
   update: (id, payload) => client.put(`/practice/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
 }

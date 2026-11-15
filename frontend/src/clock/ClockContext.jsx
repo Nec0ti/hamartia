@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import api from '../services/api'
+import { useI18n } from '../i18n.jsx'
+import { reconcileClock } from './engine.js'
 
 const ClockContext = createContext(null)
 const LEGACY_PRACTICE_KEY = 'hamartia.active-practice-session'
@@ -50,14 +52,20 @@ function practiceTimerFromLegacy(draft) {
 }
 
 export function ClockProvider({ children }) {
+  const { t } = useI18n()
   const [state, setState] = useState(EMPTY_CLOCK)
   const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [savingError, setSavingError] = useState('')
   const stateRef = useRef(EMPTY_CLOCK)
+  const loadedRef = useRef(false)
   const queueRef = useRef(Promise.resolve())
+  const notifiedRef = useRef(new Set())
 
   const load = useCallback(async () => {
     setLoaded(false)
+    loadedRef.current = false
+    setLoading(true)
     setSavingError('')
     try {
       let saved = await api.clock.get()
@@ -75,18 +83,21 @@ export function ClockProvider({ children }) {
       }
       stateRef.current = saved
       setState(saved)
+      loadedRef.current = true
+      setLoaded(true)
       return true
     } catch {
       setSavingError('clock.persistenceError')
       return false
     } finally {
-      setLoaded(true)
+      setLoading(false)
     }
   }, [])
 
   useEffect(() => { void load() }, [load])
 
   const updateClock = useCallback((update) => {
+    if (!loadedRef.current) return Promise.reject(new Error('Clock state has not loaded successfully'))
     const current = stateRef.current
     const next = typeof update === 'function' ? update(current) : update
     stateRef.current = next
@@ -111,13 +122,50 @@ export function ClockProvider({ children }) {
     return task
   }, [])
 
+  useEffect(() => {
+    if (!loaded) return undefined
+    const reconcile = () => {
+      const current = stateRef.current
+      const result = reconcileClock(current, Date.now())
+      if (JSON.stringify(current) === JSON.stringify(result.state)) return
+      stateRef.current = result.state
+      setState(result.state)
+      void updateClock(result.state).catch(() => {})
+      for (const event of result.events) {
+        const eventKey = `${event.type}:${event.id || event.kind || 'timer'}:${event.at_ms}`
+        if (notifiedRef.current.has(eventKey)) continue
+        notifiedRef.current.add(eventKey)
+        if (notifiedRef.current.size > 256) notifiedRef.current.delete(notifiedRef.current.values().next().value)
+        if (!stateRef.current.preferences.notifications_opt_in
+          || typeof window.Notification === 'undefined'
+          || window.Notification.permission !== 'granted') continue
+        const title = event.type === 'alarm' ? t('clock.reminders') : t('clock.title')
+        const body = event.type === 'alarm'
+          ? t('clock.alarmNotification', { label: event.label })
+          : t('clock.timerNotification')
+        try { new window.Notification(title, { body, tag: `hamartia-clock-${event.type}-${event.id || event.kind || 'timer'}` }) } catch {}
+      }
+    }
+    reconcile()
+    const interval = window.setInterval(reconcile, 1000)
+    const onVisibility = () => { if (document.visibilityState === 'visible') reconcile() }
+    window.addEventListener('focus', reconcile)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', reconcile)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [loaded, t, updateClock])
+
   const value = useMemo(() => ({
     state,
     loaded,
+    loading,
     savingError,
     updateClock,
     reload: load,
-  }), [state, loaded, savingError, updateClock, load])
+  }), [state, loaded, loading, savingError, updateClock, load])
 
   return <ClockContext.Provider value={value}>{children}</ClockContext.Provider>
 }

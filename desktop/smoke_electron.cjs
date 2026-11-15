@@ -4,6 +4,7 @@ const fsSync = require('node:fs')
 const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
+const { assertSafeStorageMetadata } = require('./safeStorageSmoke.cjs')
 
 const appTarget = path.resolve(process.argv[2] || '')
 const timeoutMs = Number(process.env.HAMARTIA_ELECTRON_SMOKE_TIMEOUT_MS || 90_000)
@@ -95,13 +96,11 @@ async function main() {
     assert.match(readiness.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
     assert.equal(readiness.backendUrl, readiness.origin, 'The marker should identify the backend origin')
     const storageMode = process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected'
-    const protectedMode = storageMode === 'protected'
-    assert.equal(readiness.safeStorage.platform, process.platform)
-    assert.equal(readiness.safeStorage.backend, process.platform === 'linux' ? process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND : null)
-    assert.equal(typeof readiness.safeStorage.available, 'boolean')
-    assert.equal(readiness.safeStorage.roundTrip, protectedMode, 'Only protected storage mode should perform a native round-trip')
-    assert.equal(readiness.safeStorage.protectedStorageAvailable, protectedMode, 'Native safeStorage behavior should match the production policy')
-    if (protectedMode) assert.equal(readiness.safeStorage.available, true, 'Protected storage mode requires native encryption availability')
+    assertSafeStorageMetadata(readiness.safeStorage, {
+      platform: process.platform,
+      mode: storageMode,
+      expectedBackend: process.platform === 'linux' ? process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND : undefined,
+    })
 
     const remaining = timeoutMs - (Date.now() - startedAt)
     await Promise.race([

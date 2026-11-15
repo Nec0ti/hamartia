@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { probeSafeStorage } = require('../safeStorageSmoke.cjs')
+const { assertSafeStorageMetadata, probeSafeStorage } = require('../safeStorageSmoke.cjs')
 
 function storageFixture(backend) {
   return {
@@ -25,6 +25,24 @@ test('safeStorage smoke emits only native metadata for a protected round-trip', 
     roundTrip: true, protectedStorageAvailable: true,
   })
   assert.equal(JSON.stringify(result).includes('fixture:'), false)
+})
+
+test('packaged smoke marker validation accepts protected and rejected native metadata only', () => {
+  assert.doesNotThrow(() => assertSafeStorageMetadata({
+    platform: 'win32', backend: null, available: true, roundTrip: true, protectedStorageAvailable: true,
+  }, { platform: 'win32', mode: 'protected' }))
+  assert.doesNotThrow(() => assertSafeStorageMetadata({
+    platform: 'linux', backend: 'basic_text', available: false, roundTrip: false, protectedStorageAvailable: false,
+  }, { platform: 'linux', mode: 'rejected', expectedBackend: 'basic_text' }))
+  for (const metadata of [
+    { platform: 'linux', backend: 'gnome_libsecret', available: true, roundTrip: true, protectedStorageAvailable: false },
+    { platform: 'linux', backend: 'basic_text', available: true, roundTrip: false, protectedStorageAvailable: false },
+    { platform: 'linux', backend: 'basic_text', available: false, roundTrip: true, protectedStorageAvailable: false },
+  ]) {
+    assert.throws(() => assertSafeStorageMetadata(metadata, {
+      platform: 'linux', mode: 'rejected', expectedBackend: 'basic_text',
+    }))
+  }
 })
 
 test('basic_text smoke uses the production guard and expects protected storage rejection', async () => {

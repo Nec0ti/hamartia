@@ -694,8 +694,10 @@ async function main() {
                 method: 'POST', headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
               })
-              if (!response.ok) return { status: 'failed', detail: await response.text() }
-              const draft = await response.json()
+              const responseBody = await response.text()
+              window.__practiceDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
               window.__practiceDraftResponse = draft
               if (payload.language === 'en' && payload.messages.length === 1 && payload.messages[0].startsWith('date: 2026-11-15')) {
                 if (JSON.stringify(draft.missing) !== JSON.stringify(['topic'])) throw new Error(`Expected only the topic field to be missing; got ${JSON.stringify(draft.missing)}`)
@@ -746,11 +748,12 @@ async function main() {
       const state = await page.evaluate(() => ({
         language: localStorage.getItem('hamartia.language'),
         payload: window.__mockAgentPayload,
+        draftHttp: window.__practiceDraftHttp,
         draft: window.__practiceDraftResponse,
         liveText: [...document.querySelectorAll('[aria-live]')].map((element) => element.innerText),
         bodyText: document.body.innerText.slice(-1200),
       }))
-      console.error('Practice clarification smoke state:', JSON.stringify(state))
+      console.error('Practice clarification smoke state:', JSON.stringify({ ...state, pageErrors, failedResponses, appRequests }))
       throw error
     }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)

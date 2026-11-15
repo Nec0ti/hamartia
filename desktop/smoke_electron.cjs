@@ -4,6 +4,7 @@ const fsSync = require('node:fs')
 const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
+const { assertSafeStorageMetadata } = require('./safeStorageSmoke.cjs')
 
 const appTarget = path.resolve(process.argv[2] || '')
 const timeoutMs = Number(process.env.HAMARTIA_ELECTRON_SMOKE_TIMEOUT_MS || 90_000)
@@ -49,9 +50,12 @@ async function main() {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-electron-smoke-'))
   const markerPath = path.join(tempDir, 'ready.json')
   const userDataPath = path.join(tempDir, 'user-data')
+  const electronArgs = process.env.HAMARTIA_ELECTRON_SMOKE_PASSWORD_STORE
+    ? [`--password-store=${process.env.HAMARTIA_ELECTRON_SMOKE_PASSWORD_STORE}`]
+    : []
   let stdout = ''
   let stderr = ''
-  const child = spawn(executable, [], {
+  const child = spawn(executable, electronArgs, {
     cwd,
     env: {
       ...process.env,
@@ -91,6 +95,12 @@ async function main() {
     assert.equal(readiness.healthStatus, 200, 'The same-origin readiness API should return HTTP 200')
     assert.match(readiness.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
     assert.equal(readiness.backendUrl, readiness.origin, 'The marker should identify the backend origin')
+    const storageMode = process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected'
+    assertSafeStorageMetadata(readiness.safeStorage, {
+      platform: process.platform,
+      mode: storageMode,
+      expectedBackend: process.platform === 'linux' ? process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND : undefined,
+    })
 
     const remaining = timeoutMs - (Date.now() - startedAt)
     await Promise.race([
@@ -103,6 +113,8 @@ async function main() {
     clearTimeout(shutdownTimer)
     assert.equal(exitCode, 0, `Electron exited with code ${exitCode}\n${stderr}`)
     await assertBackendStopped(readiness.backendUrl)
+    await assert.rejects(fs.access(path.join(userDataPath, 'chatgpt-credentials.bin')), { code: 'ENOENT' })
+    await assert.rejects(fs.access(path.join(userDataPath, 'chatgpt-host-id')), { code: 'ENOENT' })
     process.stdout.write(`Electron smoke passed: ${JSON.stringify(readiness)}\n`)
   } catch (error) {
     if (child.exitCode === null) child.kill()

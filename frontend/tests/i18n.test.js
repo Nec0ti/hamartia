@@ -36,3 +36,12 @@ test('configured Study Agent server option is labeled in both locales with remot
   assert.match(translate('settings.localAiServerUrl', 'en'), /local or remote/)
   assert.match(translate('settings.localAiServerUrl', 'tr'), /yerel veya uzak/)
 })
+
+test('Study Agent practice entry explains evidence, missing fields, and approval in both languages', () => {
+  assert.match(translate('agent.practiceEntryHint', 'en'), /never fills them in/)
+  assert.match(translate('agent.practiceEntryHint', 'tr'), /kendisi doldurmaz/)
+  assert.match(translate('agent.practiceEntryConsent', 'en'), /only after you approve it/)
+  assert.match(translate('agent.practiceEntryLocalConsent', 'tr', { endpoint: 'http://localhost:4000', key: 'key note' }), /tam olarak şu yapılandırılmış uç noktaya gönderilir/)
+  assert.equal(translate('agent.practiceSave', 'en'), 'Approve this preview and save')
+  assert.equal(translate('agent.practiceSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
+})

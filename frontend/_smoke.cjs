@@ -685,7 +685,10 @@ async function main() {
           chat: async (payload) => {
             window.__mockAgentPayload = payload
             if (payload.message === 'cancel me') return new Promise((resolve) => { window.__mockCancel = resolve })
-            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
+            const response = payload.workflow === 'practice-entry'
+              ? JSON.stringify({ fields: { date: '2026-11-15', subject: 'Mathematics', topic: 'Functions', correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0 } })
+              : 'A mocked study response.'
+            window.__mockAgentDelta?.({ requestId: payload.requestId, delta: response })
             return { status: 'completed' }
           },
           cancel: async () => {
@@ -709,7 +712,20 @@ async function main() {
     await sendButton.click()
     await page.getByText('A mocked study response.').waitFor()
     assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
-      message: 'What should I review next?', model: 'mock-model', language: 'en-US', consent: true, requestId: undefined,
+      message: 'What should I review next?', model: 'mock-model', language: 'en', workflow: 'chat', messages: [], consent: true, requestId: undefined,
+    })
+    await page.getByLabel('Study Agent mode').selectOption('practice-entry')
+    await page.getByLabel('Describe the practice set you completed').fill('date: 2026-11-15\nsubject: Mathematics\ntopic: Functions\ncorrect: 7\nincorrect: 2\nblank: 1\nduration_minutes: 18\nduration_seconds: 0')
+    await page.getByRole('checkbox').check()
+    await page.getByRole('button', { name: 'Send to OpenAI' }).click()
+    await page.getByRole('heading', { name: 'Proposed practice set' }).waitFor()
+    await page.getByText('Source: “correct: 7”').waitFor()
+    page.on('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Approve this preview and save' }).click()
+    await page.getByText('Practice set saved. You can start another entry.').waitFor()
+    assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
+      message: 'date: 2026-11-15\nsubject: Mathematics\ntopic: Functions\ncorrect: 7\nincorrect: 2\nblank: 1\nduration_minutes: 18\nduration_seconds: 0',
+      model: 'mock-model', language: 'en', workflow: 'practice-entry', messages: ['date: 2026-11-15\nsubject: Mathematics\ntopic: Functions\ncorrect: 7\nincorrect: 2\nblank: 1\nduration_minutes: 18\nduration_seconds: 0'], consent: true, requestId: undefined,
     })
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()
@@ -723,7 +739,6 @@ async function main() {
     await page.getByText('Request cancelled.').waitFor()
     await page.getByRole('button', { name: 'Sign out' }).click()
     await page.getByText(/OpenAI did not confirm remote revocation/).waitFor()
-    page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Use a different account' }).click()
     await page.getByText(/The local account link was removed/).waitFor()
     await page.evaluate(() => localStorage.setItem('hamartia.smoke.chatgpt', JSON.stringify({ connected: false, recoveryRequired: true })))
@@ -990,15 +1005,17 @@ async function main() {
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 3)
     assert(!appRequests.some((request) => request.path === '/study-agent/local'))
+    assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/practice/agent-')).map((request) => request.path), ['/practice/agent-draft', '/practice/agent-create'])
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
-    assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
+    assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-') && (request.path.includes('/agent') || request.path.endsWith('/analyze'))))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])
     assert.deepEqual(consoleErrors, [])
     const saved = JSON.parse(await fs.readFile(path.join(dataDir, 'questions.json'), 'utf8'))
     const savedPractice = JSON.parse(await fs.readFile(path.join(dataDir, 'practice_sessions.json'), 'utf8'))
     assert(savedPractice.some((session) => session.correct === 8 && session.topic === 'Fonksiyon'))
+    assert(savedPractice.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions' && session.correct === 7))
     assert(savedPractice.find((session) => session.id === practiceSession.id).duration_seconds >= elapsedAtFinish)
     assert.equal(savedPractice.filter((session) => session.topic === 'Fonksiyon').length, 7)
     assert.deepEqual(saved.find((question) => question.id === createdQuestion.id).review_attempts.map((item) => item.correct), [true])

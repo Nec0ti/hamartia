@@ -90,7 +90,7 @@ def main(repeats=7, json_output=None):
         # Editing a profile is append-only. v1 exam keeps its old saved rule;
         # new v2 record uses the new 1-point penalty and independently expected 8.
         revised = client.put(f"/exam-profiles/{no_penalty['profile_id']}", json={
-            "display_name": "SAT-like custom label", "country_label": "Exampleland",
+            "display_name": "SAT-like profile v2", "country_label": "Second Context",
             "scoring_rule": {"correct_points": "1", "wrong_penalty": "1", "blank_points": "0"},
         })
         assert revised.status_code == 200 and revised.json()["version"] == 2
@@ -101,7 +101,7 @@ def main(repeats=7, json_output=None):
                               if item["profile_id"] == no_penalty["profile_id"] and item["version"] == 2), None)
         assert no_penalty_v1 == no_penalty, "v1 must remain resolvable after v2 is appended"
         assert no_penalty_v2 == revised.json(), "catalog must expose appended v2 policy"
-        _assert_profile_vector(revised.json(), "SAT-like custom label", "Exampleland", "1/1",
+        _assert_profile_vector(revised.json(), "SAT-like profile v2", "Second Context", "1/1",
                                version=2)
         v2_payload = _exam_payload(revised.json())
         request_started = datetime.now(timezone.utc)
@@ -138,10 +138,6 @@ def main(repeats=7, json_output=None):
                                      wrong="1/5", correct="1/3", blank="1/7")
         _assert_profile_vector(fractional, "Prime denominator rule", "Exampleland", "1/5",
                                correct="1/3", blank="1/7")
-        created_profile_ids = [profile["profile_id"] for profile in
-                               (no_penalty, half_penalty, thirds, blank_credit, fractional)]
-        if len(created_profile_ids) != 5 or len(set(created_profile_ids)) != 5:
-            raise AssertionError("each custom profile creation must return a distinct profile ID")
         fractional_payload = _exam_payload(fractional)
         fractional_payload.update(correct=2, incorrect=3, blank=4, duration_minutes=1)
         request_started = datetime.now(timezone.utc)
@@ -184,15 +180,37 @@ def main(repeats=7, json_output=None):
             raise AssertionError("zero-question exam must remain net 0 / XP 0")
         expected_rows.append(zero_expected)
 
+        zero_points = _create_profile(client, "Zero correct points", "Exampleland",
+                                      wrong="0/1", correct="0/1", blank="0/1")
+        _assert_profile_vector(zero_points, "Zero correct points", "Exampleland", "0/1",
+                               correct="0/1", blank="0/1")
+        created_profile_ids = [profile["profile_id"] for profile in
+                               (no_penalty, half_penalty, thirds, blank_credit, fractional, zero_points)]
+        if len(created_profile_ids) != 6 or len(set(created_profile_ids)) != 6:
+            raise AssertionError("each custom profile creation must return a distinct profile ID")
+        zero_points_payload = _exam_payload(zero_points)
+        zero_points_payload.update(correct=12, incorrect=4, blank=4, duration_minutes=30)
+        request_started = datetime.now(timezone.utc)
+        zero_points_response = client.post("/exams", json=zero_points_payload)
+        request_finished = datetime.now(timezone.utc)
+        assert zero_points_response.status_code == 201, zero_points_response.text
+        zero_points_expected = _expected_response(
+            zero_points_payload, zero_points, {"net": 0.0, "xp": 168}, zero_points_response.json(),
+            request_started, request_finished,
+        )
+        if zero_points_response.json() != zero_points_expected:
+            raise AssertionError("zero correct-point rule must score net 0 while raw counts still award XP 168")
+        expected_rows.append(zero_points_expected)
+
         rows = client.get("/exams").json()
         if rows != expected_rows:
             raise AssertionError("persisted GET /exams did not preserve complete expected records")
         post_ids = [row["id"] for row in rows]
-        if len(post_ids) != 9 or len(set(post_ids)) != 9:
-            raise AssertionError("each of the nine POST /exams requests must persist a distinct valid ID")
+        if len(post_ids) != 10 or len(set(post_ids)) != 10:
+            raise AssertionError("each of the ten POST /exams requests must persist a distinct valid ID")
         user_stats = client.get("/user").json()
         cosmos_state = client.get("/cosmos").json()
-        if user_stats["total_xp"] != 843 or user_stats["level"] != 2 or cosmos_state["user_xp"] != 843:
+        if user_stats["total_xp"] != 1011 or user_stats["level"] != 3 or cosmos_state["user_xp"] != 1011:
             raise AssertionError("global user/Cosmos progression must use the same raw-count XP across profiles")
         by_key = {}
         for row in rows:
@@ -206,6 +224,7 @@ def main(repeats=7, json_output=None):
             f"{thirds['profile_id']}@1": by_key[f"{thirds['profile_id']}@1"],
             f"{blank_credit['profile_id']}@1": by_key[f"{blank_credit['profile_id']}@1"],
             f"{fractional['profile_id']}@1": by_key[f"{fractional['profile_id']}@1"],
+            f"{zero_points['profile_id']}@1": by_key[f"{zero_points['profile_id']}@1"],
         }
         expected = {
             "legacy-yks@1": [expected_rows[0], expected_rows[8]],
@@ -215,6 +234,7 @@ def main(repeats=7, json_output=None):
             f"{thirds['profile_id']}@1": [expected_rows[3]],
             f"{blank_credit['profile_id']}@1": [expected_rows[5]],
             f"{fractional['profile_id']}@1": [expected_rows[6]],
+            f"{zero_points['profile_id']}@1": [expected_rows[9]],
         }
         for key, full_rows in actual.items():
             if full_rows != expected[key]:
@@ -231,7 +251,7 @@ def main(repeats=7, json_output=None):
         ) == "half-penalty net corrupted by 0.25"
 
         reloaded = StorageService(Path(directory)).load_list("exams.json", Exam)
-        if len(reloaded) != 9:
+        if len(reloaded) != 10:
             raise AssertionError("persisted record count mismatch")
         # Old pre-profile JSON has no snapshot field and must still score as
         # legacy YKS. The same persisted profile and exam versions must survive
@@ -286,7 +306,8 @@ def main(repeats=7, json_output=None):
             restored = restored_storage.load_list("exams.json", Exam)
             restored_custom = restored_storage.load_list("exam_profiles.json", ExamScoringProfile)
             restored_rows = [row.model_dump(mode="json") for row in restored]
-            expected_custom_profiles = [no_penalty, half_penalty, thirds, revised.json(), blank_credit, fractional]
+            expected_custom_profiles = [no_penalty, half_penalty, thirds, revised.json(),
+                                        blank_credit, fractional, zero_points]
             restored_profiles = [profile.model_dump(mode="json") for profile in restored_custom]
             if restored_rows != expected_rows:
                 raise AssertionError("backup restore changed or lost any complete exam snapshot")
@@ -306,7 +327,7 @@ def main(repeats=7, json_output=None):
             "network": "in-process FastAPI TestClient only; no external or provider calls",
             "persisted_records": len(reloaded),
             "persisted_exam_bytes": serialized_bytes,
-            "profile_versions": 7,
+            "profile_versions": 8,
             "raw_counts_per_golden": {"correct": 12, "incorrect": 4, "blank": 4},
             "hand_authored_goldens": golden,
             "all_blank_positive_score": {"rule": [1, 0, 1], "correct": 0, "incorrect": 0, "blank": 4, "net": 4.0, "xp": 0},
@@ -315,10 +336,11 @@ def main(repeats=7, json_output=None):
             "section_total_golden": {"counts": [12, 4, 4], "net": 11 / 3},
             "section_root_total_control": "API ignored deliberately mismatched root counts/subject and persisted the exact two section records",
             "legacy_and_custom_xp_equal": [168, 168, 168],
-            "global_progression": {"raw_count_xp_total": 843, "user_level": 2, "cosmos_user_xp": 843},
+            "zero_correct_points": {"counts": [12, 4, 4], "net": 0.0, "xp": 168},
+            "global_progression": {"raw_count_xp_total": 1011, "user_level": 3, "cosmos_user_xp": 1011},
             "legacy_json_migration": {"missing_snapshot_defaults_to": "legacy-yks@1", "net": legacy_loaded.net},
             "legacy_zip_migration": "pre-profile archive without exam_profiles.json restored legacy-yks@1 with net 11",
-            "backup_restore": "all nine complete exam rows and six complete custom profile versions matched independent vectors",
+            "backup_restore": "all ten complete exam rows and seven complete custom profile versions matched independent vectors",
             "oracle": "complete persisted API rows including counts, exact section names, XP, snapshots, and metadata, partitioned by profile ID/version; literal score goldens",
             "negative_control": "same request/profile with net changed by 0.25 changes expected full-state vector",
             "api_list_timing": measure(list_api, repeats),

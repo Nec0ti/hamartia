@@ -66,15 +66,15 @@
       "ai_included": false,
       "alarms": 128,
       "api_get_128_alarms": {
-        "p50_seconds": 0.010649,
-        "p95_seconds": 0.013896,
+        "p50_seconds": 0.008818,
+        "p95_seconds": 0.011817,
         "quantiles": "p50 is median; p95 is nearest-rank ceil(0.95*n), with no interpolation",
         "samples": 21,
         "warmups": 1
       },
       "api_patch_128_alarms": {
-        "p50_seconds": 0.018487,
-        "p95_seconds": 0.028838,
+        "p50_seconds": 0.012661,
+        "p95_seconds": 0.028586,
         "quantiles": "p50 is median; p95 is nearest-rank ceil(0.95*n), with no interpolation",
         "samples": 21,
         "warmups": 1

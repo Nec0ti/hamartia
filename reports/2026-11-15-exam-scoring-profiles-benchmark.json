@@ -12,13 +12,13 @@
     ],
     "xp": 0
   },
-  "api_list_oracle": "each timed GET /exams response equals all nine complete persisted rows",
+  "api_list_oracle": "each timed GET /exams response equals all ten complete persisted rows",
   "api_list_timing": {
-    "p50_seconds": 0.008777,
-    "p95_seconds": 0.01184,
+    "p50_seconds": 0.005208,
+    "p95_seconds": 0.005378,
     "samples": 3
   },
-  "backup_restore": "all nine complete exam rows and six complete custom profile versions matched independent vectors",
+  "backup_restore": "all ten complete exam rows and seven complete custom profile versions matched independent vectors",
   "benchmark": "versioned_exam_scoring_profiles",
   "environment": {
     "logical_cpus": 8,
@@ -28,9 +28,9 @@
     "seed": null
   },
   "global_progression": {
-    "cosmos_user_xp": 843,
-    "raw_count_xp_total": 843,
-    "user_level": 2
+    "cosmos_user_xp": 1011,
+    "raw_count_xp_total": 1011,
+    "user_level": 3
   },
   "hand_authored_goldens": {
     "custom-half-penalty@1": {
@@ -59,10 +59,11 @@
   "negative_control": "same request/profile with net changed by 0.25 changes expected full-state vector",
   "network": "in-process FastAPI TestClient only; no external or provider calls",
   "oracle": "complete persisted API rows including counts, exact section names, XP, snapshots, and metadata, partitioned by profile ID/version; literal score goldens",
-  "persisted_exam_bytes": 6455,
-  "persisted_records": 9,
-  "profile_identity_control": "five custom profile creation IDs are pairwise unique",
-  "profile_versions": 7,
+  "persisted_exam_bytes": 7157,
+  "persisted_records": 10,
+  "profile_identity_control": "six custom profile creation IDs are pairwise unique",
+  "profile_version_metadata_control": "v2 changes display name and country label; v1 catalog row and saved exam snapshot retain original metadata",
+  "profile_versions": 8,
   "raw_counts_per_golden": {
     "blank": 4,
     "correct": 12,
@@ -110,5 +111,14 @@
       "net": 0.0,
       "xp": 0
     }
-  ]
+  ],
+  "zero_correct_points": {
+    "counts": [
+      12,
+      4,
+      4
+    ],
+    "net": 0.0,
+    "xp": 168
+  }
 }

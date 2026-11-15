@@ -1,6 +1,7 @@
 """Small shared helpers for reproducible, AI-free benchmark reports."""
 
 import json
+import copy
 import os
 import platform
 import struct
@@ -51,3 +52,24 @@ def emit(result, json_output=None):
     if json_output:
         Path(json_output).write_text(encoded + "\n", encoding="utf-8")
     print(encoded)
+
+
+def assert_oracle(actual, expected, label="benchmark oracle"):
+    """Compare complete outputs against precomputed expected values."""
+    if actual != expected:
+        raise AssertionError(f"{label} mismatch")
+
+
+def probe_detects_mutation(actual, expected, mutate, label):
+    """Prove an oracle comparison rejects a deterministic wrong-result mutant.
+
+    This is correctness harness self-checking only. It is never called in a timed
+    operation and intentionally does not contribute a benchmark sample.
+    """
+    mutant = copy.deepcopy(actual)
+    mutate(mutant)
+    try:
+        assert_oracle(mutant, expected, label)
+    except AssertionError:
+        return label
+    raise AssertionError(f"oracle failed to reject mutation: {label}")

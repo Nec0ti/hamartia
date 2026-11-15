@@ -5,13 +5,13 @@ import argparse
 import random
 import tempfile
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from app.core.progression import progression_summary
 from app.models.schemas import Exam, UserStats
-from app.services.storage import StorageService
-from benchmark_common import emit, measure
+from app.services.storage import StorageError, StorageService
+from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation
 
 SEED = 20261114
 
@@ -22,19 +22,33 @@ def main(count=1000, repeats=7, json_output=None):
     with tempfile.TemporaryDirectory() as directory:
         storage = StorageService(Path(directory))
         started = time.perf_counter()
+        expected = []
         for index in range(count):
             sectioned = index % 100 == 0
+            correct, incorrect, blank = ((0, 0, 0) if index == 2 else
+                                         (1 + index % 31, index % 7, index % 4))
+            exam_date = (date(2026, 11, 14) - timedelta(days=index)).isoformat() if index < 3 else "2025-11-14"
+            subject = "TYT Geneli" if sectioned else rng.choice(("Matematik", "Türkçe", "Fizik", "Kimya"))
+            sections = ([
+                {"subject": "Türkçe", "correct": correct // 2, "incorrect": incorrect // 2, "blank": blank // 2},
+                {"subject": "Matematik", "correct": correct - correct // 2, "incorrect": incorrect - incorrect // 2, "blank": blank - blank // 2},
+            ] if sectioned else [])
+            record = {
+                "id": f"exam-{index}", "date": exam_date,
+                "subject": subject, "exam_type": "tyt" if sectioned else "branch",
+                "correct": correct, "incorrect": incorrect, "blank": blank,
+                "total": correct + incorrect,
+                "net": correct - incorrect / 4,
+                "xp": max(0, int((correct - incorrect / 4) * correct * 1.5
+                                 - (1 if index == 3 else 1 + index % 180) * incorrect * 0.25)),
+                "duration_minutes": (0 if index == 3 else 1 + index % 180),
+                "duration_seconds": index % 60, "created_at": "", "sections": sections,
+            }
+            expected.append(record)
             storage.append_list(
                 "exams.json",
                 Exam(
-                    id=f"exam-{index}", date="2026-11-14",
-                    subject="TYT Geneli" if sectioned else rng.choice(("Matematik", "Türkçe", "Fizik", "Kimya")),
-                    exam_type="tyt" if sectioned else "branch",
-                    correct=25, incorrect=5, blank=0, duration_minutes=40,
-                    sections=[
-                        {"subject": "Türkçe", "correct": 12, "incorrect": 2, "blank": 0},
-                        {"subject": "Matematik", "correct": 13, "incorrect": 3, "blank": 0},
-                    ] if sectioned else [],
+                    **record,
                 ),
                 Exam,
             )
@@ -43,7 +57,7 @@ def main(count=1000, repeats=7, json_output=None):
         started = time.perf_counter()
         loaded = storage.load_list("exams.json", Exam)
         read_seconds = time.perf_counter() - started
-        assert len(loaded) == count
+        assert_oracle([item.model_dump(mode="json") for item in loaded], expected, "storage append/read records")
         sectioned_count = sum(bool(exam.sections) for exam in loaded)
         assert sectioned_count == (count + 99) // 100
         warm_read = measure(lambda: _assert_count(storage, count), repeats)
@@ -54,11 +68,16 @@ def main(count=1000, repeats=7, json_output=None):
             exam.duration_minutes += 1
             return True
         update_stats = measure(lambda: _assert_updated(storage, update_first), repeats)
-        assert storage.load_list("exams.json", Exam)[0].duration_minutes == 41 + repeats
+        updated = storage.load_list("exams.json", Exam)
+        expected_duration = expected[0]["duration_minutes"] + repeats + 1  # warmup plus measured samples
+        assert updated[0].duration_minutes == expected_duration
+        assert all(item.id == expected[index]["id"] for index, item in enumerate(updated))
 
         delete_ids = [f"exam-{index}" for index in range(count - 1, count - repeats - 2, -1)]
         delete_stats = measure(lambda: _delete_one(storage, delete_ids.pop()), repeats)
-        assert len(storage.load_list("exams.json", Exam)) == count - repeats - 1
+        remaining = storage.load_list("exams.json", Exam)
+        deleted = {f"exam-{index}" for index in range(count - repeats - 1, count)}
+        assert [item.id for item in remaining] == [item["id"] for item in expected if item["id"] not in deleted]
 
         def add_xp(user):
             user.total_xp += 1
@@ -69,8 +88,26 @@ def main(count=1000, repeats=7, json_output=None):
 
         progression_stats = measure(lambda: progression_summary(
             storage.load_list("exams.json", Exam), today=date(2026, 11, 14)), repeats)
-        progression = progression_summary(loaded, today=date(2026, 11, 14))
-        assert progression["streak_days"] == 1
+        progression = progression_summary(storage.load_list("exams.json", Exam), today=date(2026, 11, 14))
+        progression_expected = _expected_progression(expected, set(deleted))
+        assert_oracle(progression, progression_expected, "storage progression")
+        mutation_probes = [probe_detects_mutation(
+            progression, progression_expected,
+            lambda output: output.__setitem__("total_xp", output["total_xp"] + 1),
+            "progression XP off by one",
+        )]
+        exams_path = Path(directory) / "exams.json"
+        valid_payload = exams_path.read_bytes()
+        exams_path.write_text('[{"id":', encoding="utf-8")
+        try:
+            storage.load_list("exams.json", Exam)
+        except StorageError:
+            pass
+        else:
+            raise AssertionError("truncated JSON was accepted as a valid collection")
+        assert exams_path.read_text(encoding="utf-8") == '[{"id":'
+        exams_path.write_bytes(valid_payload)
+        assert len(storage.load_list("exams.json", Exam)) == count - repeats - 1
         emit({
             "benchmark": "json_exam_storage_sequential_append_stress",
             "seed": SEED,
@@ -86,6 +123,8 @@ def main(count=1000, repeats=7, json_output=None):
             "document_update": document_stats,
             "progression_full_history": progression_stats,
             "correctness": "append/read/update/delete and progression assertions passed",
+            "mutation_probes": mutation_probes,
+            "corrupt_input_cases": ["truncated JSON rejected without overwriting source"],
             "limitations": "Sequential append rewrites the full growing JSON list (O(n^2)); this is a stress case, not the mixed daily-flow workload.",
         }, json_output)
 
@@ -110,6 +149,30 @@ def _delete_one(storage, question_id):
 
 def _assert_doc_updated(storage, update):
     assert storage.update_doc("user.json", UserStats, update)
+
+
+def _expected_progression(records, deleted):
+    active = [row for row in records if row["id"] not in deleted]
+    xp = 0
+    days = set()
+    for row in active:
+        correct, incorrect = row["correct"], row["incorrect"]
+        duration = row["duration_minutes"] or 1
+        net = correct - incorrect / 4
+        xp += max(0, int(net * correct * 1.5 - duration * incorrect * 0.25))
+        days.add(date.fromisoformat(row["date"]))
+    today = date(2026, 11, 14)
+    last = max((day for day in days if day <= today), default=None)
+    streak = 0
+    if last and last >= today - timedelta(days=1):
+        while last - timedelta(days=streak) in days:
+            streak += 1
+    return {
+        "total_xp": xp,
+        "level": xp // 500 + 1 if xp >= 500 else 1,
+        "streak_days": streak,
+        "last_active_date": last.isoformat() if last else "",
+    }
 
 
 if __name__ == "__main__":

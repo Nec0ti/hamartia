@@ -2,7 +2,7 @@
 
 import argparse
 import random
-from collections import defaultdict
+from collections import Counter, defaultdict
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,7 +11,7 @@ from statistics import median
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
-from benchmark_common import emit, measure
+from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -35,15 +35,17 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
             exam = exams[exam_index]
             size = exam.correct + exam.incorrect + exam.blank
             if exam_index not in positions:
+                fixed_positions = [1, 40, 41, 80, 81, size]
+                remaining = [value for value in range(1, size + 1) if value not in fixed_positions]
                 positions[exam_index] = (
-                    iter(rng.sample(range(1, size + 1), exam.incorrect)),
-                    iter(rng.sample(range(1, size + 1), exam.incorrect)),
+                    iter(fixed_positions + rng.sample(remaining, exam.incorrect - len(fixed_positions))),
+                    iter([1, 40, 41, 80, 81, size] + rng.sample(remaining, exam.incorrect - len(fixed_positions))),
                 )
             question_number = next(positions[exam_index][0])
             order = next(positions[exam_index][1])
-            stage = ("early", "middle", "late")[min(2, ((order - 1) * 3) // size)]
+            stage = "early" if order <= 40 else "middle" if order <= 80 else "late"
             key = (getattr(exam, "exam_type", "branch"), exam.subject)
-            time_spent = 15 + index % 226
+            time_spent = None if index % 97 == 0 else 15 + index % 226
             expected[key][stage].append(time_spent)
             questions.append(Question(
                 id=f"q-{index}", exam_id=exam.id, question_number=question_number,
@@ -59,14 +61,20 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
                 saved_exams = storage.load_list("exams.json", Exam)
                 return topic_priorities(saved_questions, today=TODAY, exams=saved_exams)["question_order"]
             summary = summarize()
-            actual = {(row["exam_type"], row["subject"]): row for row in summary}
-            assert set(actual) == set(expected)
+            expected_rows = []
+            group_exam_counts = Counter(exam.subject for exam in exams)
             for key, stages in expected.items():
+                row = {"exam_type": key[0], "subject": key[1], "exam_count": group_exam_counts[key[1]]}
                 for stage, times in stages.items():
-                    assert actual[key][stage] == {
+                    valid_times = [value for value in times if value is not None]
+                    row[stage] = {
                         "wrong_count": len(times),
-                        "median_seconds": median(times) if times else None,
+                        "median_seconds": median(valid_times) if valid_times else None,
                     }
+                expected_rows.append(row)
+            expected_rows.sort(key=lambda row: (-sum(row[stage]["wrong_count"] for stage in ("early", "middle", "late")),
+                                                row["subject"].casefold(), row["exam_type"]))
+            assert_oracle(summary, expected_rows, "question-order full summary")
             assert len({(item.exam_id, item.question_number) for item in questions}) == count
             assert len({(item.exam_id, item.solve_order) for item in questions}) == count
             size = exams[0].correct + exams[0].incorrect + exams[0].blank
@@ -76,12 +84,19 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
                 Question(id="out-of-range", exam_id=exams[0].id, question_number=size + 1,
                          solve_order=size + 1, time_spent_seconds=30),
             ]
-            assert topic_priorities(questions + invalid, today=TODAY, exams=exams)["question_order"] == summary
+            assert_oracle(topic_priorities(questions + invalid, today=TODAY, exams=exams)["question_order"],
+                          expected_rows, "invalid question-order references excluded")
+            mutation_probes = [probe_detects_mutation(
+                summary, expected_rows,
+                lambda rows: rows[0]["early"].__setitem__("median_seconds", -1),
+                "question-order median corrupted",
+            )]
             results.append({
                 "questions": count, "exams": exam_count,
                 "persisted_bytes": (storage.data_dir / "questions.json").stat().st_size,
                 "warm_full_summary": measure(summarize, repeats),
                 "correctness": "unique in-range positions and each stage count/median match oracle; unknown, missing-order, and out-of-range references are excluded",
+                "mutation_probes": mutation_probes,
             })
     emit({"benchmark": "question_order_summary", "seed": SEED, "runs": results}, json_output)
 

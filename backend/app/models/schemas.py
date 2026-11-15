@@ -7,6 +7,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 
 from datetime import datetime
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
@@ -148,6 +149,40 @@ class ReviewAttempt(BaseModel):
     attempt_day: str = ""
 
 
+class CurriculumReference(BaseModel):
+    """Short curriculum notes entered by the user; Hamartia does not verify or fetch them."""
+
+    model_config = {"extra": "forbid"}
+
+    framework: str = Field(default="", max_length=100)
+    source: str = Field(default="", max_length=160)
+    version: str = Field(default="", max_length=80)
+    grade_year: str = Field(default="", max_length=80)
+    unit_theme: str = Field(default="", max_length=160)
+    learning_outcome: str = Field(default="", max_length=500)
+    process_component: str = Field(default="", max_length=200)
+    source_url: str = Field(default="", max_length=2048)
+
+    @field_validator("framework", "source", "version", "grade_year", "unit_theme", "learning_outcome", "process_component", "source_url")
+    @classmethod
+    def strip_reference_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("source_url")
+    @classmethod
+    def require_http_source_url(cls, value: str) -> str:
+        if not value:
+            return value
+        try:
+            parsed = urlsplit(value)
+            valid = parsed.scheme in {"http", "https"} and bool(parsed.hostname) and parsed.username is None and parsed.password is None
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("source_url must be an absolute HTTP(S) URL without credentials")
+        return value
+
+
 class Question(BaseModel):
     id: str
     image_name: str = ""
@@ -155,6 +190,7 @@ class Question(BaseModel):
     ocr_text: str = ""
     subject: str = ""
     topic: str = ""
+    curriculum_reference: CurriculumReference = Field(default_factory=CurriculumReference)
     analysis: CouncilAnalysis | None = None
     hamartia_tag: str = "[Knowledge Gap]"
     created_at: str = ""

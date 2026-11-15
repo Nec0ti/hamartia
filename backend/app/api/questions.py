@@ -5,18 +5,19 @@ mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
 from datetime import date, datetime
+import json
 from typing import Annotated
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from fastapi.responses import FileResponse
 from openai import OpenAIError
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import Exam, Question, ReviewAttempt
+from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
 from app.services.storage import StorageError, StorageService, data_mutation_lock
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
@@ -49,11 +50,21 @@ async def upload_question(
     question_number: Annotated[int | None, Form(ge=1)] = None,
     solve_order: Annotated[int | None, Form(ge=1)] = None,
     time_spent_seconds: Annotated[int | None, Form(ge=1)] = None,
+    curriculum_reference_json: Annotated[str, Form()] = "{}",
 ):
     """Store an uploaded question image, OCR text, and study labels."""
     exam_id = exam_id.strip()
     if not exam_id and any(value is not None for value in (question_number, solve_order, time_spent_seconds)):
         raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
+    if len(curriculum_reference_json) > 4096:
+        raise HTTPException(status_code=422, detail="Curriculum reference is too large")
+    try:
+        reference_data = json.loads(curriculum_reference_json)
+        if not isinstance(reference_data, dict):
+            raise ValueError("Curriculum reference must be an object")
+        curriculum_reference = CurriculumReference.model_validate(reference_data)
+    except (json.JSONDecodeError, TypeError, ValueError, ValidationError) as exc:
+        raise HTTPException(status_code=422, detail="Curriculum reference fields are invalid") from exc
 
     safe_name = ""
     path = None
@@ -117,6 +128,7 @@ async def upload_question(
                 ocr_text=ocr_text or "",
                 subject=subject.strip(),
                 topic=topic.strip(),
+                curriculum_reference=curriculum_reference,
                 created_at=_utcnow(),
                 exam_id=exam_id,
                 question_number=question_number,
@@ -242,6 +254,7 @@ class QuestionUpdate(BaseModel):
     subject: str
     topic: str
     ocr_text: str
+    curriculum_reference: CurriculumReference | None = None
 
 
 @router.patch("/{question_id}", response_model=Question)
@@ -260,6 +273,8 @@ async def update_question(
                 question.subject = payload.subject.strip()
                 question.topic = payload.topic.strip()
                 question.ocr_text = payload.ocr_text
+                if payload.curriculum_reference is not None:
+                    question.curriculum_reference = payload.curriculum_reference
                 updated.append(question)
                 return True
         return False

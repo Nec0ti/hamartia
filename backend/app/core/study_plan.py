@@ -41,6 +41,28 @@ def _question_order_insights(questions, exams):
     return result
 
 
+def _curriculum_reference_summaries(questions, limit=8):
+    """Return distinct user-entered references for active mistakes, without question content."""
+    result = []
+    seen = set()
+    for question in reversed(questions):
+        if question.reviewed_at:
+            continue
+        reference = question.curriculum_reference
+        values = reference.model_dump(mode="json")
+        if not any(values.values()):
+            continue
+        row = {"subject": question.subject, **values}
+        key = tuple(row.values())
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(row)
+        if len(result) >= limit:
+            break
+    return result
+
+
 def topic_priorities(questions, today=None, exams=()):
     today = today or date.today()
     groups = {}
@@ -105,5 +127,6 @@ def topic_priorities(questions, today=None, exams=()):
         "today_incorrect": today_incorrect,
         "question_order": _question_order_insights(questions, exams),
         "topics": topics,
+        "curriculum_references": _curriculum_reference_summaries(questions),
         "reviews": reviews,
     }

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,7 @@ from pydantic import ValidationError
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
-from app.models.schemas import CouncilAnalysis, Exam, Question
+from app.models.schemas import CouncilAnalysis, CurriculumReference, Exam, Question
 from app.services.storage import StorageService
 
 
@@ -67,6 +68,43 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(created.image_path, "")
         self.assertEqual(saved[0].id, created.id)
         self.assertFalse(self.uploads.exists())
+
+    def test_legacy_question_defaults_to_empty_curriculum_reference(self):
+        (self.root / "questions.json").write_text(json.dumps([{"id": "legacy", "ocr_text": "old record"}]))
+
+        [question] = asyncio.run(question_api.list_questions(self.storage))
+
+        self.assertEqual(question.curriculum_reference.model_dump(), CurriculumReference().model_dump())
+
+    def test_user_entered_curriculum_reference_persists_on_question(self):
+        reference = {
+            "framework": "Türkiye Yüzyılı Maarif Modeli",
+            "source": "MEB program note",
+            "version": "2026",
+            "grade_year": "9. sınıf",
+            "unit_theme": "Fonksiyonlar",
+            "learning_outcome": "Öğrenci fonksiyonları farklı gösterimlerle açıklar.",
+            "process_component": "Problem çözme",
+            "source_url": "https://tymm.meb.gov.tr/example",
+        }
+        created = asyncio.run(question_api.upload_question(
+            None, "Question text", "Matematik", "Fonksiyonlar", self.storage,
+            curriculum_reference_json=json.dumps(reference, ensure_ascii=False),
+        ))
+
+        saved = self.storage.load_list("questions.json", Question)[0]
+        self.assertEqual(saved.curriculum_reference.model_dump(), reference)
+        self.assertEqual(created.curriculum_reference.learning_outcome, reference["learning_outcome"])
+
+    def test_invalid_curriculum_source_url_is_rejected_without_saving_question(self):
+        with self.assertRaises(HTTPException) as raised:
+            asyncio.run(question_api.upload_question(
+                None, "Question text", "Matematik", "Fonksiyonlar", self.storage,
+                curriculum_reference_json=json.dumps({"source_url": "file:///etc/passwd"}),
+            ))
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertEqual(self.storage.load_list("questions.json", Question), [])
 
     def test_model_provider_failure_is_visible_and_does_not_save_a_fake_analysis(self):
         self.storage.save_list("questions.json", [Question(id="q1", hamartia_tag="[Reading Slip]")])
@@ -318,6 +356,44 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(updated.hamartia_tag, "[Reading Slip]")
         self.assertEqual(updated.reviewed_at, "2026-11-01")
         self.assertEqual(len(updated.review_attempts), 1)
+
+    def test_edit_question_updates_curriculum_reference_and_omission_preserves_it(self):
+        original = Question(
+            id="q1", subject="Math", ocr_text="question",
+            curriculum_reference={"framework": "Custom framework", "learning_outcome": "Recognize a pattern"},
+        )
+        self.storage.save_list("questions.json", [original])
+
+        updated = asyncio.run(question_api.update_question(
+            "q1", question_api.QuestionUpdate(
+                subject="Math", topic="Patterns", ocr_text="edited question",
+                curriculum_reference={"framework": "Custom framework", "learning_outcome": "Explain a pattern"},
+            ), self.storage,
+        ))
+        self.assertEqual(updated.curriculum_reference.learning_outcome, "Explain a pattern")
+
+        old_client_update = asyncio.run(question_api.update_question(
+            "q1", question_api.QuestionUpdate(subject="Math", topic="Patterns", ocr_text="edited again"), self.storage,
+        ))
+        self.assertEqual(old_client_update.curriculum_reference.learning_outcome, "Explain a pattern")
+
+    def test_question_insights_include_bounded_reference_summaries_without_question_content(self):
+        questions = [Question(
+            id=f"q{index}", subject="Math", topic="Patterns", ocr_text=f"private question {index}",
+            curriculum_reference={"framework": "Framework", "learning_outcome": f"Outcome {index}"},
+        ) for index in range(10)]
+        questions.append(Question(
+            id="reviewed", subject="Math", reviewed_at="2026-11-15",
+            curriculum_reference={"framework": "Framework", "learning_outcome": "Reviewed outcome"},
+        ))
+        self.storage.save_list("questions.json", questions)
+
+        insights = asyncio.run(question_api.question_insights(self.storage))
+
+        self.assertEqual(len(insights["curriculum_references"]), 8)
+        self.assertEqual(insights["curriculum_references"][0]["learning_outcome"], "Outcome 9")
+        self.assertNotIn("ocr_text", insights["curriculum_references"][0])
+        self.assertNotIn("private question", json.dumps(insights["curriculum_references"]))
 
     def test_text_only_question_cannot_be_edited_to_empty_text(self):
         question = Question(id="q1", ocr_text="keep me")

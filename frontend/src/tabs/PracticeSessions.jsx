@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
+import { useClock } from '../clock/ClockContext.jsx'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
@@ -13,20 +14,43 @@ const fields = [
   ['correct', 'common.correct'], ['incorrect', 'common.incorrect'], ['blank', 'common.blank'],
   ['duration_minutes', 'common.minutes'], ['duration_seconds', 'common.secondsLabel'],
 ]
-const activeKey = 'hamartia.active-practice-session'
-
-function readActiveSession() {
-  try {
-    const item = JSON.parse(localStorage.getItem(activeKey))
-    if (item && typeof item.subject === 'string' && typeof item.topic === 'string'
-      && ['correct', 'incorrect', 'blank', 'elapsed_seconds'].every((key) => Number.isInteger(item[key]) && item[key] >= 0)
-      && (item.running_since === null || Number.isFinite(item.running_since))) return item
-  } catch {}
-  return null
+function asPracticeSession(timer) {
+  if (timer?.kind !== 'practice') return null
+  const draft = timer.practice_draft
+  return {
+    ...draft,
+    elapsed_seconds: Math.floor(timer.elapsed_ms / 1000),
+    running_since: timer.status === 'running' ? timer.started_at_ms : null,
+  }
 }
 
 function elapsedSeconds(session, now = Date.now()) {
-  return session.elapsed_seconds + (session.running_since ? Math.floor((now - session.running_since) / 1000) : 0)
+  return session.elapsed_seconds + (session.running_since
+    ? Math.floor((now - session.running_since) / 1000)
+    : 0)
+}
+
+function asPracticeTimer(session) {
+  return {
+    kind: 'practice',
+    status: session.running_since ? 'running' : 'paused',
+    elapsed_ms: session.elapsed_seconds * 1000,
+    started_at_ms: session.running_since,
+    deadline_at_ms: null,
+    duration_ms: 0,
+    remaining_ms: 0,
+    work_duration_ms: 0,
+    break_duration_ms: 0,
+    phase: null,
+    cycle_enabled: false,
+    cycle_count: 0,
+    overdue_at_ms: null,
+    laps: [],
+    practice_draft: {
+      date: session.date, subject: session.subject, topic: session.topic,
+      correct: session.correct, incorrect: session.incorrect, blank: session.blank,
+    },
+  }
 }
 
 function timeLabel(seconds) {
@@ -35,15 +59,25 @@ function timeLabel(seconds) {
 
 export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   const { t, locale } = useI18n()
+  const { state: clockState, updateClock, loaded: clockLoaded, savingError: clockError, reload } = useClock()
   const [sessions, setSessions] = useState([])
   const [summaries, setSummaries] = useState([])
   const [draft, setDraft] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [active, setActive] = useState(readActiveSession)
   const [now, setNow] = useState(Date.now())
   const activeRef = useRef(null)
+  const currentTimer = clockState.active_timer
+  const active = asPracticeSession(currentTimer, now)
+
+  const setActive = useCallback((update) => {
+    updateClock((current) => {
+      const before = asPracticeSession(current.active_timer)
+      const after = typeof update === 'function' ? update(before) : update
+      return { ...current, active_timer: after ? asPracticeTimer(after) : null }
+    }).catch(() => {})
+  }, [updateClock])
 
   const load = useCallback(async () => {
     try {
@@ -59,20 +93,15 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    if (active) localStorage.setItem(activeKey, JSON.stringify(active))
-    else localStorage.removeItem(activeKey)
-  }, [active])
-
-  useEffect(() => {
     if (!active?.running_since) return undefined
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(interval)
   }, [active?.running_since])
 
   useEffect(() => {
-    if (!startTopic) return
+    if (!startTopic || !clockLoaded) return
     setError('')
-    if (active) {
+    if (currentTimer) {
       setError(t('study.finishOrCancelActive'))
     } else {
       setActive({
@@ -81,7 +110,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       })
     }
     onStartTopicConsumed?.()
-  }, [startTopic])
+  }, [startTopic, clockLoaded])
 
   useEffect(() => {
     if (startTopic) activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -141,7 +170,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         correct: active.correct, incorrect: active.incorrect, blank: active.blank,
         duration_minutes: Math.floor(seconds / 60), duration_seconds: seconds % 60,
       })
-      setActive(null)
+      await updateClock((current) => ({ ...current, active_timer: null }))
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -168,6 +197,9 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         <h2 className="text-lg font-semibold text-canvas-text">{t('study.practiceSets')}</h2>
         <p className="text-sm text-canvas-muted">{t('study.practiceSetsIntro')}</p>
       </div>
+      {!clockLoaded && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.loading')}</p>}
+      {clockError && <div role="alert" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted"><p>{t(clockError)}</p><button type="button" onClick={reload} className={secondaryButton}>{t('clock.reload')}</button></div>}
+      {currentTimer && currentTimer.kind !== 'practice' && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.otherTimerActive')}</p>}
       {active && <section ref={activeRef} aria-label={t('study.focusedSession')} className="space-y-3 rounded-xl border border-canvas-accent/50 bg-canvas-panel p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p></div>

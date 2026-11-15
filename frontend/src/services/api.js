@@ -39,6 +39,11 @@ export const practice = {
   remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
 }
 
+export const clock = {
+  get: () => client.get('/clock').then((r) => r.data),
+  update: (payload) => client.patch('/clock', payload).then((r) => r.data),
+}
+
 /* ----------------------------- questions -------------------------------- */
 
 export const questions = {
@@ -118,4 +123,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, practice, questions, cosmos, user, settings, studyAgent, health }
+export default { exams, practice, clock, questions, cosmos, user, settings, studyAgent, health }

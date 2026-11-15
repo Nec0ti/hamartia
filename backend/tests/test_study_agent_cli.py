@@ -296,6 +296,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("I studied on 2026-11-15, or the day after that.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15, or a day later.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15 — or one day later.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15, or the day afterwards.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15 — or a day afterward.", "en", "on 2026-11-15"),
             ("Tarih 2026-11-15, ya da yarın.", "tr", "Tarih 2026-11-15"),
             ("Tarih 2026-11-15 — ya da bir sonraki gün.", "tr", "Tarih 2026-11-15"),
             ("Tarih 2026-11-15; ya da bir gün sonra.", "tr", "Tarih 2026-11-15"),

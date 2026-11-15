@@ -649,7 +649,7 @@ async function main() {
     assert.equal(backupDownload.suggestedFilename(), 'hamartia-backup.zip')
     assert.deepEqual((await fs.readFile(await backupDownload.path())).subarray(0, 2), Buffer.from('PK'))
     const backupDownloadMs = Math.round(performance.now() - backupStarted - settingsKeyManagementMs)
-    await page.addInitScript(() => {
+    await page.addInitScript((backendUrl) => {
       const profileKey = 'hamartia.smoke.chatgpt'
       window.hamartiaDesktop = {
         restoreBackup: async () => ({ status: 'cancelled' }),
@@ -690,7 +690,7 @@ async function main() {
               const evidence_claims = payload.messages.flatMap((message) => [...message.matchAll(/(?:^|,\s*)(date|subject|topic|correct|incorrect|blank|duration_minutes|duration_seconds):\s*([^,]+)/g)]
                 .filter((match) => fields.includes(match[1]))
                 .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
-              const response = await fetch(`${apiUrl}/practice/agent-draft`, {
+              const response = await fetch(`${backendUrl}/practice/agent-draft`, {
                 method: 'POST', headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
               })
@@ -714,7 +714,7 @@ async function main() {
           },
         },
       }
-    })
+    }, apiUrl)
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()

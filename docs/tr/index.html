@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="YKS denemeleri, yanlış sorular ve çalışma ilerlemesi için yerel öncelikli çalışma alanı.">
+    <link rel="canonical" href="https://nec0ti.github.io/hamartia/tr/">
     <title>Hamartia — Yerel YKS çalışma alanı</title>
     <link rel="stylesheet" href="../styles.css">
   </head>
@@ -14,6 +15,7 @@
         <a href="#guide">Kılavuz</a>
         <a href="#privacy">Gizlilik</a>
         <a href="#backup">Yedekleme</a>
+        <a href="#ai-checks">AI denemesi</a>
         <a class="language" href="../" lang="en">English ↗</a>
       </nav>
     </header>
@@ -24,7 +26,7 @@
         <h1>Daha net bir tabloyla çalış.</h1>
         <p class="hero-copy">Hamartia, YKS denemelerini, yanlış sorularını ve konu ilerlemeni bilgisayarında bir arada tutar.</p>
         <a class="button" href="https://github.com/Nec0ti/hamartia/releases/latest">Hamartia'yı indir <span aria-hidden="true">↗</span></a>
-        <div class="hero-note"><span>YEREL ÖNCELİKLİ</span><span>YKS ÇALIŞMA ALANI</span><span>AÇIK KAYNAK</span></div>
+        <div class="hero-note"><span>YEREL ÖNCELİKLİ</span><span>HEDEFLİ TEKRAR</span><span>MIT LİSANSI</span></div>
       </section>
 
       <section class="section" id="features">
@@ -36,8 +38,13 @@
         </div>
       </section>
 
+      <section class="section" id="curriculum">
+        <div class="section-heading"><p class="eyebrow">EĞİTİMSEL YÖN</p><h2>Öğrenme örüntüleri ve öğrenme süreci.</h2></div>
+        <div class="prose"><p>Hamartia, Türkiye'deki deneme sınavı çalışma akışlarından doğdu; ancak deneme puanı öğrenmeye dair kanıtlardan yalnızca biridir. Türkiye Yüzyılı Maarif Modeli öğretim programlarını öğrenme çıktıları ve sürekli geri bildirim ile farklı kanıt türlerini kapsayan daha geniş bir ölçme yaklaşımı üzerinden tanımlar. MEB, programı sınıf düzeylerine kademeli olarak uyguluyor. İsteğe bağlı Çalışma Asistanı şu anda genel amaçlı bir çalışma asistanıdır: yanıtları Maarif öğrenme çıktılarına eşleştirmez ve öğrencinin tüm öğrenme sürecini değerlendirmez. Maarif modeliyle uyumlu AI desteği henüz tasarım aşamasındadır; öğretmenleri ve öğrenmede kullanılan çeşitli kanıtları tamamlamalıdır.</p><p>Maarif Modeli bir öğretim programı çerçevesidir; ulusal sınavların yerine geçen bir sınav adı değildir: 2026 <a href="https://www.osym.gov.tr/2026yks-basvurularin-alinmasi">YKS takviminde</a> TYT, AYT ve YDT oturumları yer alır; MEB ayrıca ortaöğretime yerleştirme için ayrı bir <a href="https://www.meb.gov.tr/meb_iys_dosyalar/2026_04/03170012_LGS_Basvuru_ve_Uygulama_Kilavuzu_2026_.pdf">2026 merkezî sınav kılavuzu</a> yayımlamıştır. <a href="https://tymm.meb.gov.tr/olcme-degerlendirme">Maarif ölçme-değerlendirme açıklamasını</a> ve <a href="https://tymm.meb.gov.tr/taslak-cerceve-planlari/temel-egitim">güncel program uygulama planlarını</a> incele. Hamartia'nın şu anki yerleşik deneme ve puanlama desteği aşağıda açıklanmıştır; farklı program yapıları uyarlama gerektirebilir.</p></div>
+      </section>
+
       <section class="section guide-layout" id="guide">
-        <div class="section-heading"><p class="eyebrow">BAŞLANGIÇ</p><h2>Masaüstü uygulamasını yükle.</h2><p class="muted">Windows 10/11 veya Linux x64 için en son sürümü <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a> sayfasından indir.</p></div>
+        <div class="section-heading"><p class="eyebrow">BAŞLANGIÇ</p><h2>Masaüstü uygulamasını yükle.</h2><p class="muted">Windows 10/11 veya Linux x64 için en son sürümü <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a> sayfasından indir.</p><p class="muted">Hamartia, LGS ve YKS gibi Türkiye'deki deneme sınavı çalışma akışlarından yola çıktı. Bu sürüm TYT/AYT tam denemelerini ve tek ders denemelerini destekler; ders ve konu adları serbestçe yazılabilir. Yerleşik net hesabı YKS yanlış-ceza kuralını kullanır; benzer puanlama kullanan deneme akışları uygulamayı kullanabilir. Farklı sınav türleri veya puanlama kuralları, LGS gibi sistemler dâhil, katkı ya da fork ile uyarlama gerektirebilir. Arayüz şu anda İngilizce ve Türkçe'dir. MIT lisansı altında katkılar ve fork'lar memnuniyetle karşılanır.</p></div>
         <div class="steps" id="setup">
           <div class="step"><span>1</span><div><h3>Paketi seç</h3><p>Windows 10/11: Windows yükleyicisini (.exe) indirip çalıştır. Debian: <code>.deb</code> paketini yazılım yükleyicisiyle yükle veya şu komutu çalıştır:</p><pre><code>sudo apt install ./Hamartia-*.deb</code></pre><p>Linux AppImage: İndirdiğin dosyayı çalıştırılabilir yap ve aç:</p><pre><code>chmod +x Hamartia-*.AppImage
 ./Hamartia-*.AppImage</code></pre></div></div>
@@ -51,12 +58,39 @@
         <div class="prose"><p>Hamartia çalışma kayıtlarını ve yüklenen görselleri bu bilgisayardaki kullanıcıya özel uygulama verisi klasöründe saklar. ChatGPT ile giriş, masaüstü uygulamasında kullanılabilir. Masaüstü uygulamasındaki Çalışma Asistanı varsayılan olarak ChatGPT aboneliğini kullanır; ChatGPT planı için OpenAI ayrıca izin ister. İsteğe bağlı OpenAI uyumlu uç nokta, Çalışma Asistanı içinden açıkça seçilebilir. Uygun ChatGPT hesapları ve kullanım sınırları hesaba göre değişebilir.</p><p>Her istekten önce Hamartia onay ister. Yazdığın soru ve sınırlı bir özet gönderilir: bekleyen ve planlanan soru sayıları, en fazla sekiz ders/konu/etiket özeti ve en fazla sekiz konu çalışma özeti (set sayısı, net, doğruluk). Kayıtlı soru metinleri/görselleri ve sohbet geçmişi gönderilmez; Hamartia Çalışma Asistanı konuşmalarını kaydetmez. ChatGPT istekleri saklama kapalı olarak doğrudan OpenAI'ın herkese açık Responses API'sine gider. Yapılandırılmış uç nokta için onay ekranı tam URL'yi gösterir ve uç noktanın uzak olabileceğini belirtir; kayıtlı API anahtarı varsa kimlik doğrulama için oraya gönderilir. Uç nokta işletmecisinin farklı veri saklama kuralları olabilir. Hamartia hata durumunda sağlayıcıyı sessizce değiştirmez.</p><p>ChatGPT belirteçleri işletim sisteminin korumalı yerel deposunda tutulur. Bu koruma kullanılamıyorsa giriş kapatılır. Çıkış, yenilenebilir oturumu iptal etmeyi dener; OpenAI doğrulayamazsa Hamartia yerel belirteçleri siler ve uygulamayı ChatGPT ayarlarından kaldırman gerektiğini bildirir. Şifreli bağlantı dosyası okunamaz hale gelirse bu yerel dosyayı silmek için açıkça onay verebilirsin; Hamartia ana makine kimliğini korur ancak okunamayan uzak oturumu inceleyemez veya iptal edemez. Bu nedenle bağlantıyı ChatGPT ayarlarından kaldırmalısın. Başka ChatGPT hesabı kullanmak için kayıtlı hesap bağlantısını yerelden kaldırabilirsin.</p><p>İsteğe bağlı soru analizi ve yapılandırılmış Çalışma Asistanı, Ayarlar'daki OpenAI uyumlu uç noktaya veri gönderebilir. Başka ana makineler de kullanılabilir; Hamartia hizmetin gerçekten yerel veya ağdan yalıtılmış olduğunu doğrulamaz. Tam hedefi incele ve yalnızca güvendiğin uç noktayı kullan. API anahtarı API yanıtlarına ve yedeklere eklenmez; uygulama anahtarı yerel ayar verisinde şifrelemeden saklar. Yerel API yalnızca bu bilgisayarda kullanılmak üzere bağlanır; internete açık hale getirme.</p></div>
       </section>
 
+      <section class="section" id="ai-checks">
+        <div class="section-heading"><p class="eyebrow">İSTEĞE BAĞLI ELLE KONTROLLER</p><h2>AI özelliklerini uydurma çalışma verileriyle dene.</h2><p class="muted">Bu kontroller yalnızca güvendiğin hizmetler ve paketlenmiş masaüstü uygulaması içindir. Ekran görüntülerine veya raporlara API anahtarı, hesap belirteci ya da gerçek çalışma ayrıntısı koyma.</p></div>
+        <div class="handoff-grid">
+          <article class="handoff-card">
+            <p class="card-index">P3 · YAPILANDIRILMIŞ UÇ NOKTA</p>
+            <h3>OpenAI uyumlu hizmetini kontrol et.</h3>
+            <ol>
+              <li>Ayarlar'da uç nokta adresini, model adını ve hizmetin istiyorsa API anahtarını gir. Anahtarı kimseyle paylaşma veya fotoğrafını çekme.</li>
+              <li>Çalışma Asistanı'nı aç, <strong>Yapılandırılmış OpenAI uyumlu uç nokta (isteğe bağlı)</strong> seçeneğini seç ve gösterilen adresle modeli doğrula. Uzak sunucu veya şifrelenmemiş HTTP uyarılarını oku. Uç nokta uzakta olabilir ve işletmecisi istekleri saklayabilir; yalnızca güvendiğin bir hizmeti kullan.</li>
+              <li>Şu örnek gibi uydurma bir istek yaz: <em>“T-01 adlı hayalî bir konuyu tekrar eden hayalî bir öğrenci için 10 dakikalık çalışma planı hazırla.”</em> Göndermeden önce tam hedefi ve kayıtlı anahtarın gönderilip gönderilmeyeceğini belirten istek onayını incele.</li>
+              <li>Yanıt aldığını veya açık bir uç nokta hatası gördüğünü doğrula. Bu sağlayıcı hata verdiğinde Hamartia ChatGPT'ye geçmez; hata olursa adresi, modeli ve hizmet ayarlarını kontrol et.</li>
+              <li>İsteğe bağlı: soru analizi için uydurma metin içeren silinebilir bir soruda ayrıca <strong>Yerel AI ile incele</strong> seçeneğini kullan. Soru analizi bu metni veya görseli yapılandırılmış uç noktaya gönderebilir. Çok modlu desteği doğrulamak istersen yapay bir görsel dene ve ardından deneme kaydını sil.</li>
+            </ol>
+          </article>
+          <article class="handoff-card">
+            <p class="card-index">P5 · CHATGPT MASAÜSTÜ</p>
+            <h3>ChatGPT giriş ve çıkışını kontrol et.</h3>
+            <ol>
+              <li>Paketlenmiş masaüstü uygulamasında <strong>ChatGPT aboneliği (varsayılan)</strong> seçeneğini seç, ChatGPT ile devam et, giriş yap ve ChatGPT planını kullanmak için OpenAI'ın isteğine ayrıca onay ver.</li>
+              <li>Hesabında kullanılabilir olarak gösterilen bir modeli seç. Aynı türden uydurma bir istek yaz ve göndermeden önce istek onayını incele.</li>
+              <li>Yanıtın göründüğünü doğrula. Başarısız olursa gösterilen hatayı oku; uygulama yapılandırılmış uç noktaya geçmez.</li>
+              <li><strong>Çıkış yap</strong> seçeneğini kullan ve OpenAI'ın uzaktan iptali doğrulayıp doğrulamadığını kontrol et. Uygulama iptalin doğrulanmadığını söylerse, Hamartia bağlantısını ChatGPT ayarlarından kaldırma yönergesini izle.</li>
+            </ol>
+          </article>
+        </div>
+      </section>
+
       <section class="section backup" id="backup">
         <div class="backup-copy"><p class="eyebrow">YEDEKLEME VE GERİ YÜKLEME</p><h2>Yanında götürebileceğin bir yedek.</h2><p>ZIP yedeğini Ayarlar'daki <strong>Yedeği indir</strong> seçeneğiyle kaydet. Yedek çalışma kayıtlarını ve soru görsellerini içerir, yerel API anahtarını içermez.</p><p>Geri yüklemek için Ayarlar'dan <strong>Yedeği geri yükle</strong> seçeneğini aç, ZIP dosyasını seç ve işlemi onayla. Hamartia arşivi doğrular, mevcut veri klasörünün tarihli kopyasını saklar, bu bilgisayardaki API anahtarını korur ve ardından yeniden başlar.</p><p>Yedeği yalnızca Hamartia içinden geri yükle; sonuç mesajı görünene kadar uygulamayı açık tut.</p></div>
         <div class="backup-mark" aria-hidden="true"><span>H</span><i></i><i></i><i></i></div>
       </section>
     </main>
 
-    <footer><a class="brand" href="#top">H<span>.</span></a><p>Her oturumda, istikrarlı ilerleme için.</p><a href="https://github.com/Nec0ti/hamartia">Kaynak kodunu gör ↗</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">En son sürüm ↗</a></footer>
+    <footer><a class="brand" href="#top">H<span>.</span></a><p>Her oturumda, istikrarlı ilerleme için.</p><a href="https://github.com/Nec0ti/hamartia">Kaynak kodunu gör ↗</a><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">MIT lisansı ↗</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">En son sürüm ↗</a></footer>
   </body>
 </html>

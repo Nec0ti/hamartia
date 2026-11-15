@@ -77,6 +77,10 @@ export default {
   'study.resume': { en: 'Resume', tr: 'Sürdür' },
   'study.cancelSession': { en: 'Cancel session', tr: 'Oturumu iptal et' },
   'study.finishAndSave': { en: 'Finish and save', tr: 'Bitir ve kaydet' },
+  'study.legacyCompletionMismatch': {
+    en: 'A saved focused-practice row differs from this timer. Review the saved record or cancel the timer; it was not overwritten.',
+    tr: 'Kaydedilmiş odaklı çalışma kaydı bu zamanlayıcıdan farklı. Kayıt üzerine yazılmadı; kayıtlı sonucu inceleyin veya zamanlayıcıyı iptal edin.',
+  },
   'study.exampleMath': { en: 'Mathematics', tr: 'Matematik' },
   'study.exampleFunctions': { en: 'Functions', tr: 'Fonksiyonlar' },
   'study.saveChanges': { en: 'Save changes', tr: 'Değişiklikleri kaydet' },

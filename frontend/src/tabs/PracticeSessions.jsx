@@ -182,12 +182,14 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
     try {
       await completeFocusedPractice({
         timer: currentTimer, now: Date.now(), updateClock, reloadClock: reload,
-        createPractice: api.practice.create,
+        listPractice: api.practice.list, createPractice: api.practice.create,
         clearClock: () => updateClock((current) => ({ ...current, active_timer: null })),
       })
       await load()
     } catch (e) {
-      setError(handleApiError(e, t).detail)
+      setError(e?.code === 'practice.legacyCompletionMismatch'
+        ? t('study.legacyCompletionMismatch')
+        : handleApiError(e, t).detail)
     } finally {
       setSaving(false)
     }

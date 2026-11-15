@@ -6,6 +6,64 @@ const profile = {
   profile_id: 'profile_fixture', version: 3, display_name: 'Fixture thirds', country_label: 'Fixture',
   scoring_rule: { correct_points: '1/3', wrong_penalty: '1/5', blank_points: '1/7' },
 }
+const legacyProfile = {
+  profile_id: 'legacy-yks', version: 1, display_name: 'YKS (legacy)', country_label: 'Türkiye',
+  scoring_rule: { correct_points: '1/1', wrong_penalty: '1/4', blank_points: '0/1' },
+}
+
+function legacyIdOnlyTimer(completionId = '1df6e22f-aace-4ba3-81cc-a05fce1f3d99') {
+  return {
+    kind: 'practice', status: 'running', elapsed_ms: 9000, started_at_ms: 10_000,
+    practice_draft: {
+      date: '2026-11-15', subject: 'Mathematics', topic: 'Functions',
+      correct: 2, incorrect: 1, blank: 0, completion_id: completionId,
+      scoring_profile: legacyProfile, completion_payload: null,
+    },
+  }
+}
+
+test('legacy ID-only draft clears from an exact deterministic persisted row without recomputing duration', async () => {
+  const timer = legacyIdOnlyTimer()
+  const row = {
+    id: `practice_focus_${timer.practice_draft.completion_id}`,
+    date: '2026-11-15', subject: 'Mathematics', topic: 'Functions',
+    correct: 2, incorrect: 1, blank: 0, duration_minutes: 42, duration_seconds: 17,
+    scoring_profile: legacyProfile,
+  }
+  let clearCount = 0
+  let freezeCount = 0
+  const result = await completeFocusedPractice({
+    timer,
+    listPractice: async () => [row],
+    updateClock: async () => { freezeCount += 1; throw new Error('must not freeze a completed legacy draft') },
+    reloadClock: async () => null,
+    createPractice: async () => { throw new Error('must not re-POST a completed legacy draft') },
+    clearClock: async () => { clearCount += 1 },
+  })
+  assert.equal(result, row)
+  assert.equal(clearCount, 1)
+  assert.equal(freezeCount, 0)
+})
+
+test('legacy ID-only draft with a mismatched row is surfaced without freezing, posting, or clearing', async () => {
+  const timer = legacyIdOnlyTimer()
+  const wrongRow = {
+    id: `practice_focus_${timer.practice_draft.completion_id}`,
+    date: '2026-11-15', subject: 'Mathematics', topic: 'Functions',
+    correct: 99, incorrect: 1, blank: 0, duration_minutes: 42, duration_seconds: 17,
+    scoring_profile: legacyProfile,
+  }
+  let mutations = 0
+  await assert.rejects(completeFocusedPractice({
+    timer,
+    listPractice: async () => [wrongRow],
+    updateClock: async () => { mutations += 1 },
+    reloadClock: async () => null,
+    createPractice: async () => { mutations += 1 },
+    clearClock: async () => { mutations += 1 },
+  }), /does not match its timer draft/)
+  assert.equal(mutations, 0)
+})
 
 test('retries recover an ambiguous freeze write and replay one frozen request after time advances', async () => {
   let state = {

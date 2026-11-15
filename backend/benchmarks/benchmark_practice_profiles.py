@@ -23,6 +23,12 @@ from app.services.backup import create_backup, restore_backup
 from app.services.storage import StorageService
 
 TODAY = "2026-11-15"
+LEGACY_PROFILE = {
+    "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
+    "country_label": "Türkiye", "scoring_rule": {
+        "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+    },
+}
 
 
 def require(condition, message):
@@ -234,13 +240,7 @@ def run(repeats=3):
 
                 legacy_values = payload("2026-11-11", "Mathematics", "Fractions", 12, 4, 4)
                 legacy_actual = client.post("/practice", json=legacy_values).json()
-                legacy_profile = {
-                    "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
-                    "country_label": "Türkiye", "scoring_rule": {
-                        "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
-                    },
-                }
-                records.append(expected_row(legacy_actual, legacy_values, legacy_profile, 11.0, 0.75))
+                records.append(expected_row(legacy_actual, legacy_values, LEGACY_PROFILE, 11.0, 0.75))
                 require(legacy_actual == records[-1], "legacy fallback score or full record mismatch")
 
                 # Host-selected agent profile is included in the digest and saved snapshot; no provider route is mounted.
@@ -275,6 +275,46 @@ def run(repeats=3):
                     "scoring_profile_version": 1, "scoring_profile_snapshot": half_v2,
                 })
                 require(stale_snapshot.status_code == 422, "agent create accepted a snapshot different from the host-selected version")
+
+                # Upgrade recovery for PR31's old timer shape: its row was committed
+                # under the deterministic key, but clock clear did not complete.
+                legacy_completion_id = str(uuid4())
+                recovery_values = payload("2026-11-09", "History", "ID-only recovery", 3, 1, 2,
+                                          minutes=42, seconds=17)
+                recovered_post = client.post("/practice", json=recovery_values,
+                                             headers={"Idempotency-Key": legacy_completion_id})
+                recovered_actual = recovered_post.json()
+                expected_recovered_row = expected_row(recovered_actual, recovery_values, LEGACY_PROFILE, 2.75, 0.75)
+                records.append(expected_recovered_row)
+                require(recovered_post.status_code == 201 and recovered_actual == expected_recovered_row,
+                        "preexisting legacy focus row differs from independent expected record")
+                legacy_timer_response = client.patch("/clock", json={"active_timer": {
+                    "kind": "practice", "status": "running", "elapsed_ms": 9_000,
+                    "started_at_ms": 10_000,
+                    "practice_draft": {
+                        "date": recovery_values["date"], "subject": recovery_values["subject"],
+                        "topic": recovery_values["topic"], "correct": recovery_values["correct"],
+                        "incorrect": recovery_values["incorrect"], "blank": recovery_values["blank"],
+                        "completion_id": legacy_completion_id,
+                    },
+                }})
+                require(legacy_timer_response.status_code == 200,
+                        f"legacy ID-only timer fixture was rejected: {legacy_timer_response.text}")
+                legacy_timer = legacy_timer_response.json()["active_timer"]
+                bridge = Path(__file__).resolve().parents[2] / "frontend/benchmarks/legacy_completion_bridge.mjs"
+                resolution = subprocess.run(
+                    ["node", str(bridge)],
+                    input=json.dumps({"timer": legacy_timer, "sessions": client.get("/practice").json()}),
+                    text=True, capture_output=True, check=True, timeout=10,
+                )
+                resolved = json.loads(resolution.stdout)
+                require(resolved == {"kind": "match", "row": expected_recovered_row},
+                        "production legacy-completion resolver did not match the independent existing row")
+                cleared_legacy_timer = client.patch("/clock", json={"active_timer": None})
+                require(cleared_legacy_timer.status_code == 200
+                        and cleared_legacy_timer.json()["active_timer"] is None
+                        and client.get("/practice").json().count(expected_recovered_row) == 1,
+                        "legacy recovery did not clear the timer exactly once while retaining its row")
 
                 # The focus timer stores v1. Carry 60 seconds from truncated milliseconds into minutes,
                 # then prove completion retries preserve the exact selected snapshot and create once.
@@ -413,16 +453,10 @@ def run(repeats=3):
                     old_rows = StorageService(legacy_restore).load_list("practice_sessions.json", PracticeSession)
                     require(len(old_rows) == len(records) and all(row.scoring_profile.profile_id == "legacy-yks" for row in old_rows),
                             "legacy archive did not receive immutable legacy YKS snapshots")
-                    legacy_profile = {
-                        "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
-                        "country_label": "Türkiye", "scoring_rule": {
-                            "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
-                        },
-                    }
                     expected_legacy_rows = []
                     for row in records:
                         expected_legacy = dict(row)
-                        expected_legacy["scoring_profile"] = legacy_profile
+                        expected_legacy["scoring_profile"] = LEGACY_PROFILE
                         expected_legacy["net"] = row["correct"] - row["incorrect"] / 4
                         answered = row["correct"] + row["incorrect"]
                         expected_legacy["accuracy"] = row["correct"] / answered if answered else None
@@ -436,7 +470,7 @@ def run(repeats=3):
                         **expected_current_active_timer,
                         "practice_draft": {
                             **expected_current_active_timer["practice_draft"],
-                            "scoring_profile": legacy_profile,
+                            "scoring_profile": LEGACY_PROFILE,
                             "completion_payload": None,
                         },
                     }

@@ -5,6 +5,10 @@ import { useI18n } from '../i18n.jsx'
 import { fmtDate } from '../utils/formatters.js'
 
 const TAGS = ['[Knowledge Gap]', '[Distractor Trap]', '[Reading Slip]', '[Time Panic]']
+const EMPTY_CURRICULUM_REFERENCE = {
+  framework: '', source: '', version: '', grade_year: '', unit_theme: '',
+  learning_outcome: '', process_component: '', source_url: '',
+}
 
 export default function QuestionsTab({ initialExam = null }) {
   const { t, locale } = useI18n()
@@ -15,6 +19,8 @@ export default function QuestionsTab({ initialExam = null }) {
   const [solveOrder, setSolveOrder] = useState('')
   const [timeSpentSeconds, setTimeSpentSeconds] = useState('')
   const [ocrText, setOcrText] = useState('')
+  const [curriculumReference, setCurriculumReference] = useState({ ...EMPTY_CURRICULUM_REFERENCE })
+  const [search, setSearch] = useState('')
   const [file, setFile] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -44,10 +50,11 @@ export default function QuestionsTab({ initialExam = null }) {
         questionNumber,
         solveOrder,
         timeSpentSeconds,
-      })
+      }, curriculumReference)
       setFile(null)
       setTopic('')
       setOcrText('')
+      setCurriculumReference({ ...EMPTY_CURRICULUM_REFERENCE })
       setQuestionNumber('')
       setSolveOrder('')
       setTimeSpentSeconds('')
@@ -114,6 +121,17 @@ export default function QuestionsTab({ initialExam = null }) {
     }
   }
 
+  const searchTerm = search.trim().toLocaleLowerCase(locale)
+  const visibleQuestions = questions.filter((question) => {
+    if (!searchTerm) return true
+    const reference = question.curriculum_reference || EMPTY_CURRICULUM_REFERENCE
+    return [
+      question.subject, question.topic, question.ocr_text, reference.framework,
+      reference.source, reference.version, reference.grade_year, reference.unit_theme,
+      reference.learning_outcome, reference.process_component, reference.source_url,
+    ].some((value) => String(value || '').toLocaleLowerCase(locale).includes(searchTerm))
+  })
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
@@ -147,6 +165,7 @@ export default function QuestionsTab({ initialExam = null }) {
           {t('questions.textLabel')}
           <textarea value={ocrText} onChange={(e) => setOcrText(e.target.value)} rows={3} className={inputClass} placeholder={t('questions.textPlaceholder')} />
         </label>
+        <CurriculumReferenceFields value={curriculumReference} onChange={setCurriculumReference} t={t} />
         <div className="flex items-center justify-between gap-3 sm:col-span-2">
           <span className="truncate text-xs text-canvas-muted">{file?.name || t('questions.noImageSelected')}</span>
           <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
@@ -162,9 +181,12 @@ export default function QuestionsTab({ initialExam = null }) {
           <h2 className="text-lg font-semibold text-canvas-text">{t('questions.savedQuestions')}</h2>
           <span className="text-sm text-canvas-muted">{t('questions.questionCount', { count: new Intl.NumberFormat(locale).format(questions.length) })}</span>
         </div>
+        <input type="search" aria-label={t('questions.search')} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('questions.search')} className={inputClass} />
         {questions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">{t('questions.empty')}</div>
-        ) : questions.slice().reverse().map((question) => (
+        ) : visibleQuestions.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-canvas-line p-8 text-center text-sm text-canvas-muted">{t('questions.noSearchResults')}</div>
+        ) : visibleQuestions.slice().reverse().map((question) => (
           <article key={question.id} data-question-id={question.id} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-[160px_1fr]">
             {question.image_path ? (
               <a href={`${API_BASE}/questions/${question.id}/image`} target="_blank" rel="noreferrer" className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-canvas-base" aria-label={t('questions.openImage')}>
@@ -179,6 +201,7 @@ export default function QuestionsTab({ initialExam = null }) {
                   <label className="text-xs text-canvas-muted">{t('common.subject')}<input aria-label={t('questions.editSubject')} value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className={inputClass} /></label>
                   <label className="text-xs text-canvas-muted">{t('common.topic')}<input aria-label={t('questions.editTopic')} value={editing.topic} onChange={(e) => setEditing({ ...editing, topic: e.target.value })} className={inputClass} /></label>
                   <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.questionText')}<textarea aria-label={t('questions.editQuestionText')} value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /></label>
+                  <CurriculumReferenceFields value={editing.curriculum_reference || { ...EMPTY_CURRICULUM_REFERENCE }} onChange={(reference) => setEditing({ ...editing, curriculum_reference: reference })} t={t} />
                   <div className="flex gap-2 sm:col-span-2">
                     <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-white"><Save size={14} /> {t('common.save')}</button>
                     <button type="button" onClick={() => setEditing(null)} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted"><X size={14} /> {t('common.cancel')}</button>
@@ -202,7 +225,8 @@ export default function QuestionsTab({ initialExam = null }) {
                 {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> {t('questions.reviewWithLocalAI')}</button>}
                 {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> {t('questions.markReviewed')}</button>}
                 {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">{t('questions.undoReview')}</button></>}
-                <button type="button" onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text })} aria-label={t('questions.editQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> {t('common.edit')}</button>
+                {hasCurriculumReference(question.curriculum_reference) && <CurriculumReferenceSummary value={question.curriculum_reference} t={t} />}
+                <button type="button" onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text, curriculum_reference: { ...EMPTY_CURRICULUM_REFERENCE, ...(question.curriculum_reference || {}) } })} aria-label={t('questions.editQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> {t('common.edit')}</button>
                 <button type="button" onClick={() => remove(question)} aria-label={t('questions.deleteQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-accent"><Trash2 size={14} /> {t('common.delete')}</button>
               </div>
               {question.analysis && (
@@ -222,6 +246,43 @@ export default function QuestionsTab({ initialExam = null }) {
 }
 
 const inputClass = 'mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text outline-none focus:border-canvas-accent'
+
+function hasCurriculumReference(reference = {}) {
+  return Object.values(reference).some((value) => String(value || '').trim())
+}
+
+function CurriculumReferenceFields({ value, onChange, t }) {
+  const update = (field, nextValue) => onChange({ ...EMPTY_CURRICULUM_REFERENCE, ...value, [field]: nextValue })
+  return <details className="rounded-lg border border-canvas-line p-3 sm:col-span-2">
+    <summary className="cursor-pointer text-sm font-medium text-canvas-text">{t('questions.curriculumReference')}</summary>
+    <p className="mt-2 text-xs leading-relaxed text-canvas-muted">{t('questions.curriculumReferenceHelp')}</p>
+    <p className="mt-1 text-xs text-canvas-muted">{t('questions.curriculumSubjectHelp')}</p>
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <ReferenceInput field="framework" label="questions.curriculumFramework" value={value.framework} onChange={update} t={t} maxLength={100} />
+      <ReferenceInput field="source" label="questions.curriculumSource" value={value.source} onChange={update} t={t} maxLength={160} />
+      <ReferenceInput field="version" label="questions.curriculumVersion" value={value.version} onChange={update} t={t} maxLength={80} />
+      <ReferenceInput field="grade_year" label="questions.curriculumGradeYear" value={value.grade_year} onChange={update} t={t} maxLength={80} />
+      <ReferenceInput field="unit_theme" label="questions.curriculumUnitTheme" value={value.unit_theme} onChange={update} t={t} maxLength={160} />
+      <ReferenceInput field="process_component" label="questions.curriculumProcess" value={value.process_component} onChange={update} t={t} maxLength={200} />
+      <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.curriculumOutcome')}<textarea value={value.learning_outcome} onChange={(event) => update('learning_outcome', event.target.value)} maxLength={500} rows={2} className={inputClass} /></label>
+      <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.curriculumSourceUrl')}<input type="url" value={value.source_url} onChange={(event) => update('source_url', event.target.value)} maxLength={2048} className={inputClass} placeholder="https://" /></label>
+    </div>
+  </details>
+}
+
+function ReferenceInput({ field, label, value, onChange, t, maxLength }) {
+  return <label className="text-xs text-canvas-muted">{t(label)}<input value={value || ''} onChange={(event) => onChange(field, event.target.value)} maxLength={maxLength} className={inputClass} /></label>
+}
+
+function CurriculumReferenceSummary({ value, t }) {
+  const details = [value.framework, value.source, value.version, value.grade_year, value.unit_theme, value.process_component].filter(Boolean)
+  return <div className="w-full rounded-lg border border-canvas-line bg-canvas-base p-3 text-xs text-canvas-muted">
+    <p className="font-medium text-canvas-text">{t('questions.referenceUserProvided')}</p>
+    {details.length > 0 && <p className="mt-1">{details.join(' · ')}</p>}
+    {value.learning_outcome && <p className="mt-1">{value.learning_outcome}</p>}
+    {value.source_url && <a href={value.source_url} target="_blank" rel="noreferrer noopener" className="mt-1 inline-block break-all text-canvas-cyan underline">{value.source_url}</a>}
+  </div>
+}
 
 function tagLabel(tag, t) {
   return ({

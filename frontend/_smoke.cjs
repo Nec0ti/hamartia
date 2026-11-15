@@ -259,7 +259,16 @@ async function main() {
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
     await page.getByLabel('Konu').fill('Paragraf')
-    await page.locator('textarea').fill('Metin tabanlı deneme sorusu')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('Metin tabanlı deneme sorusu')
+    await page.getByText('İsteğe bağlı program referansı', { exact: true }).click()
+    await page.getByLabel('Program çerçevesi').fill('Synthetic study framework')
+    await page.getByLabel('Kaynak adı').fill('Browser fixture')
+    await page.getByLabel('Sürüm / yıl').fill('Test version')
+    await page.getByLabel('Sınıf / yıl').fill('Year 2')
+    await page.getByLabel('Ünite / tema').fill('Made-up patterns')
+    await page.getByLabel('Kendi kısa öğrenme çıktısı notun veya başka sözcüklerle anlatımın').fill('Identify a made-up pattern')
+    await page.getByLabel('Süreç bileşeni').fill('Explain reasoning')
+    await page.getByLabel('İsteğe bağlı kaynak adresi (otomatik alınmaz veya doğrulanmaz)').fill('https://example.invalid/reference')
     const [createdQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
@@ -268,6 +277,8 @@ async function main() {
     await page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }).waitFor()
     assert.equal(createdQuestion.image_path, '')
     assert.equal(createdQuestion.ocr_text, 'Metin tabanlı deneme sorusu')
+    assert.equal(createdQuestion.curriculum_reference.framework, 'Synthetic study framework')
+    assert.equal(createdQuestion.curriculum_reference.learning_outcome, 'Identify a made-up pattern')
 
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     const savedTextQuestion = page.locator('article').filter({ has: page.getByRole('img', { name: 'Görseli olmayan metin sorusu' }) })
@@ -299,7 +310,7 @@ async function main() {
     await page.getByLabel('Sınavdaki soru no').fill('2')
     await page.getByLabel('Çözüm sırası').fill('1')
     await page.getByLabel('Soruda harcanan saniye').fill('32')
-    await page.locator('textarea').fill('Denemeye bağlı yanlış soru')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('Denemeye bağlı yanlış soru')
     const [linkedQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
@@ -357,7 +368,7 @@ async function main() {
     await page.getByLabel('Sınavdaki soru no').fill('40')
     await page.getByLabel('Çözüm sırası').fill('40')
     await page.getByLabel('Soruda harcanan saniye').fill('51')
-    await page.locator('textarea').fill('TYT Türkçe bölüm sorusu')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('TYT Türkçe bölüm sorusu')
     const [sectionQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),
@@ -415,9 +426,18 @@ async function main() {
     await textCard.getByRole('button', { name: /Soruyu düzenle/ }).click()
     await textCard.getByLabel('Düzenle · Ders').fill('Edebiyat')
     await textCard.getByLabel('Düzenle · Soru metni').fill('Güncellenmiş soru metni')
+    await textCard.getByText('İsteğe bağlı program referansı', { exact: true }).click()
+    await textCard.getByLabel('Kendi kısa öğrenme çıktısı notun veya başka sözcüklerle anlatımın').fill('Explain a made-up pattern')
     await textCard.getByRole('button', { name: 'Kaydet' }).click()
     const updatedCard = page.locator('article').filter({ hasText: 'Güncellenmiş soru metni' })
     await updatedCard.getByRole('button', { name: /Soruyu sil Edebiyat/ }).waitFor()
+    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
+    await page.getByLabel('Hatalarda ve program referanslarında ara').fill('Explain a made-up pattern')
+    await updatedCard.waitFor()
+    assert.equal(await page.locator('article[data-question-id]').count(), 1)
+    await page.getByLabel('Hatalarda ve program referanslarında ara').fill('no matching synthetic outcome')
+    await page.getByText('Bu aramayla eşleşen kayıtlı soru yok.').waitFor()
+    await page.getByLabel('Hatalarda ve program referanslarında ara').fill('')
     const imageCard = page.locator('article[data-question-id="q1"]')
     page.once('dialog', (dialog) => dialog.accept())
     await imageCard.getByRole('button', { name: /Soruyu sil Matematik/ }).click()
@@ -514,7 +534,7 @@ async function main() {
     await page.getByText('student@example.test').waitFor()
     const sendButton = page.getByRole('button', { name: 'Send to OpenAI' })
     await page.getByLabel('Your question').fill('What should I review next?')
-    await page.getByText(/up to 8 topic practice aggregates/).waitFor()
+    await page.getByText(/up to 8 topic-practice aggregates/).waitFor()
     assert.equal(await sendButton.isDisabled(), true)
     await page.getByRole('checkbox').check()
     await sendButton.click()
@@ -606,6 +626,7 @@ async function main() {
     assert.equal(saved.find((question) => question.id === createdQuestion.id).review_attempts[0].attempt_day, localAttemptDay)
     assert.equal(saved.find((question) => question.id === createdQuestion.id).subject, 'Edebiyat')
     assert.equal(saved.find((question) => question.id === createdQuestion.id).ocr_text, 'Güncellenmiş soru metni')
+    assert.equal(saved.find((question) => question.id === createdQuestion.id).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
     assert.equal(saved.some((question) => question.id === 'q1'), false)
     assert.equal(saved.find((question) => question.id === linkedQuestion.id).exam_id.length > 0, true)
     assert.equal(saved.find((question) => question.id === linkedQuestion.id).solve_order, 1)

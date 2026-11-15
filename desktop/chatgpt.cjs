@@ -46,15 +46,30 @@ function grantedScopes(value) {
 }
 
 function summarizeStudyContext(insights, sessions) {
-  const topics = Array.isArray(insights?.topics) ? insights.topics.slice(0, 8) : []
-  const practice = Array.isArray(sessions) ? sessions.slice(0, 8) : []
-  const context = JSON.stringify({
+  const text = (value, maxLength = 120) => String(value || '').slice(0, maxLength)
+  const referenceFields = ['framework', 'source', 'version', 'grade_year', 'unit_theme', 'learning_outcome', 'process_component', 'source_url']
+  const summary = {
     pending_questions: insights?.pending_questions ?? 0,
     scheduled_questions: insights?.scheduled_questions ?? 0,
-    topics: topics.map(({ subject, topic, pending_count, tags }) => ({ subject, topic, pending_count, tags })),
-    topic_practice: practice.map(({ subject, topic, session_count, net, accuracy }) => ({ subject, topic, session_count, net, accuracy })),
-  })
-  return context.slice(0, MAX_CONTEXT_LENGTH)
+    topics: (Array.isArray(insights?.topics) ? insights.topics : []).slice(0, 8).map(({ subject, topic, pending_count, tags }) => ({
+      subject: text(subject), topic: text(topic), pending_count: Number(pending_count) || 0,
+      tags: Object.fromEntries(Object.entries(tags || {}).slice(0, 8).map(([tag, count]) => [text(tag, 80), Number(count) || 0])),
+    })),
+    topic_practice: (Array.isArray(sessions) ? sessions : []).slice(0, 8).map(({ subject, topic, session_count, net, accuracy }) => ({
+      subject: text(subject), topic: text(topic), session_count: Number(session_count) || 0, net, accuracy,
+    })),
+    curriculum_references: [],
+  }
+  while (JSON.stringify(summary).length > MAX_CONTEXT_LENGTH && summary.topic_practice.length) summary.topic_practice.pop()
+  while (JSON.stringify(summary).length > MAX_CONTEXT_LENGTH && summary.topics.length) summary.topics.pop()
+  for (const reference of (Array.isArray(insights?.curriculum_references) ? insights.curriculum_references : []).slice(0, 8)) {
+    const row = { subject: text(reference.subject) }
+    for (const field of referenceFields) row[field] = text(reference[field], field === 'learning_outcome' ? 500 : field === 'source_url' ? 2048 : 200)
+    const candidate = [...summary.curriculum_references, row]
+    if (JSON.stringify({ ...summary, curriculum_references: candidate }).length > MAX_CONTEXT_LENGTH) break
+    summary.curriculum_references = candidate
+  }
+  return JSON.stringify(summary)
 }
 
 function safeError(status, code) {
@@ -405,7 +420,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json', accept: 'text/event-stream' },
         body: JSON.stringify({
           model,
-          instructions: `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and the supplied local study summary; do not claim to have seen specific questions or conversations. Be clear and concise.`,
+          instructions: `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`,
           input: [{ role: 'user', content: `Local study summary (may be empty):\n${context}\n\nStudent question:\n${message}` }],
           store: false,
           stream: true,

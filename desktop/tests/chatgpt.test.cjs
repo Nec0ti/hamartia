@@ -27,11 +27,17 @@ test('authorization uses fresh PKCE-bound OSS plan-use scopes and exact loopback
 })
 
 test('local study context is summarized and bounded without question text', () => {
-  const result = summarizeStudyContext({ pending_questions: 9, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: { gap: 1 }, ocr_text: 'secret question text' }] }, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
+  const result = summarizeStudyContext({
+    pending_questions: 9,
+    topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: { gap: 1 }, ocr_text: 'secret question text' }],
+    curriculum_references: [{ subject: 'Math', framework: 'Synthetic framework', learning_outcome: 'Explain an invented pattern', source_url: 'https://example.invalid/reference' }],
+  }, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
   assert.ok(result.length <= MAX_CONTEXT_LENGTH)
   assert.match(result, /Functions/)
   assert.doesNotMatch(result, /secret question text/)
   assert.deepEqual(JSON.parse(result).topic_practice, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
+  assert.equal(JSON.parse(result).curriculum_references[0].learning_outcome, 'Explain an invented pattern')
+  assert.equal(JSON.parse(result).curriculum_references[0].source_url, 'https://example.invalid/reference')
 })
 
 async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, platform = process.platform } = {}) {
@@ -110,7 +116,11 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
       ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
       return new Response(events, { headers: { 'content-type': 'text/event-stream' } })
     }
-    if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({ pending_questions: 3, scheduled_questions: 2, topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: {} }] })
+    if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({
+      pending_questions: 3, scheduled_questions: 2,
+      topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: {} }],
+      curriculum_references: [{ subject: 'Math', framework: 'Synthetic framework', learning_outcome: 'Explain an invented pattern' }],
+    })
     if (String(url) === 'http://127.0.0.1:43210/practice/insights') return Response.json([])
     throw new Error(`Unexpected mock request: ${url}`)
   }
@@ -167,6 +177,10 @@ test('mocked sign-in stores only encrypted credentials and streams direct Respon
   assert.equal(request.store, false)
   assert.equal(request.stream, true)
   assert.equal(request.model, 'model-a')
+  assert.match(request.instructions, /user-entered and unverified/)
+  assert.match(request.instructions, /evidence-of-learning task with observable success criteria/)
+  const userInput = JSON.stringify(request.input)
+  assert.match(userInput, /Explain an invented pattern/)
   assert.match(request.input[0].content, /Functions/)
   assert.equal(testApp.calls.some(({ url }) => url.includes('backend-api')), false)
 })

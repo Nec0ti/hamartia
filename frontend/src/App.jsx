@@ -24,15 +24,19 @@ export default function App() {
   const [questionExam, setQuestionExam] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState(null)
+  const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsError, setSettingsError] = useState(null)
 
   const loadSettings = useCallback(async () => {
+    setSettingsLoading(true)
     setSettingsError(null)
     try {
       const data = await api.settings.get()
       setSettings(data)
     } catch (e) {
       setSettingsError(handleApiError(e, t).detail)
+    } finally {
+      setSettingsLoading(false)
     }
   }, [t])
 
@@ -51,10 +55,7 @@ export default function App() {
     }
   }, [t])
 
-  const openSettings = useCallback(() => {
-    setSettingsOpen(true)
-    loadSettings()
-  }, [loadSettings])
+  const openSettings = useCallback(() => setSettingsOpen(true), [])
 
   const panel = useMemo(() => {
     if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {
@@ -84,6 +85,7 @@ export default function App() {
       <SettingsModal
         open={settingsOpen}
         settings={settings}
+        loading={settingsLoading}
         onSave={saveSettings}
         onClose={() => setSettingsOpen(false)}
         loadError={settingsError}

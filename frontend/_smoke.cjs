@@ -77,10 +77,32 @@ async function main() {
       }
     })
 
+    let releaseInitialSettingsGet
+    let notifyInitialSettingsGet
+    const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
+    const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
+    await page.route(`${apiUrl}/settings`, async (route) => {
+      if (route.request().method() === 'GET') {
+        notifyInitialSettingsGet()
+        await initialSettingsGetGate
+      }
+      await route.continue()
+    })
     const started = performance.now()
-    await page.goto(baseUrl, { waitUntil: 'networkidle' })
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
     await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await initialSettingsGetIntercepted
+    await page.getByRole('button', { name: 'Open settings' }).click()
+    await page.getByRole('status').getByText('Loading saved settings…').waitFor()
+    assert.equal(await page.getByLabel('API key').isDisabled(), true)
+    assert.equal(await page.getByRole('button', { name: 'Save', exact: true }).isDisabled(), true)
+    releaseInitialSettingsGet()
+    await page.getByLabel('API key').waitFor({ state: 'visible' })
+    await page.waitForFunction(() => !document.querySelector('#settings-api-key')?.disabled)
+    await page.getByRole('button', { name: 'Close settings' }).click()
+    await page.unroute(`${apiUrl}/settings`)
+    await page.waitForLoadState('networkidle')
     await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
     assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
     await page.getByRole('cell', { name: 'Nov 14, 2026', exact: true }).waitFor()
@@ -420,13 +442,14 @@ async function main() {
       litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', has_api_key: true,
     })
     await page.getByText('Ayarlar kaydedildi.').waitFor()
+    const settingsKeyPath = path.join(dataDir, 'settings.json')
+    assert.equal(JSON.parse(await fs.readFile(settingsKeyPath, 'utf8')).api_key, 'smoke-secret')
     await page.getByLabel('Kayıtlı API anahtarını sil').check()
     const [settingsClear] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/settings' && response.request().method() === 'PATCH'),
       page.getByRole('button', { name: 'Kaydet', exact: true }).click(),
     ])
     assert.equal((await settingsClear.json()).has_api_key, false)
-    const settingsKeyPath = path.join(dataDir, 'settings.json')
     assert.equal(JSON.parse(await fs.readFile(settingsKeyPath, 'utf8')).api_key, '')
     const settingsKeyManagementMs = Math.round(performance.now() - backupStarted)
     assert.match(await page.getByRole('link', { name: 'Yedeği indir' }).getAttribute('href'), /\/backup$/)
@@ -569,6 +592,7 @@ async function main() {
     assert(appRequests.some((request) => request.path === '/questions/q1' && request.method === 'DELETE'))
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 2)
+    assert(!appRequests.some((request) => request.path === '/study-agent/local'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])

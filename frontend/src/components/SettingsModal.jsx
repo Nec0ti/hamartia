@@ -10,7 +10,7 @@ import { useI18n } from '../i18n.jsx'
  * (XP / level / streak) is intentionally NOT editable here — it lives in
  * backend/data/user.json and is served read-only via /user.
  */
-export default function SettingsModal({ open, settings, onSave, onClose, loadError }) {
+export default function SettingsModal({ open, settings, loading, onSave, onClose, loadError }) {
   const { t, language, setLanguage } = useI18n()
   const [draft, setDraft] = useState(
     settings ?? { litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', api_key: '' },
@@ -93,6 +93,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           </button>
         </div>
         <div className="space-y-4">
+          {loading && <p role="status" className="text-xs text-canvas-muted">{t('settings.loading')}</p>}
           <div>
             <label htmlFor="settings-language" className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">
               {t('settings.language')}
@@ -114,6 +115,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             </label>
             <input
               className={inputCls}
+              disabled={loading}
               value={draft.litellm_base_url}
               onChange={(e) => setDraft({ ...draft, litellm_base_url: e.target.value })}
               placeholder="http://localhost:4000/v1"
@@ -125,6 +127,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
             </label>
             <input
               className={inputCls}
+              disabled={loading}
               value={draft.model_name}
               onChange={(e) => setDraft({ ...draft, model_name: e.target.value })}
               placeholder="ollama/qwen2.5"
@@ -138,6 +141,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
               id="settings-api-key"
               type="password"
               className={inputCls}
+              disabled={loading}
               value={draft.api_key}
               onChange={(e) => {
                 setDraft({ ...draft, api_key: e.target.value })
@@ -149,6 +153,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
               <label className="mt-2 flex items-center gap-2 text-xs text-canvas-muted">
                 <input
                   type="checkbox"
+                  disabled={loading}
                   checked={clearApiKey}
                   onChange={(e) => setClearApiKey(e.target.checked)}
                 />
@@ -192,7 +197,7 @@ export default function SettingsModal({ open, settings, onSave, onClose, loadErr
           <button
             type="button"
             onClick={save}
-            disabled={saving || restoring || restoreRefreshPending}
+            disabled={loading || saving || restoring || restoreRefreshPending}
             className="inline-flex items-center gap-1.5 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90 disabled:opacity-50"
           >
             <Save size={14} />

@@ -19,3 +19,17 @@ The backend rejects non-absolute or non-HTTP(S) endpoint URLs and URLs containin
 ## Remaining manual work
 
 Try the configured endpoint and model on another computer. Verify the destination and any endpoint-side key handling with the user's chosen service. The configured-endpoint request is not cancellable once submitted; the UI indicates that it is working. ChatGPT account, inference, and native secure-storage checks remain separate manual items.
+
+## Settings startup-race follow-up (PR #14)
+
+Settings are fetched once when the app starts; opening the Settings modal does not start a second fetch. The modal shows a loading status and keeps endpoint, model, API-key, and save controls disabled until that startup fetch settles, so a late initial response cannot replace edits made against placeholder values. Opening Settings still invalidates Study Agent endpoint consent synchronously. Every successful settings PATCH installs the fresh backend response object (including after API-key replacement); consent remains tied to the exact settings object and is checked again before a send. The API returns only `has_api_key`, never the key itself.
+
+Verification for this settings-only follow-up:
+
+- `npm test` — 18/18 passed.
+- `npm run build` — passed; Vite reported the existing large-chunk warning (750.87 kB minified JavaScript).
+- `npm run test:docs` with Nix Chromium — passed; no external requests.
+- `npm run test:browser` with Nix Chromium and the temporary backend environment — passed. The browser smoke delayed the initial `/settings` GET, opened Settings while it was pending, verified API-key and Save controls stayed disabled, then released the response and verified the controls became available. It also confirmed API-key persistence. Output reported `ai_included: false`; this check did not call `/study-agent/local` or any model.
+- `git diff --check` — passed.
+
+These checks cover Settings loading and persistence only; they are not a local-provider test or benchmark. Real endpoint/model behavior remains for manual verification on another computer.

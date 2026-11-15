@@ -48,6 +48,9 @@ jobs:
       - run: python -m unittest discover -s backend/tests -v
         env:
           PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_study_agent_cli.py --repeats 3
+        env:
+          PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_storage.py
         env:
           PYTHONPATH: backend

@@ -1,0 +1,172 @@
+import json
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+from pydantic import ValidationError
+
+from app.hamartia_cli import MAX_LINE_LENGTH, run_json_line
+from app.services.study_agent_cli import EvidenceQuote, dispatch_cli, parse_quote_value, prepare_practice
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
+MESSAGES = [
+    "I completed a practice test on Functions in Mathematics on 2026-11-15. "
+    "I got 12 right, 3 wrong, left 1 blank; it took 45 minutes and 0 seconds."
+]
+CLAIMS = [
+    {"field": "subject", "quote": "in Mathematics"},
+    {"field": "topic", "quote": "on Functions"},
+    {"field": "date", "quote": "on 2026-11-15"},
+    {"field": "correct", "quote": "12 right"},
+    {"field": "incorrect", "quote": "3 wrong"},
+    {"field": "blank", "quote": "left 1 blank"},
+    {"field": "duration_minutes", "quote": "it took 45 minutes"},
+    {"field": "duration_seconds", "quote": "0 seconds"},
+]
+
+
+class StudyAgentCliTests(unittest.TestCase):
+    def test_natural_language_quotes_are_bound_to_source_and_return_ready_preview(self):
+        result = prepare_practice(MESSAGES, "en", CLAIMS)
+        self.assertEqual(result["status"], "ready")
+        self.assertFalse(result["write_allowed"])
+        self.assertEqual(result["fields"], {
+            "date": "2026-11-15", "subject": "Mathematics", "topic": "Functions",
+            "correct": 12, "incorrect": 3, "blank": 1,
+            "duration_minutes": 45, "duration_seconds": 0,
+        })
+        self.assertEqual(result["verified_evidence"]["correct"]["quote"], "12 right")
+        self.assertEqual(result["verified_evidence"]["correct"]["start"], MESSAGES[0].index("12 right"))
+        self.assertEqual(len(result["preview_digest"]), 64)
+
+    def test_turkish_natural_phrases_are_parsed_and_questions_follow_saved_language(self):
+        message = "Matematik dersinde Fonksiyon çalıştım; 12 doğru, 3 yanlış, 1 boş yaptım. 45 dakika ve 10 saniye sürdü. Tarih 2026-11-15."
+        claims = [
+            {"field": "subject", "quote": "Matematik dersinde"},
+            {"field": "topic", "quote": "dersinde Fonksiyon çalıştım"},
+            {"field": "correct", "quote": "12 doğru"},
+            {"field": "incorrect", "quote": "3 yanlış"},
+            {"field": "blank", "quote": "1 boş"},
+            {"field": "duration_minutes", "quote": "45 dakika"},
+            {"field": "duration_seconds", "quote": "10 saniye"},
+            {"field": "date", "quote": "Tarih 2026-11-15"},
+        ]
+        result = prepare_practice([message], "tr", claims)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["fields"]["subject"], "Matematik")
+        self.assertEqual(result["fields"]["topic"], "Fonksiyon")
+        incomplete = prepare_practice(["Dün Matematik çalıştım."], "tr", [])
+        self.assertIn("Hangi konuda çalıştın?", incomplete["questions"])
+
+    def test_quote_alone_does_not_override_negation_hedge_hypothetical_or_reported_context(self):
+        cases = [
+            "I did not get 5 right.",
+            "Maybe I got about 5 right.",
+            "If I got 5 right, I would be happy.",
+            "My teacher said I got 5 right.",
+            "Could I have got 5 right?",
+        ]
+        for message in cases:
+            with self.subTest(message=message):
+                result = prepare_practice([message], "en", [{"field": "correct", "quote": "5 right"}])
+                self.assertNotIn("correct", result["fields"])
+                self.assertIn("correct", result["ambiguous"])
+                self.assertEqual(result["status"], "ambiguous")
+
+    def test_field_semantics_and_number_boundaries_are_verified(self):
+        cases = [
+            ("correct", "I got 12 wrong.", "12"),
+            ("incorrect", "I got 12 right.", "12"),
+            ("correct", "I got 12 right.", "2"),
+            ("correct", "My net is 12.", "12"),
+            ("correct", "I got 7 of 10.", "7 of 10"),
+        ]
+        for field, message, quote in cases:
+            with self.subTest(field=field, message=message, quote=quote):
+                self.assertIsNone(parse_quote_value(field, quote, message))
+
+    def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
+        self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))
+        self.assertIsNone(parse_quote_value("date", "today"))
+        self.assertIsNone(parse_quote_value("date", "on 11/15/2026"))
+        self.assertIsNone(parse_quote_value("duration_minutes", "about 45 minutes"))
+        self.assertIsNone(parse_quote_value("duration_minutes", "1:30"))
+        result = prepare_practice(["Today I practiced Functions."], "en", [{"field": "date", "quote": "Today"}])
+        self.assertIn("date", result["ambiguous"])
+        self.assertFalse(result["write_allowed"])
+
+    def test_zero_is_explicit_and_not_confused_with_a_missing_count(self):
+        result = prepare_practice(["I got 0 right."], "en", [{"field": "correct", "quote": "0 right"}])
+        self.assertEqual(result["fields"]["correct"], 0)
+        self.assertNotIn("correct", result["missing"])
+
+    def test_conflicting_turns_require_an_explicit_correction(self):
+        messages = ["I got 5 right.", "I got 7 right."]
+        result = prepare_practice(messages, "en", [
+            {"field": "correct", "quote": "5 right"},
+            {"field": "correct", "quote": "7 right"},
+        ])
+        self.assertIn("correct", result["ambiguous"])
+        corrected = prepare_practice(
+            [*messages, "Correction: I got 7 right."], "en",
+            [{"field": "correct", "quote": "5 right"}, {"field": "correct", "quote": "Correction: I got 7 right."}],
+        )
+        self.assertEqual(corrected["fields"]["correct"], 7)
+        self.assertNotIn("correct", corrected["ambiguous"])
+
+    def test_duplicate_or_unicode_mismatched_quotes_are_rejected(self):
+        repeated = prepare_practice(["I got 5 right.", "I got 5 right."], "en", [{"field": "correct", "quote": "5 right"}])
+        self.assertIn("correct", repeated["ambiguous"])
+        mismatched = prepare_practice(["5 dogru yaptım."], "tr", [{"field": "correct", "quote": "5 doğru"}])
+        self.assertNotIn("correct", mismatched["fields"])
+        self.assertIn("correct", mismatched["missing"])
+
+    def test_tool_schema_rejects_injected_fields_indexes_and_paths(self):
+        for claim in (
+            {"field": "correct", "quote": "5 right", "message_index": 99},
+            {"field": "correct", "quote": "5 right", "value": 5},
+            {"field": "delete_record", "quote": "5 right"},
+            {"field": "correct", "quote": "5 right", "path": "/tmp/user-data"},
+        ):
+            with self.subTest(claim=claim), self.assertRaises(ValidationError):
+                EvidenceQuote.model_validate(claim)
+
+    def test_cli_jsonl_dispatch_has_only_read_only_prepare_command(self):
+        request = {
+            "command": "study.practice.prepare", "language": "en",
+            "messages": MESSAGES, "evidence": CLAIMS,
+        }
+        result = run_json_line(json.dumps(request))
+        self.assertEqual(result["status"], "ready")
+        self.assertFalse(result["write_allowed"])
+        self.assertEqual(run_json_line('{"command":"practice.delete","language":"en","messages":["x"]}')["status"], "error")
+        self.assertEqual(run_json_line('{"command":"study.practice.prepare","command":"practice.delete"}')["status"], "error")
+        self.assertEqual(run_json_line("[]")["status"], "error")
+
+    def test_cli_module_runs_as_a_json_lines_process(self):
+        request = {"command": "study.practice.prepare", "language": "en", "messages": MESSAGES, "evidence": CLAIMS}
+        process = subprocess.run(
+            [sys.executable, "-m", "app.hamartia_cli", "--jsonl"],
+            input=json.dumps(request) + "\n", text=True, capture_output=True,
+            cwd=BACKEND_DIR, check=True, timeout=5,
+        )
+        result = json.loads(process.stdout)
+        self.assertEqual(result["status"], "ready")
+        self.assertFalse(result["write_allowed"])
+
+    def test_cli_rejects_oversized_envelope_without_processing(self):
+        result = run_json_line('{"payload":"' + ("x" * MAX_LINE_LENGTH) + '"}')
+        self.assertEqual(result, {"status": "error", "error": "request_too_large"})
+
+    def test_tool_has_no_write_capability(self):
+        result = dispatch_cli({"command": "study.practice.prepare", "language": "en", "messages": ["hello"], "evidence": []})
+        self.assertNotIn("create", result)
+        self.assertNotIn("write", result)
+        self.assertFalse(result["write_allowed"])
+
+
+if __name__ == "__main__":
+    unittest.main()

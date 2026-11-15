@@ -1,0 +1,26 @@
+# Study Agent CLI Core
+
+## Scope
+
+Added a JSON-lines command entry point:
+
+```sh
+PYTHONPATH=backend python -m app.hamartia_cli --jsonl
+```
+
+Each input line is a strict JSON object with the only supported command `study.practice.prepare`. The request contains the selected `en`/`tr` language, the student's bounded messages, and provider-suggested `{field, quote}` hints. The tool accepts no caller-supplied values, indexes, paths, or extra command fields. It emits a deterministic progress/preview response and has no create, update, delete, settings, backup, provider, or shell capability. Duplicate JSON keys and oversized lines are rejected.
+
+The parser accepts only a narrow tested subset of English and Turkish statements. It verifies the exact quote occurs once in the actual student transcript, derives the value locally using field-specific grammar, examines the full sentence for negation, hedging, hypotheticals, questions, and reported speech, and records the source message index and character offsets itself. Contradictions remain ambiguous until explicit correction. Unknown or unsupported phrasing produces a natural-language clarification question in the selected language; it is not guessed. Relative dates, non-ISO ambiguous dates, approximate or clock-style durations, net scores used as correct counts, and aggregate `x of y` counts remain unresolved.
+
+This is the CLI core contract only. ChatGPT Responses and configured Chat Completions tool loops are not integrated yet, so this checkpoint is not the completed user-facing conversational agent. Record creation remains exclusively in the existing app exact-preview approval flow.
+
+## Verification
+
+No provider or local model calls were made.
+
+- `PYTHONPATH=backend /tmp/hamartia-cli-venv/bin/python -m unittest backend.tests.test_study_agent_cli backend.tests.test_study_agent_practice -v` — 26/26 passed.
+- `PYTHONPATH=backend /tmp/hamartia-cli-venv/bin/python -m unittest discover -s backend/tests -v` — 157/157 passed.
+- `PYTHONPATH=backend /tmp/hamartia-cli-venv/bin/python -m app.hamartia_cli --jsonl` — manual JSON-lines invocation returned bounded clarification and rejected an unsupported delete command.
+- `PYTHONPATH=backend /tmp/hamartia-cli-venv/bin/python backend/benchmarks/benchmark_study_agent_cli.py --repeats 3 --json-output /tmp/hamartia-study-agent-cli-benchmark.json` — passed with independent fixture-derived values, 24/100 rows, `ai_included:false`, zero provider calls, zero writes, and three rejected probes per trial. p50 was 0.029600s for 24 entries and 0.140668s for 100 entries.
+
+The benchmark is wired into backend CI. Provider transport loops, live SIWC function-call capability, endpoint compatibility, and browser interaction remain to be implemented/verified; no live-account or remote endpoint test was attempted.

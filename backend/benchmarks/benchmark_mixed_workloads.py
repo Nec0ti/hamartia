@@ -89,6 +89,25 @@ def fixtures(exam_count, question_count, session_count):
         attempt_count = index % 4
         last_age = 0 if index % 8 == 1 else 1 + index % 30
         all_correct = index % 3 == 1
+        reference = None
+        if index == question_count - 1:
+            reference = {
+                "framework": "Synthetic framework B", "source": "Benchmark fixture B",
+                "version": "v2", "grade_year": "Year 2", "unit_theme": "Made-up unit B",
+                "learning_outcome": "Explain invented pattern B", "process_component": "Reasoning B",
+            }
+        elif index == question_count - 2:
+            reference = {
+                "framework": "Synthetic framework A", "source": "Benchmark fixture A",
+                "version": "v1", "grade_year": "Year 1", "unit_theme": "Made-up unit A",
+                "learning_outcome": "Explain invented pattern A", "process_component": "Reasoning A",
+            }
+        elif index == question_count - 3:
+            reference = {
+                "framework": "Synthetic framework C", "source": "Benchmark fixture C",
+                "version": "v3", "grade_year": "Year 3", "unit_theme": "Made-up unit C",
+                "learning_outcome": "Explain invented pattern C", "process_component": "Reasoning C",
+            }
         questions.append(Question(
             id=f"question-{index}", exam_id=exam.id,
             question_number=question_number, solve_order=solve_order,
@@ -103,6 +122,7 @@ def fixtures(exam_count, question_count, session_count):
                 attempt_day=(TODAY - timedelta(days=last_age + attempt_count - offset - 1)).isoformat(),
                 correct=all_correct if all_correct else offset < attempt_count - 1,
             ) for offset in range(attempt_count)],
+            curriculum_reference=reference or {},
         ))
     sessions = [PracticeSession(
         id=f"session-{index}", date=(TODAY - timedelta(days=index % 730)).isoformat(),
@@ -325,8 +345,35 @@ def _expected_priorities(questions, exams):
         "scheduled_questions": scheduled, "unclassified_questions": unclassified,
         "today_questions": len(today_ids), "today_correct": today_correct,
         "today_incorrect": today_incorrect, "question_order": order_rows,
-        "topics": topics, "reviews": reviews, "curriculum_references": [],
+        "topics": topics, "reviews": reviews,
+        "curriculum_references": _expected_curriculum_references(questions),
     }
+
+
+def _expected_curriculum_references(questions, limit=8):
+    # The fixture places B, A, and C on the final three questions.
+    # This explicit oracle checks full values, defaults, and reverse insertion order.
+    rows = [
+        {
+            "subject": questions[-1].subject, "framework": "Synthetic framework B",
+            "source": "Benchmark fixture B", "version": "v2", "grade_year": "Year 2",
+            "unit_theme": "Made-up unit B", "learning_outcome": "Explain invented pattern B",
+            "process_component": "Reasoning B", "source_url": "",
+        },
+        {
+            "subject": questions[-2].subject, "framework": "Synthetic framework A",
+            "source": "Benchmark fixture A", "version": "v1", "grade_year": "Year 1",
+            "unit_theme": "Made-up unit A", "learning_outcome": "Explain invented pattern A",
+            "process_component": "Reasoning A", "source_url": "",
+        },
+        {
+            "subject": questions[-3].subject, "framework": "Synthetic framework C",
+            "source": "Benchmark fixture C", "version": "v3", "grade_year": "Year 3",
+            "unit_theme": "Made-up unit C", "learning_outcome": "Explain invented pattern C",
+            "process_component": "Reasoning C", "source_url": "",
+        },
+    ]
+    return rows[:limit]
 
 
 def _expected_practice(sessions):

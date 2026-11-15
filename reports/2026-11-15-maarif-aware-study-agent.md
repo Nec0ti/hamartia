@@ -17,6 +17,7 @@ No MEB curriculum text is bundled, copied, fetched, or redistributed. Reference 
 - `npm run test:docs` in `frontend/` with Nix Chromium — passed; English/Turkish guide navigation, default language, mobile width, handoff copy, and no external requests.
 - `npm run test:browser` in `frontend/` with Nix Chromium and the temporary backend environment — passed. It exercised synthetic question creation/edit/search and existing settings/backup flows; output was `ai_included: false`, and an explicit assertion confirmed no `/study-agent/local` request.
 - Targeted non-AI persistence/validation tests in `backend/` — 5 passed: legacy empty defaults, create persistence, URL rejection, update/clear semantics, and bounded insight summaries.
+- `PYTHONPATH=. python benchmarks/benchmark_mixed_workloads.py` in `backend/` — passed with `ai_included: false`; the deterministic fixture includes three fictional curriculum references and checks full values and insertion order using an independent expected result.
 - `npm test` in `desktop/` — 33 passed. ChatGPT provider behavior is mocked; no provider or model was contacted.
 - `git diff --check` — passed.
 

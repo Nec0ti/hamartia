@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from app.models.schemas import CosmosData, Exam, PracticeSession, Question, Settings, UserStats
+from app.models.schemas import ClockState, CosmosData, Exam, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
 from app.services.storage import data_mutation_lock
 
@@ -26,8 +26,9 @@ JSON_MODELS = {
     "agent_documents.json": ("dict_list", dict),
     "settings.json": ("doc", Settings),
     "practice_sessions.json": ("list", PracticeSession),
+    "clock.json": ("doc", ClockState),
 }
-OPTIONAL_BACKUP_JSON = {"practice_sessions.json"}
+OPTIONAL_BACKUP_JSON = {"practice_sessions.json", "clock.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -53,7 +54,44 @@ def _defaults():
         "agent_documents.json": [],
         "settings.json": Settings().model_dump(mode="json"),
         "practice_sessions.json": [],
+        "clock.json": ClockState().model_dump(mode="json"),
     }
+
+
+def _pause_clock_timer(timer, now_ms):
+    if timer is None or timer.status != "running":
+        return timer
+    if timer.kind in ("countdown", "pomodoro"):
+        deadline = timer.deadline_at_ms
+        remaining = max(0, deadline - now_ms)
+        if remaining == 0:
+            return timer.model_copy(update={
+                "status": "overdue", "deadline_at_ms": None, "started_at_ms": None,
+                "remaining_ms": 0, "overdue_at_ms": deadline,
+            })
+        return timer.model_copy(update={
+            "status": "paused", "deadline_at_ms": None, "started_at_ms": None,
+            "remaining_ms": remaining, "overdue_at_ms": None,
+        })
+    elapsed = timer.elapsed_ms + max(0, now_ms - timer.started_at_ms)
+    return timer.model_copy(update={
+        "status": "paused", "started_at_ms": None, "deadline_at_ms": None,
+        "elapsed_ms": elapsed, "overdue_at_ms": None,
+    })
+
+
+def _freeze_clock_state_for_backup(value, now_ms):
+    state = ClockState.model_validate(value)
+    timer = _pause_clock_timer(state.active_timer, now_ms)
+    state = state.model_copy(update={"active_timer": timer})
+    return _json_bytes(state.model_dump(mode="json"))
+
+
+def _prepare_clock_state_for_restore(value, now_ms):
+    state = ClockState.model_validate(value)
+    timer = _pause_clock_timer(state.active_timer, now_ms)
+    alarms = [alarm.model_copy(update={"enabled": False}) for alarm in state.alarms]
+    return state.model_copy(update={"active_timer": timer, "alarms": alarms})
 
 
 def _validate_json(name, raw):
@@ -119,6 +157,8 @@ def _upload_references(json_files):
 def _capture_backup_snapshot(data_dir, snapshot_dir):
     """Copy a stable, secret-filtered snapshot while writes are paused."""
     json_files = _json_sources(data_dir)
+    snapshot_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    json_files["clock.json"] = _freeze_clock_state_for_backup(json.loads(json_files["clock.json"]), snapshot_ms)
     for name, raw in json_files.items():
         (snapshot_dir / name).write_bytes(raw)
 
@@ -305,6 +345,14 @@ def extract_backup(archive_path, destination):
 
             for name in OPTIONAL_BACKUP_JSON - set(expected):
                 (destination / name).write_bytes(_json_bytes(_defaults()[name]))
+
+            clock_path = destination / "clock.json"
+            clock_state = ClockState.model_validate_json(clock_path.read_bytes())
+            restored_clock = _prepare_clock_state_for_restore(
+                clock_state,
+                int(datetime.now(timezone.utc).timestamp() * 1000),
+            )
+            clock_path.write_bytes(_json_bytes(restored_clock.model_dump(mode="json")))
 
             json_files = {name: (destination / name).read_bytes() for name in JSON_MODELS}
             for name, raw in json_files.items():

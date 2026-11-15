@@ -146,12 +146,13 @@ _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl
 _RELATIVE_DATE_OFFSET = rf"(?:(?:(?:in|within)\s+)?{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}(?:\s+(?:later|afterwards?|after(?:\s+that)?|from\s+now|sonra))?)"
 _RELATIVE_WEEKDAY = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|pazartesi|salı|sali|çarşamba|carsamba|perşembe|persembe|cuma|cumartesi|pazar)"
 _RELATIVE_DATE_QUALIFIER = rf"(?:(?:(?:in|within)\s+)?(?:the\s+)?(?:next|following|upcoming|gelecek|önümüzdeki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat|{_RELATIVE_WEEKDAY})|(?:(?:the\s+)?(?:last|past|previous|next|coming|upcoming|geçen|gecen|gelecek|önümüzdeki|önceki))\s+{_RELATIVE_WEEKDAY}|bir\s+sonraki\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat|{_RELATIVE_WEEKDAY}))"
+_RELATIVE_WEEKDAY_CONTINUATION = rf"(?:(?:this|bu)\s+)?{_RELATIVE_WEEKDAY}"
 _RELATIVE_DATE_PAST_OFFSET = rf"(?:{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}\s+(?:ago|before|earlier|önce|once))"
 _RELATIVE_DATE_PAST_QUALIFIER = r"(?:yesterday|(?:(?:the\s+)?(?:last|past|previous)|geçen|gecen|önceki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat)|(?:the\s+)?day\s+before(?:\s+that)?|dün|dun|(?:bir\s+)?gün\s+önce)"
 _RELATIVE_DATE_COMPACT_OFFSET = r"\d{1,5}(?:yrs?|y|d|w|h)(?:\s+(?:later|afterwards?|after(?:\s+that)?|ago|before|earlier|sonra|önce|once))?"
 _DATE_RELATIVE_ALTERNATIVE = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"
-    rf"(?:tomorrow|{_RELATIVE_DATE_PAST_QUALIFIER}|{_RELATIVE_DATE_PAST_OFFSET}|{_RELATIVE_DATE_QUALIFIER}|{_RELATIVE_DATE_COMPACT_OFFSET}|(?:the\s+)?(?:next|following)\s+day|(?:the\s+)?day\s+(?:after(?:\s+that)?|afterwards?)|"
+    rf"(?:tomorrow|{_RELATIVE_DATE_PAST_QUALIFIER}|{_RELATIVE_DATE_PAST_OFFSET}|{_RELATIVE_DATE_QUALIFIER}|{_RELATIVE_WEEKDAY_CONTINUATION}|{_RELATIVE_DATE_COMPACT_OFFSET}|(?:the\s+)?(?:next|following)\s+day|(?:the\s+)?day\s+(?:after(?:\s+that)?|afterwards?)|"
     rf"(?:a|one)\s+day\s+(?:later|after(?:\s+that)?|afterwards?)|yarın|yarin|(?:bir\s+)?sonraki\s+gün|ertesi\s+gün|"
     rf"{_RELATIVE_DATE_OFFSET})\b"
 )

@@ -315,6 +315,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("I studied on 2026-11-15 — or 1w before.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15, or last Monday.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15 — or next Friday.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15, or Monday.", "en", "on 2026-11-15"),
+            ("I studied on 2026-11-15 — or this Friday.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15, or 2y ago.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15 — or 1yr before.", "en", "on 2026-11-15"),
             ("I studied on 2026-11-15, or 24h later.", "en", "on 2026-11-15"),
@@ -337,6 +339,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("Tarih 2026-11-15 — ya da geçen sene.", "tr", "Tarih 2026-11-15"),
             ("Tarih 2026-11-15, ya da geçen pazartesi.", "tr", "Tarih 2026-11-15"),
             ("Tarih 2026-11-15 — ya da gelecek cuma.", "tr", "Tarih 2026-11-15"),
+            ("Tarih 2026-11-15, ya da pazartesi.", "tr", "Tarih 2026-11-15"),
+            ("Tarih 2026-11-15 — ya da bu pazartesi.", "tr", "Tarih 2026-11-15"),
             ("I studied on 2026-11-15.\nor the next day.", "en", "on 2026-11-15"),
         )
         for message, language, quote in relative_date_cases:

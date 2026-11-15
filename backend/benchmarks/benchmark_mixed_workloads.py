@@ -325,7 +325,7 @@ def _expected_priorities(questions, exams):
         "scheduled_questions": scheduled, "unclassified_questions": unclassified,
         "today_questions": len(today_ids), "today_correct": today_correct,
         "today_incorrect": today_incorrect, "question_order": order_rows,
-        "topics": topics, "reviews": reviews,
+        "topics": topics, "reviews": reviews, "curriculum_references": [],
     }
 
 

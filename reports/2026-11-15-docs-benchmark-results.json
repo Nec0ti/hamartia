@@ -2,7 +2,7 @@
   "benchmark": "hamartia-bilingual-docs-integrity-v1",
   "task_set_id": "hamartia-wiki-retrieval-v1",
   "task_pack_sha256": "cc552da13e3102ada36a50bfe611b791eb6bd5fb4c86e8e2a23649118bd482a0",
-  "rendered_wiki_sha256": "8dce3f9737118db45dc5d91969fdb13ef447f764652762694ce66e92116d65e9",
+  "rendered_wiki_sha256": "c09a04ec83a066e1bfcd494abebb40459799d996a3346ed8f9c56ff1795dad3f",
   "protocol_sha256": "d2170c2ed0ab0a1496e613cf2ac7d10d75160f6ba54b6698f70f391aae4db26c",
   "checker_sha256": "75af5c987fba221b609884f81cb9c44c94bc8230c0786141f5017e2d8d4d2645",
   "hash_sensitivity_self_checks": {
@@ -22,7 +22,7 @@
   "active_nav_items_checked": 34,
   "paired_h2_anchor_orders_checked": 17,
   "local_links_and_assets_checked": 816,
-  "external_links_syntactically_counted_not_fetched": 120,
+  "external_links_syntactically_counted_not_fetched": 130,
   "answer_rubrics_checked": 20,
   "exact_evidence_excerpts_checked": 106,
   "rendered_section_excerpts_checked": 104,

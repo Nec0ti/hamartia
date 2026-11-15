@@ -3,7 +3,7 @@ export default {
   'settings.close': { en: 'Close settings', tr: 'Ayarları kapat' },
   'settings.language': { en: 'Language', tr: 'Dil' },
   'settings.loading': { en: 'Loading saved settings…', tr: 'Kayıtlı ayarlar yükleniyor…' },
-  'settings.localAiServerUrl': { en: 'Local AI server URL', tr: 'Yerel AI sunucu adresi' },
+  'settings.localAiServerUrl': { en: 'OpenAI-compatible server URL (local or remote)', tr: 'OpenAI uyumlu sunucu adresi (yerel veya uzak)' },
   'settings.modelName': { en: 'Model name', tr: 'Model adı' },
   'settings.apiKey': { en: 'API key', tr: 'API anahtarı' },
   'settings.optional': { en: 'optional', tr: 'isteğe bağlı' },

@@ -4,6 +4,8 @@ These are the canonical, project-wide formulas. They are imported by the API
 layers so the math lives in exactly one place and cannot drift out of sync.
 """
 
+from fractions import Fraction
+
 # YKS net score. Each wrong answer costs 1/4 of one correct answer.
 # Division is guarded: with zero answered items the net is defined as 0.0,
 # never a zero-division error.
@@ -18,6 +20,16 @@ def net_score(correct: int, incorrect: int) -> float:
     return correct - (incorrect / YKS_PENALTY_FACTOR)
 
 
+def net_for_scoring_rule(correct: int, incorrect: int, blank: int, rule) -> float:
+    """Apply an exact rational additive rule and convert once at the API edge."""
+    exact = (
+        correct * Fraction(rule.correct_points)
+        - incorrect * Fraction(rule.wrong_penalty)
+        + blank * Fraction(rule.blank_points)
+    )
+    return float(exact)
+
+
 def xp_for_exam(exam) -> int:
     """XP from a single exam.
 
@@ -30,7 +42,9 @@ def xp_for_exam(exam) -> int:
     Blank answers are intentionally ignored — only correct and incorrect
     drive the reward.
     """
-    net = exam.net
+    # XP is the legacy, fixed activity formula over raw counts. Custom scoring
+    # weights must not amplify progression or change XP for the same work.
+    net = net_score(exam.correct, exam.incorrect)
     correct = exam.correct
     incorrect = exam.incorrect
     duration_minutes = exam.duration_minutes

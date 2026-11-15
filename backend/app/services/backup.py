@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from app.models.schemas import ClockState, CosmosData, Exam, LearningEvidence, PracticeSession, Question, Settings, UserStats
+from app.models.schemas import ClockState, CosmosData, Exam, ExamScoringProfile, LearningEvidence, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
 from app.services.storage import data_mutation_guard
 
@@ -20,6 +20,7 @@ BACKUP_FORMAT = "hamartia-local-backup"
 BACKUP_VERSION = 1
 JSON_MODELS = {
     "exams.json": ("list", Exam),
+    "exam_profiles.json": ("list", ExamScoringProfile),
     "questions.json": ("list", Question),
     "user.json": ("doc", UserStats),
     "cosmos.json": ("doc", CosmosData),
@@ -29,7 +30,7 @@ JSON_MODELS = {
     "learning_evidence.json": ("list", LearningEvidence),
     "clock.json": ("doc", ClockState),
 }
-OPTIONAL_BACKUP_JSON = {"practice_sessions.json", "learning_evidence.json", "clock.json"}
+OPTIONAL_BACKUP_JSON = {"exam_profiles.json", "practice_sessions.json", "learning_evidence.json", "clock.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -49,6 +50,7 @@ def _json_bytes(value):
 def _defaults():
     return {
         "exams.json": [],
+        "exam_profiles.json": [],
         "questions.json": [],
         "user.json": UserStats().model_dump(mode="json"),
         "cosmos.json": CosmosData().model_dump(mode="json"),

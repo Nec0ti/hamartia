@@ -9,11 +9,11 @@ import { fmtInt, fmtNet } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
 
 const CARDS = [
-  { label: 'dashboard.stat.examCount', value: (p, locale) => fmtInt(p.total, locale), icon: GraduationCap, tone: 'text-canvas-indigo' },
-  { label: 'dashboard.stat.averageNet', value: (p, locale) => fmtNet(p.avgNet, locale), icon: Target, tone: 'text-emerald' },
-  { label: 'dashboard.stat.totalXp', value: (p, locale) => fmtInt(p.totalXp, locale), icon: Zap, tone: 'text-canvas-cyan' },
-  { label: 'dashboard.stat.level', value: (p, locale) => fmtInt(p.level, locale), icon: Shield, tone: 'text-amber' },
-  { label: 'dashboard.stat.dailyStreak', value: (p, locale) => fmtInt(p.streakDays, locale), icon: Flame, tone: 'text-orange' },
+  { label: 'dashboard.stat.examCount', value: (p, locale) => fmtInt(p.total, locale), icon: GraduationCap },
+  { label: 'dashboard.stat.averageNet', value: (p, locale) => fmtNet(p.avgNet, locale), icon: Target },
+  { label: 'dashboard.stat.totalXp', value: (p, locale) => fmtInt(p.totalXp, locale), icon: Zap },
+  { label: 'dashboard.stat.level', value: (p, locale) => fmtInt(p.level, locale), icon: Shield },
+  { label: 'dashboard.stat.dailyStreak', value: (p, locale) => fmtInt(p.streakDays, locale), icon: Flame },
 ]
 
 /** Five stat cards across the top of the dashboard. */

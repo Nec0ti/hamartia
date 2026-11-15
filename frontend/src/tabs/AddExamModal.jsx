@@ -53,7 +53,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
           <button
             type="button"
             onClick={submit}
-            className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-white shadow-crimson transition hover:opacity-90"
+            className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base shadow-crimson transition hover:opacity-90"
           >
             {editing ? t('exams.saveChanges') : t('exams.saveExam')}
           </button>
@@ -121,7 +121,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
                     <input aria-label={t('exams.resultForSubject', { result: [t('exams.correct'), t('exams.incorrect'), t('exams.blank')][itemIndex], number: index + 1 })} type="number" min={0} step={1} required value={section[key]} onChange={(e) => updateSection(index, key, Math.max(0, Math.trunc(Number(e.target.value) || 0)))} className={inputCls} />
                   </label>
                 ))}
-                <button type="button" aria-label={t('exams.removeSubjectNamed', { subject: section.subject || index + 1 })} onClick={() => setForm((current) => ({ ...current, sections: current.sections.filter((_, i) => i !== index) }))} className="col-span-2 justify-self-end text-xs text-accent sm:col-span-1 sm:self-end">{t('exams.removeSubject')}</button>
+                <button type="button" aria-label={t('exams.removeSubjectNamed', { subject: section.subject || index + 1 })} onClick={() => setForm((current) => ({ ...current, sections: current.sections.filter((_, i) => i !== index) }))} className="col-span-2 justify-self-end text-xs text-canvas-text sm:col-span-1 sm:self-end">{t('exams.removeSubject')}</button>
               </div>
             ))}
           </section>
@@ -167,7 +167,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
           <dl className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <dt className="text-canvas-muted">{t('exams.net')}</dt>
-              <dd className={`font-semibold ${net < 0 ? 'text-accent' : 'text-emerald-400'}`}>
+              <dd className="font-semibold text-canvas-text">
                 {fmtNet(net, locale)}
               </dd>
             </div>
@@ -180,7 +180,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
             <div className="my-2 border-t border-canvas-line" />
             <div className="flex items-center justify-between">
               <dt className="text-canvas-muted">{t('exams.xpEarned')}</dt>
-              <dd className="font-semibold text-canvas-cyan">{fmtInt(xp, locale)}</dd>
+              <dd className="font-semibold text-canvas-text">{fmtInt(xp, locale)}</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-canvas-muted">{t('exams.xpFormula')}</dt>
@@ -191,7 +191,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
           </dl>
         </div>
 
-        {validationError && <p role="alert" className="text-sm text-accent">{validationError}</p>}
+        {validationError && <p role="alert" className="text-sm text-canvas-text">{validationError}</p>}
 
         <X size={18} className="absolute right-4 top-4 text-canvas-muted" />
       </form>

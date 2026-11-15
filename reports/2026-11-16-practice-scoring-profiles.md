@@ -14,12 +14,12 @@ Status: implemented on `codex/practice-scoring-profiles` from `af7c8d48ab185739f
 
 `backend/benchmarks/benchmark_practice_profiles.py` mounts the profile, practice, and clock routers in an in-process FastAPI test client; it does not mount a provider route. Its independent fixture table asserts full custom-profile snapshots, literal score goldens, complete API rows and grouped summaries, unique record IDs, and timestamps inside the benchmark execution window. It covers malformed/negative rational weights, negative counts, zero-question rejection, fractional weights, all-blank behavior, profile v1/v2 isolation, omitted-edit snapshot preservation, explicit legacy fallback, host-selected agent snapshots, and full current/legacy backup round-trips.
 
-Timer fixtures cover 0, 999, 1,000, 59,999, 60,000, and 60,999 elapsed milliseconds with expected second truncation and minute carry. Completion retry fixtures compare the complete returned/persisted row after the same key and reject a changed payload. Legacy restore compares every complete restored row to a separately computed legacy profile/net/accuracy oracle. The benchmark output reports `ai_included: false` and that provider routes were not mounted; these are scope descriptions, not measurements of model quality or resource use.
+Timer fixtures call the production `frontend/src/clock/practiceDuration.js` helper through a small Node bridge for 0, 999, 1,000, 59,999, 60,000, and 60,999 elapsed milliseconds. Its returned durations are checked against literal Python fixture pairs, then persisted through the API and compared as complete rows. Completion retry fixtures compare the complete returned/persisted row after the same key and reject a changed payload. Legacy restore compares every complete restored row to a separately computed legacy profile/net/accuracy oracle. The benchmark output reports `ai_included: false` and that provider routes were not mounted; these are scope descriptions, not measurements of model quality or resource use.
 
 ## Verification and limits
 
 - Backend unittest discovery: 174/174 passed.
-- Frontend tests: 32/32 passed; desktop tests: 40/40 passed.
+- Frontend tests: 33/33 passed; desktop tests: 40/40 passed.
 - Frontend production build passed; Vite retains its large-chunk warning.
 - `benchmark_practice_profiles.py --repeats 3` passed with 13 records and 12 profile/version/topic groups. It exercised complete current and legacy backup round-trips and all six timer boundaries.
 - `scripts/benchmark_docs.py` passed for 17 rendered routes per locale, checking 108 evidence excerpts with no errors.

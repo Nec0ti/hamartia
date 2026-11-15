@@ -5,6 +5,7 @@ import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
 import { useClock } from '../clock/ClockContext.jsx'
+import { practiceDurationFromElapsedMilliseconds } from '../clock/practiceDuration.js'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
@@ -176,6 +177,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
     setSaving(true)
     setError('')
     const seconds = elapsedSeconds(active)
+    const duration = practiceDurationFromElapsedMilliseconds(seconds * 1000)
     try {
       const completionId = active.completion_id || crypto.randomUUID()
       if (!active.completion_id) {
@@ -187,7 +189,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       await api.practice.create({
         date: active.date, subject: active.subject, topic: active.topic,
         correct: active.correct, incorrect: active.incorrect, blank: active.blank,
-        duration_minutes: Math.floor(seconds / 60), duration_seconds: seconds % 60,
+        ...duration,
         scoring_profile_id: active.scoring_profile.profile_id,
         scoring_profile_version: active.scoring_profile.version,
       }, completionId)

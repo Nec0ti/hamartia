@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import statistics
+import subprocess
 import tempfile
 import time
 import zipfile
@@ -307,16 +308,27 @@ def run(repeats=3):
 
                 # Exercise the browser timer's millisecond truncation and minute carry boundaries
                 # against an explicit table, while comparing every resulting persisted row below.
-                timer_cases = [(0, (0, 0)), (999, (0, 0)), (1000, (0, 1)),
-                               (59_999, (0, 59)), (60_000, (1, 0)), (60_999, (1, 0))]
-                for index, (timer_ms, expected_duration) in enumerate(timer_cases):
-                    whole_seconds = timer_ms // 1000
-                    actual_duration = (whole_seconds // 60, whole_seconds % 60)
+                timer_cases = [(0, {"duration_minutes": 0, "duration_seconds": 0}),
+                               (999, {"duration_minutes": 0, "duration_seconds": 0}),
+                               (1000, {"duration_minutes": 0, "duration_seconds": 1}),
+                               (59_999, {"duration_minutes": 0, "duration_seconds": 59}),
+                               (60_000, {"duration_minutes": 1, "duration_seconds": 0}),
+                               (60_999, {"duration_minutes": 1, "duration_seconds": 0})]
+                bridge = Path(__file__).resolve().parents[2] / "frontend/benchmarks/practice_duration_bridge.mjs"
+                converted = subprocess.run(
+                    ["node", str(bridge)], input=json.dumps([elapsed_ms for elapsed_ms, _ in timer_cases]),
+                    text=True, capture_output=True, check=True, timeout=10,
+                )
+                production_durations = json.loads(converted.stdout)
+                require(len(production_durations) == len(timer_cases),
+                        "production frontend duration helper returned the wrong number of cases")
+                for (timer_ms, expected_duration), actual_duration in zip(timer_cases, production_durations):
                     require(actual_duration == expected_duration,
-                            f"elapsed timer conversion failed for {timer_ms}ms: {actual_duration}")
+                            f"production frontend conversion differs from literal oracle for {timer_ms}ms: {actual_duration}")
                     timer_completion_id = str(uuid4())
                     timer_values = payload("2026-11-10", "Timer boundaries", f"Elapsed {timer_ms}ms",
-                                           1, 0, 0, half_v1, *actual_duration)
+                                           1, 0, 0, half_v1, actual_duration["duration_minutes"],
+                                           actual_duration["duration_seconds"])
                     timer_response = client.post("/practice", json=timer_values,
                                                  headers={"Idempotency-Key": timer_completion_id})
                     timer_actual = timer_response.json()
@@ -421,6 +433,7 @@ def run(repeats=3):
                     "timer_boundary": {"elapsed_ms": elapsed_ms, "duration_minutes": duration_minutes,
                                        "duration_seconds": duration_seconds,
                                        "cases_ms": [case[0] for case in timer_cases],
+                                       "production_helper": "frontend/src/clock/practiceDuration.js",
                                        "same_key_retry": "same row; altered payload rejected"},
                     "ai_included": False,
                     "provider_routes_mounted": False,

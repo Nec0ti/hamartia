@@ -16,7 +16,7 @@ from app.core.progression import progression_summary
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, PracticeSession, Question, ReviewAttempt
 from app.services.storage import StorageService
-from benchmark_common import assert_oracle, emit, probe_oracle_self_check
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check, seeded_photo_png
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -40,6 +40,8 @@ def measure(operation, repeats):
 
 def fixtures(exam_count, question_count, session_count):
     rng = random.Random(SEED)
+    subjects = ("Matematik", "Türkçe", "Fizik", "Kimya", "Biyoloji", "Tarih", "Coğrafya", "Felsefe")
+    topics = ("Konu 00",) * 12 + ("Konu 01",) * 8 + ("Konu 02",) * 5 + tuple(f"Konu {i:02d}" for i in range(3, 40))
     exams = []
     for index in range(exam_count):
         sectioned = index % 10 == 0
@@ -49,10 +51,12 @@ def fixtures(exam_count, question_count, session_count):
             {"subject": "Fen", "correct": 13, "incorrect": 4, "blank": 3},
             {"subject": "Sosyal", "correct": 15, "incorrect": 3, "blank": 2},
         ] if sectioned else []
+        age = 0 if index == 0 else 1 if index == 1 else min(730, int(rng.expovariate(1 / 120)))
         exams.append(Exam(
-            id=f"exam-{index}", date=(TODAY - timedelta(days=index % 730)).isoformat(),
+            id=f"exam-{index}", date=(TODAY - timedelta(days=age)).isoformat(),
             exam_type="tyt" if sectioned else "branch",
-            subject="TYT Geneli" if sectioned else rng.choice(("Matematik", "Türkçe", "Fizik", "Kimya")),
+            subject="TYT Geneli" if sectioned else rng.choices(
+                ("Matematik", "Türkçe", "Fizik", "Kimya"), weights=(45, 30, 15, 10), k=1)[0],
             correct=sum(section["correct"] for section in sections) if sectioned else 40,
             incorrect=sum(section["incorrect"] for section in sections) if sectioned else 30,
             blank=sum(section["blank"] for section in sections) if sectioned else 20,
@@ -80,13 +84,17 @@ def fixtures(exam_count, question_count, session_count):
             iter(rng.sample(range(1, total + 1), len(indices))),
             iter(rng.sample(range(1, total + 1), len(indices))),
         )
+    image_count = max(1, min(64, round(question_count * 0.04)))
+    image_indices = {round(index * (question_count - 1) / max(1, image_count - 1))
+                     for index in range(image_count)}
+    image_files = {}
     questions = []
     for index, (exam_index, section_index) in enumerate(assignments):
         exam = exams[exam_index]
         question_number = next(positions[(exam_index, section_index)][0])
         solve_order = next(positions[(exam_index, section_index)][1])
         section = exam.sections[section_index] if section_index is not None else None
-        attempt_count = index % 4
+        attempt_count = rng.choices((0, 1, 2, 3, 6), weights=(45, 25, 17, 10, 3), k=1)[0]
         last_age = 0 if index % 8 == 1 else 1 + index % 30
         all_correct = index % 3 == 1
         reviewed_at = TODAY.isoformat() if index == 0 else ""
@@ -117,13 +125,28 @@ def fixtures(exam_count, question_count, session_count):
         if review_attempts and index % 13 == 0:
             review_attempts[-1].attempt_day = ""  # legacy UTC date fallback
         subject = "" if index == 3 else section.subject if section else exam.subject
-        topic = "" if index == 3 else f"Konu {index % 40:02d}"
+        topic = "" if index == 3 else rng.choice(topics)
+        image_name = ""
+        image_path = ""
+        if index in image_indices:
+            width, height = ((320, 240), (640, 480), (1024, 768))[index % 3]
+            image_name = f"q_{index:05d}.png"
+            image_path = f"uploads/{image_name}"
+            image_files[image_name] = seeded_photo_png(width, height, rng)
+        length_class = index % 20
+        if length_class < 11:
+            ocr_text = f"Question {index}: identify the correct result."
+        elif length_class < 18:
+            ocr_text = f"Question {index}: " + ("Given the conditions and the diagram, explain the reasoning. " * 8)
+        else:
+            ocr_text = f"Question {index}: " + ("Extended passage and multi-step context. " * 48)
         questions.append(Question(
             id=f"question-{index}", exam_id=exam.id,
             question_number=question_number, solve_order=solve_order,
             time_spent_seconds=15 + index % 150,
             subject=subject,
-            topic=topic, ocr_text=f"Seeded question text {index:05d} " + "açıklama " * 12,
+            topic=topic, ocr_text=ocr_text,
+            image_name=image_name, image_path=image_path,
             reviewed_at=reviewed_at,
             created_at=(TODAY - timedelta(days=index % 365)).isoformat() + "T12:00:00Z",
             hamartia_tag=rng.choice(("[Knowledge Gap]", "[Reading Slip]", "[Distractor Trap]")),
@@ -132,8 +155,9 @@ def fixtures(exam_count, question_count, session_count):
             curriculum_reference=reference or {},
         ))
     sessions = [PracticeSession(
-        id=f"session-{index}", date=(TODAY - timedelta(days=index % 730)).isoformat(),
-        subject=rng.choice(("Matematik", "Türkçe", "Fizik", "Kimya")), topic=f"Konu {index % 80:02d}",
+        id=f"session-{index}", date=(TODAY - timedelta(days=min(730, int(rng.expovariate(1 / 120))))).isoformat(),
+        subject=rng.choices(subjects, weights=(34, 22, 12, 10, 8, 6, 5, 3), k=1)[0],
+        topic=rng.choice(topics),
         correct=index % 26, incorrect=index % 8, blank=1 + index % 5,
         duration_minutes=10 + index % 60, duration_seconds=index % 60,
     ) for index in range(session_count)]
@@ -145,7 +169,7 @@ def fixtures(exam_count, question_count, session_count):
         id="session-1", date=(TODAY - timedelta(days=729)).isoformat(), subject="matematik", topic="boundary",
         correct=1000, incorrect=4, blank=0, duration_minutes=90, duration_seconds=0,
     )
-    return exams, questions, sessions
+    return exams, questions, sessions, image_files
 
 
 def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, json_output=None):
@@ -156,11 +180,15 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
     if not 5 <= repeats <= 101:
         raise ValueError("repeats must be between 5 and 101")
 
-    exams, questions, sessions = fixtures(exam_count, question_count, session_count)
+    exams, questions, sessions, image_files = fixtures(exam_count, question_count, session_count)
     _assert_valid_questions(questions, exams)
     with tempfile.TemporaryDirectory(prefix="hamartia-bench-") as directory:
         root = Path(directory)
         storage = StorageService(root)
+        uploads = root / "uploads"
+        uploads.mkdir()
+        for name, contents in image_files.items():
+            (uploads / name).write_bytes(contents)
         storage.save_list("exams.json", exams)
         storage.save_list("questions.json", questions)
         storage.save_list("practice_sessions.json", sessions)
@@ -252,6 +280,18 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             "benchmark": "persisted_mixed_study_workloads", "seed": SEED,
             "records": {"exams": exam_count, "questions": question_count, "practice_sessions": session_count},
             "persisted_json_bytes": persisted_bytes,
+            "upload_fixtures": {
+                "files": len(image_files),
+                "bytes": sum(map(len, image_files.values())),
+                "size_range_bytes": [min(map(len, image_files.values())), max(map(len, image_files.values()))],
+                "referenced_questions": sum(bool(question.image_path) for question in questions),
+                "question_text_characters": sum(len(question.ocr_text) for question in questions),
+                "ocr_text_length_classes": "short, paragraph, and long-passage records",
+                "image_dimension_classes": sorted({
+                    ("320x240", "640x480", "1024x768")[int(name[2:7]) % 3]
+                    for name in image_files
+                }),
+            },
             "first_service_load_seconds": first_service_load, "warm_load": warm,
             "progression_full_history": progression, "question_insights_full_history": priorities,
             "practice_summaries_full_history": summaries,
@@ -299,12 +339,13 @@ def _expected_progression(exams):
         duration = exam.duration_minutes or 1
         xp += max(0, int(net * exam.correct * 1.5 - duration * exam.incorrect * 0.25))
         dates.add(date.fromisoformat(exam.date))
-    last = max(day for day in dates if day <= TODAY)
+    last = max((day for day in dates if day <= TODAY), default=None)
     streak = 0
-    while last - timedelta(days=streak) in dates:
-        streak += 1
+    if last and last >= TODAY - timedelta(days=1):
+        while last - timedelta(days=streak) in dates:
+            streak += 1
     return {"total_xp": xp, "level": xp // 500 + 1 if xp >= 500 else 1,
-            "streak_days": streak, "last_active_date": last.isoformat()}
+            "streak_days": streak, "last_active_date": last.isoformat() if last else ""}
 
 
 def _expected_priorities(questions, exams):

@@ -45,6 +45,29 @@ def seeded_png(width, height, rng):
             + chunk(b"IDAT", zlib.compress(pixels, 1)) + chunk(b"IEND", b""))
 
 
+def seeded_photo_png(width, height, rng):
+    """Create a valid bounded PNG with low-frequency image-like variation.
+
+    This complements ``seeded_png``'s incompressible noise case. Small color
+    blocks produce a more varied persisted byte size without external assets.
+    """
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    block_width = 16
+    rows = []
+    for y in range(height):
+        row = bytearray(b"\0")
+        for x in range(0, width, block_width):
+            color = bytes((rng.randrange(256), rng.randrange(256), rng.randrange(256)))
+            row.extend(color * min(block_width, width - x))
+        rows.append(bytes(row))
+    pixels = b"".join(rows)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">2I5B", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(pixels, 1)) + chunk(b"IEND", b""))
+
+
 def emit(result, json_output=None):
     result["environment"] = metadata(result.get("seed"))
     result["ai_included"] = False

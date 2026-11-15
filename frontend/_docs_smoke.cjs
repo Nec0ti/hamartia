@@ -60,6 +60,7 @@ async function main() {
     assert.equal(await page.locator('html').getAttribute('lang'), 'tr')
     assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://nec0ti.github.io/hamartia/tr/')
     await page.getByRole('heading', { name: 'Daha net bir tabloyla çalış.' }).waitFor()
+    await page.getByText(/Yanlış sorularını kaydet, hatalarındaki örüntüleri gör/).waitFor()
     assert.equal(await page.getByRole('link', { name: "Hamartia'yı indir" }).getAttribute('href'), 'https://github.com/Nec0ti/hamartia/releases/latest')
     await page.getByText(/Windows 10\/11 veya Linux x64/).waitFor()
     await page.getByText(/ChatGPT ile giriş, masaüstü uygulamasında kullanılabilir/).waitFor()

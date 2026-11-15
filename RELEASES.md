@@ -267,3 +267,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-018` sürümü, [#22 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/22) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-019
+
+## English
+
+`ARETE-019` includes the changes merged in [PR #23: bench: cover multi-process recovery and loopback HTTP](https://github.com/Nec0ti/hamartia/pull/23).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-019` sürümü, [#23 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/23) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

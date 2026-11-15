@@ -100,6 +100,7 @@ _UNPUNCTUATED_QUESTION = re.compile(
     r"(?i)(?:^\s*(?:did|do|does|is|are|was|were|can|could|would|should|what|when|where|why|how|whether|kaç|ne|hangi|mi|mı|mu|mü)\b|\b(?:mi|mı|mu|mü)\s*$)"
 )
 _COMPOSITE_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\s+\d+\s*(?:minutes?|mins?|dakika)\b")
+_HOUR_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\b")
 
 _COUNT_PATTERNS: dict[str, re.Pattern[str]] = {
     "correct": re.compile(r"(?i)(?<![\w.,+\-])(?:(?:i\s+)?(?:got|answered|solved|have)\s+)?(\d{1,5})(?![\d.,])\s*(?:questions?\s+)?(?:correct(?:ly)?|right|doğru|dogru)(?![\w])"),
@@ -134,7 +135,7 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
         or "?" in surrounding
         or _UNPUNCTUATED_QUESTION.search(surrounding)
         or _HEDGE_OR_NEGATION.search(surrounding)
-        or (field in {"duration_minutes", "duration_seconds"} and _COMPOSITE_DURATION.search(surrounding))
+        or (field in {"duration_minutes", "duration_seconds"} and (_COMPOSITE_DURATION.search(surrounding) or _HOUR_DURATION.search(surrounding)))
     ):
         return None
     parse_candidate = re.sub(

@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from app.hamartia_cli import MAX_LINE_LENGTH, run_json_line
 from app.services.study_agent_cli import EvidenceQuote, ProviderToolArguments, dispatch_cli, dispatch_provider_tool, parse_quote_value, prepare_practice
+from app.services.study_agent_practice import extract_fields
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -95,6 +96,15 @@ class StudyAgentCliTests(unittest.TestCase):
                 self.assertIsNone(parse_quote_value(field, quote, message))
         self.assertIsNone(parse_quote_value("correct", "correct: 1.5", "correct: 1.5"))
         self.assertIsNone(parse_quote_value("duration_minutes", "duration_minutes: 1.5", "duration_minutes: 1.5"))
+        for field, text in (
+            ("correct", "correct: 1.5"),
+            ("duration_minutes", "duration_minutes: 1.5"),
+            ("correct", "correct: -5"),
+            ("correct", "correct: 1,200"),
+        ):
+            with self.subTest(field=field, text=text):
+                accepted, _ambiguous = extract_fields([text])
+                self.assertNotIn(field, accepted)
 
     def test_quote_cannot_cherry_pick_one_value_from_sentence_alternatives(self):
         count_message = "I got 5 right and 7 right."
@@ -116,6 +126,7 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertIsNone(parse_quote_value("duration_minutes", "about 45 minutes"))
         self.assertIsNone(parse_quote_value("duration_minutes", "1:30"))
         self.assertIsNone(parse_quote_value("duration_minutes", "30 minutes", "It took 1 hour 30 minutes."))
+        self.assertIsNone(parse_quote_value("duration_minutes", "45 minutes", "It took 45 minutes or 1 hour."))
         result = prepare_practice(["Today I practiced Functions."], "en", [{"field": "date", "quote": "Today"}])
         self.assertIn("date", result["ambiguous"])
         self.assertFalse(result["write_allowed"])

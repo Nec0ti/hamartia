@@ -35,6 +35,8 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
   const [pendingPreview, setPendingPreview] = useState(null)
   const requestId = useRef('')
   const responseText = useRef('')
+  const workflowRef = useRef(workflow)
+  workflowRef.current = workflow
   const consentedSettings = useRef(null)
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     return chatgptApi.onDelta(({ requestId: id, delta }) => {
       if (id === requestId.current) {
         responseText.current += delta
-        setAnswer((text) => text + delta)
+        if (workflowRef.current !== 'practice-entry') setAnswer((text) => text + delta)
       }
     })
   }, [t])
@@ -195,8 +197,13 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     const draft = await api.practice.agentDraft({ messages, language, proposal })
     setStudentMessages(messages)
     setMessage('')
-    setPendingPreview(draft.preview_digest ? { ...draft, proposal } : null)
-    setAnswer(draft.questions.length ? draft.questions.join('\n') : draft.conflicts.length ? t('agent.practiceConflictReview') : t('agent.practicePreviewReady'))
+    setPendingPreview(draft.preview_digest ? draft : null)
+    const response = [
+      ...(draft.proposal_mismatch ? [t('agent.practiceProposalMismatch')] : []),
+      ...(draft.questions || []),
+      ...(!draft.questions?.length ? [draft.conflicts.length ? t('agent.practiceConflictReview') : t('agent.practicePreviewReady')] : []),
+    ]
+    setAnswer(response.join('\n'))
   }
 
   async function approvePractice(duplicateChoice = null) {

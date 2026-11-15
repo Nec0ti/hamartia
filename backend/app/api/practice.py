@@ -115,8 +115,6 @@ async def create_session(
 async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageService = Depends(get_storage)):
     parsed, values, details = complete_payload(payload.messages)
     evidence = details["evidence"]
-    if payload.proposal != values:
-        raise HTTPException(status_code=422, detail="The provider proposal did not match values deterministically extracted from student messages.")
     digest = preview_digest(parsed, evidence) if parsed else None
     conflicts = []
     if parsed:
@@ -128,6 +126,8 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
         ]
     return {
         "fields": parsed.model_dump() if parsed else values,
+        "proposal": values,
+        "proposal_mismatch": payload.proposal != values,
         "evidence": evidence,
         "missing": details["missing"],
         "ambiguous": details["ambiguous"],

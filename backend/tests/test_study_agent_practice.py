@@ -71,22 +71,23 @@ class StudyAgentPracticeTests(unittest.TestCase):
         self.assertEqual(self.sessions(), [])
 
     def test_provider_cannot_add_unknown_field_or_invent_a_value(self):
-        for proposal in (
-            {**FULL_PROPOSAL, "settings": "changed"},
-            {**FULL_PROPOSAL, "correct": 70},
-        ):
-            response = self.draft(proposal=proposal)
-            self.assertEqual(response.status_code, 422)
-            self.assertEqual(self.sessions(), [])
+        response = self.draft(proposal={**FULL_PROPOSAL, "settings": "changed"})
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.sessions(), [])
+        response = self.draft(proposal={**FULL_PROPOSAL, "correct": 70})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["proposal_mismatch"])
+        self.assertEqual(response.json()["fields"]["correct"], 7)
+        self.assertEqual(self.sessions(), [])
 
     def test_conflicting_values_are_reported_and_require_student_correction(self):
         response = self.draft(
             ["correct: 7 correct: 8"],
             {"correct": 7},
         )
-        self.assertEqual(response.status_code, 422)  # provider must match the deterministic unresolved proposal
-        response = self.draft(["correct: 7 correct: 8"], {})
+        response = self.draft(["correct: 7 correct: 8"], {"correct": 7})
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["proposal_mismatch"])
         self.assertTrue(response.json()["ambiguous"]["correct"])
         self.assertTrue(any("conflicting values" in question for question in response.json()["questions"]))
         self.assertEqual(self.sessions(), [])
@@ -186,9 +187,12 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
             litellm_base_url="http://localhost:4000/v1", model_name="mock-model", api_key="mock-key",
         ))
         app = FastAPI()
+        app.include_router(practice.router)
         app.include_router(study_agent.router)
         self.data_patch = patch.object(study_agent, "DATA_DIR", self.data_dir)
         self.data_patch.start()
+        self.practice_data_patch = patch.object(practice, "DATA_DIR", self.data_dir)
+        self.practice_data_patch.start()
         self.client = TestClient(app)
         self.ai_patch = patch.object(study_agent, "AIService")
         self.ai_class = self.ai_patch.start()
@@ -200,6 +204,7 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.ai_patch.stop()
         self.client.close()
         self.data_patch.stop()
+        self.practice_data_patch.stop()
         self.temp.cleanup()
 
     def payload(self):
@@ -215,10 +220,28 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.assertEqual(response.json(), {"proposal": {"subject": "Mathematics"}})
         self.ai.study_practice_proposal.assert_awaited_once_with(["subject: Mathematics"], "tr")
 
-    def test_configured_provider_hallucinated_value_is_rejected(self):
+    def test_configured_provider_proposal_is_untrusted_and_cannot_write(self):
         self.ai.study_practice_proposal.return_value = '{"fields":{"subject":"Physics"}}'
         response = self.client.post("/study-agent/local", json=self.payload())
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"proposal": {"subject": "Physics"}})
+        self.assertEqual(StorageService(self.data_dir).load_list("practice_sessions.json", PracticeSession), [])
+
+    def test_configured_provider_overguess_is_replaced_by_localized_missing_question(self):
+        self.ai.study_practice_proposal.return_value = '{"fields":{"subject":"Mathematics","topic":"Guessed topic"}}'
+        provider_response = self.client.post("/study-agent/local", json={
+            **self.payload(), "message": "ders: Matematik", "language": "tr", "messages": ["ders: Matematik"],
+        })
+        draft_response = self.client.post("/practice/agent-draft", json={
+            "messages": ["ders: Matematik"], "language": "tr", "proposal": provider_response.json()["proposal"],
+        })
+        self.assertEqual(draft_response.status_code, 200)
+        draft = draft_response.json()
+        self.assertTrue(draft["proposal_mismatch"])
+        self.assertEqual(draft["fields"]["subject"], "Matematik")
+        self.assertNotIn("topic", draft["fields"])
+        self.assertIn("topic", draft["missing"])
+        self.assertIn("Lütfen konu bilgisini `topic: değer` biçiminde belirt.", draft["questions"])
         self.assertEqual(StorageService(self.data_dir).load_list("practice_sessions.json", PracticeSession), [])
 
 

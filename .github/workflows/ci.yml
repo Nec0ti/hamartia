@@ -63,6 +63,9 @@ jobs:
       - run: python backend/benchmarks/benchmark_practice_sessions.py
         env:
           PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_study_agent_practice.py --repeats 3
+        env:
+          PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_mixed_workloads.py
         env:
           PYTHONPATH: backend

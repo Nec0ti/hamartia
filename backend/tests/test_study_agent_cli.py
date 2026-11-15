@@ -104,6 +104,7 @@ class StudyAgentCliTests(unittest.TestCase):
             ("correct", "correct: 1 200"),
             ("correct", "correct: 5 or 7"),
             ("correct", "correct: five or 7"),
+            ("correct", "correct: 5, or 7"),
         ):
             with self.subTest(field=field, text=text):
                 accepted, _ambiguous = extract_fields([text])
@@ -130,6 +131,7 @@ class StudyAgentCliTests(unittest.TestCase):
             ("5 veya 7 doğru yaptım.", "7 doğru", "tr"),
             ("I got five or 7 right.", "7 right", "en"),
             ("Beş veya 7 doğru yaptım.", "7 doğru", "tr"),
+            ("Correct: 5, or 7", "Correct: 5, or 7", "en"),
             ("I got 5 right; correct: 5 or 7", "correct: 5", "en"),
         ]
         for message, quote, language in cases:
@@ -145,12 +147,24 @@ class StudyAgentCliTests(unittest.TestCase):
         mixed_result = prepare_practice([mixed_date], "en", [{"field": "date", "quote": "2026-11-15"}])
         self.assertNotIn("date", mixed_result["fields"])
         self.assertIn("date", mixed_result["ambiguous"])
+        for statement, quote in (
+            ("The date was 2026-11-15 or 11/16/2026.", "2026-11-15"),
+            ("The date was 2026-11-15 or 16.11.2026.", "2026-11-15"),
+            ("The date was 2026-11-15 or Nov 16.", "2026-11-15"),
+            ("Tarih 2026-11-15 veya 15 Kasım.", "2026-11-15"),
+        ):
+            with self.subTest(statement=statement):
+                result = prepare_practice([statement], "tr" if statement.startswith("Tarih") else "en", [{"field": "date", "quote": quote}])
+                self.assertNotIn("date", result["fields"])
+                self.assertIn("date", result["ambiguous"])
 
     def test_duration_alternatives_accept_only_neither_candidate(self):
         for context, quote in (
             ("It took 45 min or an hour.", "45 min"),
             ("45 dakika ya da bir saat sürdü.", "45 dakika"),
             ("It took 45 min or sixty seconds.", "45 min"),
+            ("It took 45 min or half an hour.", "45 min"),
+            ("45 dakika ya da bir buçuk saat sürdü.", "45 dakika"),
         ):
             with self.subTest(context=context):
                 self.assertIsNone(parse_quote_value("duration_minutes", quote, context))

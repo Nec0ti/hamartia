@@ -18,7 +18,7 @@ export function Panel({ children, className = '' }) {
 export function Header({ icon: Icon, title, subtitle }) {
   return (
     <div className="mb-4 flex items-center gap-2">
-      {Icon && <Icon size={16} className="text-canvas-accent" />}
+      {Icon && <Icon size={16} className="text-canvas-text" />}
       <h3 className="text-sm font-semibold uppercase tracking-wider text-canvas-text">
         {title}
       </h3>
@@ -51,7 +51,7 @@ export function Toggle({ value, options, onChange }) {
             className={[
               'rounded-md px-3 py-1 text-xs font-medium transition',
               active
-                ? 'bg-canvas-accent text-white'
+                ? 'bg-canvas-accent text-canvas-base'
                 : 'text-canvas-muted hover:text-canvas-text',
             ].join(' ')}
           >

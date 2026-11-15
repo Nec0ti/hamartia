@@ -70,6 +70,13 @@
 - [x] Verify native packaged Electron `safeStorage` behavior on Ubuntu 22.04 (GNOME Secret Service accepted; `basic_text` rejected) and Windows Server 2022 (native Windows protected storage round-trip) in CI; see [the 2026-11-15 verification report](reports/2026-11-15-chatgpt-plan-study-agent.md).
 - [ ] Complete a real SIWC login/inference/sign-out on a user's desktop; verify package behavior on consumer Windows 10/11 and a separate Debian desktop. Never include account tokens in test data or reports.
 
+## P6 — product experience follow-up
+
+- [ ] Add an optional Clock tab for local focus timing, with clear pause/cancel controls and no streak pressure or exit friction.
+- [ ] Add repository wiki documentation for the system architecture, data/backup boundaries, study workflows, and provider consent.
+- [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded.
+- [ ] Redesign the public guide layout in a separate phase, then add a docs benchmark last to check navigation, accessibility, and task completion without telemetry.
+
 ## Next small task
 
-Next: complete real SIWC account checks and consumer-machine package checks on supported desktop platforms, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. After those release checks, work through P6 in order: Clock, wiki docs, stronger system benchmarks, then the docs benchmark. Verify subsequent ARETE numbering on a later merged PR.

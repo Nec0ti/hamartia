@@ -50,10 +50,10 @@ class StorageProcessLockTests(unittest.TestCase):
             finally:
                 release.touch()
             self.assertEqual(holder.wait(timeout=10), 0)
-            available = subprocess.run([sys.executable, "-c", probe_code, str(data)], env=env, timeout=10)
-            self.assertEqual(available.returncode, 1, "OS lock probe must acquire the lock after holder release")
             self.assertEqual(writer.wait(timeout=10), 0)
             self.assertTrue(done.exists(), "writer should finish after lock release")
+            available = subprocess.run([sys.executable, "-c", probe_code, str(data)], env=env, timeout=10)
+            self.assertEqual(available.returncode, 1, "OS lock probe must acquire the lock after holder and writer release")
             records = json.loads((data / "rows.json").read_text(encoding="utf-8"))
             self.assertEqual(records, [{"id": "after-release"}])
 

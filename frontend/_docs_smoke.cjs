@@ -86,8 +86,8 @@ async function main() {
         if (route.includes('study-agent/')) {
           const article = await page.locator('main article').innerText()
           for (const phrase of lang === 'en'
-            ? ['Local OpenAI-compatible server option', 'remote host', 'http://localhost:11434/v1/', 'qwen3:8b', 'http://localhost:1234/v1', '/v1/models', 'remote operator']
-            : ['Yerel OpenAI uyumlu sunucu seçeneği', 'uzaktaki bir ana makineyi', 'http://localhost:11434/v1/', 'qwen3:8b', 'http://localhost:1234/v1', '/v1/models', 'uzak işletmeci']) {
+            ? ['OpenAI-compatible server (local or remote)', 'remote host', 'http://localhost:11434/v1/', 'qwen3:8b', 'http://localhost:1234/v1', 'configured or last-used port', '/v1/models', 'remote operator']
+            : ['OpenAI uyumlu sunucu (yerel veya uzak)', 'uzaktaki bir sunucuyu', 'http://localhost:11434/v1/', 'qwen3:8b', 'http://localhost:1234/v1', 'yapılandırılan veya son kullanılan port', '/v1/models', 'uzak işletmeci']) {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing local/remote endpoint setup clarity: ${phrase}`)
           }
           for (const href of [

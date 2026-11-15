@@ -2,14 +2,14 @@
 
 ## Scope
 
-The optional second Study Agent provider is now labeled **Local OpenAI-compatible server (optional)** in English and **Yerel OpenAI uyumlu sunucu (isteğe bağlı)** in Turkish. The Study Agent page explains that this option is commonly used with a server on the same computer, while its configured URL may still point to a remote host. Settings names the URL as local or remote. When this provider is selected, a short EN/TR note repeats the remote-endpoint caveat and links to setup guidance.
+The optional second Study Agent provider is now labeled **Local or remote OpenAI-compatible server (optional)** in English and **Yerel veya uzak OpenAI uyumlu sunucu (isteğe bağlı)** in Turkish. The Study Agent page explains that the configured URL may point to a server on this computer or a remote host. Settings also names the URL as local or remote. When this provider is selected, a short EN/TR note repeats the remote-endpoint caveat and links to setup guidance.
 
 Existing per-request consent, exact-destination review, non-loopback host, unencrypted HTTP, operator-retention, and API-key warnings remain in place. English remains the first-run language; the existing language tests verify that default. No provider, model, or inference call was made.
 
 The bilingual Study Agent wiki includes these examples:
 
 - Ollama: `ollama pull qwen3:8b`, URL `http://localhost:11434/v1/`, model `qwen3:8b`; a blank client key is acceptable because Ollama documents ignoring it.
-- LM Studio: start the Developer server or run `lms server start`, use `http://localhost:1234/v1`, and copy the model ID from `curl http://localhost:1234/v1/models`. The API key may be blank unless server authentication is enabled.
+- LM Studio: start the Developer server or run `lms server start`, use `http://localhost:1234/v1` as an example, and copy the model ID from `curl http://localhost:1234/v1/models`. The docs say to check the configured or last-used port and substitute it in both commands. The API key may be blank unless server authentication is enabled.
 - Both examples identify the port and model as defaults/examples that may vary. The page warns that configuring a remote server requires a reachable address and that a model name or OpenAI-compatible API does not prove where inference runs or who can access it.
 
 Official documentation consulted on 2026-11-15:

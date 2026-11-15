@@ -29,8 +29,8 @@ test('every message has English and Turkish text', () => {
 })
 
 test('configured Study Agent server option is labeled in both locales with remote-endpoint caveat', () => {
-  assert.equal(translate('agent.configuredProvider', 'en'), 'Local OpenAI-compatible server (optional)')
-  assert.equal(translate('agent.configuredProvider', 'tr'), 'Yerel OpenAI uyumlu sunucu (isteğe bağlı)')
+  assert.equal(translate('agent.configuredProvider', 'en'), 'Local or remote OpenAI-compatible server (optional)')
+  assert.equal(translate('agent.configuredProvider', 'tr'), 'Yerel veya uzak OpenAI uyumlu sunucu (isteğe bağlı)')
   assert.match(translate('agent.configuredProviderInfo', 'en'), /URL may point to a remote host/)
   assert.match(translate('agent.configuredProviderInfo', 'tr'), /uzaktaki bir ana makineyi/)
   assert.match(translate('settings.localAiServerUrl', 'en'), /local or remote/)

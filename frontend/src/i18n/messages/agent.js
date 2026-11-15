@@ -3,7 +3,7 @@ export default {
   'agent.intro': { en: 'Ask for study guidance grounded in a short summary of your local progress.', tr: 'Yerel çalışma ilerlemenin kısa özetiyle temellendirilen çalışma önerileri al.' },
   'agent.provider': { en: 'Study Agent provider', tr: 'Çalışma Asistanı sağlayıcısı' },
   'agent.chatgptProvider': { en: 'ChatGPT subscription (default)', tr: 'ChatGPT aboneliği (varsayılan)' },
-  'agent.configuredProvider': { en: 'Local OpenAI-compatible server (optional)', tr: 'Yerel OpenAI uyumlu sunucu (isteğe bağlı)' },
+  'agent.configuredProvider': { en: 'Local or remote OpenAI-compatible server (optional)', tr: 'Yerel veya uzak OpenAI uyumlu sunucu (isteğe bağlı)' },
   'agent.configuredProviderInfo': { en: 'This option is often used with a server running on this computer, but its configured URL may point to a remote host. Review the exact destination, operator, and per-request consent.', tr: 'Bu seçenek genellikle bu bilgisayarda çalışan bir sunucuyla kullanılır; yapılandırılmış adres uzaktaki bir ana makineyi de gösterebilir. Tam hedefi, işletmeciyi ve her istekteki onayı incele.' },
   'agent.configuredProviderGuide': { en: 'See Ollama and LM Studio setup examples', tr: 'Ollama ve LM Studio kurulum örneklerine bak' },
   'agent.endpointTarget': { en: 'Configured endpoint', tr: 'Yapılandırılmış uç nokta' },

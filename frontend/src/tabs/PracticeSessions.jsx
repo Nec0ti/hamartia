@@ -8,8 +8,12 @@ import { useClock } from '../clock/ClockContext.jsx'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
-  duration_minutes: 0, duration_seconds: 0,
+  duration_minutes: 0, duration_seconds: 0, scoring_profile_id: 'legacy-yks', scoring_profile_version: 1,
 })
+const LEGACY_PROFILE = {
+  profile_id: 'legacy-yks', version: 1, display_name: 'YKS (legacy)', country_label: 'Türkiye',
+  scoring_rule: { correct_points: '1/1', wrong_penalty: '1/4', blank_points: '0/1' },
+}
 const fields = [
   ['correct', 'common.correct'], ['incorrect', 'common.incorrect'], ['blank', 'common.blank'],
   ['duration_minutes', 'common.minutes'], ['duration_seconds', 'common.secondsLabel'],
@@ -50,6 +54,7 @@ function asPracticeTimer(session) {
       date: session.date, subject: session.subject, topic: session.topic,
       correct: session.correct, incorrect: session.incorrect, blank: session.blank,
       completion_id: session.completion_id || null,
+      scoring_profile: session.scoring_profile || LEGACY_PROFILE,
     },
   }
 }
@@ -63,6 +68,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   const { state: clockState, updateClock, loaded: clockLoaded, loading: clockLoading, savingError: clockError, reload } = useClock()
   const [sessions, setSessions] = useState([])
   const [summaries, setSummaries] = useState([])
+  const [profiles, setProfiles] = useState([LEGACY_PROFILE])
   const [draft, setDraft] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')
   const [error, setError] = useState('')
@@ -82,9 +88,10 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
 
   const load = useCallback(async () => {
     try {
-      const [records, insights] = await Promise.all([api.practice.list(), api.practice.insights()])
+      const [records, insights, availableProfiles] = await Promise.all([api.practice.list(), api.practice.insights(), api.examProfiles.list()])
       setSessions(records)
       setSummaries(insights)
+      setProfiles(availableProfiles)
       setError('')
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -108,6 +115,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       setActive({
         date: localDateToday(), subject: startTopic.subject, topic: startTopic.topic,
         correct: 0, incorrect: 0, blank: 0, elapsed_seconds: 0, running_since: Date.now(),
+        scoring_profile: profiles.find((item) => item.profile_id === draft.scoring_profile_id
+          && item.version === draft.scoring_profile_version) || LEGACY_PROFILE,
       })
     }
     onStartTopicConsumed?.()
@@ -140,6 +149,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       date: session.date, subject: session.subject, topic: session.topic,
       correct: session.correct, incorrect: session.incorrect, blank: session.blank,
       duration_minutes: session.duration_minutes, duration_seconds: session.duration_seconds,
+      scoring_profile_id: session.scoring_profile?.profile_id || 'legacy-yks',
+      scoring_profile_version: session.scoring_profile?.version || 1,
     })
   }
 
@@ -177,6 +188,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         date: active.date, subject: active.subject, topic: active.topic,
         correct: active.correct, incorrect: active.incorrect, blank: active.blank,
         duration_minutes: Math.floor(seconds / 60), duration_seconds: seconds % 60,
+        scoring_profile_id: active.scoring_profile.profile_id,
+        scoring_profile_version: active.scoring_profile.version,
       }, completionId)
       await updateClock((current) => ({ ...current, active_timer: null }))
       await load()
@@ -211,7 +224,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       {currentTimer && currentTimer.kind !== 'practice' && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.otherTimerActive')}</p>}
       {active && <section ref={activeRef} aria-label={t('study.focusedSession')} className="space-y-3 rounded-xl border border-canvas-accent/50 bg-canvas-panel p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p></div>
+          <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p><p className="text-xs text-canvas-muted">{t('study.profileSnapshot', { profile: active.scoring_profile.display_name, version: active.scoring_profile.version })}</p></div>
           <output aria-label={t('study.elapsedTime')} className="font-mono text-2xl font-semibold tabular-nums text-canvas-text">{timeLabel(currentSeconds)}</output>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -227,6 +240,10 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         <label className="text-xs text-canvas-muted">{t('common.date')}<input required type="date" value={draft.date} onChange={(e) => set('date', e.target.value)} className={inputClass} /></label>
         <label className="text-xs text-canvas-muted">{t('common.subject')}<input required value={draft.subject} onChange={(e) => set('subject', e.target.value)} placeholder={t('study.exampleMath')} className={inputClass} /></label>
         <label className="text-xs text-canvas-muted sm:col-span-2">{t('common.topic')}<input required value={draft.topic} onChange={(e) => set('topic', e.target.value)} placeholder={t('study.exampleFunctions')} className={inputClass} /></label>
+        <label className="text-xs text-canvas-muted sm:col-span-2">{t('study.scoringProfile')}<select aria-label={t('study.scoringProfile')} value={`${draft.scoring_profile_id}@${draft.scoring_profile_version}`} onChange={(event) => {
+          const [scoring_profile_id, version] = event.target.value.split('@')
+          setDraft((current) => ({ ...current, scoring_profile_id, scoring_profile_version: Number(version) }))
+        }} className={inputClass}>{profiles.map((item) => <option key={`${item.profile_id}@${item.version}`} value={`${item.profile_id}@${item.version}`}>{item.display_name} · v{item.version}</option>)}</select></label>
         {fields.map(([key, label]) => <label key={key} className="text-xs text-canvas-muted">{t(label)}<input required type="number" min="0" max={key === 'duration_seconds' ? 59 : undefined} value={draft[key]} onChange={(e) => set(key, Number(e.target.value))} className={inputClass} /></label>)}
         <div className="flex items-end justify-end gap-2 sm:col-span-4">
           {editingId && <button type="button" onClick={() => { setDraft(emptyForm()); setEditingId('') }} className={secondaryButton}>{t('common.cancel')}</button>}
@@ -238,9 +255,9 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         const chartData = group.trend.map((item) => ({ ...item, accuracy_percent: item.accuracy == null ? null : item.accuracy * 100 }))
         const recent = group.trend.slice(-6).reverse()
         const older = group.trend.slice(0, -6).reverse()
-        return <article key={`${group.subject}-${group.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+        return <article key={`${group.subject}-${group.topic}-${group.scoring_profile.profile_id}@${group.scoring_profile.version}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{t('study.savedSetCount', { count: new Intl.NumberFormat(locale).format(group.session_count) })}</p></div>
+            <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{group.scoring_profile.display_name} · v{group.scoring_profile.version} · {t('study.savedSetCount', { count: new Intl.NumberFormat(locale).format(group.session_count) })}</p></div>
             <div className="text-right text-sm text-canvas-text">{formatNumber(group.net, locale)} {t('study.totalNet')}<p className="text-xs text-canvas-muted">{group.accuracy == null ? t('study.noAnsweredQuestions') : t('study.answeredAccuracy', { accuracy: fmtPercent(group.accuracy * 100, locale) })}</p></div>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">

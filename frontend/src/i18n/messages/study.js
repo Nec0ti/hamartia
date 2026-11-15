@@ -65,6 +65,8 @@ export default {
   'study.focusedSession': { en: 'Focused practice session', tr: 'Odaklı çalışma oturumu' },
   'study.practiceSets': { en: 'Topic practice sets', tr: 'Konu çalışma setleri' },
   'study.practiceSetsIntro': { en: 'Save each completed set. Accuracy uses answered questions only; blanks are excluded. An active session draft is saved in this browser.', tr: 'Bitirdiğin setin sonucunu kaydet. Doğruluk yalnızca cevapladığın sorulardan hesaplanır; boşlar paydaya girmez. Açık oturum taslağı bu tarayıcıda saklanır.' },
+  'study.scoringProfile': { en: 'Scoring profile', tr: 'Puanlama profili' },
+  'study.profileSnapshot': { en: 'Saved rule: {{profile}} · v{{version}}', tr: 'Kaydedilen kural: {{profile}} · v{{version}}' },
   'study.focusedPractice': { en: 'Focused practice · {{subject}} / {{topic}}', tr: 'Odaklı çalışma · {{subject}} / {{topic}}' },
   'study.focusedPracticeIntro': { en: 'Use your own material and mark each result. Finishing saves the result and includes it in backups.', tr: 'Kendi materyalinden çöz; her sorudan sonra sonucunu işaretle. Bitince sonuç kaydedilir ve yedeğe dahil olur.' },
   'study.elapsedTime': { en: 'Elapsed time', tr: 'Geçen süre' },

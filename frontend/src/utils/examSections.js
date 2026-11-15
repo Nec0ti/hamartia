@@ -32,6 +32,11 @@ export function filterExamsByScoringProfile(exams, profileKey) {
   return exams.filter((exam) => examScoringProfileKey(exam) === profileKey)
 }
 
+export function averageRecordedNet(exams) {
+  const recorded = exams.filter((exam) => exam.correct + exam.incorrect + exam.blank > 0)
+  return recorded.length ? recorded.reduce((sum, exam) => sum + exam.net, 0) / recorded.length : 0
+}
+
 export function examResultsForSubject(exams, subject = 'all') {
   return exams.flatMap((exam) => {
     if (subject === 'all') return [exam]

@@ -13,7 +13,7 @@ import TrendChart from './TrendChart.jsx'
 import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
 import ExamProfileManager from './ExamProfileManager.jsx'
-import { examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSubjectOptions, filterExamsByScoringProfile } from '../utils/examSections.js'
+import { averageRecordedNet, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSubjectOptions, filterExamsByScoringProfile } from '../utils/examSections.js'
 import { useI18n } from '../i18n.jsx'
 
 const EMPTY_FORM = {
@@ -111,11 +111,7 @@ export default function DashboardTab({ onUploadQuestion }) {
   const stats = useMemo(() => {
     const total = filtered.length
     const results = examResultsForSubject(filtered, subjectFilter)
-    const answered = results.filter((e) => e.correct + e.incorrect > 0)
-    const avgNet =
-      answered.length > 0
-        ? answered.reduce((s, e) => s + e.net, 0) / answered.length
-        : 0
+    const avgNet = averageRecordedNet(results)
     return { total, avgNet }
   }, [filtered, subjectFilter])
 

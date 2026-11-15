@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, filterExamsByScoringProfile } from './examSections.js'
+import { averageRecordedNet, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, filterExamsByScoringProfile } from './examSections.js'
 
 const mock = {
   id: 'mock-1', subject: 'TYT Geneli', net: 40, correct: 45, incorrect: 20, blank: 15,
@@ -39,6 +39,15 @@ test('profile versions remain isolated in history aggregates', () => {
   assert.equal(examScoringProfileKey(records[2]), 'legacy-yks@1')
   assert.deepEqual(filterExamsByScoringProfile(records, 'profile-a@1').map((exam) => exam.id), ['old'])
   assert.deepEqual(filterExamsByScoringProfile(records, 'profile-a@2').map((exam) => exam.id), ['new'])
+})
+
+test('all-blank exam with a positive blank score contributes to its profile average', () => {
+  const exams = [
+    { id: 'blank-credit', correct: 0, incorrect: 0, blank: 4, net: 4 },
+    { id: 'empty', correct: 0, incorrect: 0, blank: 0, net: 0 },
+  ]
+  assert.equal(averageRecordedNet(exams), 4)
+  assert.equal(averageRecordedNet([{ correct: 0, incorrect: 0, blank: 0, net: 0 }]), 0)
 })
 
 test('section previews apply the exam snapshot rule and keep exact fractional arithmetic', () => {

@@ -528,8 +528,45 @@ async function main() {
     await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
     assert.equal(await page.locator('tbody tr').count(), 1)
     await page.getByRole('cell', { name: '10,00', exact: true }).waitFor()
+
+    // Exact red-team regression: correct=1, wrong=0, blank=1; four blanks
+    // produce API net 4, XP 0, and must contribute to the Dashboard average.
+    await page.getByRole('button', { name: 'Puanlama profilleri' }).click()
+    const [blankProfileResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exam-profiles' && response.request().method() === 'POST'),
+      (async () => {
+        const dialog = page.getByRole('dialog')
+        await dialog.getByLabel('Görünen ad').fill('Blank Credit UI')
+        await dialog.getByLabel('Ülke / bağlam etiketi').fill('Fixture')
+        await dialog.getByLabel('Doğru yanıt puanı').fill('1')
+        await dialog.getByLabel('Yanlış yanıt cezası').fill('0')
+        await dialog.getByLabel('Boş yanıt puanı').fill('1')
+        await dialog.getByRole('button', { name: 'Profil oluştur' }).click()
+      })(),
+    ])
+    const blankProfile = await blankProfileResponse.json()
+    await page.getByRole('dialog').getByRole('button', { name: 'Vazgeç' }).click()
+    await page.getByRole('button', { name: 'Deneme ekle' }).click()
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${blankProfile.profile_id}@1`)
+    await page.getByLabel('Ders', { exact: true }).fill('All Blank UI')
+    await page.getByLabel('Doğru', { exact: true }).fill('0')
+    await page.getByLabel('Yanlış', { exact: true }).fill('0')
+    await page.getByLabel('Boş', { exact: true }).fill('4')
+    await page.getByText('4,00', { exact: true }).waitFor()
+    const [blankExamResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
+    ])
+    const blankExam = await blankExamResponse.json()
+    assert.deepEqual([blankExam.net, blankExam.xp, blankExam.blank], [4, 0, 4])
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${blankProfile.profile_id}@1`)
+    assert.equal(await page.locator('tbody tr').count(), 1)
+    await page.getByRole('cell', { name: '4,00', exact: true }).waitFor()
+    await page.getByText('Ortalama net').locator('xpath=../..').getByText('4,00', { exact: true }).waitFor()
+
     await page.context().request.delete(`${apiUrl}/exams/${profiledExam.id}`)
     await page.context().request.delete(`${apiUrl}/exams/${v2Exam.id}`)
+    await page.context().request.delete(`${apiUrl}/exams/${blankExam.id}`)
     await page.context().request.delete(`${apiUrl}/exams/${legacyProfileExam.id}`)
 
     const examCrudMs = Math.round(performance.now() - examCrudStarted)

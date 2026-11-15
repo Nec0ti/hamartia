@@ -5,7 +5,6 @@ import {
   Globe,
   BookOpen,
   Settings,
-  Sparkles,
   MessageCircle,
 } from 'lucide-react'
 import api from '../services/api'
@@ -67,9 +66,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
       <div className="flex items-center gap-1 px-4 py-3">
         {/* Brand mark + title. */}
         <div className="mr-2 flex items-center gap-2 sm:mr-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-canvas-accent text-white shadow-crimson">
-            <Sparkles size={16} />
-          </div>
+          <img src="/hamartia-mark-light.svg" alt="Hamartia" className="h-8 w-8" />
           <span className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
             Hamartia
           </span>

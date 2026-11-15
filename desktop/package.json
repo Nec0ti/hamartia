@@ -43,15 +43,19 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
+      "icon": "build/icons/512x512.png",
       "maintainer": "Necoti <nec0ti@users.noreply.github.com>",
       "category": "Education",
       "target": [

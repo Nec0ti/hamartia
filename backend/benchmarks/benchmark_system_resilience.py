@@ -111,6 +111,11 @@ def expected_exam_response(payload, response, started_at, finished_at):
     expected.update({
         "id": record_id, "created_at": created_at, "sections": [],
         "total": total, "net": float(net), "xp": earned,
+        "scoring_profile": {
+            "profile_id": "legacy-yks", "version": 1,
+            "display_name": "YKS (legacy)", "country_label": "Türkiye",
+            "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
+        },
     })
     return expected
 

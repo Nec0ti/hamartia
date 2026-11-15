@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { netScore, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtDate, fmtInt, fmtNet, fmtPercent, labelOr, localDateToday, subjectLabel } from '../src/utils/formatters.js'
+import { netScore, netScoreWithRule, previewXp, levelForXp, xpProgress, xpToNextLevel, fmtDate, fmtInt, fmtNet, fmtPercent, labelOr, localDateToday, subjectLabel } from '../src/utils/formatters.js'
 
 test('net score applies the YKS quarter penalty', () => {
   assert.equal(netScore(3, 2), 2.5)
   assert.equal(netScore(0, 0), 0)
+})
+
+test('rational scoring previews match independent three-rule goldens', () => {
+  const counts = [12, 4, 4]
+  assert.equal(netScoreWithRule(...counts, { correct_points: '1/1', wrong_penalty: '1/4', blank_points: '0/1' }), 11)
+  assert.equal(netScoreWithRule(...counts, { correct_points: '1/1', wrong_penalty: '0/1', blank_points: '0/1' }), 12)
+  assert.equal(netScoreWithRule(...counts, { correct_points: '1/1', wrong_penalty: '1/2', blank_points: '0/1' }), 10)
 })
 
 test('XP preview truncates the same way as the backend', () => {

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import DATA_DIR
 from app.models.schemas import Exam, ExamCreate
+from app.api.exam_profiles import resolve_profile
 from app.services.storage import StorageError, StorageService
 
 router = APIRouter(prefix="/exams", tags=["exams"])
@@ -32,6 +33,7 @@ async def list_exams(storage: StorageService = Depends(get_storage)):
 @router.post("", status_code=201, response_model=Exam)
 async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get_storage)):
     """Create an exam from UI inputs and preserve the student's history."""
+    profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
     exam = Exam(
         id=f"exam_{uuid4().hex}",
         date=payload.date,
@@ -44,6 +46,7 @@ async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get
         duration_seconds=payload.duration_seconds,
         created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         sections=payload.sections,
+        scoring_profile=profile,
     )
     storage.append_list("exams.json", exam, Exam)
     return exam
@@ -56,8 +59,11 @@ async def update_exam(exam_id: str, payload: ExamCreate, storage: StorageService
     def replace(exams):
         for index, exam in enumerate(exams):
             if exam.id == exam_id:
-                data = payload.model_dump()
-                data.update(id=exam.id, created_at=exam.created_at)
+                data = payload.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"})
+                profile = exam.scoring_profile if payload.scoring_profile_id is None else resolve_profile(
+                    storage, payload.scoring_profile_id, payload.scoring_profile_version,
+                )
+                data.update(id=exam.id, created_at=exam.created_at, scoring_profile=profile)
                 exams[index] = Exam(**data)
                 updated.append(exams[index])
                 return True

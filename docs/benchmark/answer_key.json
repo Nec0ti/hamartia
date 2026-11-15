@@ -163,13 +163,13 @@
         },
         {
           "points": 1,
-          "claim": "Net uses the YKS wrong-answer penalty; LGS or different scoring rules require adaptation.",
+          "claim": "The legacy YKS rule is explicit and custom profile labels are not official alignment.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "Its net calculation uses the YKS wrong-answer penalty. Other systems with compatible scoring may reuse the workflow; formats such as LGS or different scoring rules need adaptation through a contribution or fork."
+              "quote": "The built-in legacy-yks profile keeps the YKS rule: one point per correct answer and a 1/4-point penalty per incorrect answer. You can create custom profiles with a display name, country label, and exact rational points for correct, incorrect, and blank answers; updating a profile creates a new version and existing exams keep their saved rule. These editable labels and rules are user configuration, not official exam profiles or verified alignment."
             }
           ]
         },
@@ -230,13 +230,13 @@
         },
         {
           "points": 1,
-          "claim": "Net YKS yanlış-ceza kuralını kullanır; LGS veya farklı kurallar uyarlama gerektirir.",
+          "claim": "Eski YKS kuralı açıklanır ve özel profil etiketlerinin resmî eşleştirme olmadığı belirtilir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "Net hesabı YKS yanlış-ceza kuralını kullanır. Benzer puanlama kullanan başka sistemler akışı tekrar kullanabilir; LGS gibi biçimler veya farklı puanlama kuralları katkı ya da fork ile uyarlama gerektirir."
+              "quote": "Yerleşik legacy-yks profili YKS kuralını korur: doğru başına bir puan, yanlış başına 1/4 puan ceza. Doğru, yanlış ve boş yanıtlar için kesin rasyonel puanlar içeren özel profilleri ad, ülke etiketi ve kuralla oluşturabilirsin; profili güncellemek yeni sürüm açar, eski denemeler kayıtlı kurallarını korur. Bu düzenlenebilir etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav profili veya doğrulanmış eşleştirme değildir."
             }
           ]
         },

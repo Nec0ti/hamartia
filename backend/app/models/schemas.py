@@ -6,6 +6,7 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 """
 
 from datetime import datetime
+from fractions import Fraction
 import ipaddress
 import re
 from typing import Any, Literal
@@ -248,6 +249,80 @@ class Question(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _canonical_rational(value: Any) -> str:
+    """Validate and canonicalize an exact integer/fraction scoring value."""
+    if not isinstance(value, str) or len(value) > 32 or not value.strip():
+        raise ValueError("scoring values must be exact rational strings such as 1, 0, or 1/4")
+    text = value.strip()
+    if re.fullmatch(r"[+-]?\d+(?:/[1-9]\d*)?", text) is None:
+        raise ValueError("scoring values must be integers or fractions with a positive denominator")
+    try:
+        rational = Fraction(text)
+    except (ValueError, ZeroDivisionError) as exc:
+        raise ValueError("invalid rational scoring value") from exc
+    if abs(rational.numerator) > 100_000 or rational.denominator > 10_000:
+        raise ValueError("rational scoring value is outside supported bounds")
+    return f"{rational.numerator}/{rational.denominator}"
+
+
+class ExamScoringRule(BaseModel):
+    """Exact additive scoring weights; wrong_penalty is subtracted."""
+
+    correct_points: str = "1/1"
+    wrong_penalty: str = "1/4"
+    blank_points: str = "0/1"
+
+    @field_validator("correct_points", "wrong_penalty", "blank_points", mode="before")
+    @classmethod
+    def validate_rational(cls, value: Any) -> str:
+        return _canonical_rational(value)
+
+    @model_validator(mode="after")
+    def require_nonnegative_weights(self):
+        if any(Fraction(getattr(self, name)) < 0 for name in ("correct_points", "wrong_penalty", "blank_points")):
+            raise ValueError("correct points, wrong penalty, and blank points must be nonnegative")
+        return self
+
+
+class ExamScoringProfile(BaseModel):
+    """Versioned user-selected policy snapshot attached to an exam."""
+
+    profile_id: str
+    version: int = Field(ge=1)
+    display_name: str = Field(min_length=1, max_length=80)
+    country_label: str = Field(min_length=1, max_length=80)
+    scoring_rule: ExamScoringRule
+
+    @field_validator("profile_id", "display_name", "country_label")
+    @classmethod
+    def trim_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("value is required")
+        return value
+
+
+def legacy_yks_profile() -> ExamScoringProfile:
+    return ExamScoringProfile(
+        profile_id="legacy-yks", version=1, display_name="YKS (legacy)", country_label="Türkiye",
+        scoring_rule=ExamScoringRule(correct_points="1/1", wrong_penalty="1/4", blank_points="0/1"),
+    )
+
+
+class ExamScoringProfileCreate(BaseModel):
+    display_name: str = Field(min_length=1, max_length=80)
+    country_label: str = Field(min_length=1, max_length=80)
+    scoring_rule: ExamScoringRule
+
+    @field_validator("display_name", "country_label")
+    @classmethod
+    def trim_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("value is required")
+        return value
+
+
 class ExamSection(BaseModel):
     """One subject's result inside a full TYT or AYT mock session."""
 
@@ -295,6 +370,8 @@ class Exam(BaseModel):
     duration_seconds: int = Field(default=0, ge=0)
     created_at: str = ""
     sections: list[ExamSection] = Field(default_factory=list)
+    # Old JSON and backups omit this field and therefore retain the legacy rule.
+    scoring_profile: ExamScoringProfile = Field(default_factory=legacy_yks_profile)
 
     @model_validator(mode="after")
     def validate_section_totals(self):
@@ -317,8 +394,10 @@ class Exam(BaseModel):
     @computed_field
     @property
     def net(self) -> float:
-        """YKS net score: correct minus 1/4 penalty on each incorrect."""
-        return self.correct - (self.incorrect / 4.0)
+        """Score using this record's immutable scoring-policy snapshot."""
+        from app.core.formulas import net_for_scoring_rule
+
+        return net_for_scoring_rule(self.correct, self.incorrect, self.blank, self.scoring_profile.scoring_rule)
 
     @computed_field
     @property
@@ -341,6 +420,16 @@ class ExamCreate(BaseModel):
     duration_minutes: int = Field(default=0, ge=0)
     duration_seconds: int = Field(default=0, ge=0, lt=60)
     sections: list[ExamSection] = Field(default_factory=list)
+    scoring_profile_id: str | None = None
+    scoring_profile_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_scoring_profile_reference(self):
+        if (self.scoring_profile_id is None) != (self.scoring_profile_version is None):
+            raise ValueError("scoring profile ID and version must be provided together")
+        if self.scoring_profile_id is not None and not self.scoring_profile_id.strip():
+            raise ValueError("scoring profile ID is required")
+        return self
 
     @model_validator(mode="after")
     def derive_section_totals(self):

@@ -1,0 +1,124 @@
+{
+  "ai_included": false,
+  "all_blank_positive_score": {
+    "blank": 4,
+    "correct": 0,
+    "incorrect": 0,
+    "net": 4.0,
+    "rule": [
+      1,
+      0,
+      1
+    ],
+    "xp": 0
+  },
+  "api_list_oracle": "each timed GET /exams response equals all ten complete persisted rows",
+  "api_list_timing": {
+    "p50_seconds": 0.005208,
+    "p95_seconds": 0.005378,
+    "samples": 3
+  },
+  "backup_restore": "all ten complete exam rows and seven complete custom profile versions matched independent vectors",
+  "benchmark": "versioned_exam_scoring_profiles",
+  "environment": {
+    "logical_cpus": 8,
+    "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
+    "processor": "not reported",
+    "python": "3.14.8",
+    "seed": null
+  },
+  "global_progression": {
+    "cosmos_user_xp": 1011,
+    "raw_count_xp_total": 1011,
+    "user_level": 3
+  },
+  "hand_authored_goldens": {
+    "custom-half-penalty@1": {
+      "net": 10.0,
+      "xp": 168
+    },
+    "custom-no-penalty@1": {
+      "net": 12.0,
+      "xp": 168
+    },
+    "legacy-yks@1": {
+      "net": 11.0,
+      "xp": 168
+    }
+  },
+  "legacy_and_custom_xp_equal": [
+    168,
+    168,
+    168
+  ],
+  "legacy_json_migration": {
+    "missing_snapshot_defaults_to": "legacy-yks@1",
+    "net": 11.0
+  },
+  "legacy_zip_migration": "pre-profile archive without exam_profiles.json restored legacy-yks@1 with net 11",
+  "negative_control": "same request/profile with net changed by 0.25 changes expected full-state vector",
+  "network": "in-process FastAPI TestClient only; no external or provider calls",
+  "oracle": "complete persisted API rows including counts, exact section names, XP, snapshots, and metadata, partitioned by profile ID/version; literal score goldens",
+  "persisted_exam_bytes": 7157,
+  "persisted_records": 10,
+  "profile_identity_control": "six custom profile creation IDs are pairwise unique",
+  "profile_version_metadata_control": "v2 changes display name and country label; v1 catalog row and saved exam snapshot retain original metadata",
+  "profile_versions": 8,
+  "raw_counts_per_golden": {
+    "blank": 4,
+    "correct": 12,
+    "incorrect": 4
+  },
+  "relatively_prime_denominators": {
+    "counts": [
+      2,
+      3,
+      4
+    ],
+    "net": "67/105",
+    "rule": [
+      "1/3",
+      "1/5",
+      "1/7"
+    ],
+    "xp": 3
+  },
+  "section_root_total_control": "API ignored deliberately mismatched root counts/subject and persisted the exact two section records",
+  "section_total_golden": {
+    "counts": [
+      12,
+      4,
+      4
+    ],
+    "net": 3.6666666666666665
+  },
+  "wrong_only_and_zero_question": [
+    {
+      "counts": [
+        0,
+        5,
+        0
+      ],
+      "net": -2.5,
+      "xp": 0
+    },
+    {
+      "counts": [
+        0,
+        0,
+        0
+      ],
+      "net": 0.0,
+      "xp": 0
+    }
+  ],
+  "zero_correct_points": {
+    "counts": [
+      12,
+      4,
+      4
+    ],
+    "net": 0.0,
+    "xp": 168
+  }
+}

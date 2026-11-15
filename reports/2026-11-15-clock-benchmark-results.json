@@ -66,19 +66,20 @@
       "ai_included": false,
       "alarms": 128,
       "api_get_128_alarms": {
-        "p50_seconds": 0.00422,
-        "p95_seconds": 0.006014,
+        "p50_seconds": 0.008818,
+        "p95_seconds": 0.011817,
         "quantiles": "p50 is median; p95 is nearest-rank ceil(0.95*n), with no interpolation",
         "samples": 21,
         "warmups": 1
       },
       "api_patch_128_alarms": {
-        "p50_seconds": 0.011867,
-        "p95_seconds": 0.013759,
+        "p50_seconds": 0.012661,
+        "p95_seconds": 0.028586,
         "quantiles": "p50 is median; p95 is nearest-rank ceil(0.95*n), with no interpolation",
         "samples": 21,
         "warmups": 1
       },
+      "backup_export_oracle": "complete archived clock state matches the independent 128-alarm vector; paused timer fields and remaining time are checked against the snapshot time window before restore",
       "backup_restore": "export freezes running countdown; restore disables all alarms and preserves exported frozen timer state",
       "benchmark": "clock_api_persistence_and_backup",
       "environment": {
@@ -91,6 +92,8 @@
       "failure_safety": "duplicate-ID PATCH returns 422 and byte-identical clock.json remains persisted",
       "repeats": 21,
       "round_trip": "full expected document equality for 128 distinct alarms and a running countdown",
+      "timed_patch_oracle": "each timed PATCH changes pomodoro_work_minutes; outside the timing interval, full response and full durable GET are checked for every write",
+      "timed_patch_state_changes": 22,
       "timing_scope": "FastAPI TestClient route, Pydantic validation, and filesystem persistence; excludes loopback socket and concurrent-client latency"
     }
   ]

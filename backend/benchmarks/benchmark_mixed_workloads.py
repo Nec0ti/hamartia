@@ -291,6 +291,13 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
                             - duration * item["incorrect"] * 0.25))
             expected_concurrent.append({
                 **item, "total": item["correct"] + item["incorrect"], "net": net, "xp": xp,
+                "scoring_profile": {
+                    "profile_id": "legacy-yks", "version": 1,
+                    "display_name": "YKS (legacy)", "country_label": "Türkiye",
+                    "scoring_rule": {
+                        "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+                    },
+                },
             })
         expected_concurrent.sort(key=lambda item: item["id"])
         assert_oracle(actual_concurrent, expected_concurrent, "mixed concurrent append full records")

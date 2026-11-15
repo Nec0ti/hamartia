@@ -4,6 +4,8 @@ export default {
   'dashboard.addExam': { en: 'Add practice exam', tr: 'Deneme ekle' },
   'dashboard.examType': { en: 'Exam type', tr: 'Deneme türü' },
   'dashboard.examTypeFilter': { en: 'Filter by exam type', tr: 'Deneme türü filtresi' },
+  'dashboard.scoringProfile': { en: 'Scoring profile version', tr: 'Puanlama profili sürümü' },
+  'dashboard.scoringProfileFilter': { en: 'Filter history by scoring profile version', tr: 'Geçmişi puanlama profili sürümüne göre filtrele' },
   'dashboard.allTypes': { en: 'All types', tr: 'Tüm türler' },
   'dashboard.branch': { en: 'Subject exam', tr: 'Branş' },
   'dashboard.deleteConfirm': { en: 'Delete the {{subject}} exam from {{date}}?', tr: '{{date}} · {{subject}} denemesi silinsin mi?' },

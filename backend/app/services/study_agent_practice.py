@@ -7,6 +7,8 @@ import json
 import re
 from dataclasses import dataclass
 
+from pydantic import ValidationError
+
 from app.models.schemas import PracticeSessionCreate
 
 FIELDS = (
@@ -34,14 +36,15 @@ class Evidence:
 
 def _patterns(field: str) -> list[re.Pattern]:
     labels = rf"(?<!\w)(?:{ALIASES[field]})(?!\w)"
+    correction = r"(?:(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:\s*)?"
     if field in {"subject", "topic"}:
-        return [re.compile(rf"(?im)^\s*(?:{labels})\s*:\s*([^\n,;]{{1,160}})\s*$")]
+        return [re.compile(rf"(?im)^\s*{correction}{labels}\s*:\s*([^\n,;]{{1,160}})\s*$")]
     if field == "date":
-        return [re.compile(rf"(?i)(?:{labels})\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
     if field in {"correct", "incorrect", "blank"}:
-        return [re.compile(rf"(?i)(?:{labels})\s*:\s*(\d{{1,5}})\b")]
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{1,5}})\b")]
     unit_labels = ALIASES[field]
-    return [re.compile(rf"(?i)(?:{unit_labels})\s*:\s*(\d{{1,5}})\b")]
+    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(\d{{1,5}})\b")]
 
 
 def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, list[str]]]:
@@ -49,6 +52,7 @@ def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, 
     accepted: dict[str, Evidence] = {}
     ambiguous: dict[str, list[str]] = {}
     for index, message in enumerate(messages):
+        is_correction = bool(re.search(r"(?im)^\s*(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:", message))
         for field in FIELDS:
             found: list[tuple[str | int, str]] = []
             for pattern in _patterns(field):
@@ -60,12 +64,19 @@ def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, 
                 continue
             distinct = {value for value, _ in found}
             if len(distinct) != 1:
-                ambiguous[field] = [quote for _, quote in found]
+                ambiguous[field] = list(dict.fromkeys([*ambiguous.get(field, []), *(quote for _, quote in found)]))
                 accepted.pop(field, None)
                 continue
             value, quote = found[-1]
-            accepted[field] = Evidence(value, index, quote)
-            ambiguous.pop(field, None)
+            previous = accepted.get(field)
+            if field in ambiguous and not is_correction:
+                ambiguous[field] = list(dict.fromkeys([*ambiguous[field], quote]))
+            elif previous and previous.value != value and not is_correction:
+                ambiguous[field] = list(dict.fromkeys([previous.quote, quote]))
+                accepted.pop(field)
+            else:
+                accepted[field] = Evidence(value, index, quote)
+                ambiguous.pop(field, None)
     return accepted, ambiguous
 
 
@@ -76,11 +87,25 @@ def complete_payload(messages: list[str]) -> tuple[PracticeSessionCreate | None,
         return None, {field: evidence[field].value for field in evidence}, {
             "missing": missing,
             "ambiguous": ambiguous,
+            "issues": [],
             "evidence": {field: evidence[field].__dict__ for field in evidence},
         }
     raw = {field: evidence[field].value for field in FIELDS}
-    payload = PracticeSessionCreate.model_validate(raw)
-    return payload, raw, {"missing": [], "ambiguous": {}, "evidence": {field: evidence[field].__dict__ for field in evidence}}
+    try:
+        payload = PracticeSessionCreate.model_validate(raw)
+    except ValidationError as exc:
+        issues = []
+        for error in exc.errors():
+            affected = next((part for part in error["loc"] if part in FIELDS), None)
+            if affected:
+                ambiguous[affected] = [evidence[affected].quote]
+            else:
+                issues.append(error["msg"])
+        return None, raw, {
+            "missing": [], "ambiguous": ambiguous, "issues": issues,
+            "evidence": {field: evidence[field].__dict__ for field in evidence},
+        }
+    return payload, raw, {"missing": [], "ambiguous": {}, "issues": [], "evidence": {field: evidence[field].__dict__ for field in evidence}}
 
 
 def preview_digest(payload: PracticeSessionCreate, evidence: dict) -> str:
@@ -105,7 +130,7 @@ def parse_proposal(raw: str) -> dict[str, str | int]:
     return fields
 
 
-def questions(language: str, missing: list[str], ambiguous: dict[str, list[str]]) -> list[str]:
+def questions(language: str, missing: list[str], ambiguous: dict[str, list[str]], issues: list[str] | None = None) -> list[str]:
     labels = {
         "en": {
             "date": "date (YYYY-MM-DD)", "subject": "subject", "topic": "topic",
@@ -125,8 +150,20 @@ def questions(language: str, missing: list[str], ambiguous: dict[str, list[str]]
     }
     if language == "en":
         result = [f"Please provide {labels[field]} as `{keys[field]}: value`." for field in missing]
-        result.extend(f"I found conflicting values for {labels[field]}: {', '.join(values)}. Please send one corrected `{keys[field]}: value`." for field, values in ambiguous.items())
+        result.extend(
+            f"I found conflicting values for {labels[field]}: {', '.join(values)}. Please send `correction: {keys[field]}: value`."
+            if len(values) > 1 else f"This value for {labels[field]} is invalid: {values[0]}. Please send `correction: {keys[field]}: value`."
+            for field, values in ambiguous.items()
+        )
+        if issues:
+            result.extend(["At least one of correct, incorrect, or blank must be greater than zero. Send corrected values with the `correction: field: value` format."])
     else:
         result = [f"Lütfen {labels[field]} bilgisini `{keys[field]}: değer` biçiminde belirt." for field in missing]
-        result.extend(f"{labels[field]} için çelişen değerler buldum: {', '.join(values)}. Lütfen düzeltilmiş tek bir `{keys[field]}: değer` gönder." for field, values in ambiguous.items())
+        result.extend(
+            f"{labels[field]} için çelişen değerler buldum: {', '.join(values)}. Lütfen `düzeltme: {keys[field]}: değer` gönder."
+            if len(values) > 1 else f"{labels[field]} için bu değer geçersiz: {values[0]}. Lütfen `düzeltme: {keys[field]}: değer` gönder."
+            for field, values in ambiguous.items()
+        )
+        if issues:
+            result.append("Doğru, yanlış veya boş sayılarından en az biri sıfırdan büyük olmalı. Değerleri `düzeltme: alan: değer` biçiminde gönder.")
     return result

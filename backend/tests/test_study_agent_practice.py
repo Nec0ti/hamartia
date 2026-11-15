@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -90,6 +91,36 @@ class StudyAgentPracticeTests(unittest.TestCase):
         self.assertTrue(any("conflicting values" in question for question in response.json()["questions"]))
         self.assertEqual(self.sessions(), [])
 
+        corrected = self.draft(
+            ["correct: 7", "correct: 8", "correction: correct: 8"],
+            {"correct": 8},
+        )
+        self.assertEqual(corrected.status_code, 200)
+        self.assertNotIn("correct", corrected.json()["ambiguous"])
+        self.assertEqual(corrected.json()["fields"]["correct"], 8)
+
+    def test_conflicting_values_across_turns_remain_ambiguous_until_explicit_correction(self):
+        response = self.draft(["correct: 7", "correct: 8"], {})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["ambiguous"]["correct"], ["correct: 7", "correct: 8"])
+        self.assertTrue(any("correction: correct: value" in item for item in response.json()["questions"]))
+        self.assertFalse((self.data_dir / "practice_sessions.json").exists())
+
+    def test_invalid_date_and_duration_are_localized_correction_questions(self):
+        invalid_messages = [
+            "date: 2026-02-31\nsubject: Mathematics\ntopic: Functions",
+            "correct: 1 incorrect: 0 blank: 0 duration_minutes: 1 duration_seconds: 99",
+        ]
+        proposal = {
+            "date": "2026-02-31", "subject": "Mathematics", "topic": "Functions",
+            "correct": 1, "incorrect": 0, "blank": 0, "duration_minutes": 1, "duration_seconds": 99,
+        }
+        response = self.draft(invalid_messages, proposal, "tr")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["preview_digest"])
+        self.assertTrue(any("geçersiz" in item for item in response.json()["questions"]))
+        self.assertFalse((self.data_dir / "practice_sessions.json").exists())
+
     def test_preview_requires_exact_values_evidence_and_digest_before_any_write(self):
         draft = self.draft().json()
         body = self.create_body(draft)
@@ -98,6 +129,9 @@ class StudyAgentPracticeTests(unittest.TestCase):
         body = self.create_body(draft)
         body["preview_digest"] = "0" * 64
         self.assertEqual(self.client.post("/practice/agent-create", json=body).status_code, 409)
+        body = self.create_body(draft)
+        body["fields"]["settings"] = "restore"
+        self.assertEqual(self.client.post("/practice/agent-create", json=body).status_code, 422)
         self.assertEqual(self.sessions(), [])
 
     def test_save_is_create_only_and_duplicate_choice_is_explicit_and_atomic(self):
@@ -110,9 +144,20 @@ class StudyAgentPracticeTests(unittest.TestCase):
         rejected = self.client.post("/practice/agent-create", json=self.create_body(duplicate))
         self.assertEqual(rejected.status_code, 409)
         self.assertEqual(len(self.sessions()), 1)
+        cancelled = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "cancel"))
+        self.assertEqual(cancelled.status_code, 409)
+        self.assertEqual(len(self.sessions()), 1)
         explicit_new = self.client.post("/practice/agent-create", json=self.create_body(duplicate, "new"))
         self.assertEqual(explicit_new.status_code, 201)
         self.assertEqual(len(self.sessions()), 2)
+
+    def test_concurrent_same_preview_saves_create_only_once_without_duplicate_approval(self):
+        draft = self.draft().json()
+        body = self.create_body(draft)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            responses = list(pool.map(lambda _: self.client.post("/practice/agent-create", json=body), range(2)))
+        self.assertEqual(sorted(response.status_code for response in responses), [201, 409])
+        self.assertEqual(len(self.sessions()), 1)
 
     def test_closed_provider_json_parser_rejects_tools_and_non_integer_counts(self):
         self.assertEqual(parse_proposal('{"fields":{"correct":7}}'), {"correct": 7})

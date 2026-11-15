@@ -11,7 +11,7 @@ from app.core.config import DATA_DIR
 from app.core.practice import practice_topic_summaries
 from app.models.schemas import PracticeSession, PracticeSessionCreate
 from app.services.storage import StorageService
-from app.services.study_agent_practice import complete_payload, preview_digest, questions
+from app.services.study_agent_practice import FIELDS, complete_payload, preview_digest, questions
 
 router = APIRouter(prefix="/practice", tags=["practice"])
 
@@ -30,9 +30,22 @@ class AgentDraftRequest(BaseModel):
             raise ValueError("Each student message must contain 1 to 4,000 characters.")
         return messages
 
+    @field_validator("proposal", mode="before")
+    @classmethod
+    def reject_untrusted_proposal_extras(cls, proposal):
+        if not isinstance(proposal, dict) or set(proposal) - set(FIELDS):
+            raise ValueError("Provider proposal contains unsupported fields.")
+        if any(type(value) not in {str, int} for value in proposal.values()):
+            raise ValueError("Provider proposal values must be strings or integers.")
+        return proposal
+
+
+class StrictPracticeSessionCreate(PracticeSessionCreate):
+    model_config = {"extra": "forbid"}
+
 
 class AgentCreateRequest(AgentDraftRequest):
-    fields: PracticeSessionCreate
+    fields: StrictPracticeSessionCreate
     evidence: dict
     preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     duplicate_choice: Literal["new", "cancel"] | None = None
@@ -118,7 +131,7 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
         "evidence": evidence,
         "missing": details["missing"],
         "ambiguous": details["ambiguous"],
-        "questions": questions(payload.language, details["missing"], details["ambiguous"]),
+        "questions": questions(payload.language, details["missing"], details["ambiguous"], details.get("issues", [])),
         "preview_digest": digest,
         "conflicts": conflicts,
     }
@@ -126,8 +139,8 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
 
 @router.post("/agent-create", status_code=201, response_model=PracticeSession)
 async def practice_agent_create(payload: AgentCreateRequest, storage: StorageService = Depends(get_storage)):
-    parsed, _, details = complete_payload(payload.messages)
-    if parsed is None or parsed.model_dump() != payload.fields.model_dump() or details["evidence"] != payload.evidence:
+    parsed, values, details = complete_payload(payload.messages)
+    if parsed is None or values != payload.proposal or parsed.model_dump() != payload.fields.model_dump() or details["evidence"] != payload.evidence:
         raise HTTPException(status_code=422, detail="The approved preview is incomplete or no longer matches the source messages.")
     if preview_digest(parsed, details["evidence"]) != payload.preview_digest:
         raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")

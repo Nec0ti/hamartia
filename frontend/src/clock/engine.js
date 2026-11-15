@@ -52,14 +52,23 @@ function nextPomodoroPhase(timer, now) {
   let phase = timer.phase === 'work' ? 'break' : 'work'
   let cycles = timer.cycle_count + (timer.phase === 'work' ? 1 : 0)
 
-  if (phase === 'work') {
-    const completePairs = Math.floor(elapsed / (safeWork + safeBreak))
+  let duration = phase === 'work' ? safeWork : safeBreak
+  if (elapsed >= duration) {
+    elapsed -= duration
+    anchor += duration
+    if (phase === 'work') cycles += 1
+    phase = phase === 'work' ? 'break' : 'work'
+    duration = phase === 'work' ? safeWork : safeBreak
+  }
+  // A full pair completes exactly one work phase. Divide rather than looping
+  // so even a long suspension takes constant time and produces one event.
+  const completePairs = Math.floor(elapsed / (safeWork + safeBreak))
+  if (completePairs > 0) {
     anchor += completePairs * (safeWork + safeBreak)
     elapsed -= completePairs * (safeWork + safeBreak)
     cycles += completePairs
   }
-  let duration = phase === 'work' ? safeWork : safeBreak
-  while (elapsed >= duration) {
+  if (elapsed >= duration) {
     elapsed -= duration
     anchor += duration
     if (phase === 'work') cycles += 1

@@ -500,6 +500,8 @@ class ActiveClockTimer(BaseModel):
     deadline_at_ms: int | None = Field(default=None, ge=0)
     duration_ms: int = Field(default=0, ge=0, le=86_400_000)
     remaining_ms: int = Field(default=0, ge=0, le=86_400_000)
+    work_duration_ms: int = Field(default=0, ge=0, le=10_800_000)
+    break_duration_ms: int = Field(default=0, ge=0, le=3_600_000)
     phase: Literal["work", "break"] | None = None
     cycle_enabled: bool = False
     cycle_count: int = Field(default=0, ge=0, le=1_000_000)
@@ -512,9 +514,10 @@ class ActiveClockTimer(BaseModel):
         if (self.kind == "practice") != (self.practice_draft is not None):
             raise ValueError("only practice timers carry a practice draft")
         if self.kind == "pomodoro":
-            if self.phase is None or self.duration_ms < 1_000:
-                raise ValueError("Pomodoro timers require a phase and duration")
-        elif self.phase is not None or self.cycle_enabled or self.cycle_count:
+            if (self.phase is None or self.duration_ms < 1_000 or self.work_duration_ms < 1_000
+                    or self.break_duration_ms < 1_000):
+                raise ValueError("Pomodoro timers require a phase and both phase durations")
+        elif self.phase is not None or self.cycle_enabled or self.cycle_count or self.work_duration_ms or self.break_duration_ms:
             raise ValueError("Pomodoro fields are only valid for Pomodoro timers")
         if self.kind == "countdown" and self.duration_ms < 1_000:
             raise ValueError("countdown timers require a duration")

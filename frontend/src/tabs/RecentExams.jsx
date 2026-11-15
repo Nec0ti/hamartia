@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
-import { fmtDate, fmtInt, fmtNet, fmtDuration, subjectLabel } from '../utils/formatters'
+import { fmtDate, fmtInt, fmtNet, fmtDuration, subjectLabel, netScoreWithRule } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
 
 /**
@@ -34,6 +34,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
               <th className="py-3 pr-4">{t('exams.date')}</th>
               <th className="py-3 pr-4">{t('exams.subject')}</th>
               <th className="py-3 pr-4">{t('exams.type')}</th>
+              <th className="py-3 pr-4">{t('exams.scoringProfile')}</th>
               <th className="py-3 pr-4">{t('exams.correct')}</th>
               <th className="py-3 pr-4">{t('exams.incorrect')}</th>
               <th className="py-3 pr-4">{t('exams.blank')}</th>
@@ -61,7 +62,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                         <div className="mt-2 space-y-2 text-xs">
                           {ex.sections.map((section) => (
                             <div key={section.subject} className="flex items-center justify-between gap-2">
-                              <span>{section.subject}: {fmtInt(section.correct, locale)} {t('exams.correctShort')} / {fmtInt(section.incorrect, locale)} {t('exams.incorrectShort')} / {fmtInt(section.blank, locale)} {t('exams.blankShort')} · {t('exams.net')} {fmtNet(section.correct - section.incorrect / 4, locale)}</span>
+                              <span>{section.subject}: {fmtInt(section.correct, locale)} {t('exams.correctShort')} / {fmtInt(section.incorrect, locale)} {t('exams.incorrectShort')} / {fmtInt(section.blank, locale)} {t('exams.blankShort')} · {t('exams.net')} {fmtNet(netScoreWithRule(section.correct, section.incorrect, section.blank, ex.scoring_profile?.scoring_rule), locale)}</span>
                               <button type="button" aria-label={t('exams.addMissedQuestionFor', { subject: section.subject, date: fmtDate(ex.date, locale) })} onClick={() => onDoubleClickIncorrect({ ...ex, ...section })} className="shrink-0 underline">{t('exams.addMissedQuestion')}</button>
                             </div>
                           ))}
@@ -70,6 +71,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                     ) : subjectLabel(ex.subject, t('common.unlabelled'))}
                   </td>
                   <td className="py-3 pr-4 text-canvas-muted">{t(`exams.type.${ex.exam_type || 'branch'}`)}</td>
+                  <td className="py-3 pr-4 text-canvas-muted">{ex.scoring_profile?.display_name || 'YKS (legacy)'} · v{ex.scoring_profile?.version || 1}</td>
                   <td className="py-3 pr-4 text-canvas-text">{fmtInt(ex.correct, locale)}</td>
                   <td
                     className="py-3 pr-4 text-canvas-text font-semibold transition hover:underline"

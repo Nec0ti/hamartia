@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, SlidersHorizontal } from 'lucide-react'
 import api from '../services/api'
 import { handleApiError } from '../services/api'
 import {
@@ -12,7 +12,8 @@ import RadarChart from './RadarChart.jsx'
 import TrendChart from './TrendChart.jsx'
 import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
-import { examPayloadFromForm, examResultsForSubject, examSubjectOptions } from '../utils/examSections.js'
+import ExamProfileManager from './ExamProfileManager.jsx'
+import { examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSubjectOptions, filterExamsByScoringProfile } from '../utils/examSections.js'
 import { useI18n } from '../i18n.jsx'
 
 const EMPTY_FORM = {
@@ -25,6 +26,8 @@ const EMPTY_FORM = {
   incorrect: 2,
   blank: 1,
   sections: [],
+  scoring_profile_id: 'legacy-yks',
+  scoring_profile_version: 1,
 }
 
 /**
@@ -36,25 +39,34 @@ const EMPTY_FORM = {
 export default function DashboardTab({ onUploadQuestion }) {
   const { t } = useI18n()
   const [exams, setExams] = useState([])
+  const [scoringProfiles, setScoringProfiles] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const [showAdd, setShowAdd] = useState(false)
+  const [showProfileManager, setShowProfileManager] = useState(false)
   const [form, setForm] = useState(() => ({ ...EMPTY_FORM, subject: t('exams.defaultSubject') }))
   const [editingExam, setEditingExam] = useState(null)
 
   const [toggle, setToggle] = useState('bar') // 'bar' | 'line'
   const [subjectFilter, setSubjectFilter] = useState('all')
   const [examTypeFilter, setExamTypeFilter] = useState('all')
+  const [scoringProfileFilter, setScoringProfileFilter] = useState('legacy-yks@1')
   const [recentError, setRecentError] = useState(null)
+
+  const blankExamForm = (subject = t('exams.defaultSubject')) => {
+    const [scoring_profile_id, version] = scoringProfileFilter.split('@')
+    return { ...EMPTY_FORM, subject, scoring_profile_id, scoring_profile_version: Number(version) || 1 }
+  }
 
   const load = async () => {
     setLoading(true)
     setError(null)
     try {
-      const [ex, prof] = await Promise.all([api.exams.list(), api.user.get()])
+      const [ex, prof, profiles] = await Promise.all([api.exams.list(), api.user.get(), api.examProfiles.list()])
       setExams(ex)
+      setScoringProfiles(profiles)
       setProfile({
         level: prof.level ?? levelForXp(prof.total_xp ?? 0),
         totalXp: prof.total_xp ?? 0,
@@ -73,17 +85,28 @@ export default function DashboardTab({ onUploadQuestion }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const subjects = useMemo(
-    () => examSubjectOptions(exams),
-    [exams],
+  const availableProfiles = useMemo(() => {
+    const byKey = new Map()
+    for (const item of [...scoringProfiles, ...exams.map((exam) => exam.scoring_profile).filter(Boolean)]) {
+      byKey.set(examScoringProfileKey(item), item)
+    }
+    if (!byKey.has('legacy-yks@1')) byKey.set('legacy-yks@1', { profile_id: 'legacy-yks', version: 1, display_name: 'YKS (legacy)', country_label: 'Türkiye' })
+    return [...byKey.values()].sort((a, b) => a.display_name.localeCompare(b.display_name) || a.version - b.version)
+  }, [scoringProfiles, exams])
+
+  const profileExams = useMemo(
+    () => filterExamsByScoringProfile(exams, scoringProfileFilter),
+    [exams, scoringProfileFilter],
   )
 
+  const subjects = useMemo(() => examSubjectOptions(profileExams), [profileExams])
+
   const filtered = useMemo(() => {
-    return exams.filter(
+    return profileExams.filter(
       (exam) => (examTypeFilter === 'all' || (exam.exam_type || 'branch') === examTypeFilter)
         && (subjectFilter === 'all' || exam.subject === subjectFilter || exam.sections?.some((section) => section.subject === subjectFilter)),
     )
-  }, [exams, examTypeFilter, subjectFilter])
+  }, [profileExams, examTypeFilter, subjectFilter])
 
   const stats = useMemo(() => {
     const total = filtered.length
@@ -104,7 +127,7 @@ export default function DashboardTab({ onUploadQuestion }) {
     save.then(load).then(() => {
       setShowAdd(false)
       setEditingExam(null)
-      setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
+      setForm(blankExamForm())
     }).catch((err) => setRecentError(handleApiError(err, t).detail))
   }
 
@@ -113,6 +136,8 @@ export default function DashboardTab({ onUploadQuestion }) {
     setForm({
       date: exam.date,
       exam_type: exam.exam_type || 'branch',
+      scoring_profile_id: exam.scoring_profile?.profile_id || 'legacy-yks',
+      scoring_profile_version: exam.scoring_profile?.version || 1,
       subject: exam.subject,
       duration_minutes: exam.duration_minutes,
       duration_seconds: exam.duration_seconds,
@@ -150,11 +175,20 @@ export default function DashboardTab({ onUploadQuestion }) {
         <h1 className="text-2xl font-bold tracking-tight text-canvas-text">
           {t('dashboard.title')}
         </h1>
+        <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setShowProfileManager(true)}
+          className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-4 py-2 text-sm font-semibold text-canvas-text hover:bg-canvas-raise"
+        >
+          <SlidersHorizontal size={16} />
+          {t('exams.profileManager')}
+        </button>
         <button
           type="button"
           onClick={() => {
             setEditingExam(null)
-            setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
+            setForm(blankExamForm())
             setShowAdd(true)
           }}
           className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base shadow-crimson transition hover:opacity-90"
@@ -162,6 +196,7 @@ export default function DashboardTab({ onUploadQuestion }) {
           <Plus size={16} />
           {t('dashboard.addExam')}
         </button>
+        </div>
       </div>
 
       {error && (
@@ -171,6 +206,12 @@ export default function DashboardTab({ onUploadQuestion }) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="scoring-profile-filter" className="text-xs text-canvas-muted">{t('dashboard.scoringProfile')}</label>
+        <select id="scoring-profile-filter" aria-label={t('dashboard.scoringProfileFilter')} value={scoringProfileFilter} onChange={(event) => setScoringProfileFilter(event.target.value)} className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-1.5 text-xs text-canvas-text">
+          {availableProfiles.map((item) => <option key={examScoringProfileKey(item)} value={examScoringProfileKey(item)}>
+            {item.display_name} · {item.country_label} · v{item.version}
+          </option>)}
+        </select>
         <label htmlFor="exam-type-filter" className="text-xs text-canvas-muted">{t('dashboard.examType')}</label>
         <select
           id="exam-type-filter"
@@ -210,11 +251,13 @@ export default function DashboardTab({ onUploadQuestion }) {
         onClose={() => {
           setShowAdd(false)
           setEditingExam(null)
-          setForm({ ...EMPTY_FORM, subject: t('exams.defaultSubject') })
+          setForm(blankExamForm())
         }}
         onSubmit={submitExam}
         editing={Boolean(editingExam)}
+        profiles={availableProfiles}
       />
+      <ExamProfileManager open={showProfileManager} profiles={availableProfiles} onClose={() => setShowProfileManager(false)} onSaved={async () => setScoringProfiles(await api.examProfiles.list())} />
     </div>
   )
 }

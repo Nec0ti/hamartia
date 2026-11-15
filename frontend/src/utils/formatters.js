@@ -12,6 +12,29 @@ export const netScore = (correct, incorrect) => {
   return correct - incorrect / YKS_PENALTY_FACTOR
 }
 
+function rationalParts(value) {
+  const match = /^([+-]?\d+)\/([1-9]\d*)$/.exec(String(value ?? '0/1'))
+  if (!match) throw new Error('Scoring rule values must be canonical rational strings')
+  return [BigInt(match[1]), BigInt(match[2])]
+}
+
+function rationalAdd(left, right, sign = 1n) {
+  const [a, b] = left
+  const [c, d] = right
+  return [a * d + sign * c * b, b * d]
+}
+
+/** Exact-rational scoring preview; convert to Number only after combining all counts. */
+export function netScoreWithRule(correct, incorrect, blank, rule) {
+  const [correctNum, correctDen] = rationalParts(rule?.correct_points ?? '1/1')
+  const [wrongNum, wrongDen] = rationalParts(rule?.wrong_penalty ?? '1/4')
+  const [blankNum, blankDen] = rationalParts(rule?.blank_points ?? '0/1')
+  let score = [BigInt(correct) * correctNum, correctDen]
+  score = rationalAdd(score, [BigInt(incorrect) * wrongNum, wrongDen], -1n)
+  score = rationalAdd(score, [BigInt(blank) * blankNum, blankDen])
+  return Number(score[0]) / Number(score[1])
+}
+
 /**
  * XP preview for a candidate exam. Matches xp_for_exam exactly except for the
  * duration_minutes <= 0 guard (frontend inputs default to 0).

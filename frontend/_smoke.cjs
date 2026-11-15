@@ -331,7 +331,7 @@ async function main() {
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
     const examCrudStarted = performance.now()
     await page.getByRole('button', { name: 'Deneme ekle' }).click()
-    await page.getByRole('dialog').locator('select').selectOption('branch')
+    await page.getByRole('dialog').locator('select').first().selectOption('branch')
     await page.getByLabel('Ders', { exact: true }).fill('Matematik')
     await page.getByRole('button', { name: 'Denemeyi kaydet' }).click()
     await page.getByRole('button', { name: /Denemeyi düzenle Matematik/ }).waitFor()
@@ -357,7 +357,7 @@ async function main() {
     await page.getByLabel('Deneme türü filtresi').selectOption('branch')
     await page.getByText('Deneme sayısı · Branş').waitFor()
     await page.getByRole('button', { name: /Denemeyi düzenle Matematik/ }).click()
-    await page.getByRole('dialog').locator('select').selectOption('branch')
+    await page.getByRole('dialog').locator('select').first().selectOption('branch')
     await page.getByLabel('Ders', { exact: true }).fill('Geometri')
     await page.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
     await page.getByLabel('Deneme türü filtresi').selectOption('branch')
@@ -368,7 +368,7 @@ async function main() {
 
     await page.getByLabel('Deneme türü filtresi').selectOption('all')
     await page.getByRole('button', { name: 'Deneme ekle' }).click()
-    await page.getByRole('dialog').locator('select').selectOption('tyt')
+    await page.getByRole('dialog').locator('select').first().selectOption('tyt')
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Türkçe')
@@ -423,7 +423,7 @@ async function main() {
 
     await page.getByLabel('Net değişimi ders filtresi').selectOption('all')
     await page.getByRole('button', { name: 'Deneme ekle' }).click()
-    await page.getByRole('dialog').locator('select').selectOption('ayt')
+    await page.getByRole('dialog').locator('select').first().selectOption('ayt')
     await page.getByRole('button', { name: 'Ders ekle' }).click()
     await page.getByLabel('Ders adı 1').fill('Fizik')
     await page.getByLabel('1. ders Doğru').fill('10')
@@ -444,6 +444,94 @@ async function main() {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: /Denemeyi sil TYT Geneli/ }).click()
     await page.getByText('Henüz deneme kaydı yok.').waitFor()
+
+    // Exercise the versioned custom scoring UI in Turkish, persist a sectioned
+    // exam with the selected rule, then prove the Dashboard filter separates
+    // it from an otherwise identical legacy YKS exam.
+    await page.getByRole('button', { name: 'Puanlama profilleri' }).click()
+    const [profileResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exam-profiles' && response.request().method() === 'POST'),
+      (async () => {
+        const dialog = page.getByRole('dialog')
+        await dialog.getByLabel('Görünen ad').fill('Custom Half Rule')
+        await dialog.getByLabel('Ülke / bağlam etiketi').fill('Fixture')
+        await dialog.getByLabel('Doğru yanıt puanı').fill('1')
+        await dialog.getByLabel('Yanlış yanıt cezası').fill('1/2')
+        await dialog.getByLabel('Boş yanıt puanı').fill('0')
+        await dialog.getByRole('button', { name: 'Profil oluştur' }).click()
+      })(),
+    ])
+    assert.equal(profileResponse.status(), 201)
+    const customProfile = await profileResponse.json()
+    await page.getByRole('dialog').getByRole('button', { name: 'Vazgeç' }).click()
+    await page.getByRole('button', { name: 'Deneme ekle' }).click()
+    await page.getByRole('dialog').locator('select').first().selectOption('tyt')
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    await page.getByRole('button', { name: 'Ders ekle' }).click()
+    await page.getByLabel('Ders adı 1').fill('Profile Fixture')
+    await page.getByLabel('1. ders Doğru').fill('12')
+    await page.getByLabel('1. ders Yanlış').fill('4')
+    await page.getByLabel('1. ders Boş').fill('4')
+    await page.getByText('10,00', { exact: true }).waitFor()
+    const [profiledExamResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
+    ])
+    const profiledExam = await profiledExamResponse.json()
+    assert.deepEqual([profiledExam.net, profiledExam.correct, profiledExam.incorrect, profiledExam.blank], [10, 12, 4, 4])
+    assert.equal(profiledExam.scoring_profile.profile_id, customProfile.profile_id)
+    assert.equal(profiledExam.scoring_profile.version, 1)
+    const legacyProfileControl = await page.context().request.post(`${apiUrl}/exams`, { data: {
+      date: '2026-11-15', exam_type: 'branch', subject: 'Legacy Control',
+      correct: 12, incorrect: 4, blank: 4, duration_minutes: 30,
+    } })
+    assert.equal(legacyProfileControl.status(), 201)
+    const legacyProfileExam = await legacyProfileControl.json()
+    assert.equal(legacyProfileExam.net, 11)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    assert.equal(await page.locator('tbody tr').count(), 1)
+    await page.getByRole('cell', { name: '10,00', exact: true }).waitFor()
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption('legacy-yks@1')
+    assert.equal(await page.locator('tbody tr').count(), 1)
+    await page.getByRole('cell', { name: '11,00', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Puanlama profilleri' }).click()
+    const [profileVersionResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === `/exam-profiles/${customProfile.profile_id}` && response.request().method() === 'PUT'),
+      (async () => {
+        const dialog = page.getByRole('dialog')
+        await dialog.getByLabel('Özel profili düzenle').selectOption(customProfile.profile_id)
+        await dialog.getByLabel('Yanlış yanıt cezası').fill('1')
+        await dialog.getByRole('button', { name: 'Yeni sürüm olarak kaydet' }).click()
+      })(),
+    ])
+    assert.equal(profileVersionResponse.status(), 200)
+    assert.equal((await profileVersionResponse.json()).version, 2)
+    await page.getByRole('dialog').getByRole('button', { name: 'Vazgeç' }).click()
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    await page.getByRole('cell', { name: '10,00', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Deneme ekle' }).click()
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@2`)
+    await page.getByLabel('Ders', { exact: true }).fill('Version 2 Fixture')
+    await page.getByLabel('Doğru', { exact: true }).fill('12')
+    await page.getByLabel('Yanlış', { exact: true }).fill('4')
+    await page.getByLabel('Boş', { exact: true }).fill('4')
+    const [v2ExamResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
+    ])
+    const v2Exam = await v2ExamResponse.json()
+    assert.deepEqual([v2Exam.scoring_profile.version, v2Exam.net], [2, 8])
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@2`)
+    assert.equal(await page.locator('tbody tr').count(), 1)
+    await page.getByRole('cell', { name: '8,00', exact: true }).waitFor()
+    await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    assert.equal(await page.locator('tbody tr').count(), 1)
+    await page.getByRole('cell', { name: '10,00', exact: true }).waitFor()
+    await page.context().request.delete(`${apiUrl}/exams/${profiledExam.id}`)
+    await page.context().request.delete(`${apiUrl}/exams/${v2Exam.id}`)
+    await page.context().request.delete(`${apiUrl}/exams/${legacyProfileExam.id}`)
+
     const examCrudMs = Math.round(performance.now() - examCrudStarted)
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
     const orderSection = page.getByRole('region', { name: 'Denemelerde çözüm sırası' })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Calculator, X } from 'lucide-react'
 import Modal from '../components/Modal.jsx'
-import { fmtNet, fmtInt, fmtDuration, previewXp, netScore } from '../utils/formatters'
+import { fmtNet, fmtInt, fmtDuration, previewXp, netScore, netScoreWithRule } from '../utils/formatters'
 import { examSectionTotals } from '../utils/examSections.js'
 import { useI18n } from '../i18n.jsx'
 
@@ -10,7 +10,7 @@ import { useI18n } from '../i18n.jsx'
  * correct/incorrect/blank split. Computes the YKS net score and XP live from
  * the canonical formulas so the user can preview the reward before saving.
  */
-export default function AddExamModal({ open, form, setForm, onClose, onSubmit, editing = false }) {
+export default function AddExamModal({ open, form, setForm, onClose, onSubmit, editing = false, profiles = [] }) {
   const { t, locale } = useI18n()
   const [validationError, setValidationError] = useState('')
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }))
@@ -18,7 +18,10 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
   const fullMock = form.exam_type !== 'branch'
   const sections = form.sections || []
   const totals = fullMock ? examSectionTotals(sections) : form
-  const net = netScore(totals.correct, totals.incorrect)
+  const selectedProfile = profiles.find((item) => item.profile_id === (form.scoring_profile_id || 'legacy-yks')
+    && item.version === (form.scoring_profile_version || 1)) || profiles.find((item) => item.profile_id === 'legacy-yks')
+  const rule = selectedProfile?.scoring_rule || { correct_points: '1/1', wrong_penalty: '1/4', blank_points: '0/1' }
+  const net = netScoreWithRule(totals.correct, totals.incorrect, totals.blank, rule)
   const xp = previewXp(totals.correct, totals.incorrect, form.duration_minutes)
   const submit = (event) => {
     event.preventDefault()
@@ -92,6 +95,18 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
             />
           </Field>}
         </div>
+
+        <Field label={t('exams.scoringProfile')}>
+          <select aria-label={t('exams.scoringProfile')} value={`${form.scoring_profile_id || 'legacy-yks'}@${form.scoring_profile_version || 1}`} onChange={(event) => {
+            const [scoring_profile_id, version] = event.target.value.split('@')
+            setForm((current) => ({ ...current, scoring_profile_id, scoring_profile_version: Number(version) }))
+          }} className={inputCls}>
+            {profiles.map((item) => <option key={`${item.profile_id}@${item.version}`} value={`${item.profile_id}@${item.version}`}>
+              {item.display_name} · {item.country_label} · v{item.version}
+            </option>)}
+          </select>
+          <p className="mt-1 text-xs text-canvas-muted">{t('exams.scoringProfileSnapshot')}</p>
+        </Field>
 
         {fullMock && (
           <section aria-label={t('exams.sectionResults')} className="space-y-3 rounded-lg border border-canvas-line bg-canvas-base p-3">
@@ -174,7 +189,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
             <div className="flex items-center justify-between">
               <dt className="text-canvas-muted">{t('exams.netFormula')}</dt>
               <dd className="font-mono text-xs text-canvas-text">
-                {totals.correct} − ({totals.incorrect} / 4)
+                {totals.correct} × {rule.correct_points} − {totals.incorrect} × {rule.wrong_penalty} + {totals.blank} × {rule.blank_points}
               </dd>
             </div>
             <div className="my-2 border-t border-canvas-line" />
@@ -185,9 +200,10 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
             <div className="flex items-center justify-between">
               <dt className="text-canvas-muted">{t('exams.xpFormula')}</dt>
               <dd className="font-mono text-xs text-canvas-text">
-                max(0, ⌊({net} · {fmtInt(totals.correct, locale)} · 1.5) − ({fmtDuration(form.duration_minutes, form.duration_seconds)} · {fmtInt(totals.incorrect, locale)} · 0.25)⌋)
+                max(0, ⌊({fmtNet(netScore(totals.correct, totals.incorrect), locale)} · {fmtInt(totals.correct, locale)} · 1.5) − ({fmtDuration(form.duration_minutes, form.duration_seconds)} · {fmtInt(totals.incorrect, locale)} · 0.25)⌋)
               </dd>
             </div>
+            <p className="text-xs text-canvas-muted">{t('exams.xpIndependentOfScoring')}</p>
           </dl>
         </div>
 

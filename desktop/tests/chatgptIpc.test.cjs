@@ -62,12 +62,14 @@ test('ChatGPT IPC forwards the bounded create-only workflow and canonical langua
   const messages = ['date: 2026-11-15']
   const pending = testApp.handlers.get('hamartia:chatgpt:chat')(testApp.event(), {
     requestId: 'request-012345678901', consent: true, message: messages[0], model: 'model-a', language: 'tr',
-    workflow: 'practice-entry', messages,
+    workflow: 'practice-entry', messages, scoring_profile_id: 'profile_host-choice', scoring_profile_version: 4,
   })
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(testApp.calls.payload.workflow, 'practice-entry')
   assert.equal(testApp.calls.payload.language, 'tr')
   assert.deepEqual(testApp.calls.payload.messages, messages)
+  assert.equal(testApp.calls.payload.scoring_profile_id, 'profile_host-choice')
+  assert.equal(testApp.calls.payload.scoring_profile_version, 4)
   testApp.finishChat()
   await pending
 })

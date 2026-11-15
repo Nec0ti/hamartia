@@ -464,6 +464,42 @@ async function main() {
     assert.equal(profileResponse.status(), 201)
     const customProfile = await profileResponse.json()
     await page.getByRole('dialog').getByRole('button', { name: 'Vazgeç' }).click()
+    await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    const profiledPracticeForm = page.getByRole('region', { name: 'Konu çalışma setleri' })
+    await profiledPracticeForm.getByLabel('Ders').fill('Matematik')
+    await profiledPracticeForm.getByLabel('Konu').fill('Fonksiyon')
+    await profiledPracticeForm.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    await profiledPracticeForm.getByLabel('Doğru').fill('8')
+    await profiledPracticeForm.getByLabel('Yanlış').fill('2')
+    await profiledPracticeForm.getByLabel('Boş').fill('1')
+    const [profiledPracticeResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
+      profiledPracticeForm.getByRole('button', { name: 'Seti kaydet' }).click(),
+    ])
+    const profiledPractice = await profiledPracticeResponse.json()
+    assert.deepEqual([profiledPractice.net, profiledPractice.scoring_profile.profile_id, profiledPractice.scoring_profile.version], [7, customProfile.profile_id, 1])
+    const customPracticeGroup = page.locator('article').filter({ hasText: 'Custom Half Rule · v1' })
+    await customPracticeGroup.waitFor()
+    await customPracticeGroup.getByRole('button', { name: /Seti düzenle/ }).first().click()
+    await profiledPracticeForm.getByLabel('Doğru').fill('9')
+    const [editedPracticeResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === `/practice/${profiledPractice.id}` && response.request().method() === 'PUT'),
+      profiledPracticeForm.getByRole('button', { name: 'Değişiklikleri kaydet' }).click(),
+    ])
+    const editedProfiledPractice = await editedPracticeResponse.json()
+    assert.deepEqual([editedProfiledPractice.net, editedProfiledPractice.scoring_profile.version], [8, 1])
+    await profiledPracticeForm.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    await page.getByRole('button', { name: 'Odaklı çalış · Matematik / Fonksiyon' }).click()
+    const profiledFocusSection = page.getByRole('region', { name: 'Odaklı çalışma oturumu' })
+    await profiledFocusSection.getByText('Kaydedilen kural: Custom Half Rule · v1').waitFor()
+    await profiledFocusSection.getByRole('button', { name: 'Doğru artır' }).click()
+    const [profiledFocusResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
+      profiledFocusSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
+    ])
+    const profiledFocusSession = await profiledFocusResponse.json()
+    assert.deepEqual([profiledFocusSession.net, profiledFocusSession.scoring_profile.profile_id, profiledFocusSession.scoring_profile.version], [1, customProfile.profile_id, 1])
+    await page.getByRole('button', { name: 'Ana Sayfa' }).click()
     await page.getByRole('button', { name: 'Deneme ekle' }).click()
     await page.getByRole('dialog').locator('select').first().selectOption('tyt')
     await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
@@ -692,7 +728,8 @@ async function main() {
                 .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
               const response = await fetch(`${backendUrl}/practice/agent-draft`, {
                 method: 'POST', headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
+                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims,
+                  scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version }),
               })
               const responseBody = await response.text()
               window.__practiceDraftHttp = { status: response.status, body: responseBody }
@@ -738,6 +775,7 @@ async function main() {
       message: 'What should I review next?', model: 'mock-model', language: 'en', workflow: 'chat', messages: [], consent: true, requestId: undefined,
     })
     await page.getByLabel('Study Agent mode').selectOption('practice-entry')
+    await page.getByLabel('Scoring profile', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
     const practiceEntry = 'date: 2026-11-15, subject: Mathematics, correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0'
     await page.getByLabel('Describe the practice set you completed').fill(practiceEntry)
     await page.getByRole('checkbox').check()
@@ -768,6 +806,8 @@ async function main() {
     page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Approve this preview and save' }).click()
     await page.getByText('Practice set saved. You can start another entry.').waitFor()
+    assert.deepEqual((await (await fetch(`${apiUrl}/practice`)).json()).find((item) => item.date === '2026-11-15' && item.subject === 'Mathematics' && item.topic === 'Functions').scoring_profile,
+      { ...customProfile, scoring_rule: { correct_points: '1/1', wrong_penalty: '1/2', blank_points: '0/1' } })
     assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
       message: 'topic: Functions',
       model: 'mock-model', language: 'en', workflow: 'practice-entry', messages: [practiceEntry, 'topic: Functions'], consent: true, requestId: undefined,

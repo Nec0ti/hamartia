@@ -158,7 +158,7 @@ async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageServi
         parsed = PracticeSessionCreate.model_validate(prepared["fields"] | {
             "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,
         }) if prepared["status"] == "ready" else None
-        values = {field: prepared["fields"][field] for field in FIELDS} if prepared["status"] == "ready" else prepared["fields"]
+        values = {field: value for field, value in prepared["fields"].items() if field in FIELDS}
         evidence = prepared["verified_evidence"]
         missing = prepared["missing"]
         ambiguous = prepared["ambiguous"]
@@ -217,7 +217,7 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         parsed = PracticeSessionCreate.model_validate(prepared["fields"] | {
             "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,
         }) if prepared["status"] == "ready" else None
-        values = {field: prepared["fields"][field] for field in FIELDS} if prepared["status"] == "ready" else prepared["fields"]
+        values = {field: value for field, value in prepared["fields"].items() if field in FIELDS}
         evidence = prepared["verified_evidence"]
         digest = _approved_payload(parsed, evidence, profile) if parsed else None
         claims_match = (
@@ -233,6 +233,7 @@ async def practice_agent_create(payload: AgentCreateRequest, storage: StorageSer
         claims_match = True
     if (not claims_match or parsed is None
             or (payload.scoring_profile_snapshot is not None and profile != payload.scoring_profile_snapshot)
+            or (profile.profile_id != "legacy-yks" and payload.scoring_profile_snapshot is None)
             or values != payload.proposal
             or _session_values(parsed) != _session_values(payload.fields) or evidence != payload.evidence):
         raise HTTPException(status_code=422, detail="The approved preview is incomplete or no longer matches the source messages.")

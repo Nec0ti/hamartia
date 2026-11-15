@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api import practice, study_agent
-from app.models.schemas import PracticeSession, Settings
+from app.api import exam_profiles, practice, study_agent
+from app.models.schemas import ExamScoringProfile, ExamScoringRule, PracticeSession, Settings
 from app.services.storage import StorageService
 from app.services.study_agent_cli import prepare_practice
 from app.services.study_agent_practice import extract_fields, parse_proposal
@@ -158,6 +158,35 @@ class StudyAgentPracticeTests(unittest.TestCase):
         intentional_new = {**body, "approval_id": str(uuid.uuid4()), "duplicate_choice": "new"}
         self.assertEqual(self.client.post("/practice/agent-create", json=intentional_new).status_code, 201)
         self.assertEqual(len(self.sessions()), 2)
+
+    def test_host_selected_profile_snapshot_is_in_agent_digest_and_saved_record(self):
+        profile = ExamScoringProfile(
+            profile_id="profile_test-practice", version=1, display_name="No penalty", country_label="Example",
+            scoring_rule=ExamScoringRule(correct_points="1", wrong_penalty="0", blank_points="0"),
+        )
+        self.storage.append_list("exam_profiles.json", profile, ExamScoringProfile)
+        messages = ["date: 2026-11-15, subject: Mathematics, topic: Functions, correct: 7, incorrect: 2, blank: 1, duration_minutes: 18, duration_seconds: 0"]
+        proposal = {**FULL_PROPOSAL}
+        selected = {"scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version}
+        legacy = self.client.post("/practice/agent-draft", json={
+            "messages": messages, "language": "en", "proposal": proposal,
+        }).json()
+        draft = self.client.post("/practice/agent-draft", json={
+            "messages": messages, "language": "en", "proposal": proposal, **selected,
+        }).json()
+        self.assertNotEqual(draft["preview_digest"], legacy["preview_digest"])
+        self.assertEqual(draft["scoring_profile_snapshot"], profile.model_dump())
+        body = {
+            "messages": messages, "language": "en", "proposal": proposal,
+            "fields": draft["fields"], "evidence": draft["evidence"],
+            "preview_digest": draft["preview_digest"], "approval_id": str(uuid.uuid4()),
+            "scoring_profile_snapshot": draft["scoring_profile_snapshot"], **selected,
+        }
+        saved = self.client.post("/practice/agent-create", json=body)
+        self.assertEqual(saved.status_code, 201, saved.text)
+        self.assertEqual((saved.json()["scoring_profile"], saved.json()["net"]), (profile.model_dump(), 7.0))
+        tampered = {**body, "scoring_profile_snapshot": {**profile.model_dump(), "version": 2}}
+        self.assertEqual(self.client.post("/practice/agent-create", json=tampered).status_code, 422)
 
     def test_quote_tool_cannot_hide_cross_turn_conflict_and_prepare_never_writes(self):
         response = self.client.post("/practice/agent-draft", json={
@@ -312,11 +341,14 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         ))
         app = FastAPI()
         app.include_router(practice.router)
+        app.include_router(exam_profiles.router)
         app.include_router(study_agent.router)
         self.data_patch = patch.object(study_agent, "DATA_DIR", self.data_dir)
         self.data_patch.start()
         self.practice_data_patch = patch.object(practice, "DATA_DIR", self.data_dir)
         self.practice_data_patch.start()
+        self.profile_data_patch = patch.object(exam_profiles, "DATA_DIR", self.data_dir)
+        self.profile_data_patch.start()
         self.client = TestClient(app)
         self.ai_patch = patch.object(study_agent, "AIService")
         self.ai_class = self.ai_patch.start()
@@ -329,6 +361,7 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.client.close()
         self.data_patch.stop()
         self.practice_data_patch.stop()
+        self.profile_data_patch.stop()
         self.temp.cleanup()
 
     def payload(self):
@@ -345,6 +378,19 @@ class ConfiguredStudyAgentProposalTests(unittest.TestCase):
         self.assertEqual(response.json()["fields"]["subject"], "Mathematics")
         self.assertIn("date", response.json()["missing"])
         self.ai.study_practice_prepare.assert_awaited_once_with(["subject: Mathematics"], "tr")
+
+    def test_configured_provider_cannot_choose_host_profile(self):
+        profile = ExamScoringProfile(
+            profile_id="profile_configured-practice", version=1, display_name="Blank credit", country_label="Example",
+            scoring_rule=ExamScoringRule(correct_points="1", wrong_penalty="0", blank_points="1/2"),
+        )
+        StorageService(self.data_dir).append_list("exam_profiles.json", profile, ExamScoringProfile)
+        body = {**self.payload(), "scoring_profile_id": profile.profile_id, "scoring_profile_version": 1}
+        response = self.client.post("/study-agent/local", json=body)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["scoring_profile_snapshot"], profile.model_dump())
+        self.assertEqual(response.json()["scoring_profile_id"], profile.profile_id)
+        self.ai.study_practice_prepare.assert_awaited_once_with(body["messages"], body["language"])
 
     def test_configured_provider_unverified_quote_is_discarded_and_cannot_write(self):
         self.ai.study_practice_prepare.return_value = prepare_practice(

@@ -261,8 +261,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
             <div className="text-right text-sm text-canvas-text">{formatNumber(group.net, locale)} {t('study.totalNet')}<p className="text-xs text-canvas-muted">{group.accuracy == null ? t('study.noAnsweredQuestions') : t('study.answeredAccuracy', { accuracy: fmtPercent(group.accuracy * 100, locale) })}</p></div>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="net" t={t} locale={locale} />
-            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="accuracy_percent" t={t} locale={locale} />
+            <PracticeTrendChart subject={group.subject} topic={group.topic} profile={group.scoring_profile} data={chartData} metric="net" t={t} locale={locale} />
+            <PracticeTrendChart subject={group.subject} topic={group.topic} profile={group.scoring_profile} data={chartData} metric="accuracy_percent" t={t} locale={locale} />
           </div>
           <SessionRows items={recent} sessions={sessions} topic={group.topic} locale={locale} t={t} onEdit={edit} onRemove={remove} />
           {older.length > 0 && <details className="mt-2 rounded-lg border border-canvas-line px-3 py-2">
@@ -275,12 +275,13 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   )
 }
 
-function PracticeTrendChart({ subject, topic, data, metric, t, locale }) {
+function PracticeTrendChart({ subject, topic, profile, data, metric, t, locale }) {
   const accuracy = metric === 'accuracy_percent'
   const label = accuracy ? t('study.accuracy') : t('study.net')
-  return <section aria-label={t('study.metricChart', { subject, topic, metric: label.toLowerCase() })} className="min-w-0 rounded-lg bg-canvas-base p-2">
+  const profileLabel = `${profile.display_name} · v${profile.version}`
+  return <section aria-label={t('study.metricChart', { subject, topic, metric: label.toLowerCase(), profile: profileLabel })} className="min-w-0 rounded-lg bg-canvas-base p-2">
     <h4 className="mb-1 text-xs font-medium text-canvas-muted">{t('study.metricPerSet', { metric: label.toLowerCase() })}</h4>
-    <div role="img" aria-label={t('study.metricChange', { subject, topic, metric: label.toLowerCase() })} className="h-36 w-full">
+    <div role="img" aria-label={t('study.metricChange', { subject, topic, metric: label.toLowerCase(), profile: profileLabel })} className="h-36 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />

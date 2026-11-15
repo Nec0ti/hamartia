@@ -57,6 +57,7 @@ export default {
   'agent.practicePreviewReady': { en: 'Review every field and source quote. Nothing has been saved yet.', tr: 'Her alanı ve kaynak alıntısını incele. Henüz hiçbir şey kaydedilmedi.' },
   'agent.practiceConflictReview': { en: 'A matching record may already exist. Review it and choose whether to add another record.', tr: 'Eşleşen bir kayıt zaten olabilir. İncele ve yeni kayıt ekleyip eklemeyeceğini seç.' },
   'agent.practicePreviewTitle': { en: 'Proposed practice set', tr: 'Önerilen çalışma seti' },
+  'agent.practiceScoringRule': { en: 'Profile: {{profile}} · v{{version}} · correct +{{correct}}, wrong −{{penalty}}, blank +{{blank}}', tr: 'Profil: {{profile}} · v{{version}} · doğru +{{correct}}, yanlış −{{penalty}}, boş +{{blank}}' },
   'agent.practiceSave': { en: 'Approve this preview and save', tr: 'Bu önizlemeyi onayla ve kaydet' },
   'agent.practiceSaveNew': { en: 'Add as a separate new record', tr: 'Ayrı yeni kayıt olarak ekle' },
   'agent.practiceCancel': { en: 'Cancel this draft', tr: 'Bu taslağı iptal et' },

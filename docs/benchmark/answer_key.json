@@ -59,7 +59,7 @@
               "locale": "en",
               "page": "study-workflows",
               "anchor": "practice",
-              "quote": "A completed practice set records date, subject/topic, correct/incorrect/blank counts, and time."
+              "quote": "Each completed practice set stores the selected versioned scoring-profile snapshot alongside date, subject/topic, counts, and time."
             }
           ]
         },
@@ -71,7 +71,7 @@
               "locale": "en",
               "page": "study-workflows",
               "anchor": "practice",
-              "quote": "blanks are excluded from the answered-accuracy denominator."
+              "quote": "Accuracy uses correct + incorrect, so blanks are excluded"
             }
           ]
         }
@@ -126,7 +126,7 @@
               "locale": "tr",
               "page": "study-workflows",
               "anchor": "practice",
-              "quote": "Tamamlanan çalışma seti tarih, ders/konu, doğru/yanlış/boş sayısı ve süreyi kaydeder."
+              "quote": "Tamamlanan her çalışma seti seçilen sürümlü puanlama profilinin anlık görüntüsünü; tarihi, ders/konusu, sayılarını ve süresini saklar."
             }
           ]
         },
@@ -138,7 +138,7 @@
               "locale": "tr",
               "page": "study-workflows",
               "anchor": "practice",
-              "quote": "cevaplanan doğruluk paydasında boşlar sayılmaz."
+              "quote": "Doğruluk paydası doğru + yanlıştır; boşlar hariçtir."
             }
           ]
         }
@@ -157,7 +157,7 @@
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "The app records TYT/AYT full mock sessions and single-subject exams."
+              "quote": "The app records TYT/AYT full mock sessions and single-subject exams; full mocks retain subject sections."
             }
           ]
         },
@@ -169,7 +169,7 @@
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "The built-in legacy-yks profile keeps the YKS rule: one point per correct answer and a 1/4-point penalty per incorrect answer. You can create custom profiles with a display name, country label, and exact rational points for correct, incorrect, and blank answers; updating a profile creates a new version and existing exams keep their saved rule. These editable labels and rules are user configuration, not official exam profiles or verified alignment."
+              "quote": "Old records retain the built-in legacy-yks@1 rule: one point per correct answer, a 1/4-point penalty per incorrect answer, and zero for blanks. You can create custom profiles with a display name, country label, and exact rational points for correct, incorrect, and blank answers; updating a profile creates a new version and saved records keep their original rule. These labels and rules are user configuration, not official exam or national rules and not verified alignment with an authority or Maarif."
             }
           ]
         },
@@ -224,7 +224,7 @@
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "Uygulama TYT/AYT tam denemelerini ve tek ders denemelerini kaydeder."
+              "quote": "Uygulama TYT/AYT tam denemelerini ve tek ders denemelerini kaydeder; tam denemelerde ders bölümleri korunur."
             }
           ]
         },
@@ -236,7 +236,7 @@
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "Yerleşik legacy-yks profili YKS kuralını korur: doğru başına bir puan, yanlış başına 1/4 puan ceza. Doğru, yanlış ve boş yanıtlar için kesin rasyonel puanlar içeren özel profilleri ad, ülke etiketi ve kuralla oluşturabilirsin; profili güncellemek yeni sürüm açar, eski denemeler kayıtlı kurallarını korur. Bu düzenlenebilir etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav profili veya doğrulanmış eşleştirme değildir."
+              "quote": "Eski kayıtlar yerleşik legacy-yks@1 kuralını korur: doğru başına bir puan, yanlış başına 1/4 ceza, boş başına sıfır. Doğru, yanlış ve boş yanıtlar için kesin rasyonel puanlar içeren özel profilleri ad ve ülke etiketiyle oluşturabilirsin; profili güncellemek yeni sürüm açar, kayıtlar eski kurallarını korur. Bu etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav veya ulusal kural, yetkili kurum ya da Maarif ile doğrulanmış eşleştirme değildir."
             }
           ]
         },

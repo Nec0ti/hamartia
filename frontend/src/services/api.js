@@ -41,6 +41,13 @@ export const practice = {
   remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
 }
 
+export const learningEvidence = {
+  list: () => client.get('/learning-evidence').then((r) => r.data),
+  create: (payload) => client.post('/learning-evidence', payload).then((r) => r.data),
+  update: (id, payload) => client.put(`/learning-evidence/${id}`, payload).then((r) => r.data),
+  remove: (id) => client.delete(`/learning-evidence/${id}`).then((r) => r.data),
+}
+
 export const clock = {
   get: () => client.get('/clock').then((r) => r.data),
   update: (payload) => client.patch('/clock', payload).then((r) => r.data),
@@ -125,4 +132,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, practice, clock, questions, cosmos, user, settings, studyAgent, health }
+export default { exams, practice, learningEvidence, clock, questions, cosmos, user, settings, studyAgent, health }

@@ -94,13 +94,14 @@ async function main() {
     assert.equal(readiness.healthStatus, 200, 'The same-origin readiness API should return HTTP 200')
     assert.match(readiness.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
     assert.equal(readiness.backendUrl, readiness.origin, 'The marker should identify the backend origin')
-    assert.deepEqual(readiness.safeStorage, {
-      platform: process.platform,
-      backend: process.platform === 'linux' ? process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND : null,
-      available: true,
-      roundTrip: true,
-      protectedStorageAvailable: (process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected') === 'protected',
-    }, 'Native safeStorage behavior should match the selected platform and production policy')
+    const storageMode = process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected'
+    const protectedMode = storageMode === 'protected'
+    assert.equal(readiness.safeStorage.platform, process.platform)
+    assert.equal(readiness.safeStorage.backend, process.platform === 'linux' ? process.env.HAMARTIA_ELECTRON_SMOKE_EXPECT_BACKEND : null)
+    assert.equal(typeof readiness.safeStorage.available, 'boolean')
+    assert.equal(readiness.safeStorage.roundTrip, protectedMode, 'Only protected storage mode should perform a native round-trip')
+    assert.equal(readiness.safeStorage.protectedStorageAvailable, protectedMode, 'Native safeStorage behavior should match the production policy')
+    if (protectedMode) assert.equal(readiness.safeStorage.available, true, 'Protected storage mode requires native encryption availability')
 
     const remaining = timeoutMs - (Date.now() - startedAt)
     await Promise.race([

@@ -1,16 +1,41 @@
 """CRUD and summaries for completed subject/topic practice sets."""
 
 from datetime import datetime, timezone
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import DATA_DIR
 from app.core.practice import practice_topic_summaries
 from app.models.schemas import PracticeSession, PracticeSessionCreate
 from app.services.storage import StorageService
+from app.services.study_agent_practice import complete_payload, preview_digest, questions
 
 router = APIRouter(prefix="/practice", tags=["practice"])
+
+
+class AgentDraftRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    messages: list[str] = Field(min_length=1, max_length=30)
+    language: Literal["en", "tr"]
+    proposal: dict[str, str | int]
+
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, messages):
+        if any(not item.strip() or len(item) > 4000 for item in messages):
+            raise ValueError("Each student message must contain 1 to 4,000 characters.")
+        return messages
+
+
+class AgentCreateRequest(AgentDraftRequest):
+    fields: PracticeSessionCreate
+    evidence: dict
+    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    duplicate_choice: Literal["new", "cancel"] | None = None
 
 
 def get_storage():
@@ -71,6 +96,65 @@ async def create_session(
     )
     storage.append_list("practice_sessions.json", session, PracticeSession)
     return session
+
+
+@router.post("/agent-draft")
+async def practice_agent_draft(payload: AgentDraftRequest, storage: StorageService = Depends(get_storage)):
+    parsed, values, details = complete_payload(payload.messages)
+    evidence = details["evidence"]
+    if payload.proposal != values:
+        raise HTTPException(status_code=422, detail="The provider proposal did not match values deterministically extracted from student messages.")
+    digest = preview_digest(parsed, evidence) if parsed else None
+    conflicts = []
+    if parsed:
+        conflicts = [
+            item.model_dump()
+            for item in storage.load_list("practice_sessions.json", PracticeSession)
+            if (item.date, item.subject.casefold(), item.topic.casefold())
+            == (parsed.date, parsed.subject.casefold(), parsed.topic.casefold())
+        ]
+    return {
+        "fields": parsed.model_dump() if parsed else values,
+        "evidence": evidence,
+        "missing": details["missing"],
+        "ambiguous": details["ambiguous"],
+        "questions": questions(payload.language, details["missing"], details["ambiguous"]),
+        "preview_digest": digest,
+        "conflicts": conflicts,
+    }
+
+
+@router.post("/agent-create", status_code=201, response_model=PracticeSession)
+async def practice_agent_create(payload: AgentCreateRequest, storage: StorageService = Depends(get_storage)):
+    parsed, _, details = complete_payload(payload.messages)
+    if parsed is None or parsed.model_dump() != payload.fields.model_dump() or details["evidence"] != payload.evidence:
+        raise HTTPException(status_code=422, detail="The approved preview is incomplete or no longer matches the source messages.")
+    if preview_digest(parsed, details["evidence"]) != payload.preview_digest:
+        raise HTTPException(status_code=409, detail="The approved preview changed. Review it again before saving.")
+    created: list[PracticeSession] = []
+    conflict_seen = []
+
+    def append_with_conflict_check(sessions):
+        conflicts = [
+            item for item in sessions
+            if (item.date, item.subject.casefold(), item.topic.casefold())
+            == (parsed.date, parsed.subject.casefold(), parsed.topic.casefold())
+        ]
+        conflict_seen.extend(conflicts)
+        if conflicts and payload.duplicate_choice != "new":
+            return False
+        session = PracticeSession(
+            id=f"practice_{uuid4().hex}",
+            created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            **parsed.model_dump(),
+        )
+        sessions.append(session)
+        created.append(session)
+        return True
+
+    if not storage.update_list("practice_sessions.json", PracticeSession, append_with_conflict_check):
+        raise HTTPException(status_code=409, detail={"message": "A matching practice set already exists.", "conflicts": [item.model_dump() for item in conflict_seen]})
+    return created[0]
 
 
 @router.put("/{session_id}", response_model=PracticeSession)

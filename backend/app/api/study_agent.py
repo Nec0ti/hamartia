@@ -10,11 +10,14 @@ from app.core.config import DATA_DIR
 from app.models.schemas import Settings
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
+from app.services.study_agent_practice import extract_fields, parse_proposal
 
 router = APIRouter(prefix="/study-agent", tags=["study-agent"])
 
 
 class LocalStudyRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
     consent: Literal[True]
     message: str = Field(min_length=1, max_length=4000)
     context: str = Field(max_length=6000)
@@ -22,6 +25,8 @@ class LocalStudyRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
     model_name: str = Field(min_length=1, max_length=256)
     has_api_key: bool
+    workflow: Literal["chat", "practice-entry"] = "chat"
+    messages: list[str] = Field(default_factory=list, max_length=30)
 
 
 def _validate_endpoint(base_url: str) -> None:
@@ -65,7 +70,18 @@ async def configured_study_agent(payload: LocalStudyRequest):
     )
     _validate_endpoint(ai.base_url)
     try:
+        if payload.workflow == "practice-entry":
+            if not payload.messages or any(not item.strip() or len(item) > 4000 for item in payload.messages):
+                raise HTTPException(status_code=422, detail="Provide at least one student message of up to 4,000 characters.")
+            proposal = parse_proposal(await ai.study_practice_proposal(payload.messages, payload.language))
+            expected, _ = extract_fields(payload.messages)
+            expected_values = {field: item.value for field, item in expected.items()}
+            if proposal != expected_values:
+                raise HTTPException(status_code=422, detail="The provider proposal did not match values deterministically extracted from student messages.")
+            return {"proposal": proposal}
         answer = await ai.study_chat(payload.message.strip(), payload.context, payload.language)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail="The configured Study Agent endpoint could not complete the request.") from exc
     return {"answer": answer}

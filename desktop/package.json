@@ -34,12 +34,21 @@
       "backendInvocation.cjs",
       "restoreFlow.cjs",
       "shutdownFlow.cjs",
+      "windowIcon.cjs",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "../backend/dist/hamartia-backend",
         "to": "backend/hamartia-backend"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icons/hamartia.ico"
+      },
+      {
+        "from": "build/icons/512x512.png",
+        "to": "icons/hamartia.png"
       }
     ],
     "win": {

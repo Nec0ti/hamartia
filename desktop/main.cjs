@@ -10,6 +10,7 @@ const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
 const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
 const { probeSafeStorage } = require('./safeStorageSmoke.cjs')
+const { getWindowIconPath } = require('./windowIcon.cjs')
 
 const HOST = '127.0.0.1'
 const CONTROL_TOKEN = randomBytes(32).toString('hex')
@@ -109,12 +110,19 @@ async function openWindow() {
     await waitUntilReady(backend, backendUrl)
   }
 
+  const icon = getWindowIconPath({
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    desktopDir: __dirname,
+  })
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
     minWidth: 760,
     minHeight: 600,
     autoHideMenuBar: true,
+    ...(icon ? { icon } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import inspect
 import json
 import platform
 import random
@@ -11,7 +13,9 @@ import sys
 import time
 from pathlib import Path
 
+from app import hamartia_cli
 from app.hamartia_cli import run_json_line
+from app.services import study_agent_cli, study_agent_practice
 
 SEED = 20261115
 
@@ -28,7 +32,7 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
         blank = 1
     minutes = 10 + index % 70
     seconds = index % 60
-    if index % 3 == 0:
+    if index % 4 == 0:
         message = (
             f"I completed a practice test on {topic} in {subject} on {date}. "
             f"I got {correct} right, {incorrect} wrong, left {blank} blank; "
@@ -41,7 +45,7 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
             {"field": "incorrect", "quote": f"{incorrect} wrong"}, {"field": "blank", "quote": f"left {blank} blank"},
             {"field": "duration_minutes", "quote": f"{minutes} minutes"}, {"field": "duration_seconds", "quote": f"{seconds} seconds"},
         ]
-    elif index % 3 == 1:
+    elif index % 4 == 1:
         message = (
             f"date: {date}; topic: {topic}; subject: {subject}; correct: {correct}; wrong: {incorrect}; "
             f"blank: {blank}; duration_minutes: {minutes}; duration_seconds: {seconds}"
@@ -54,7 +58,7 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
             {"field": "duration_minutes", "quote": f"duration_minutes: {minutes}"},
             {"field": "duration_seconds", "quote": f"duration_seconds: {seconds}"},
         ]
-    else:
+    elif index % 4 == 2:
         message = (
             f"tarih: {date}; ders: {subject}; konu: {topic}; doğru: {correct}; yanlış: {incorrect}; "
             f"boş: {blank}; duration_minutes: {minutes}; duration_seconds: {seconds}"
@@ -66,6 +70,18 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
             {"field": "incorrect", "quote": f"yanlış: {incorrect}"}, {"field": "blank", "quote": f"boş: {blank}"},
             {"field": "duration_minutes", "quote": f"duration_minutes: {minutes}"},
             {"field": "duration_seconds", "quote": f"duration_seconds: {seconds}"},
+        ]
+    else:
+        message = (
+            f"Ders {subject}. Konu {topic}. Tarih {date}. {correct} doğru, {incorrect} yanlış, "
+            f"{blank} boş; {minutes} dakika ve {seconds} saniye sürdü."
+        )
+        language = "tr"
+        evidence = [
+            {"field": "subject", "quote": f"Ders {subject}"}, {"field": "topic", "quote": f"Konu {topic}"},
+            {"field": "date", "quote": f"Tarih {date}"}, {"field": "correct", "quote": f"{correct} doğru"},
+            {"field": "incorrect", "quote": f"{incorrect} yanlış"}, {"field": "blank", "quote": f"{blank} boş"},
+            {"field": "duration_minutes", "quote": f"{minutes} dakika"}, {"field": "duration_seconds", "quote": f"{seconds} saniye"},
         ]
     request = {"command": "study.practice.prepare", "language": language, "messages": [message], "evidence": evidence}
     expected = {
@@ -98,6 +114,28 @@ def _assert_rejected_probe(request: dict, *, status: str, field: str | None = No
     return result
 
 
+def assert_prepare_is_structurally_side_effect_free() -> None:
+    """Guard the CLI call path against provider and persistence dependencies."""
+    modules = (hamartia_cli, study_agent_cli, study_agent_practice)
+    forbidden_imports = ("app.services.ai_service", "app.services.storage", "openai", "httpx", "requests", "subprocess", "sqlite3")
+    forbidden_calls = {"AIService", "StorageService", "create_session", "append_list", "update_list", "httpx", "requests"}
+    for module in modules:
+        tree = ast.parse(inspect.getsource(module))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported = [item.name for item in node.names]
+                if any(name == forbidden or name.startswith(f"{forbidden}.") for name in imported for forbidden in forbidden_imports):
+                    raise AssertionError(f"provider/storage dependency found in {module.__name__}")
+            elif isinstance(node, ast.ImportFrom):
+                imported = node.module or ""
+                if any(imported == forbidden or imported.startswith(f"{forbidden}.") for forbidden in forbidden_imports):
+                    raise AssertionError(f"provider/storage dependency found in {module.__name__}")
+            elif isinstance(node, ast.Call):
+                call_name = node.func.id if isinstance(node.func, ast.Name) else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+                if call_name in forbidden_calls:
+                    raise AssertionError(f"provider/storage call found in {module.__name__}")
+
+
 def adversarial_probes(seed: int) -> int:
     base, expected, _evidence, _digest = fixture(seed)
     positives = base["evidence"]
@@ -115,6 +153,9 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 veya 15 Kasım."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or sixty seconds."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or half an hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or 1/2 hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or ½ hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 minutes or a half hour."], "evidence": [{"field": "duration_minutes", "quote": "45 minutes"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["45 dakika ya da bir buçuk saat sürdü."], "evidence": [{"field": "duration_minutes", "quote": "45 dakika"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I practiced Functions."], "evidence": [{"field": "topic", "quote": "practiced Functions"}]}, "incomplete", "correct", True),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I practiced Functions."], "evidence": [{"field": "topic", "quote": "unquoted guess"}]}, "incomplete", "correct", True),
@@ -147,6 +188,7 @@ def adversarial_probes(seed: int) -> int:
 
 
 def run_trial(count: int, seed: int) -> dict:
+    assert_prepare_is_structurally_side_effect_free()
     rng = random.Random(seed)
     fixtures = [fixture(index) for index in range(count)]
     rng.shuffle(fixtures)
@@ -170,7 +212,13 @@ def run_trial(count: int, seed: int) -> dict:
     for request, status, field, missing in negatives:
         _assert_rejected_probe(request, status=status, field=field, missing=missing)
     adversarial_count = adversarial_probes(seed)
-    return {"records_checked": count, "seconds": elapsed, "rejected_probes": len(negatives) + adversarial_count, "provider_calls": 0, "writes": 0}
+    return {
+        "records_checked": count, "seconds": elapsed, "rejected_probes": len(negatives) + adversarial_count,
+        "side_effects": {
+            "provider_calls": {"measurement": "structurally_excluded", "runtime_counted": False},
+            "writes": {"measurement": "structurally_excluded", "runtime_counted": False},
+        },
+    }
 
 
 def main(repeats: int = 5, json_output: str | None = None) -> None:
@@ -184,7 +232,8 @@ def main(repeats: int = 5, json_output: str | None = None) -> None:
         runs.append({
             **results[-1], "p50_seconds": round(durations[len(durations) // 2], 6),
             "p95_seconds": round(durations[-1], 6),
-            "oracle": "diversified EN/TR and labeled/natural fixtures; independent canonical values, every quote/source index/offset, and independently reconstructed preview digests; adversarial exact-status and explicit-correction controls",
+            "oracle": "EN natural/labeled and TR natural/labeled fixtures; independent values/evidence/digests; adversarial exact statuses and corrections",
+            "side_effect_check": "AST inspection confirmed CLI/prepare modules import and call no provider or persistence services; counters are structural exclusions, not runtime instrumentation",
         })
     output = {
         "benchmark": "study_agent_cli_prepare", "seed": SEED, "ai_included": False,

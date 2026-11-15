@@ -461,13 +461,19 @@
         },
         {
           "points": 1,
-          "claim": "The Study Agent requires explicit consent and sends the typed prompt plus a bounded summary including saved counts, subject/topic/tag summaries, practice aggregates, and up to eight user-entered curriculum references; it excludes saved question text/images and conversation history.",
+          "claim": "The Study Agent requires explicit consent. Study-guidance requests send the typed prompt plus a bounded saved-study summary and up to eight curriculum references; Prepare a practice set sends only that entry conversation's student messages. Both exclude saved question text/images and conversation history.",
           "evidence": [
             {
               "locale": "en",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Before each Study Agent request, Hamartia displays a consent screen. It sends the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
+              "quote": "Before each Study Agent request, Hamartia displays a consent screen. Study-guidance requests send the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "The Prepare a practice set mode is different: it sends only student messages from that practice-entry conversation, without the saved summary."
             },
             {
               "locale": "en",
@@ -491,7 +497,7 @@
               "locale": "en",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "It sends the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
+              "quote": "Study-guidance requests send the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
             }
           ]
         }
@@ -546,13 +552,19 @@
         },
         {
           "points": 1,
-          "claim": "Çalışma Asistanı açık onay ister ve yazılan istemle kayıtlı sayılar, ders/konu/etiket özetleri, çalışma toplamları ve en fazla sekiz kullanıcı referansını içeren sınırlı özeti gönderir; kayıtlı soru metni/görsellerini ve sohbet geçmişini göndermez.",
+          "claim": "Çalışma Asistanı açık onay ister. Çalışma rehberliği istekleri yazılan istemle sınırlı kayıtlı çalışma özetini ve en fazla sekiz program referansını gönderir; Çalışma seti hazırla yalnızca bu kayıt girişindeki öğrenci mesajlarını gönderir. İki akış da kayıtlı soru metni/görsellerini ve sohbet geçmişini göndermez.",
           "evidence": [
             {
               "locale": "tr",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir. Yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
+              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir. Çalışma rehberliği istekleri yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
+            },
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Çalışma seti hazırla modu farklıdır: bu konuşmada yalnızca öğrenci mesajlarını gönderir, kayıtlı özeti göndermez."
             },
             {
               "locale": "tr",
@@ -576,7 +588,7 @@
               "locale": "tr",
               "page": "study-agent",
               "anchor": "consent",
-              "quote": "Yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
+              "quote": "Çalışma rehberliği istekleri yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
             }
           ]
         }

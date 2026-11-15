@@ -149,7 +149,9 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertIn("date", mixed_result["ambiguous"])
         for statement, quote in (
             ("The date was 2026-11-15 or 11/16/2026.", "2026-11-15"),
+            ("The date was 2026-11-15 or 2026/11/16.", "2026-11-15"),
             ("The date was 2026-11-15 or 16.11.2026.", "2026-11-15"),
+            ("The date was 2026-11-15 or 16-11-2026.", "2026-11-15"),
             ("The date was 2026-11-15 or Nov 16.", "2026-11-15"),
             ("Tarih 2026-11-15 veya 15 Kasım.", "2026-11-15"),
         ):
@@ -165,6 +167,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("It took 45 min or sixty seconds.", "45 min"),
             ("It took 45 min or half an hour.", "45 min"),
             ("45 dakika ya da bir buçuk saat sürdü.", "45 dakika"),
+            ("It took 45 min or 1.5 minutes.", "45 min"),
+            ("It took 45 sec or 1.5 seconds.", "45 sec"),
         ):
             with self.subTest(context=context):
                 self.assertIsNone(parse_quote_value("duration_minutes", quote, context))

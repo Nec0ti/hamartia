@@ -138,6 +138,10 @@ def main(repeats=7, json_output=None):
                                      wrong="1/5", correct="1/3", blank="1/7")
         _assert_profile_vector(fractional, "Prime denominator rule", "Exampleland", "1/5",
                                correct="1/3", blank="1/7")
+        created_profile_ids = [profile["profile_id"] for profile in
+                               (no_penalty, half_penalty, thirds, blank_credit, fractional)]
+        if len(created_profile_ids) != 5 or len(set(created_profile_ids)) != 5:
+            raise AssertionError("each custom profile creation must return a distinct profile ID")
         fractional_payload = _exam_payload(fractional)
         fractional_payload.update(correct=2, incorrect=3, blank=4, duration_minutes=1)
         request_started = datetime.now(timezone.utc)
@@ -293,8 +297,8 @@ def main(repeats=7, json_output=None):
         serialized_bytes = (Path(directory) / "exams.json").stat().st_size
         def list_api():
             response = client.get("/exams")
-            if response.status_code != 200 or len(response.json()) != 9:
-                raise AssertionError("timed API read returned incomplete records")
+            if response.status_code != 200 or response.json() != expected_rows:
+                raise AssertionError("timed API read differed from complete persisted-record oracle")
 
         report = {
             "benchmark": "versioned_exam_scoring_profiles",

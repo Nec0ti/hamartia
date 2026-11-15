@@ -139,8 +139,26 @@ def main():
             assert saved_path.read_bytes() == before_invalid_write, "invalid PATCH changed the durable document"
             assert client.get("/clock").json() == expected
 
-            patch_timing = measure(lambda: _assert_ok(client.patch("/clock", json=request_state)))
-            get_timing = measure(lambda: _assert_json(client.get("/clock"), expected))
+            patch_number = 0
+
+            def patch_and_verify_state():
+                nonlocal patch_number
+                state = copy.deepcopy(request_state)
+                expected_sample = copy.deepcopy(expected)
+                # Make every timed PATCH observably different while retaining
+                # the same bounded 128-alarm payload shape.
+                work_minutes = 26 + patch_number
+                state["preferences"]["pomodoro_work_minutes"] = work_minutes
+                expected_sample["preferences"]["pomodoro_work_minutes"] = work_minutes
+                response = client.patch("/clock", json=state)
+                _assert_json(response, expected_sample)
+                patch_number += 1
+
+            patch_timing = measure(patch_and_verify_state)
+            final_patch_expected = copy.deepcopy(expected)
+            final_patch_expected["preferences"]["pomodoro_work_minutes"] = 26 + patch_number - 1
+            _assert_json(client.get("/clock"), final_patch_expected)
+            get_timing = measure(lambda: _assert_json(client.get("/clock"), final_patch_expected))
 
             archive_path = Path(directory) / "clock.zip"
             create_backup(data_dir, archive_path)
@@ -161,6 +179,7 @@ def main():
                 "repeats": REPEATS,
                 "alarms": ALARM_COUNT,
                 "api_patch_128_alarms": patch_timing,
+                "timed_patch_state_changes": patch_number,
                 "api_get_128_alarms": get_timing,
                 "round_trip": "full expected document equality for 128 distinct alarms and a running countdown",
                 "failure_safety": "duplicate-ID PATCH returns 422 and byte-identical clock.json remains persisted",

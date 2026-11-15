@@ -798,10 +798,13 @@ async function main() {
     ])
     assert.equal(clockStart.ok(), true)
     const [clockPause] = await Promise.all([
-      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock'
+        && response.request().method() === 'PATCH'
+        && response.request().postDataJSON()?.active_timer?.status === 'paused'),
       page.getByRole('button', { name: 'Pause' }).click(),
     ])
     assert.equal(clockPause.ok(), true)
+    assert.equal((await clockPause.json()).active_timer.status, 'paused')
     const pausedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
     assert.equal(pausedClock.active_timer.status, 'paused')
     assert(pausedClock.active_timer.remaining_ms > 0 && pausedClock.active_timer.remaining_ms <= 3_000)

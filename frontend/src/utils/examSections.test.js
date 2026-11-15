@@ -41,12 +41,13 @@ test('profile versions remain isolated in history aggregates', () => {
   assert.deepEqual(filterExamsByScoringProfile(records, 'profile-a@2').map((exam) => exam.id), ['new'])
 })
 
-test('all-blank exam with a positive blank score contributes to its profile average', () => {
+test('every all-blank recorded exam contributes to its profile average, including zero score', () => {
   const exams = [
     { id: 'blank-credit', correct: 0, incorrect: 0, blank: 4, net: 4 },
+    { id: 'blank-zero-credit', correct: 0, incorrect: 0, blank: 4, net: 0 },
     { id: 'empty', correct: 0, incorrect: 0, blank: 0, net: 0 },
   ]
-  assert.equal(averageRecordedNet(exams), 4)
+  assert.equal(averageRecordedNet(exams), 2)
   assert.equal(averageRecordedNet([{ correct: 0, incorrect: 0, blank: 0, net: 0 }]), 0)
 })
 

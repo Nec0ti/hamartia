@@ -175,7 +175,16 @@ class CurriculumReference(BaseModel):
             return value
         try:
             parsed = urlsplit(value)
-            valid = parsed.scheme in {"http", "https"} and bool(parsed.hostname) and parsed.username is None and parsed.password is None
+            valid = (
+                parsed.scheme in {"http", "https"}
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+                and not parsed.query
+                and not parsed.fragment
+                and "?" not in value
+                and "#" not in value
+            )
         except ValueError:
             valid = False
         if not valid:

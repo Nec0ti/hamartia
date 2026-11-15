@@ -97,13 +97,13 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(created.curriculum_reference.learning_outcome, reference["learning_outcome"])
 
     def test_invalid_curriculum_source_url_is_rejected_without_saving_question(self):
-        with self.assertRaises(HTTPException) as raised:
-            asyncio.run(question_api.upload_question(
-                None, "Question text", "Matematik", "Fonksiyonlar", self.storage,
-                curriculum_reference_json=json.dumps({"source_url": "file:///etc/passwd"}),
-            ))
-
-        self.assertEqual(raised.exception.status_code, 422)
+        for url in ("file:///etc/passwd", "https://example.test/outcome?token=secret", "https://example.test/outcome#fragment"):
+            with self.subTest(url=url), self.assertRaises(HTTPException) as raised:
+                asyncio.run(question_api.upload_question(
+                    None, "Question text", "Matematik", "Fonksiyonlar", self.storage,
+                    curriculum_reference_json=json.dumps({"source_url": url}),
+                ))
+            self.assertEqual(raised.exception.status_code, 422)
         self.assertEqual(self.storage.load_list("questions.json", Question), [])
 
     def test_model_provider_failure_is_visible_and_does_not_save_a_fake_analysis(self):
@@ -376,6 +376,13 @@ class QuestionFlowTests(unittest.TestCase):
             "q1", question_api.QuestionUpdate(subject="Math", topic="Patterns", ocr_text="edited again"), self.storage,
         ))
         self.assertEqual(old_client_update.curriculum_reference.learning_outcome, "Explain a pattern")
+
+        cleared = asyncio.run(question_api.update_question(
+            "q1", question_api.QuestionUpdate(
+                subject="Math", topic="Patterns", ocr_text="edited again", curriculum_reference={},
+            ), self.storage,
+        ))
+        self.assertEqual(cleared.curriculum_reference.model_dump(), CurriculumReference().model_dump())
 
     def test_question_insights_include_bounded_reference_summaries_without_question_content(self):
         questions = [Question(

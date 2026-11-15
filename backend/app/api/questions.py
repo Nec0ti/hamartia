@@ -254,6 +254,7 @@ class QuestionUpdate(BaseModel):
     subject: str
     topic: str
     ocr_text: str
+    # Omitted/null preserves the saved reference; send {} to clear it.
     curriculum_reference: CurriculumReference | None = None
 
 

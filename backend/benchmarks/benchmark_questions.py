@@ -205,6 +205,8 @@ async def run(count=24, repeats=7, json_output=None):
                 created_at=FIXED_NOW,
             ) for index, item in enumerate(text_created)]
             assert all(item.id.startswith("q_") and not item.image_path for item in text_created)
+            _assert_unique_question_ids(text_created, "text capture API responses")
+            _assert_unique_question_ids(saved_after_text, "persisted questions after text capture")
             expected_questions.extend(expected_text)
             assert_oracle([item.model_dump(mode="json") for item in saved_after_text],
                           [item.model_dump(mode="json") for item in expected_questions],
@@ -230,6 +232,8 @@ async def run(count=24, repeats=7, json_output=None):
             ) for index, item in enumerate(section_created)]
             assert all(item.id.startswith("q_") for item in section_created)
             expected_questions.extend(expected_section)
+            _assert_unique_question_ids(section_created, "section capture API responses")
+            _assert_unique_question_ids(saved_after_sections, "persisted questions after section capture")
             assert_oracle([item.model_dump(mode="json") for item in saved_after_sections],
                           [item.model_dump(mode="json") for item in expected_questions],
                           "full records after section-linked capture")
@@ -333,6 +337,29 @@ async def _run_code_path_fault_probes():
     to detect each false-success result.
     """
     detected = []
+    # A provider/UUID regression in the text-only route can issue duplicate
+    # IDs while preserving every serialized field and row count. Exercise the
+    # real route twice with a deterministic duplicate UUID and require the
+    # same uniqueness guard used by the measured text-capture path to reject it.
+    with tempfile.TemporaryDirectory(prefix="hamartia-question-id-fault-") as directory:
+        root = Path(directory)
+        storage = StorageService(root)
+        duplicate_uuid = SimpleNamespace(hex="duplicate-text-record")
+        with patch.object(questions, "DATA_DIR", root), patch.object(questions, "UPLOAD_DIR", root / "uploads"), \
+                patch.object(questions, "_utcnow", return_value=FIXED_NOW), \
+                patch.object(questions, "uuid4", side_effect=[duplicate_uuid, duplicate_uuid]):
+            created = [
+                await questions.upload_question(None, f"Duplicate ID probe {index}", "Matematik", "Boundary", storage)
+                for index in range(2)
+            ]
+        assert len(storage.load_list("questions.json", Question)) == 2
+        try:
+            _assert_unique_question_ids(created, "injected duplicate-ID probe")
+        except AssertionError:
+            detected.append("duplicate text-upload IDs")
+        else:
+            raise AssertionError("text-upload uniqueness guard missed injected duplicate IDs")
+
     with tempfile.TemporaryDirectory(prefix="hamartia-question-faults-") as directory:
         root = Path(directory)
         storage = StorageService(root)
@@ -395,6 +422,12 @@ async def _run_code_path_fault_probes():
             expected = [expected_review.model_dump(mode="json")]
             detected.append(_require_fault_detected(actual, expected, "lost persisted review attempt"))
     return detected
+
+
+def _assert_unique_question_ids(records, label):
+    ids = [record.id for record in records]
+    if len(ids) != len(set(ids)):
+        raise AssertionError(f"{label} contain duplicate question IDs")
 
 
 def _require_fault_detected(actual, expected, label):

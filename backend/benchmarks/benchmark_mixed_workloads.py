@@ -265,16 +265,35 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
         assert_oracle([q.model_dump(mode="json") for q in remaining], expected_question_rows,
                       "mixed full question state after delete")
 
-        concurrent = [Exam(
-            id=f"concurrent-{i}", date=TODAY.isoformat(), subject="Matematik", correct=1, incorrect=0, blank=0,
-        ) for i in range(16)]
+        concurrent_inputs = [{
+            "id": f"concurrent-{i}", "date": TODAY.isoformat(), "exam_type": "branch",
+            "subject": ("Matematik", "Türkçe", "Fizik", "Kimya")[i % 4],
+            "correct": 1 + i % 9, "incorrect": i % 4, "blank": i % 3,
+            "duration_minutes": i % 7, "duration_seconds": i * 3,
+            "created_at": "2026-11-14T12:00:00Z", "sections": [],
+        } for i in range(16)]
+        concurrent = [Exam(**item) for item in concurrent_inputs]
         started = time.perf_counter()
         with ThreadPoolExecutor(max_workers=4) as pool:
             list(pool.map(lambda item: storage.append_list("exams.json", item, Exam), concurrent))
         concurrent_seconds = time.perf_counter() - started
         final_exams = storage.load_list("exams.json", Exam)
         assert len(final_exams) == exam_count + len(concurrent)
-        assert {item.id for item in final_exams if item.id.startswith("concurrent-")} == {item.id for item in concurrent}
+        actual_concurrent = sorted(
+            (item.model_dump(mode="json") for item in final_exams if item.id.startswith("concurrent-")),
+            key=lambda item: item["id"],
+        )
+        expected_concurrent = []
+        for item in concurrent_inputs:
+            net = item["correct"] - item["incorrect"] / 4
+            duration = item["duration_minutes"] or 1
+            xp = max(0, int(net * item["correct"] * 1.5
+                            - duration * item["incorrect"] * 0.25))
+            expected_concurrent.append({
+                **item, "total": item["correct"] + item["incorrect"], "net": net, "xp": xp,
+            })
+        expected_concurrent.sort(key=lambda item: item["id"])
+        assert_oracle(actual_concurrent, expected_concurrent, "mixed concurrent append full records")
 
         emit({
             "benchmark": "persisted_mixed_study_workloads", "seed": SEED,
@@ -299,7 +318,7 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
                 "pending_questions", "scheduled_questions", "today_questions", "today_correct", "today_incorrect")},
             "question_update_10_records": update, "question_delete_10_records": delete,
             "concurrent_appends": {"workers": 4, "records": len(concurrent), "seconds": round(concurrent_seconds, 6)},
-            "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
+            "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and every concurrent appended field match independent oracles",
             "oracle_self_checks": oracle_self_checks,
         }, json_output)
 

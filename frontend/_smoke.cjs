@@ -592,6 +592,7 @@ async function main() {
     assert(appRequests.some((request) => request.path === '/questions/q1' && request.method === 'DELETE'))
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
     assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 2)
+    assert(!appRequests.some((request) => request.path === '/study-agent/local'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])

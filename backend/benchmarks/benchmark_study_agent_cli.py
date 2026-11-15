@@ -182,6 +182,11 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 veya 15 Kasım."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15.", "or the next day"], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15.", "ya da ertesi gün"], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or tomorrow."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or the day after."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or the day after that."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15, ya da yarın."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 — ya da bir sonraki gün."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or sixty seconds."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or half an hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 min or 1/2 hour."], "evidence": [{"field": "duration_minutes", "quote": "45 min"}]}, "ambiguous", "duration_minutes", False),
@@ -222,6 +227,11 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Alternatively 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["7 right"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15.", "or the next day"], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["relative date continuation"]),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15.", "ya da ertesi gün"], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or tomorrow."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 — or the day after."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15, or the day after that."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "date", ["on 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15, ya da yarın."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["Tarih 2026-11-15", "relative date continuation"]),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 — ya da bir sonraki gün."], "evidence": [{"field": "date", "quote": "Tarih 2026-11-15"}]}, "date", ["Tarih 2026-11-15", "relative date continuation"]),
     ]
     all_fields = ["date", "subject", "topic", "correct", "incorrect", "blank", "duration_minutes", "duration_seconds"]
     for request, field, expected_quotes in transcript_cases:
@@ -262,6 +272,52 @@ def adversarial_probes(seed: int) -> int:
     ):
         raise AssertionError("host transcript correction did not override stale provider evidence exactly")
 
+    for correction_text, correction_quote in (
+        ("I got 5 right, actually I got 7 right.", "actually I got 7 right"),
+        ("I got 5 right — Correction: I got 7 right.", "Correction: I got 7 right"),
+    ):
+        request = {
+            "command": "study.practice.prepare", "language": "en", "messages": [correction_text],
+            "evidence": [{"field": "correct", "quote": "5 right"}],
+        }
+        result = run_json_line(json.dumps(request, ensure_ascii=False))
+        _assert_exact_read_only_gate(result)
+        correction_evidence = {
+            "value": 7, "message_index": 0, "quote": correction_quote,
+            "start": correction_text.index(correction_quote),
+            "end": correction_text.index(correction_quote) + len(correction_quote),
+        }
+        if (
+            result.get("status") != "incomplete"
+            or result.get("fields") != {"correct": 7}
+            or result.get("verified_evidence") != {"correct": correction_evidence}
+            or result.get("ambiguous") != {}
+            or result.get("missing") != ["date", "subject", "topic", "incorrect", "blank", "duration_minutes", "duration_seconds"]
+            or result.get("preview_digest") is not None
+        ):
+            raise AssertionError(f"inline correction did not replace stale evidence exactly: {result!r}")
+
+    corrected_relative_date = {
+        "command": "study.practice.prepare", "language": "en",
+        "messages": ["I studied on 2026-11-15 or tomorrow.", "Correction: I studied on 2026-11-16."],
+        "evidence": [{"field": "date", "quote": "on 2026-11-15"}],
+    }
+    corrected_date_result = run_json_line(json.dumps(corrected_relative_date, ensure_ascii=False))
+    _assert_exact_read_only_gate(corrected_date_result)
+    exact_date_evidence = {
+        "value": "2026-11-16", "message_index": 1, "quote": "Correction: I studied on 2026-11-16",
+        "start": 0, "end": len("Correction: I studied on 2026-11-16"),
+    }
+    if (
+        corrected_date_result.get("status") != "incomplete"
+        or corrected_date_result.get("fields") != {"date": "2026-11-16"}
+        or corrected_date_result.get("verified_evidence") != {"date": exact_date_evidence}
+        or corrected_date_result.get("ambiguous") != {}
+        or corrected_date_result.get("missing") != ["subject", "topic", "correct", "incorrect", "blank", "duration_minutes", "duration_seconds"]
+        or corrected_date_result.get("preview_digest") is not None
+    ):
+        raise AssertionError(f"later explicit date correction did not clear relative-date ambiguity: {corrected_date_result!r}")
+
     # A correction is the one allowed resolution of conflicting user turns.
     correction = {**base, "messages": [*base["messages"], "Correction: I got 3 right."]}
     correction["evidence"] = [item for item in positives if item["field"] != "correct"] + [
@@ -284,7 +340,7 @@ def adversarial_probes(seed: int) -> int:
     corrected_digest = hashlib.sha256(json.dumps({"fields": expected_corrected, "evidence": expected_evidence}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     if corrected.get("status") != "ready" or corrected.get("fields") != expected_corrected or corrected.get("verified_evidence") != expected_evidence or corrected.get("preview_digest") != corrected_digest:
         raise AssertionError("explicit correction did not resolve the transcript to the independent corrected oracle")
-    return len(probes) + len(transcript_cases) + 2
+    return len(probes) + len(transcript_cases) + 5
 
 
 def run_trial(count: int, seed: int) -> dict:

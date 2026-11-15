@@ -15,10 +15,13 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from fractions import Fraction
 from pathlib import Path
+from uuid import UUID
 
 from app.services.storage import StorageService
-from benchmark_common import emit, probe_oracle_self_check
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
 
 def percentile(samples, percent):
@@ -65,19 +68,51 @@ def seeded_payload(seed, index):
     rng = random.Random((seed << 16) + index)
     # Independent request vectors include zero-only, all-blank, and tied date/subject cases.
     cases = [
-        ("2026-01-01", "Physics", 0, 0, 0),
-        ("2026-01-01", "Physics", 0, 0, 7),
-        ("2026-01-02", "Math", 8, 2, 1),
-        ("2026-01-03", "Biology", 3, 9, 0),
+        ("2026-01-01", "Physics", 0, 0, 0, 20),
+        ("2026-01-01", "Physics", 0, 0, 7, 20),
+        ("2026-01-02", "Math", 8, 2, 1, 22),
+        ("2026-01-03", "Biology", 3, 9, 0, 23),
     ]
-    date, subject, correct, incorrect, blank = cases[index % len(cases)]
+    date, subject, correct, incorrect, blank, duration_minutes = cases[index % len(cases)]
     if index % len(cases) >= 2:
         correct += rng.randrange(0, 2)
     return {
         "date": date, "exam_type": "branch", "subject": subject,
         "correct": correct, "incorrect": incorrect,
-        "blank": blank, "duration_minutes": 20 + index % 10, "duration_seconds": index % 60,
+        "blank": blank, "duration_minutes": duration_minutes, "duration_seconds": index % 60,
     }
+
+
+def expected_exam_response(payload, response, started_at, finished_at):
+    """Build the full route result without importing Hamartia's formula helpers."""
+    record_id = response.get("id", "")
+    assert record_id.startswith("exam_") and len(record_id) == 37
+    UUID(hex=record_id[5:])
+    created_at = response.get("created_at", "")
+    parsed_created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    assert started_at.replace(microsecond=0) <= parsed_created_at <= finished_at.replace(microsecond=0), "created_at must be a real UTC timestamp inside the request window"
+
+    correct, incorrect = payload["correct"], payload["incorrect"]
+    total = correct + incorrect
+    net = Fraction(4 * correct - incorrect, 4)
+    duration = max(payload["duration_minutes"], 1)
+    earned = max(0, int(net * correct * Fraction(3, 2) - duration * incorrect * Fraction(1, 4)))
+    # Hand-authored control vectors keep the oracle anchored to known outputs.
+    if payload["subject"] == "Physics" and payload["correct"] == payload["incorrect"] == payload["blank"] == 0:
+        assert (net, earned, total) == (0, 0, 0)
+    if payload["subject"] == "Physics" and payload["correct"] == payload["incorrect"] == 0 and payload["blank"] == 7:
+        assert (net, earned, total) == (0, 0, 0)
+    if payload["subject"] == "Math":
+        assert (float(net), earned) == ((7.5, 79) if correct == 8 else (8.5, 103))
+    if payload["subject"] == "Biology":
+        assert earned == 0
+
+    expected = dict(payload)
+    expected.update({
+        "id": record_id, "created_at": created_at, "sections": [],
+        "total": total, "net": float(net), "xp": earned,
+    })
+    return expected
 
 
 def start_api(data_dir, port, guard_dir):
@@ -215,10 +250,12 @@ def http_benchmark(root, clients, requests_per_client, seeds):
                 log.flush()
                 raise RuntimeError(f"{exc}; server_log={(guard_dir / 'uvicorn.log').read_text(errors='replace')}") from exc
             payloads = [seeded_payload(seed, i) for seed in seeds for i in range(clients * requests_per_client)]
-            expected_shapes = [dict(row) for row in payloads]
+            payloads[-1]["subject"] = "Payload " + ("x" * 4096)
             started_all = time.perf_counter()
+            request_started_at = datetime.now(timezone.utc)
             latencies = []
             results = []
+            response_pairs = []
             lock = threading.Lock()
 
             def send(item):
@@ -227,16 +264,21 @@ def http_benchmark(root, clients, requests_per_client, seeds):
                 status, result = request_json(base, "POST", payload)
                 elapsed = time.perf_counter() - begin
                 assert status == 201
-                for key, value in payload.items():
-                    assert result[key] == value, f"serialized response mismatch for {key}"
-                assert result["id"].startswith("exam_") and isinstance(result["net"], (float, int))
                 with lock:
                     latencies.append(elapsed)
                     results.append(result)
+                    response_pairs.append((payload, result))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:
                 list(pool.map(send, enumerate(payloads)))
             wall = time.perf_counter() - started_all
+            request_finished_at = datetime.now(timezone.utc)
+            expected_responses = [
+                expected_exam_response(payload, result, request_started_at, request_finished_at)
+                for payload, result in response_pairs
+            ]
+            for actual, expected in zip(results, expected_responses):
+                assert_oracle(actual, expected, "complete serialized Exam response")
             status, persisted = request_json(base)
             assert status == 200 and len(results) == len(payloads) and len(persisted) == len(payloads)
             ids = [r["id"] for r in results]
@@ -244,16 +286,14 @@ def http_benchmark(root, clients, requests_per_client, seeds):
             by_id = {r["id"]: r for r in results}
             persisted_by_id = {row["id"]: row for row in persisted}
             assert persisted_by_id == by_id, "full persisted API output differs from serialized responses"
-            canonical_responses = sorted(results, key=lambda r: r["id"])
             canonical_persisted = sorted(persisted, key=lambda r: r["id"])
+            canonical_expected = sorted(expected_responses, key=lambda r: r["id"])
+            assert canonical_persisted == canonical_expected, "persisted records differ from independently expected full responses"
             response_probe = probe_oracle_self_check(
-                canonical_persisted, canonical_responses, lambda rows: rows.pop(),
-                "missing-loopback-response-record perturbation",
+                canonical_persisted, canonical_expected,
+                lambda rows: rows[0].__setitem__("net", rows[0]["net"] + 0.5),
+                "same-ID computed-net corruption",
             )
-            for seed_index, seed in enumerate(seeds):
-                offset = seed_index * clients * requests_per_client
-                shapes = expected_shapes[offset:offset + clients * requests_per_client]
-                assert all(any(all(row.get(k) == v for k, v in shape.items()) for row in persisted) for shape in shapes), "persisted request vector missing"
             # Separate direct-function baseline: same record counts, no HTTP serialization or socket.
             direct_dir = root / "direct"
             direct_dir.mkdir()
@@ -269,11 +309,13 @@ def http_benchmark(root, clients, requests_per_client, seeds):
             return {
                 "target": "127.0.0.1 loopback only", "route": "POST/GET /exams", "ai_routes_called": 0,
                 "clients": clients, "requests_per_client_per_seed": requests_per_client,
-                "seeds": seeds, "serialized_requests": len(payloads), "serialized_response_bytes": sum(len(json.dumps(r, separators=(",", ":")).encode()) for r in results),
+                "seeds": seeds, "serialized_requests": len(payloads),
+                "serialized_request_bytes": sum(len(json.dumps(r, separators=(",", ":")).encode()) for r in payloads),
+                "serialized_response_bytes": sum(len(json.dumps(r, separators=(",", ":")).encode()) for r in results),
                 "http_request_latency": timing(latencies), "concurrent_wall_seconds": round(wall, 6),
                 "http_requests_per_second": round(len(payloads) / wall, 3),
                 "direct_storage_append_latency": timing(direct_samples),
-                "oracle": "request fields round-trip; complete persisted ID-to-response equality; unique generated IDs; all hand-authored edge vector shapes present",
+                "oracle": "independent full response field equality including defaults, net, XP and timestamp; exact persisted-state equality; UUID validity; hand-authored numeric controls",
                 "wrong_result_probe": response_probe,
             }
     finally:

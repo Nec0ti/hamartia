@@ -34,9 +34,16 @@ export const exams = {
 export const practice = {
   list: () => client.get('/practice').then((r) => r.data),
   insights: () => client.get('/practice/insights').then((r) => r.data),
-  create: (payload) => client.post('/practice', payload).then((r) => r.data),
+  create: (payload, idempotencyKey = null) => client.post('/practice', payload, {
+    ...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
+  }).then((r) => r.data),
   update: (id, payload) => client.put(`/practice/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/practice/${id}`).then((r) => r.data),
+}
+
+export const clock = {
+  get: () => client.get('/clock').then((r) => r.data),
+  update: (payload) => client.patch('/clock', payload).then((r) => r.data),
 }
 
 /* ----------------------------- questions -------------------------------- */
@@ -118,4 +125,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, practice, questions, cosmos, user, settings, studyAgent, health }
+export default { exams, practice, clock, questions, cosmos, user, settings, studyAgent, health }

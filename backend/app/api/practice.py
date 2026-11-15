@@ -1,9 +1,9 @@
 """CRUD and summaries for completed subject/topic practice sets."""
 
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.core.config import DATA_DIR
 from app.core.practice import practice_topic_summaries
@@ -31,7 +31,39 @@ async def practice_insights(storage: StorageService = Depends(get_storage)):
 
 
 @router.post("", status_code=201, response_model=PracticeSession)
-async def create_session(payload: PracticeSessionCreate, storage: StorageService = Depends(get_storage)):
+async def create_session(
+    payload: PracticeSessionCreate,
+    storage: StorageService = Depends(get_storage),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+):
+    if idempotency_key is not None:
+        try:
+            key = str(UUID(idempotency_key))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid idempotency key") from exc
+        session_id = f"practice_focus_{key}"
+        expected = payload.model_dump()
+        result: list[PracticeSession] = []
+
+        def append_once(sessions):
+            existing = next((item for item in sessions if item.id == session_id), None)
+            if existing is not None:
+                if any(getattr(existing, field) != value for field, value in expected.items()):
+                    raise HTTPException(status_code=409, detail="Idempotency key was already used for another practice set")
+                result.append(existing)
+                return True
+            created = PracticeSession(
+                id=session_id,
+                created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+                **expected,
+            )
+            sessions.append(created)
+            result.append(created)
+            return True
+
+        storage.update_list("practice_sessions.json", PracticeSession, append_once)
+        return result[0]
+
     session = PracticeSession(
         id=f"practice_{uuid4().hex}",
         created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),

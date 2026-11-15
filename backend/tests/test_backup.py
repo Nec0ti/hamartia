@@ -17,8 +17,14 @@ from fastapi import UploadFile
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
-from app.models.schemas import CosmosData, Exam, PracticeSession, Question, ReviewAttempt, Settings, UserStats
-from app.services.backup import BackupError, JSON_MODELS, create_backup, extract_backup, restore_backup
+from app.models.schemas import (
+    ActiveClockTimer, ClockAlarm, ClockState, CosmosData, Exam, PracticeSession,
+    PracticeDraft, Question, ReviewAttempt, Settings, UserStats,
+)
+from app.services.backup import (
+    BackupError, JSON_MODELS, _freeze_clock_state_for_backup,
+    _prepare_clock_state_for_restore, create_backup, extract_backup, restore_backup,
+)
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService, data_mutation_lock
 from desktop_server import restore_backup_command
@@ -72,6 +78,38 @@ class BackupTests(unittest.TestCase):
             self.assertEqual(json.loads(archive.read("practice_sessions.json"))[0]["id"], "practice1")
             self.assertEqual(json.loads(archive.read("settings.json"))["api_key"], "")
             self.assertNotIn(b"must-not-be-exported", archive.read("settings.json"))
+
+    def test_backup_snapshot_freezes_running_timers_at_snapshot_time(self):
+        state = ClockState(active_timer=ActiveClockTimer(
+            kind="practice", status="running", elapsed_ms=4_000, started_at_ms=10_000,
+            practice_draft=PracticeDraft(date="2026-11-15", subject="Math", topic="Algebra"),
+        ))
+
+        frozen = ClockState.model_validate_json(_freeze_clock_state_for_backup(state.model_dump(), 16_500))
+
+        self.assertEqual(frozen.active_timer.status, "paused")
+        self.assertEqual(frozen.active_timer.elapsed_ms, 10_500)
+        self.assertIsNone(frozen.active_timer.started_at_ms)
+        self.assertEqual(frozen.active_timer.practice_draft.topic, "Algebra")
+
+    def test_backup_restore_disables_alarms_and_preserves_timer_remainder(self):
+        state = ClockState(
+            alarms=[ClockAlarm(
+                id="alarm-1", label="Review", kind="once", one_off_at_ms=50_000,
+                next_at_ms=50_000, enabled=True,
+            )],
+            active_timer=ActiveClockTimer(
+                kind="countdown", status="running", duration_ms=20_000,
+                remaining_ms=20_000, deadline_at_ms=30_000,
+            ),
+        )
+
+        restored = _prepare_clock_state_for_restore(state.model_dump(), 17_000)
+
+        self.assertFalse(restored.alarms[0].enabled)
+        self.assertEqual(restored.active_timer.status, "paused")
+        self.assertEqual(restored.active_timer.remaining_ms, 13_000)
+        self.assertIsNone(restored.active_timer.deadline_at_ms)
 
     def test_restore_round_trip_keeps_local_key_and_snapshots_previous_data(self):
         target = self.root / "target"
@@ -133,13 +171,15 @@ class BackupTests(unittest.TestCase):
         restored = StorageService(target).load_list("questions.json", Question)
         self.assertEqual(restored[0].review_attempts[0].attempt_day, "2026-11-15")
 
-    def test_restore_accepts_legacy_backup_without_practice_sessions(self):
+    def test_restore_accepts_legacy_backup_without_optional_clock_documents(self):
         legacy = self.root / "legacy.zip"
         with zipfile.ZipFile(self.archive) as source:
             files = {name: source.read(name) for name in source.namelist() if name != "manifest.json"}
             manifest = json.loads(source.read("manifest.json"))
         files.pop("practice_sessions.json")
+        files.pop("clock.json")
         manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != "practice_sessions.json"]
+        manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != "clock.json"]
         with zipfile.ZipFile(legacy, "w", compression=zipfile.ZIP_DEFLATED) as target:
             for name, raw in files.items():
                 target.writestr(name, raw)
@@ -149,6 +189,7 @@ class BackupTests(unittest.TestCase):
         restore_backup(legacy, restored)
 
         self.assertEqual(read_json(restored / "practice_sessions.json"), [])
+        self.assertEqual(read_json(restored / "clock.json"), ClockState().model_dump(mode="json"))
 
     def test_restore_command_uses_selected_data_directory(self):
         target = self.root / "cli-data"

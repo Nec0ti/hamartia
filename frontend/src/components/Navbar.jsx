@@ -6,6 +6,7 @@ import {
   BookOpen,
   Settings,
   MessageCircle,
+  Clock3,
 } from 'lucide-react'
 import api from '../services/api'
 import { handleApiError } from '../services/api'
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'questions', label: 'navigation.questions', icon: FileQuestion },
   { id: 'cosmos', label: 'navigation.cosmos', icon: Globe },
   { id: 'studyplan', label: 'navigation.studyPlan', icon: BookOpen },
+  { id: 'clock', label: 'navigation.clock', icon: Clock3 },
   { id: 'studyagent', label: 'navigation.studyAgent', icon: MessageCircle },
 ]
 

@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
+import { useClock } from '../clock/ClockContext.jsx'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
@@ -13,20 +14,44 @@ const fields = [
   ['correct', 'common.correct'], ['incorrect', 'common.incorrect'], ['blank', 'common.blank'],
   ['duration_minutes', 'common.minutes'], ['duration_seconds', 'common.secondsLabel'],
 ]
-const activeKey = 'hamartia.active-practice-session'
-
-function readActiveSession() {
-  try {
-    const item = JSON.parse(localStorage.getItem(activeKey))
-    if (item && typeof item.subject === 'string' && typeof item.topic === 'string'
-      && ['correct', 'incorrect', 'blank', 'elapsed_seconds'].every((key) => Number.isInteger(item[key]) && item[key] >= 0)
-      && (item.running_since === null || Number.isFinite(item.running_since))) return item
-  } catch {}
-  return null
+function asPracticeSession(timer) {
+  if (timer?.kind !== 'practice') return null
+  const draft = timer.practice_draft
+  return {
+    ...draft,
+    elapsed_seconds: Math.floor(timer.elapsed_ms / 1000),
+    running_since: timer.status === 'running' ? timer.started_at_ms : null,
+  }
 }
 
 function elapsedSeconds(session, now = Date.now()) {
-  return session.elapsed_seconds + (session.running_since ? Math.floor((now - session.running_since) / 1000) : 0)
+  return session.elapsed_seconds + (session.running_since
+    ? Math.floor((now - session.running_since) / 1000)
+    : 0)
+}
+
+function asPracticeTimer(session) {
+  return {
+    kind: 'practice',
+    status: session.running_since ? 'running' : 'paused',
+    elapsed_ms: session.elapsed_seconds * 1000,
+    started_at_ms: session.running_since,
+    deadline_at_ms: null,
+    duration_ms: 0,
+    remaining_ms: 0,
+    work_duration_ms: 0,
+    break_duration_ms: 0,
+    phase: null,
+    cycle_enabled: false,
+    cycle_count: 0,
+    overdue_at_ms: null,
+    laps: [],
+    practice_draft: {
+      date: session.date, subject: session.subject, topic: session.topic,
+      correct: session.correct, incorrect: session.incorrect, blank: session.blank,
+      completion_id: session.completion_id || null,
+    },
+  }
 }
 
 function timeLabel(seconds) {
@@ -35,15 +60,25 @@ function timeLabel(seconds) {
 
 export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   const { t, locale } = useI18n()
+  const { state: clockState, updateClock, loaded: clockLoaded, loading: clockLoading, savingError: clockError, reload } = useClock()
   const [sessions, setSessions] = useState([])
   const [summaries, setSummaries] = useState([])
   const [draft, setDraft] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [active, setActive] = useState(readActiveSession)
   const [now, setNow] = useState(Date.now())
   const activeRef = useRef(null)
+  const currentTimer = clockState.active_timer
+  const active = asPracticeSession(currentTimer, now)
+
+  const setActive = useCallback((update) => {
+    updateClock((current) => {
+      const before = asPracticeSession(current.active_timer)
+      const after = typeof update === 'function' ? update(before) : update
+      return { ...current, active_timer: after ? asPracticeTimer(after) : null }
+    }).catch(() => {})
+  }, [updateClock])
 
   const load = useCallback(async () => {
     try {
@@ -59,20 +94,15 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    if (active) localStorage.setItem(activeKey, JSON.stringify(active))
-    else localStorage.removeItem(activeKey)
-  }, [active])
-
-  useEffect(() => {
     if (!active?.running_since) return undefined
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(interval)
   }, [active?.running_since])
 
   useEffect(() => {
-    if (!startTopic) return
+    if (!startTopic || !clockLoaded) return
     setError('')
-    if (active) {
+    if (currentTimer) {
       setError(t('study.finishOrCancelActive'))
     } else {
       setActive({
@@ -81,7 +111,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       })
     }
     onStartTopicConsumed?.()
-  }, [startTopic])
+  }, [startTopic, clockLoaded])
 
   useEffect(() => {
     if (startTopic) activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -136,12 +166,19 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
     setError('')
     const seconds = elapsedSeconds(active)
     try {
+      const completionId = active.completion_id || crypto.randomUUID()
+      if (!active.completion_id) {
+        await updateClock((current) => ({
+          ...current,
+          active_timer: { ...current.active_timer, practice_draft: { ...current.active_timer.practice_draft, completion_id: completionId } },
+        }))
+      }
       await api.practice.create({
         date: active.date, subject: active.subject, topic: active.topic,
         correct: active.correct, incorrect: active.incorrect, blank: active.blank,
         duration_minutes: Math.floor(seconds / 60), duration_seconds: seconds % 60,
-      })
-      setActive(null)
+      }, completionId)
+      await updateClock((current) => ({ ...current, active_timer: null }))
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -168,18 +205,22 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         <h2 className="text-lg font-semibold text-canvas-text">{t('study.practiceSets')}</h2>
         <p className="text-sm text-canvas-muted">{t('study.practiceSetsIntro')}</p>
       </div>
+      {clockLoading && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.loading')}</p>}
+      {!clockLoading && !clockLoaded && <div role="alert" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted"><p>{t('clock.persistenceError')}</p><button type="button" onClick={reload} className={secondaryButton}>{t('clock.reload')}</button></div>}
+      {clockError && <div role="alert" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted"><p>{t(clockError)}</p><button type="button" onClick={reload} className={secondaryButton}>{t('clock.reload')}</button></div>}
+      {currentTimer && currentTimer.kind !== 'practice' && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.otherTimerActive')}</p>}
       {active && <section ref={activeRef} aria-label={t('study.focusedSession')} className="space-y-3 rounded-xl border border-canvas-accent/50 bg-canvas-panel p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p></div>
           <output aria-label={t('study.elapsedTime')} className="font-mono text-2xl font-semibold tabular-nums text-canvas-text">{timeLabel(currentSeconds)}</output>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
+          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" disabled={!clockLoaded} aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" disabled={!clockLoaded} aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {active.running_since ? <button type="button" onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>}
-          <button type="button" onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
-          <button type="button" disabled={saving} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
+          {active.running_since ? <button type="button" disabled={!clockLoaded} onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" disabled={!clockLoaded} onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>}
+          <button type="button" disabled={!clockLoaded} onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
+          <button type="button" disabled={saving || !clockLoaded} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
         </div>
       </section>}
       <form onSubmit={submit} className="grid gap-3 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-4">

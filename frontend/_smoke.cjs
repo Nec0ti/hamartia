@@ -202,13 +202,31 @@ async function main() {
     await resumedSection.getByRole('button', { name: 'Sürdür' }).click()
     await page.waitForTimeout(1100)
     const elapsedAtFinish = Number((await resumedSection.getByLabel('Geçen süre').textContent()).split(':').at(-1))
+    let failFocusedClockClear = true
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      const request = route.request()
+      if (request.method() === 'PATCH' && request.postDataJSON()?.active_timer === null && failFocusedClockClear) {
+        failFocusedClockClear = false
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional focused completion clear failure' }) })
+      } else await route.continue()
+    })
     const [focusResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
       resumedSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
     ])
     if (!focusResponse.ok()) throw new Error(`Focused practice save failed ${focusResponse.status()}: ${await focusResponse.text()}`)
+    await page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.status() === 503)
+    assert.equal(await resumedSection.count(), 1, 'The focused draft must remain available after clock clear fails')
+    assert.equal((await (await fetch(`${apiUrl}/practice`)).json()).filter((item) => item.subject === 'Matematik' && item.topic === 'Fonksiyon').length, 2)
+    const [retryPracticeResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
+      resumedSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
+    ])
+    assert.equal(retryPracticeResponse.status(), 201)
     practiceSession = await focusResponse.json()
     await resumedSection.waitFor({ state: 'detached' })
+    assert.equal((await retryPracticeResponse.json()).id, practiceSession.id, 'Retry must return the already-created practice record')
+    await page.unroute(`${apiUrl}/clock`)
     assert.equal(practiceSession.subject, 'Matematik')
     assert.equal(practiceSession.topic, 'Fonksiyon')
     assert.deepEqual([practiceSession.correct, practiceSession.incorrect, practiceSession.blank], [1, 0, 1])
@@ -611,6 +629,153 @@ async function main() {
     await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
     const missingLabelDelete = await fetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
     assert.equal(missingLabelDelete.ok, true)
+
+    // A legacy practice draft is removed only after the durable clock PATCH succeeds.
+    await page.evaluate(() => {
+      localStorage.setItem('hamartia.language', 'en')
+      localStorage.setItem('hamartia.active-practice-session', JSON.stringify({
+        date: '2026-11-15', subject: 'Synthetic Math', topic: 'Migration check',
+        correct: 2, incorrect: 1, blank: 0, elapsed_seconds: 9, running_since: Date.now() - 2_000,
+      }))
+    })
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional persistence failure' }) })
+      } else await route.continue()
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByRole('region', { name: 'Clock' }).getByText('Clock state could not be saved or loaded. Your previous saved state remains available.').waitFor()
+    assert.ok(await page.evaluate(() => localStorage.getItem('hamartia.active-practice-session')))
+    failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
+    const expectedConsoleErrors = consoleErrors.filter((item) => !(item.location.url === `${apiUrl}/clock` && item.text.includes('503 (Service Unavailable)')))
+    consoleErrors.splice(0, consoleErrors.length, ...expectedConsoleErrors)
+    await page.unroute(`${apiUrl}/clock`)
+    await page.getByRole('region', { name: 'Clock' }).getByRole('button', { name: 'Retry loading' }).click()
+    await page.getByLabel('Elapsed time').waitFor()
+    await page.waitForFunction(() => localStorage.getItem('hamartia.active-practice-session') === null)
+    const migratedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(migratedClock.active_timer.kind, 'practice')
+    assert.equal(migratedClock.active_timer.practice_draft.topic, 'Migration check')
+    assert.equal(migratedClock.active_timer.status, 'running')
+    await page.getByRole('button', { name: 'Study Plan' }).click()
+    const migratedPractice = page.getByRole('region', { name: 'Focused practice session' })
+    await migratedPractice.waitFor()
+    await migratedPractice.getByText('Focused practice · Synthetic Math / Migration check').waitFor()
+    await migratedPractice.getByRole('button', { name: 'Cancel session' }).click()
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByRole('button', { name: 'Countdown' }).click()
+    await page.getByLabel('Minutes').fill('0')
+    await page.getByLabel('Seconds').fill('3')
+    const [clockStart] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Start', exact: true }).click(),
+    ])
+    assert.equal(clockStart.ok(), true)
+    const [clockPause] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Pause' }).click(),
+    ])
+    assert.equal(clockPause.ok(), true)
+    const pausedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(pausedClock.active_timer.status, 'paused')
+    assert(pausedClock.active_timer.remaining_ms > 0 && pausedClock.active_timer.remaining_ms <= 3_000)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByText('Paused', { exact: true }).waitFor()
+    const [timerReset] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.active_timer?.status === 'paused'),
+      page.getByRole('button', { name: 'Reset' }).click(),
+    ])
+    assert.equal(timerReset.ok(), true)
+    const [timerCleared] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.active_timer === null),
+      page.getByRole('button', { name: 'Stop and clear timer' }).click(),
+    ])
+    assert.equal(timerCleared.ok(), true)
+    const futureReminder = await page.evaluate(() => {
+      const date = new Date(Date.now() + 5 * 60_000)
+      date.setSeconds(0, 0)
+      return {
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        time: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`,
+      }
+    })
+    await page.getByLabel('Reminder label').fill('Synthetic reminder')
+    await page.getByLabel('Time', { exact: true }).fill(futureReminder.time)
+    await page.getByLabel('Date', { exact: true }).fill(futureReminder.date)
+    const [reminderSave] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.request().postDataJSON()?.alarms?.some((alarm) => alarm.label === 'Synthetic reminder')),
+      page.getByRole('button', { name: 'Save reminder' }).click(),
+    ])
+    assert.equal(reminderSave.ok(), true)
+    await page.getByText('Synthetic reminder', { exact: true }).waitFor()
+    const savedClock = JSON.parse(await fs.readFile(path.join(dataDir, 'clock.json'), 'utf8'))
+    assert.equal(savedClock.alarms.length, 1)
+    assert.equal(savedClock.alarms[0].kind, 'once')
+    assert.equal(savedClock.alarms[0].enabled, true)
+    const dueAt = Date.now() + 5_000
+    const dueAlarm = {
+      id: 'smoke-due-away', label: 'Synthetic due while away', kind: 'once', local_time: '', weekdays: [],
+      one_off_at_ms: dueAt, next_at_ms: dueAt, enabled: true, overdue_at_ms: null, last_fired_at_ms: null,
+    }
+    const seededClock = await page.request.patch(`${apiUrl}/clock`, { data: { ...savedClock, alarms: [...savedClock.alarms, dueAlarm] } })
+    assert.equal(seededClock.status(), 200)
+    let failDueAlarmWrite = true
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        const alarm = route.request().postDataJSON()?.alarms?.find((item) => item.id === dueAlarm.id)
+        if (alarm?.overdue_at_ms === dueAt && failDueAlarmWrite) {
+          failDueAlarmWrite = false
+          await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional due alarm persistence failure' }) })
+          return
+        }
+      }
+      await route.continue()
+    })
+    const dueAlarmWriteMatch = (response) => new URL(response.url()).pathname === '/clock'
+      && response.request().method() === 'PATCH'
+      && response.request().postDataJSON()?.alarms?.some((alarm) => alarm.id === dueAlarm.id && alarm.overdue_at_ms === dueAt)
+    const failedDueAlarmWrite = page.waitForResponse((response) => dueAlarmWriteMatch(response) && response.status() === 503)
+    const retriedDueAlarmWrite = page.waitForResponse((response) => dueAlarmWriteMatch(response) && response.status() === 200)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Study Plan' }).click()
+    await failedDueAlarmWrite
+    await retriedDueAlarmWrite
+    await page.unroute(`${apiUrl}/clock`)
+    const dueDeadline = Date.now() + 8_000
+    let dueState
+    while (Date.now() < dueDeadline) {
+      dueState = await (await fetch(`${apiUrl}/clock`)).json()
+      if (dueState.alarms.find((alarm) => alarm.id === dueAlarm.id)?.overdue_at_ms) break
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    assert.equal(dueState.alarms.find((alarm) => alarm.id === dueAlarm.id)?.overdue_at_ms, dueAt,
+      'The always-mounted scheduler should persist a due alarm while the Clock tab is unmounted')
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByText('Synthetic due while away', { exact: true }).waitFor()
+    await page.getByText(/Overdue since/).waitFor()
+
+    // A failed initial clock GET must not turn the empty placeholder into a writable state.
+    const patchesBeforeUnavailableClock = appRequests.filter((request) => request.path === '/clock' && request.method === 'PATCH').length
+    await page.route(`${apiUrl}/clock`, async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'intentional initial clock read failure' }) })
+      } else await route.continue()
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Clock' }).click()
+    await page.getByRole('region', { name: 'Clock' }).getByText('Clock state could not be saved or loaded. Your previous saved state remains available.').waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Start', exact: true }).isDisabled(), true)
+    assert.equal(appRequests.filter((request) => request.path === '/clock' && request.method === 'PATCH').length, patchesBeforeUnavailableClock)
+    await page.unroute(`${apiUrl}/clock`)
+    await page.getByRole('region', { name: 'Clock' }).getByRole('button', { name: 'Retry loading' }).click()
+    await page.getByRole('button', { name: 'Start', exact: true }).waitFor({ state: 'visible' })
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => button.innerText.trim() === 'Start' && !button.disabled))
+    assert.equal(await page.getByRole('button', { name: 'Start', exact: true }).isDisabled(), false)
+    failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
+    const expectedClockErrors = consoleErrors.filter((item) => item.location.url !== `${apiUrl}/clock` || !item.text.includes('503 (Service Unavailable)'))
+    consoleErrors.splice(0, consoleErrors.length, ...expectedClockErrors)
     assert(appRequests.some((request) => request.path === '/questions/q1/attempt' && request.method === 'POST' && request.body.correct === false))
     assert(appRequests.some((request) => request.path === '/questions' && request.method === 'POST'))
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}/attempt` && request.method === 'POST' && request.body.correct === true))
@@ -622,8 +787,10 @@ async function main() {
     assert(appRequests.some((request) => request.path === `/questions/${createdQuestion.id}` && request.method === 'PATCH' && request.body.subject === 'Edebiyat'))
     assert(appRequests.some((request) => request.path === '/questions/q1' && request.method === 'DELETE'))
     assert(appRequests.some((request) => request.path === '/backup' && request.method === 'GET'))
-    assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 2)
+    assert.equal(appRequests.filter((request) => request.path === '/practice' && request.method === 'POST').length, 3)
     assert(!appRequests.some((request) => request.path === '/study-agent/local'))
+    assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
+    assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
     assert(!appRequests.some((request) => request.path.includes('/agent') || request.path.endsWith('/analyze')))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])

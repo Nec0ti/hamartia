@@ -26,9 +26,15 @@ For daily use, open one terminal at the repository root:
 
 The launcher checks that the API is ready and stops both processes together; press Ctrl+C to stop it. The UI is at `http://127.0.0.1:5173`, and the API documentation is at `http://127.0.0.1:8000/docs`. If another app is using 5173, choose an available port with `HAMARTIA_FRONTEND_PORT=5174 .venv/bin/python scripts/dev.py`.
 
-Exams, missed questions, and settings are stored under `backend/data/`. Question images are in that directory's `uploads/` folder. You can download a ZIP backup from Settings. The backup does not contain the personal API key; restoring preserves the key on the current computer.
+Exams, missed questions, timers, reminders, and settings are stored under `backend/data/`. Question images are in that directory's `uploads/` folder. You can download a ZIP backup from Settings. The backup does not contain the personal API key; restoring preserves the key on the current computer.
 
 A full TYT/AYT practice exam is saved as one session, with correct/incorrect/blank counts entered per subject; total net and XP are calculated once. History and trend subject filters show the selected section's net score. When adding a missed question from a section, the question number and solve order are limited by that section's question count. Branch exams remain single-subject.
+
+## Clock
+
+The Clock tab provides a local date/time display, configurable Pomodoro work and break lengths (25/5 minutes by default), countdown, stopwatch with laps, and one-off or weekday reminders. Study Plan focused practice uses this same persisted timer, so only one timer can run at a time. Running state is derived from timestamps and reconciled after restart; older localStorage practice drafts are migrated only after a successful backend save. Clock state is included in backups. Restoring a backup disables reminders and pauses timers while preserving their remaining or elapsed time.
+
+Notifications are optional and require an explicit in-app permission action. Hamartia checks timers and alarms while the app is open and the device is awake, including while another tab is selected; it cannot wake a sleeping device or notify after the app closes. Operating system settings can suppress delivery, so overdue timers and reminders remain visible in the Clock tab. Each due alarm can produce one event; missed recurring occurrences are skipped. This does not replace an operating-system alarm service.
 
 Close the app before restoring, and run this from the repository root:
 
@@ -70,6 +76,7 @@ PYTHONPATH=backend python backend/benchmarks/benchmark_backup.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_question_order.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_mixed_workloads.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_clock_api.py
 ```
 
 Frontend:
@@ -78,10 +85,13 @@ Frontend:
 cd frontend
 npm test
 npm run build
+npm run bench:clock
 npx playwright install chromium
 npm run test:browser
 ```
 
-The browser smoke test uses the `scripts/dev.py` launcher to start real FastAPI and Vite servers with a temporary data directory. It checks missed-question/exam CRUD and review flows; TYT/AYT section create/edit, reload, and capture-missed-question flows; topic net/accuracy charts and full history management; the focused-session counter/pause/reload/complete loop; and backup download. Python backend dependencies must be installed for the test; use the active virtual environment or set `HAMARTIA_PYTHON` to the Python executable path.
+The browser smoke test uses the `scripts/dev.py` launcher to start real FastAPI and Vite servers with a temporary data directory. It checks missed-question/exam CRUD and review flows; TYT/AYT section create/edit, reload, and capture-missed-question flows; topic net/accuracy charts and full history management; the focused-session counter/pause/reload/complete loop including a successful practice create followed by injected Clock PATCH failure and an idempotent retry; durable legacy-timer migration including a failed-write safety check; countdown/reload, reminder persistence and due-alarm reconciliation while another tab is selected, including retry after an injected reconciliation PATCH failure; clock GET failure write guards; and backup download. Python backend dependencies must be installed for the test; use the active virtual environment or set `HAMARTIA_PYTHON` to the Python executable path.
+
+`npm run bench:clock` compares 96 seeded timer scenarios against a separate iterative oracle, checks DST gap/fold rules, 128 alarms, missed-event idempotency, long-jump boundedness, and explicit negative controls. `benchmark_clock_api.py` separately measures the persisted API and checks failure safety plus backup/restore. Both benchmark outputs label `ai_included: false`. Neither runs local AI or a model. Desktop notification delivery, sleep/wake behavior, and Windows/Linux package UI remain manual platform checks.
 
 These commands do not load a model or send requests to a model endpoint. GitHub Actions runs frontend test/build/browser smoke and backend test/benchmark workflows.

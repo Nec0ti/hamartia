@@ -5,11 +5,13 @@ import QuestionsTab from './tabs/QuestionsTab.jsx'
 import StudyPlanTab from './tabs/StudyPlanTab.jsx'
 import StudyAgentTab from './tabs/StudyAgentTab.jsx'
 import CosmosTab from './tabs/CosmosTab.jsx'
+import ClockTab from './tabs/ClockTab.jsx'
 import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import api from './services/api'
 import { handleApiError } from './services/api'
 import { useI18n } from './i18n.jsx'
+import { ClockProvider } from './clock/ClockContext.jsx'
 
 /**
  * App root. Owns active-tab selection and renders the shared navigation above
@@ -18,7 +20,7 @@ import { useI18n } from './i18n.jsx'
  * The Settings modal is rendered as a sibling portal so it never collapses the
  * Navbar — the Navbar must keep rendering regardless of the modal state.
  */
-export default function App() {
+function AppContent() {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [questionExam, setQuestionExam] = useState(null)
@@ -66,6 +68,7 @@ export default function App() {
     if (activeTab === 'studyplan') return <StudyPlanTab />
     if (activeTab === 'studyagent') return <StudyAgentTab settings={settings} settingsOpen={settingsOpen} onOpenSettings={openSettings} />
     if (activeTab === 'cosmos') return <CosmosTab />
+    if (activeTab === 'clock') return <ClockTab />
     return <ComingSoon tabId={activeTab} />
   }, [activeTab, questionExam, settings, settingsOpen, openSettings])
 
@@ -92,4 +95,8 @@ export default function App() {
       />
     </div>
   )
+}
+
+export default function App() {
+  return <ClockProvider><AppContent /></ClockProvider>
 }

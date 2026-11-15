@@ -24,7 +24,7 @@ The OAuth flow runs in Electron's main process. It binds a temporary callback to
 
 Tokens are encrypted with Electron `safeStorage` in a user-owned application data file written atomically with owner-only permissions. Linux storage is accepted only when Electron reports a supported system-backed store (`gnome_libsecret`, `kwallet`, `kwallet5`, or `kwallet6`); `basic_text` and unavailable encryption fail closed. After first registration, the newly issued client ID is persisted as soon as the loopback callback state/client ID checks pass, before exchanging the one-time code; a failed exchange can then retry with the issued ID. Refresh is serialized and rotated credentials are persisted. Sign-out attempts the OIDC revocation endpoint with the refresh token and issued client ID, clears local token fields, and retains the non-secret account/client mapping and stable host ID for the next authorization. The UI reports when remote revocation was not confirmed. “Use a different account” explicitly removes the saved mapping after tokens have been cleared.
 
-Automated tests mock Electron secure storage and all OpenAI endpoints. Native safeStorage behavior, a real subscription sign-in/inference/revocation, and installation checks on physical Windows/Linux desktops remain manual verification items.
+Automated tests mock Electron secure storage and all OpenAI endpoints. Packaged Electron `safeStorage` behavior has now been verified on Ubuntu 22.04 and Windows Server 2022 in CI (details below). A real subscription sign-in/inference/revocation and installation checks on consumer Windows/Linux desktops remain manual verification items.
 
 ## Verification
 
@@ -68,7 +68,16 @@ Benchmark command form: `PYTHONPATH=backend /tmp/hamartia-siwc-venv/bin/python b
 
 ## Remaining manual checks
 
-- Verify Electron `safeStorage` uses the expected native OS-backed credential store on each supported platform; Linux `basic_text` must stay unavailable.
 - Complete a real eligible ChatGPT account authorization, inference, cancellation, sign-out/revocation, and reauthorization on a user's desktop.
-- Verify packaging and persisted app data on native Windows and Linux installations.
+- Verify packaging and persisted app data on consumer Windows 10/11 and a separate Debian desktop.
 - A local Study Agent provider is a separate future phase. Do not run local model checks in CI or benchmarks.
+
+## Native `safeStorage` package CI
+
+For PR #12 at `1721f69f103bfac5c1d7ca3a5b0960cc5133623d`, the [Desktop package builds workflow](https://github.com/Nec0ti/hamartia/actions/runs/43657125686) completed successfully. The [Ubuntu 22.04 job](https://github.com/Nec0ti/hamartia/actions/runs/43657125686/job/132638028706) and [Windows Server 2022 job](https://github.com/Nec0ti/hamartia/actions/runs/43657125686/job/132638028508) passed, as did the [full Hamartia checks](https://github.com/Nec0ti/hamartia/actions/runs/43657122049) and [repeat full checks](https://github.com/Nec0ti/hamartia/actions/runs/43657125695) for that head.
+
+- Ubuntu packaged-app smoke reported `gnome_libsecret`, encryption available, a successful in-memory encrypt/decrypt round-trip, and protected credential storage available. The isolated `--password-store=basic` run reported `basic_text`, encryption unavailable, no round-trip, and protected credential storage unavailable. Both assertions passed. The Debian package install/launch/removal and AppImage launch smokes also passed with the protected GNOME keyring.
+- Windows packaged-app and installed NSIS-app smokes both reported `win32`, encryption available, a successful in-memory round-trip, and protected credential storage available. Electron's Windows `safeStorage` implementation uses DPAPI ([Electron `safeStorage` documentation](https://www.electronjs.org/docs/latest/api/safe-storage)).
+- The smoke used a random in-memory value and exposed only platform/backend/availability/round-trip/policy metadata. It verified that no ChatGPT credential or host-ID file was created. It did not access a user's keychain, sign in to an account, or call an AI provider.
+
+This establishes the native storage behavior in those CI package environments. It does not replace real-account checks or testing on consumer Windows 10/11 and a separate Debian installation.

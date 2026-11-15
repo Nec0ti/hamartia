@@ -61,8 +61,9 @@
 
 - [x] Add explicit-consent Sign in with ChatGPT subscription usage as the Study Agent provider. The existing local question-analysis feature stays separate; a local Study Agent provider is a future phase.
 - [x] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
-- [ ] Verify native OS secure-storage behavior and complete a real SIWC login/inference/sign-out on supported desktop platforms; never include account tokens in test data or reports.
+- [x] Verify native packaged Electron `safeStorage` behavior on Ubuntu 22.04 (GNOME Secret Service accepted; `basic_text` rejected) and Windows Server 2022 (native Windows protected storage round-trip) in CI; see [the 2026-11-15 verification report](reports/2026-11-15-chatgpt-plan-study-agent.md).
+- [ ] Complete a real SIWC login/inference/sign-out on a user's desktop; verify package behavior on consumer Windows 10/11 and a separate Debian desktop. Never include account tokens in test data or reports.
 
 ## Next small task
 
-Next: complete native safeStorage and real SIWC manual checks on supported desktop platforms. A local Study Agent provider is a later phase; the existing local question-analysis flow remains separate. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete real SIWC account checks and consumer-machine package checks on supported desktop platforms. A local Study Agent provider is a later phase; the existing local question-analysis flow remains separate. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.

@@ -461,8 +461,14 @@
         },
         {
           "points": 1,
-          "claim": "Study Agent request requires consent, sends a bounded summary, and excludes saved question text/images and conversation history.",
+          "claim": "The Study Agent requires explicit consent and sends the typed prompt plus a bounded summary including saved counts, subject/topic/tag summaries, practice aggregates, and up to eight user-entered curriculum references; it excludes saved question text/images and conversation history.",
           "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Before each Study Agent request, Hamartia displays a consent screen. It sends the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
+            },
             {
               "locale": "en",
               "page": "study-agent",
@@ -473,13 +479,19 @@
         },
         {
           "points": 1,
-          "claim": "Question analysis is separate and can send the selected question text/image to the configured endpoint.",
+          "claim": "Question analysis is separate and can send the selected question text/image, unlike the Study Agent summary payload.",
           "evidence": [
             {
               "locale": "en",
               "page": "privacy-and-consent",
               "anchor": "question-data",
-              "quote": "It can send the selected question's text/image to the configured OpenAI-compatible endpoint."
+              "quote": "Question analysis is a separate user-triggered request. It can send the selected question's text/image to the configured OpenAI-compatible endpoint."
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "It sends the typed prompt plus a bounded summary of saved study counts, subject/topic/tag summaries, topic-practice aggregates, and up to eight user-entered curriculum references."
             }
           ]
         }
@@ -534,8 +546,14 @@
         },
         {
           "points": 1,
-          "claim": "Çalışma Asistanı onay ister, sınırlı özet gönderir ve kayıtlı soru metin/görsellerini veya sohbet geçmişini göndermez.",
+          "claim": "Çalışma Asistanı açık onay ister ve yazılan istemle kayıtlı sayılar, ders/konu/etiket özetleri, çalışma toplamları ve en fazla sekiz kullanıcı referansını içeren sınırlı özeti gönderir; kayıtlı soru metni/görsellerini ve sohbet geçmişini göndermez.",
           "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir. Yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
+            },
             {
               "locale": "tr",
               "page": "study-agent",
@@ -546,13 +564,19 @@
         },
         {
           "points": 1,
-          "claim": "Soru analizi ayrı başlatılır ve seçilen sorunun metnini/görselini uç noktaya gönderebilir.",
+          "claim": "Soru analizi ayrı bir istektir ve seçilen soru metni/görselini gönderebilir; Çalışma Asistanı farklı bir özet gönderir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "privacy-and-consent",
               "anchor": "question-data",
-              "quote": "Seçilen sorunun metnini/görselini yapılandırılmış OpenAI uyumlu uç noktaya gönderebilir."
+              "quote": "Soru analizi kullanıcı tarafından ayrı başlatılan bir istektir. Seçilen sorunun metnini/görselini yapılandırılmış OpenAI uyumlu uç noktaya gönderebilir."
+            },
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Yazdığın istemi ve kaydedilmiş çalışma sayıları, ders/konu/etiket özetleri, konu çalışma toplamları ve en fazla sekiz kullanıcı girişi program referansından oluşan sınırlı bir özeti gönderir."
             }
           ]
         }
@@ -1003,13 +1027,13 @@
         },
         {
           "points": 1,
-          "claim": "The synthetic “verified MEB scoring” page and its promise are not supported by the wiki.",
+          "claim": "The wiki says Hamartia does not import MEB curriculum text or make official/verified alignment, so the decoy’s verified-scoring promise is unsupported.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
-              "anchor": "supported",
-              "quote": "The app does not create official exams, questions, or answer keys."
+              "anchor": "maarif",
+              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
             }
           ]
         },
@@ -1070,13 +1094,13 @@
         },
         {
           "points": 1,
-          "claim": "Sahte “doğrulanmış MEB puanlaması” sayfası ve vaadi wiki tarafından desteklenmez.",
+          "claim": "Wiki, Hamartia’nın MEB program metnini içe aktarmadığını ve resmî/doğrulanmış eşleştirme yapmadığını söyler; decoyun doğrulanmış puanlama vaadi desteklenmez.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
-              "anchor": "supported",
-              "quote": "Uygulama resmî sınav, soru veya cevap anahtarı oluşturmaz."
+              "anchor": "maarif",
+              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
             }
           ]
         },
@@ -1113,13 +1137,13 @@
         },
         {
           "points": 1,
-          "claim": "Screenshot is fixed at 390×844 and shows the target page heading and navigation; screenshot capture itself is manual.",
+          "claim": "Manually inspect the submitted screenshot for the requested 390×844 viewport, matching page title, and visible documentation navigation; do not award this point from text/OCR alone.",
           "evidence": [
             {
-              "locale": "tr",
-              "page": "privacy-and-consent",
-              "anchor": "local-data",
-              "quote": "Deneme sonuçları, yanlış soru ve görsel kayıtları, tekrar denemeleri, konu çalışma kayıtları, Saat zamanlayıcıları ve hatırlatıcıları, ilerleme verisi ve ayarlar yerel saklanır."
+              "source": "human_protocol",
+              "file": "docs/benchmark/README.md",
+              "section": "Screenshot task",
+              "quote": "Run the screenshot task at 390×844 CSS pixels and capture the final page after the language switch, with its heading and documentation navigation visible."
             }
           ]
         },
@@ -1180,13 +1204,13 @@
         },
         {
           "points": 1,
-          "claim": "Ekran görüntüsü 390×844 boyutunda; hedef sayfa başlığı ve gezinmeyi gösterir; çekim elle değerlendirilir.",
+          "claim": "Gönderilen ekran görüntüsünde 390×844 görüntü alanını, eşleşen sayfa başlığını ve görünür dokümantasyon gezinmesini elle kontrol et; bu puanı yalnızca metin/OCR ile verme.",
           "evidence": [
             {
-              "locale": "en",
-              "page": "privacy-and-consent",
-              "anchor": "local-data",
-              "quote": "Exam results, saved missed questions and images, review attempts, topic-practice records, Clock timers and reminders, progression data, and settings are stored locally."
+              "source": "human_protocol",
+              "file": "docs/benchmark/README.md",
+              "section": "Screenshot task",
+              "quote": "Run the screenshot task at 390×844 CSS pixels and capture the final page after the language switch, with its heading and documentation navigation visible."
             }
           ]
         },

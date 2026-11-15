@@ -25,6 +25,7 @@ DOCS = ROOT / "docs"
 TASKS_PATH = DOCS / "benchmark" / "tasks.json"
 KEY_PATH = DOCS / "benchmark" / "answer_key.json"
 DECOYS_PATH = DOCS / "benchmark" / "decoys.json"
+PROTOCOL_PATH = DOCS / "benchmark" / "README.md"
 DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-15-docs-benchmark-results.json"
 LOCALES = ("en", "tr")
 EXPECTED_PAGE_COUNT = 17
@@ -109,6 +110,16 @@ class TreeParser(HTMLParser):
 def normalized(value: str) -> str:
     value = unicodedata.normalize("NFC", value).casefold()
     return re.sub(r"\s+", " ", value).strip()
+
+
+def markdown_section(content: str, heading: str) -> str | None:
+    lines = content.splitlines()
+    marker = f"## {heading}"
+    for index, line in enumerate(lines):
+        if line.strip() == marker:
+            end = next((cursor for cursor in range(index + 1, len(lines)) if lines[cursor].startswith("## ")), len(lines))
+            return "\n".join(lines[index + 1:end])
+    return None
 
 
 def read_json(path: Path):
@@ -309,20 +320,27 @@ def run_integrity() -> dict:
     key_entries = key.get("tasks", [])
     task_pairs: dict[str, set[str]] = {}
     task_localized_ids: set[tuple[str, str]] = set()
+    ui_task_counts = {locale: 0 for locale in LOCALES}
     for task in task_entries:
         task_key = (task.get("id", ""), task.get("locale", ""))
         if task_key in task_localized_ids:
             errors.append(f"Duplicate task prompt: {task_key[0]}/{task_key[1]}")
         task_localized_ids.add(task_key)
         task_pairs.setdefault(task.get("id", ""), set()).add(task.get("locale", ""))
+        if task.get("type") == "ui_task" and task.get("locale") in ui_task_counts:
+            ui_task_counts[task["locale"]] += 1
         if not task.get("prompt", "").strip():
             errors.append(f"Task {task.get('id')!r}/{task.get('locale')!r} has no prompt")
     if len(task_pairs) != 10 or any(locales != set(LOCALES) for locales in task_pairs.values()):
         errors.append("Task corpus must contain 10 EN/TR paired prompts")
     if len(task_entries) != 20:
         errors.append(f"Expected 20 task prompts, got {len(task_entries)}")
+    if any(count != 1 for count in ui_task_counts.values()):
+        errors.append("Each locale must have exactly one fixed-viewport screenshot task")
     key_pairs: dict[tuple[str, str], dict] = {}
     evidence_count = 0
+    rendered_evidence_count = 0
+    protocol_evidence_count = 0
     critical_ids = set()
     for entry in key_entries:
         ident, locale = entry.get("id"), entry.get("locale")
@@ -342,10 +360,25 @@ def run_integrity() -> dict:
                 continue
             for evidence in criterion["evidence"]:
                 evidence_count += 1
+                evidence_source = evidence.get("source", "rendered_page")
+                quote = evidence.get("quote", "")
+                if evidence_source == "human_protocol":
+                    protocol_evidence_count += 1
+                    file_path = (ROOT / evidence.get("file", "")).resolve()
+                    if file_path != PROTOCOL_PATH.resolve():
+                        errors.append(f"Human-protocol evidence must target {PROTOCOL_PATH.relative_to(ROOT)}")
+                        continue
+                    protocol_text = markdown_section(file_path.read_text(encoding="utf-8"), evidence.get("section", ""))
+                    if protocol_text is None or not quote or normalized(quote) not in normalized(protocol_text):
+                        errors.append(f"Human protocol excerpt missing from section {evidence.get('section')!r}: {quote!r}")
+                    continue
+                if evidence_source != "rendered_page":
+                    errors.append(f"Unknown evidence source {evidence_source!r} for {ident}/{locale}")
+                    continue
+                rendered_evidence_count += 1
                 target_locale = evidence.get("locale", locale)
                 page = evidence.get("page", "")
                 anchor = evidence.get("anchor", "")
-                quote = evidence.get("quote", "")
                 target_entry = pages.get((target_locale, page))
                 if target_entry is None:
                     errors.append(f"Evidence route missing: {target_locale}/{page}#{anchor}")
@@ -424,6 +457,8 @@ def run_integrity() -> dict:
         "external_links_syntactically_counted_not_fetched": external_links,
         "answer_rubrics_checked": len(key_entries),
         "exact_evidence_excerpts_checked": evidence_count,
+        "rendered_section_excerpts_checked": rendered_evidence_count,
+        "human_protocol_excerpts_checked": protocol_evidence_count,
         "synthetic_decoys_checked": len(decoy_entries),
         "task_prompts": len(task_entries),
         "critical_task_pairs": sorted(critical_ids),
@@ -436,13 +471,20 @@ def run_integrity() -> dict:
 def make_booklet(locale: str, seed: int) -> dict:
     tasks = read_json(TASKS_PATH)
     selected = [task for task in tasks["tasks"] if task.get("locale") == locale]
-    random.Random(seed).shuffle(selected)
+    screenshot_tasks = [task for task in selected if task.get("type") == "ui_task"]
+    retrieval_tasks = [task for task in selected if task.get("type") != "ui_task"]
+    random.Random(seed).shuffle(retrieval_tasks)
+    selected = retrieval_tasks + screenshot_tasks
+    instructions = {
+        "en": "Use the Hamartia wiki only. Cite page IDs and section anchors. Do not open external decoys or use AI/provider tools.",
+        "tr": "Yalnızca Hamartia wiki'sini kullan. Sayfa kimliklerini ve bölüm bağlantılarını belirt. Sentetik dış bağlantıları açma; yapay zekâ veya sağlayıcı araçlarını kullanma.",
+    }
     return {
         "task_set_id": tasks["task_set_id"],
         "locale": locale,
         "seed": seed,
         "ai_included": False,
-        "instructions": "Answer using the Hamartia wiki only. Cite page IDs and section anchors. Do not open external decoys or use AI/provider tools.",
+        "instructions": instructions[locale],
         "tasks": [{"number": index + 1, "prompt": task["prompt"]} for index, task in enumerate(selected)],
     }
 

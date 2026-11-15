@@ -1,0 +1,154 @@
+{
+  "task_set_id": "hamartia-wiki-retrieval-v1",
+  "version": 1,
+  "tasks": [
+    {
+      "id": "workflow-synthesis",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "A student has entered a full TYT mock, saved several missed questions, then completed a topic set containing correct, incorrect, and blank answers. Explain what the wiki says is retained at each step and how blank answers affect the practice trend."
+    },
+    {
+      "id": "workflow-synthesis",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "Bir öğrenci tam TYT denemesi girmiş, birkaç yanlış soruyu kaydetmiş ve ardından doğru, yanlış, boş yanıtlar içeren konu setini tamamlamış. Wiki'ye göre her adımda neler saklanır ve boş yanıtlar çalışma eğilimini nasıl etkiler?"
+    },
+    {
+      "id": "exam-scope",
+      "locale": "en",
+      "type": "misleading_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "A teammate says the wiki confirms that Hamartia has a special official Maarif exam mode and can score LGS out of the box. Check both claims and explain what the app actually supports, what Maarif means here, and whether a user-entered MEB link is verified."
+    },
+    {
+      "id": "exam-scope",
+      "locale": "tr",
+      "type": "misleading_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Bir arkadaşın wiki'nin Hamartia'da resmî bir Maarif sınav modu bulunduğunu ve LGS'yi doğrudan puanlayabildiğini doğruladığını söylüyor. İki iddiayı da kontrol et; uygulamanın gerçekte neleri desteklediğini, burada Maarif'in ne anlama geldiğini ve kullanıcının girdiği MEB bağlantısının doğrulanıp doğrulanmadığını açıkla."
+    },
+    {
+      "id": "progress-claims",
+      "locale": "en",
+      "type": "unsupported_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "A parent sees a higher XP level and a seven-day streak and concludes the student has mastered the material and studied every day. A search result points to the synthetic docs/cosmos-and-progression/#mastery-score anchor. What can the wiki support about these displays, and what can it not establish?"
+    },
+    {
+      "id": "progress-claims",
+      "locale": "tr",
+      "type": "unsupported_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Bir veli XP seviyesinin yükseldiğini ve yedi günlük seri gördüğünü, bunun öğrencinin konuları öğrendiğini ve her gün çalıştığını kanıtladığını söylüyor. Arama sonucu sentetik docs/cosmos-and-progression/#mastery-score bağlantısını gösteriyor. Wiki bu göstergeler hakkında neyi destekliyor, neyi kanıtlayamıyor?"
+    },
+    {
+      "id": "privacy-boundaries",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Before moving study data to another computer, a student plans to use a backup and may later use both optional provider features. State where records live by default, what the backup excludes, whether a configured endpoint is guaranteed local, what the Study Agent sends, and how question analysis differs."
+    },
+    {
+      "id": "privacy-boundaries",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Bir öğrenci çalışma verisini başka bilgisayara taşımadan önce yedek almayı, ileride iki isteğe bağlı sağlayıcı özelliğini de kullanmayı planlıyor. Kayıtların varsayılan olarak nerede tutulduğunu, yedeğe nelerin eklenmediğini, yapılandırılmış uç noktanın kesinlikle yerel olup olmadığını, Çalışma Asistanı'nın ne gönderdiğini ve soru analizinin farkını belirt."
+    },
+    {
+      "id": "clock-limits",
+      "locale": "en",
+      "type": "unsupported_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Someone expects an alarm to wake a sleeping laptop and deliver while Hamartia is closed. Correct the expectation, then describe the shared-timer rule and what happens to alarms/timers in a restored backup."
+    },
+    {
+      "id": "clock-limits",
+      "locale": "tr",
+      "type": "unsupported_premise",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Birisi hatırlatıcının uyuyan dizüstü bilgisayarı uyandırmasını ve Hamartia kapalıyken bildirim göndermesini bekliyor. Bu beklentiyi düzelt; ortak zamanlayıcı kuralını ve geri yüklenen yedekte hatırlatıcı/zamanlayıcılara ne olduğunu açıkla."
+    },
+    {
+      "id": "restore-safety",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "A student wants to restore a ZIP onto a computer that already has study data. Explain whether restore merges or replaces, what happens to the existing folder, what is checked before replacement, and the restored Clock state."
+    },
+    {
+      "id": "restore-safety",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "Bir öğrenci, hâlihazırda çalışma verisi bulunan bilgisayara ZIP yedeği yüklemek istiyor. Geri yüklemenin birleştirme mi değiştirme mi olduğunu, mevcut klasöre ne olduğunu, değiştirmeden önce nelerin kontrol edildiğini ve geri yüklenen Saat durumunu açıkla."
+    },
+    {
+      "id": "review-schedule",
+      "locale": "en",
+      "type": "boundary_retrieval",
+      "mode": "text",
+      "prompt": "A learner marks one new missed question wrong, then marks the same question correct repeatedly. Give the documented due-date sequence and explain what marking it reviewed does—and does not—mean."
+    },
+    {
+      "id": "review-schedule",
+      "locale": "tr",
+      "type": "boundary_retrieval",
+      "mode": "text",
+      "prompt": "Bir öğrenci yeni yanlış soruyu yanlış, sonra aynı soruyu art arda doğru işaretliyor. Belgelenen tekrar vadelerini sırayla ver; soruyu incelenmiş işaretlemenin ne anlama geldiğini ve ne anlama gelmediğini açıkla."
+    },
+    {
+      "id": "stale-reference",
+      "locale": "en",
+      "type": "stale_decoy",
+      "mode": "text",
+      "prompt": "A search result points to the synthetic route docs/maarif-exam-mode/ titled “Maarif Exam Mode — verified MEB scoring” and the synthetic example.invalid/official/2026-exam-schedule link. Does the wiki support the page's promise or certify the date is current? Say what you would verify and what the wiki actually states about user-entered references."
+    },
+    {
+      "id": "stale-reference",
+      "locale": "tr",
+      "type": "stale_decoy",
+      "mode": "text",
+      "prompt": "Bir arama sonucu, “Maarif Sınav Modu — doğrulanmış MEB puanlaması” adlı sentetik docs/maarif-exam-mode/ rotasına ve sentetik example.invalid/official/2026-exam-schedule bağlantısına gidiyor. Wiki sayfanın vaadini destekliyor veya tarihi güncel diye onaylıyor mu? Neyi doğrulayacağını ve wiki'nin kullanıcı girişi referansları hakkında gerçekte ne dediğini belirt."
+    },
+    {
+      "id": "accessibility-language",
+      "locale": "en",
+      "type": "ui_task",
+      "mode": "screenshot_and_text",
+      "prompt": "At a 390×844 viewport, use the documentation language switch to open the matching Turkish page for Privacy and consent. Provide a screenshot showing the Turkish page and navigation, then report one supported keyboard interaction and one accessibility limitation the wiki explicitly states."
+    },
+    {
+      "id": "accessibility-language",
+      "locale": "tr",
+      "type": "ui_task",
+      "mode": "screenshot_and_text",
+      "prompt": "390×844 görüntü alanında doküman dil seçicisini kullanarak Gizlilik ve onay sayfasının eşleşen İngilizce sürümünü aç. İngilizce sayfayı ve gezinmeyi gösteren ekran görüntüsü ver; wiki'nin açıkça belirttiği bir klavye etkileşimini ve bir erişilebilirlik sınırlamasını yaz."
+    },
+    {
+      "id": "learning-evidence",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "A student points to a completed practice trend, a long Clock duration, and correct self-marked reviews as proof their score will improve. Separate what each record measures from the conclusions the wiki says cannot be made."
+    },
+    {
+      "id": "learning-evidence",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "Bir öğrenci tamamlanmış çalışma eğilimini, uzun Saat süresini ve kendi işaretlediği doğru tekrarları puanının yükseleceğinin kanıtı olarak gösteriyor. Her kaydın neyi ölçtüğünü, wiki'ye göre hangi sonucun çıkarılamayacağını ayır."
+    }
+  ]
+}

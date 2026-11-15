@@ -1,0 +1,27 @@
+{
+  "fixture_set_id": "hamartia-wiki-decoys-v1",
+  "network_policy": "Never fetch decoys or external links. All invalid targets below are synthetic evaluation fixtures.",
+  "fixtures": [
+    {
+      "id": "unsupported-maarif-mode",
+      "kind": "broken_local_route",
+      "target": "docs/maarif-exam-mode/index.html",
+      "title": "Maarif Exam Mode — verified MEB scoring",
+      "expected": "Route must remain absent; wiki says Maarif is a curriculum framework and does not claim official or verified alignment."
+    },
+    {
+      "id": "unsupported-mastery-anchor",
+      "kind": "broken_local_anchor",
+      "target": "docs/cosmos-and-progression/index.html#mastery-score",
+      "title": "Mastery score from Cosmos streak",
+      "expected": "Anchor must remain absent; wiki explicitly says XP, level, streak and orbit position do not establish mastery."
+    },
+    {
+      "id": "stale-schedule-example",
+      "kind": "synthetic_external_stale_link",
+      "target": "https://example.invalid/official/2026-exam-schedule",
+      "title": "Official 2026 exam date — assume current",
+      "expected": "Do not fetch or certify this URL. Treat it as an unsupported stale-date example and tell the evaluator to check current official sources."
+    }
+  ]
+}

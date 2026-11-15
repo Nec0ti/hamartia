@@ -1,0 +1,1366 @@
+{
+  "task_set_id": "hamartia-wiki-retrieval-v1",
+  "scoring": {
+    "points_per_task": 5,
+    "points_per_locale": 50,
+    "points_total": 100,
+    "minimum_total_percent": 90,
+    "minimum_each_locale_percent": 85,
+    "critical_tasks_require_full_credit": true,
+    "human_response_scoring_only": true
+  },
+  "tasks": [
+    {
+      "id": "workflow-synthesis",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Full mock subject sections stay together and subject summaries are preserved.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Full mocks keep section results together while preserving subject summaries."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A saved missed question can include labels and optional exam context such as number, order, or time.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "mistakes",
+              "quote": "optionally record exam question number, solve order, or time spent."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Study Plan groups due questions and offers focused practice.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Study Plan groups due questions by topic, shows available mistake tags and exam-order counts, and offers focused practice."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A completed set records date, subject/topic, answer counts, and time.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "A completed practice set records date, subject/topic, correct/incorrect/blank counts, and time."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Blank answers are excluded from the answered-accuracy denominator.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "blanks are excluded from the answered-accuracy denominator."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workflow-synthesis",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Tam denemeler bölüm sonuçlarını bir arada tutar ve ders özetlerini korur.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Tam denemeler bölüm sonuçlarını bir arada tutarken ders özetlerini de korur."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yanlış kaydına isteğe bağlı soru numarası, çözüm sırası veya süre eklenebilir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "mistakes",
+              "quote": "istersen soru numarası, çözüm sırası veya süreyi de kaydet."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma Planı vadeli soruları gruplar ve odaklı çalışma başlatır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Çalışma Planı vadesi gelen soruları konuya göre gruplar"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Tamamlanan set tarih, ders/konu, doğru/yanlış/boş sayısı ve süreyi kaydeder.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Tamamlanan çalışma seti tarih, ders/konu, doğru/yanlış/boş sayısı ve süreyi kaydeder."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Boşlar cevaplanan doğruluk paydasında sayılmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "cevaplanan doğruluk paydasında boşlar sayılmaz."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exam-scope",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Built-in sessions are TYT/AYT full mocks and single-subject exams.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "The app records TYT/AYT full mock sessions and single-subject exams."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Net uses the YKS wrong-answer penalty; LGS or different scoring rules require adaptation.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Its net calculation uses the YKS wrong-answer penalty. Other systems with compatible scoring may reuse the workflow; formats such as LGS or different scoring rules need adaptation through a contribution or fork."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Maarif is described as a curriculum framework, not a national-exam name.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Türkiye Yüzyılı Maarif Modeli is a curriculum framework and assessment approach, not a national-exam name."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Hamartia does not import MEB text or make official/verified alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A user-entered URL is not fetched or verified.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "The URL is not fetched or verified."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exam-scope",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Yerleşik oturumlar TYT/AYT tam denemeleri ve tek ders denemeleridir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Uygulama TYT/AYT tam denemelerini ve tek ders denemelerini kaydeder."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Net YKS yanlış-ceza kuralını kullanır; LGS veya farklı kurallar uyarlama gerektirir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Net hesabı YKS yanlış-ceza kuralını kullanır. Benzer puanlama kullanan başka sistemler akışı tekrar kullanabilir; LGS gibi biçimler veya farklı puanlama kuralları katkı ya da fork ile uyarlama gerektirir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Maarif bir öğretim programı ve ölçme yaklaşımıdır, ulusal sınav adı değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Türkiye Yüzyılı Maarif Modeli bir öğretim programı ve ölçme-değerlendirme yaklaşımıdır; ulusal sınav adı değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Hamartia MEB metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kullanıcının girdiği adres otomatik alınmaz veya doğrulanmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Adres otomatik alınmaz veya doğrulanmaz."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "progress-claims",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "XP comes from saved exam results; first and later level steps are 500 XP.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "the first threshold is 500 XP and later levels use the same 500-XP step."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Streak derives from saved exam dates and runs through today or yesterday.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "It counts a consecutive run ending today or yesterday"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Streak is not a record of every study activity.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "it is not a record of every study activity"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "XP, level, streak and orbit position do not establish mastery or future performance.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "These displays are navigation cues, not a judgment about the student.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "Use these displays as navigation cues only"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "progress-claims",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "XP saved exam resultsinden hesaplanır; ilk ve sonraki seviye aralıkları 500 XP'dir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "ilk eşik 500 XP, sonraki seviyeler de aynı 500 XP aralığını kullanır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Seri kaydedilen deneme tarihlerinden türetilir ve bugün veya dün bitebilir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "Bugün veya dün biten kesintisiz günleri sayar"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Seri her çalışma etkinliğinin kaydı değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "her çalışma etkinliğinin kaydı değildir"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "XP, seviye, seri ve yörünge ustalığı veya gelecekteki performansı kanıtlamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Göstergeler yalnızca gezinme ipucudur ve öğrenci hakkında hüküm değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "Bu görünümleri yalnızca gezinme ipucu olarak kullan"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "privacy-boundaries",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Study records are local by default and do not automatically sync across devices.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "local-data",
+              "quote": "Exam results, saved missed questions and images, review attempts, topic-practice records, Clock timers and reminders, progression data, and settings are stored locally."
+            },
+            {
+              "locale": "en",
+              "page": "faq",
+              "anchor": "sync",
+              "quote": "No automatic cross-device sync."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Backup excludes configured endpoint API keys and ChatGPT sign-in credentials.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "The configured endpoint API key and ChatGPT sign-in credentials are not included."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Configured endpoints may be remote; Hamartia does not verify locality or isolation.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Hamartia does not verify that it is a local model or isolated from the network."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Study Agent request requires consent, sends a bounded summary, and excludes saved question text/images and conversation history.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Saved question text and images and Study Agent conversation history are not included or stored by Hamartia."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Question analysis is separate and can send the selected question text/image to the configured endpoint.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "It can send the selected question's text/image to the configured OpenAI-compatible endpoint."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "privacy-boundaries",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Çalışma kayıtları varsayılan olarak yereldir ve cihazlar arasında otomatik eşitlenmez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "local-data",
+              "quote": "Deneme sonuçları, yanlış soru ve görsel kayıtları, tekrar denemeleri, konu çalışma kayıtları, Saat zamanlayıcıları ve hatırlatıcıları, ilerleme verisi ve ayarlar yerel saklanır."
+            },
+            {
+              "locale": "tr",
+              "page": "faq",
+              "anchor": "sync",
+              "quote": "Cihazlar arasında otomatik eşitleme yoktur."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yedek, yapılandırılmış uç nokta API anahtarını ve ChatGPT giriş kimlik bilgilerini içermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "Yapılandırılmış uç noktanın API anahtarı ile ChatGPT giriş kimlik bilgileri eklenmez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yapılandırılmış uç nokta uzakta olabilir; Hamartia yerellik veya yalıtımı doğrulamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Hamartia modelin yerel ya da ağdan yalıtılmış olduğunu doğrulamaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma Asistanı onay ister, sınırlı özet gönderir ve kayıtlı soru metin/görsellerini veya sohbet geçmişini göndermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Kaydedilmiş soru metinleri ve görselleri ile Çalışma Asistanı konuşma geçmişi gönderilmez veya Hamartia tarafından saklanmaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Soru analizi ayrı başlatılır ve seçilen sorunun metnini/görselini uç noktaya gönderebilir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "Seçilen sorunun metnini/görselini yapılandırılmış OpenAI uyumlu uç noktaya gönderebilir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clock-limits",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Notifications are checked only while the app is open and the device awake; no wake/closed delivery guarantee.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "limits",
+              "quote": "Notifications are checked only while the app is open and the device is awake. Hamartia cannot wake the device and does not promise delivery after the app closes."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Study Plan practice and Clock share one active timer; a second cannot run in parallel.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "practice",
+              "quote": "If a Clock timer is already active, resolve it before starting another."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Restored backup timers are paused and imported reminders disabled.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "backup",
+              "quote": "restore pauses those timers and disables imported alarms."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Missed recurring occurrences advance to a future schedule rather than a burst replay.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "the app advances to the next future time rather than replaying a burst."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Due events are reconciled while the app is running, including another selected tab; overdue reminders stay visible.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Overdue reminders remain visible in Clock."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clock-limits",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Bildirimler yalnızca uygulama açık ve cihaz uyanıkken kontrol edilir; uyandırma/kapalı uygulama garantisi yoktur.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "limits",
+              "quote": "Bildirimler yalnızca uygulama açık ve cihaz uyanıkken kontrol edilir. Hamartia cihazı uyandıramaz ve uygulama kapalıyken teslimat garantisi vermez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma Planı odaklı çalışması ile Saat tek etkin zamanlayıcıyı paylaşır; paralel ikinci zamanlayıcı çalışmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "practice",
+              "quote": "Saat'te zaten zamanlayıcı çalışıyorsa yenisini başlatmadan önce onu çöz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Geri yüklenen zamanlayıcılar duraklatılır, alınan hatırlatıcılar kapalıdır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "backup",
+              "quote": "geri yükleme bunları duraklatır ve alınan hatırlatıcıları kapatır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kaçırılmış tekrarlar bildirim yığını yerine gelecek ilk saate ilerler.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "uygulama bir dizi bildirim göndermek yerine gelecek ilk saate ilerler."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Geciken hatırlatıcılar Saat'te görünür kalır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Geciken hatırlatıcılar Saat'te görünür."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "restore-safety",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Restore replaces current study data; it does not merge histories.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Restore is replacement. It does not merge two histories."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "The current data folder is first saved as a timestamped snapshot.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Hamartia first saves a timestamped snapshot of the existing data folder."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Validation checks paths, sizes, checksums, schemas and referenced uploads before replacement.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "validates archive paths, sizes, checksums, data schemas, and referenced uploads before replacing data."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A failed validation should leave current data in place.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "A failed validation should leave current data in place."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Restored timers are paused and imported reminders disabled.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Clock timers restore paused with their remaining/elapsed time frozen at backup creation; imported reminders restore disabled."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "restore-safety",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Geri yükleme iki geçmişi birleştirmez, değiştirme işlemidir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Geri yükleme değiştirme işlemidir. İki geçmişi birleştirmez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Mevcut veri klasörü önce tarihli bir kopya olarak saklanır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Hamartia önce mevcut veri klasörünün tarihli bir kopyasını alır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Değiştirmeden önce yollar, boyutlar, sağlama toplamları, şemalar ve başvurulan dosyalar doğrulanır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "arşiv yollarını, boyutları, sağlama toplamlarını, veri şemalarını ve başvurulan yüklemeleri doğrular."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Geri yüklenen zamanlayıcılar duraklatılır ve hatırlatıcılar kapatılır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Saat zamanlayıcıları yedek oluşturulduğu andaki kalan/geçen süreyle duraklatılmış geri yüklenir; alınan hatırlatıcılar kapalı geri yüklenir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-schedule",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "New questions are due immediately.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "New questions are due immediately."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A wrong self-recorded review becomes due after one day.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "A wrong self-recorded review is due after one day."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Consecutive correct intervals are 1, 3, 7, 14, then 30 days.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Consecutive correct reviews use intervals of 1, 3, 7, 14, then 30 days."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Due dates use local calendar day, with a legacy UTC fallback if local day is absent.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Due dates use the device's local calendar day; older attempts without a saved local day use the legacy UTC fallback."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Marking reviewed removes a question from the active queue but does not declare mastery.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Marking a question reviewed removes it from the active queue; it does not declare mastery."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-schedule",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Yeni sorular hemen vadelidir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Yeni sorular hemen vadelidir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yanlış işaretlenen tekrar bir gün sonra vadelidir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Öğrencinin yanlış işaretlediği tekrar bir gün sonra yeniden vadelidir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Art arda doğru aralıkları 1, 3, 7, 14 ve sonra 30 gündür.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Art arda doğru tekrarların aralığı 1, 3, 7, 14 ve sonra 30 gündür."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Vadeler yerel takvim gününü kullanır; eski kayıtlarda UTC geri dönüşü vardır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Vade cihazın yerel takvim gününü kullanır; yerel gün bilgisi olmayan eski denemelerde eski UTC geri dönüşü uygulanır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "İncelendi işareti soruyu etkin listeden çıkarır ama ustalık ilan etmez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "mistakes-and-review",
+              "anchor": "schedule",
+              "quote": "Soruyu gözden geçirilmiş işaretlemek onu etkin listeden çıkarır; ustalık ilan etmez."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stale-reference",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "The wiki denies official/verified Maarif alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "User-entered external URLs are not fetched or verified.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "The URL is not fetched or verified."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "An old exam-date link is not certified current; check current official pages for later dates.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "adapt",
+              "quote": "Check current official pages for later dates."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "The synthetic “verified MEB scoring” page and its promise are not supported by the wiki.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "The app does not create official exams, questions, or answer keys."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Do not state an unverified current external date or treat the decoy route as an authoritative source.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "adapt",
+              "quote": "Check current official pages for later dates."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stale-reference",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Wiki resmî/doğrulanmış Maarif eşleştirmesi olmadığını söyler.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kullanıcı girişi dış adresler alınmaz veya doğrulanmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "maarif",
+              "quote": "Adres otomatik alınmaz veya doğrulanmaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Eski sınav tarihi güncel onaylı değildir; sonraki tarihler için güncel resmî sayfalar kontrol edilir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "adapt",
+              "quote": "Sonraki tarihler için güncel resmî sayfalara bak."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Sahte “doğrulanmış MEB puanlaması” sayfası ve vaadi wiki tarafından desteklenmez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Uygulama resmî sınav, soru veya cevap anahtarı oluşturmaz."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Dış tarihi güncel diye sunma ve decoy rotayı yetkili kaynak sayma.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "adapt",
+              "quote": "Sonraki tarihler için güncel resmî sayfalara bak."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "accessibility-language",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "The language switch opens the corresponding translated page.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "accessibility-and-language",
+              "anchor": "language",
+              "quote": "The documentation language switch opens the matching page when a translation exists."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Screenshot is fixed at 390×844 and shows the target page heading and navigation; screenshot capture itself is manual.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "local-data",
+              "quote": "Deneme sonuçları, yanlış soru ve görsel kayıtları, tekrar denemeleri, konu çalışma kayıtları, Saat zamanlayıcıları ve hatırlatıcıları, ilerleme verisi ve ayarlar yerel saklanır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Keyboard users can navigate controls with Tab and activate buttons with Enter/Space.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "keyboard users can move between controls with Tab and activate buttons with Enter/Space."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Timer state is text and due reminders remain visible without relying only on notifications.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "Timer state is exposed as text and due reminders remain visible rather than depending only on a notification."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "The smoke is not complete screen-reader certification; platform behavior can vary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "they are not a complete screen-reader certification."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "accessibility-language",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Dil seçici eşleşen İngilizce sayfayı açar.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "accessibility-and-language",
+              "anchor": "language",
+              "quote": "Doküman dil seçicisi çevirisi bulunan eş sayfayı açar."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Ekran görüntüsü 390×844 boyutunda; hedef sayfa başlığı ve gezinmeyi gösterir; çekim elle değerlendirilir.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "local-data",
+              "quote": "Exam results, saved missed questions and images, review attempts, topic-practice records, Clock timers and reminders, progression data, and settings are stored locally."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Klavye kullanıcıları Tab ile ilerler, Enter/Space ile düğmeleri etkinleştirir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "klavye kullanıcıları Tab ile kontroller arasında ilerleyebilir, Enter/Space ile düğmeleri etkinleştirebilir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Zamanlayıcı durumu metin olarak görünür; vadeli hatırlatıcılar yalnızca bildirime bağlı değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "Zamanlayıcı durumu metin olarak sunulur; vadeli hatırlatıcılar yalnızca bildirime bağlı olmadan görünür kalır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Smoke eksiksiz ekran okuyucu sertifikasyonu değildir; OS davranışı değişebilir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "accessibility-and-language",
+              "anchor": "accessibility",
+              "quote": "eksiksiz ekran okuyucu sertifikasyonu değildir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "learning-evidence",
+      "locale": "en",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Practice trends summarize completed sets; review history reflects the student's own marks.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Practice trends summarize completed sets. Review history reflects the student's own correct/incorrect marks."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Clock duration measures recorded elapsed time, not attention or learning quality.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "A Clock duration shows recorded elapsed time, not attention or learning quality."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Records lack a complete denominator for unsaved questions and do not independently grade answers.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "These records do not provide a complete denominator for unsaved questions, independently grade answers"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Records do not verify curriculum match or demonstrate mastery from one result.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "verify a curriculum match, or demonstrate mastery from a single result."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Time, streak, XP and timer use are not evidence of improved learning.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "Time in the app, streaks, XP, and timer use are not evidence of improved learning."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "learning-evidence",
+      "locale": "tr",
+      "critical": false,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Çalışma eğilimleri tamamlanmış setleri, tekrar geçmişi öğrencinin işaretlerini özetler.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Çalışma eğilimleri tamamlanmış setleri özetler. Tekrar geçmişi öğrencinin kendi doğru/yanlış işaretlerini yansıtır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Saat süresi kaydedilen zamanı gösterir; dikkati veya öğrenme niteliğini değil.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Saat süresi kaydedilen zamanı gösterir; dikkati veya öğrenme niteliğini değil."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kayıtlar kaydedilmemiş soruların tam paydasını sunmaz veya yanıtları bağımsız puanlamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "kaydedilmemiş soruların tam paydasını sunmaz, yanıtları bağımsız olarak puanlamaz"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kayıtlar program eşleşmesini doğrulamaz veya tek sonuçtan ustalık göstermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "program eşleşmesini doğrulamaz veya tek sonuçtan ustalık göstermez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Uygulama süresi, seri, XP ve zamanlayıcı kullanımı öğrenme artışını kanıtlamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "Uygulamada geçirilen süre, seri, XP ve zamanlayıcı kullanımı öğrenmenin arttığına kanıt değildir."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

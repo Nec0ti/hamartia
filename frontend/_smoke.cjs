@@ -368,7 +368,7 @@ async function main() {
     await page.getByLabel('Sınavdaki soru no').fill('40')
     await page.getByLabel('Çözüm sırası').fill('40')
     await page.getByLabel('Soruda harcanan saniye').fill('51')
-    await page.locator('textarea').fill('TYT Türkçe bölüm sorusu')
+    await page.getByLabel('Soru metni veya kendi notun (görsel yoksa zorunlu)').fill('TYT Türkçe bölüm sorusu')
     const [sectionQuestionResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/questions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Soruyu kaydet' }).click(),

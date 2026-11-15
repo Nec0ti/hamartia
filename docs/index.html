@@ -1,98 +1,30 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A local-first study tool for missed-question patterns, targeted practice, and review.">
-    <link rel="canonical" href="https://nec0ti.github.io/hamartia/">
-    <link rel="icon" type="image/svg+xml" href="./assets/hamartia-favicon.svg">
-    <title>Hamartia — Local study and review</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <header class="topbar">
-      <a class="brand" href="#top" aria-label="Hamartia home"><img src="./assets/hamartia-mark.svg" alt=""> <span>Hamartia</span></a>
-      <nav aria-label="Main navigation">
-        <a href="#guide">Guide</a>
-        <a href="#privacy">Privacy</a>
-        <a href="#backup">Backup</a>
-        <a href="#ai-checks">AI checks</a>
-        <a class="language" href="tr/" lang="tr">Türkçe ↗</a>
-      </nav>
-    </header>
-
-    <main id="top">
-      <section class="hero">
-        <p class="eyebrow"><span class="status-dot"></span> A calm place to keep your study history</p>
-        <h1>Study with a clearer picture.</h1>
-        <p class="hero-copy">Track missed questions, spot patterns in mistakes, and turn them into targeted practice and review — on your computer.</p>
-        <a class="button" href="https://github.com/Nec0ti/hamartia/releases/latest">Download Hamartia <span aria-hidden="true">↗</span></a>
-        <div class="hero-note"><span>LOCAL-FIRST</span><span>TARGETED REVIEW</span><span>MIT LICENSE</span></div>
-      </section>
-
-      <section class="section" id="features">
-        <div class="section-heading"><p class="eyebrow">THE WORKSPACE</p><h2>Keep the useful details close.</h2></div>
-        <div class="cards">
-          <article class="card"><span class="card-index">01</span><h3>Practice history</h3><p>The current app records Turkish TYT, AYT, and single-subject exams. Full TYT/AYT sessions keep subject results together while preserving section-level trends.</p></article>
-          <article class="card"><span class="card-index">02</span><h3>Missed questions</h3><p>Save a question as text or attach an image, add subject and topic labels, and revisit it over time.</p></article>
-          <article class="card"><span class="card-index">03</span><h3>Study progress</h3><p>Review answer history, focused practice sessions, topic trends, and suggested priorities derived from your records.</p></article>
-          <article class="card"><span class="card-index">04</span><h3>Clock and reminders</h3><p>Use one shared practice timer, Pomodoro, countdown, or stopwatch. Save one-time or weekday reminders; due times are checked while the app is open and the device is awake, even when another tab is selected.</p></article>
-        </div>
-      </section>
-
-      <section class="section" id="curriculum">
-        <div class="section-heading"><p class="eyebrow">EDUCATIONAL DIRECTION</p><h2>Learning patterns, with room for the learning process.</h2></div>
-        <div class="prose"><p>Hamartia grew from Turkish mock-exam workflows, but a mock-exam score is only one kind of learning evidence. Türkiye's Maarif Model describes teaching programs through learning outcomes and a broader assessment approach that includes ongoing feedback and varied evidence; MEB phases the curriculum rollout by grade. The Study Agent remains a general assistant, not an official or verified Maarif alignment system. You can attach a generic user-entered curriculum reference to a missed question: framework, source/version, grade/year, unit/theme, a short outcome note or paraphrase, process component, and optional source URL. The existing subject field supplies course/subject. Hamartia does not import MEB curriculum text. It does not automatically fetch or verify the source URL; you can open it yourself. With a reference, the Study Agent can cautiously relate supported mistake patterns to your note and propose a next activity plus a separate evidence task with observable criteria. It does not infer mastery from one answer or record task completion.</p><p>The Maarif Model is a curriculum framework, not a replacement name for national exams: the 2026 <a href="https://www.osym.gov.tr/2026yks-basvurularin-alinmasi">YKS schedule</a> lists TYT, AYT, and YDT, and MEB published a separate <a href="https://www.meb.gov.tr/meb_iys_dosyalar/2026_04/03170012_LGS_Basvuru_ve_Uygulama_Kilavuzu_2026_.pdf">2026 central-exam guide for secondary-school placement</a>. Read MEB's <a href="https://tymm.meb.gov.tr/olcme-degerlendirme">Maarif assessment overview</a>, <a href="https://tymm.meb.gov.tr/upload/brosur/2024programortakmetinOnayli.pdf">common text</a>, and <a href="https://tymm.meb.gov.tr/taslak-cerceve-planlari/temel-egitim">current curriculum rollout plans</a>. Hamartia's current built-in exam and scoring support is described below; different curriculum structures may need adaptation.</p></div>
-      </section>
-
-      <section class="section guide-layout" id="guide">
-        <div class="section-heading"><p class="eyebrow">GETTING STARTED</p><h2>Install the desktop app.</h2><p class="muted">Download the latest release for Windows 10/11 or Linux x64 from <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a>.</p><p class="muted">Hamartia grew from Turkish LGS and YKS mock-exam workflows. This version has TYT/AYT full mocks and single-subject exams, with free-text subject and topic labels. Its built-in net calculation uses the YKS wrong-answer penalty; mock-exam workflows with compatible scoring can reuse it, while different exam structures or scoring rules may need adaptation through a contribution or fork. The interface currently supports English and Turkish. Contributions and forks are welcome under the MIT license.</p></div>
-        <div class="steps" id="setup">
-          <div class="step"><span>1</span><div><h3>Choose a package</h3><p>Windows 10/11: download and run the Windows installer (.exe). Debian: install the <code>.deb</code> package with your package installer or run:</p><pre><code>sudo apt install ./Hamartia-*.deb</code></pre><p>Linux AppImage: make the downloaded file executable, then open it:</p><pre><code>chmod +x Hamartia-*.AppImage
-./Hamartia-*.AppImage</code></pre></div></div>
-          <div class="step"><span>2</span><div><h3>Choose your language</h3><p>Hamartia starts in English. In Settings, select English or Turkish; your preference is saved on this computer.</p></div></div>
-          <div class="step"><span>3</span><div><h3>Find your data</h3><p>Exams, questions, images, settings, practice history, timers, and reminders are stored in Hamartia's per-user application data folder. They remain on this computer unless you create and move a backup.</p></div></div>
-        </div>
-      </section>
-
-      <section class="section split" id="privacy">
-        <div><p class="eyebrow">YOUR DATA</p><h2>Local by default. Clear when AI is involved.</h2></div>
-        <div class="prose"><p>Hamartia stores study records, timers, reminders, and uploaded images in a per-user application data folder on this computer. Clock notifications are checked while the app is open and the device is awake; they cannot wake the device or continue after the app closes. Operating system settings may suppress delivery. ChatGPT sign-in is available in the packaged desktop app. The packaged desktop app defaults to the ChatGPT subscription for its Study Agent; OpenAI asks separately for permission to use the user's ChatGPT plan. An optional OpenAI-compatible endpoint can be selected explicitly in the Study Agent. Eligible ChatGPT accounts and usage limits vary.</p><p>Before each request, Hamartia asks for consent to send the typed question and a bounded summary: pending/scheduled counts, up to eight subject/topic/tag summaries, up to eight topic-practice aggregates (set count, net, accuracy), and up to eight user-entered curriculum references from active mistakes. A reference may include course/subject, framework, source/version, grade/year, unit/theme, your short outcome note/paraphrase, process component, and optional source URL. References are unverified; Hamartia does not import curriculum text. Hamartia does not automatically fetch or verify the source URL; you can open it yourself. Saved question-record text/images and chat history are excluded; Hamartia does not save Study Agent transcripts. ChatGPT requests go directly to OpenAI's public Responses API with storage disabled. Configured-endpoint consent names the exact URL and the same payload categories, explains that the endpoint may be remote, and says if a saved API key is sent for authentication. The endpoint operator may have its own retention rules. Hamartia never silently changes providers.</p><p>ChatGPT tokens are kept in OS-protected local storage. If that protection is unavailable, sign-in is disabled. Sign out attempts to revoke the renewable session; if OpenAI cannot confirm, Hamartia clears its local tokens and tells you to disconnect the app in ChatGPT settings. If an encrypted connection file becomes unreadable, you can explicitly confirm removing that local file; Hamartia keeps its host ID, but cannot inspect or revoke the unreadable remote session, so disconnect it in ChatGPT settings. The saved account link can be removed locally to use another ChatGPT account.</p><p>Optional question analysis and the optional configured Study Agent can send data to the OpenAI-compatible endpoint in Settings. Other hosts are allowed; Hamartia does not verify that the service is local or network-isolated. Review the exact destination and use only an endpoint you trust. The API key is omitted from API responses and backups, but the current app stores it unencrypted in its local settings data. The local API is bound to this computer; do not expose it to the public internet.</p></div>
-      </section>
-
-      <section class="section" id="ai-checks">
-        <div class="section-heading"><p class="eyebrow">OPTIONAL MANUAL CHECKS</p><h2>Try the AI features with fictional study data.</h2><p class="muted">These checks are for your own trusted services and packaged desktop app. Never put API keys, account tokens, or real study details in screenshots or reports.</p></div>
-        <div class="handoff-grid">
-          <article class="handoff-card">
-            <p class="card-index">P3 · CONFIGURED ENDPOINT</p>
-            <h3>Check your OpenAI-compatible service.</h3>
-            <ol>
-              <li>Create a disposable text-only missed question with a fictional curriculum reference (for example, an invented framework and outcome; no MEB text). In Settings, enter the endpoint URL, model name, and API key if your service requires one. Save them without sharing or photographing the key.</li>
-              <li>Open Study Agent, choose <strong>Configured OpenAI-compatible endpoint (optional)</strong>, and confirm the displayed URL and model. Read any remote-host or unencrypted-HTTP warning. The endpoint may be remote, and its operator may retain requests; use only a service you trust.</li>
-              <li>Enter a harmless fictional prompt such as: <em>“Suggest one short activity for an imaginary learner reviewing topic T-01.”</em> Review the per-request consent, including the exact destination, curriculum-reference categories, and whether the saved key will be sent, then send.</li>
-              <li>Confirm that you receive a useful response or a clear endpoint error. Hamartia does not switch to ChatGPT when this provider fails; check the URL, model, and service configuration if it errors.</li>
-              <li>Optional: separately use <strong>Review with Local AI</strong> with a disposable question that has invented text. Question analysis can send that text or image to the configured endpoint. Try a synthetic image only if you want to verify multimodal support, then remove the disposable record.</li>
-            </ol>
-          </article>
-          <article class="handoff-card">
-            <p class="card-index">P5 · CHATGPT DESKTOP</p>
-            <h3>Check ChatGPT sign-in and sign-out.</h3>
-            <ol>
-              <li>In the packaged desktop app, choose <strong>ChatGPT subscription (default)</strong>, continue with ChatGPT, sign in, and separately approve OpenAI’s request to use your ChatGPT plan.</li>
-              <li>Choose a model shown as available to your account. Enter a harmless fictional prompt for the disposable question and review the per-request consent, including any user-entered reference data, before sending.</li>
-              <li>Confirm that a response appears. If it fails, read the displayed error; the app will not switch to the configured endpoint.</li>
-              <li>Choose <strong>Sign out</strong> and check whether OpenAI confirms remote revocation. If the app says revocation was not confirmed, follow its notice to disconnect Hamartia in ChatGPT settings.</li>
-            </ol>
-          </article>
-        </div>
-      </section>
-
-      <section class="section backup" id="backup">
-        <div class="backup-copy"><p class="eyebrow">BACKUP &amp; RESTORE</p><h2>A backup you can take with you.</h2><p>In Settings, choose <strong>Download backup</strong> to save a ZIP containing your study records and question images. The ZIP does not contain the local API key.</p><p>To restore, choose <strong>Restore backup</strong> in Settings, select the ZIP, and confirm. Hamartia validates the archive, keeps a timestamped snapshot of your current data, preserves the API key already on this computer, and then restarts.</p><p>Restore the backup only in Hamartia; keep the app open until it reports the result.</p></div>
-        <div class="backup-mark" aria-hidden="true"><span>H</span><i></i><i></i><i></i></div>
-      </section>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Install Hamartia, choose a language, and make a first study record."><link rel="canonical" href="https://nec0ti.github.io/hamartia/">
+  <link rel="icon" type="image/svg+xml" href="./assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="./styles.css"><title>Getting Started · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="./" aria-label="Hamartia"><img src="./assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">User guide</span><a class="language-link" href="./tr/" lang="tr" hreflang="tr">Türkçe</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Documentation</p><nav aria-label="Documentation pages"><ol><li><a href="./" aria-current="page">Getting Started</a></li><li><a href="./purpose-and-scope/">Purpose and scope</a></li><li><a href="./study-workflows/">Study workflows</a></li><li><a href="./mistakes-and-review/">Mistakes and review</a></li><li><a href="./exam-formats-and-maarif/">Exam formats and Maarif</a></li><li><a href="./install/">Install by operating system</a></li><li><a href="./study-agent/">Study Agent and providers</a></li><li><a href="./privacy-and-consent/">Privacy and consent</a></li><li><a href="./backup-and-restore/">Backup and restore</a></li><li><a href="./clock-and-reminders/">Clock and reminders</a></li><li><a href="./accessibility-and-language/">Accessibility and language</a></li><li><a href="./learning-evidence/">Learning evidence and claims</a></li><li><a href="./faq/">FAQ</a></li><li><a href="./troubleshooting/">Troubleshooting</a></li><li><a href="./contributing/">Contributing</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a><a href="https://github.com/Nec0ti/hamartia">Source code ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">English / Getting Started</p><h1>Getting Started</h1><p class="page-description">Install Hamartia, choose a language, and make a first study record.</p><article>
+<p class="lead">Hamartia keeps exam history, missed questions, focused practice, and review records on this computer. Start with the desktop app; an AI provider is optional.</p>
+<h2 id="download">1. Download and install</h2><p>Use the latest <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub release</a>. Choose the Windows installer for Windows 10/11, the <code>.deb</code> for Debian-based Linux, or the AppImage for compatible Linux desktops. Detailed steps are on <a href="./install/">Install by operating system</a>.</p>
+<h2 id="language">2. Choose a language</h2><p>The interface opens in English. Open <strong>Settings</strong> and choose English or Türkçe. The preference is saved on this computer. The documentation also has a Turkish version using the language link at the top of every page.</p>
+<h2 id="first-session">3. Record your first session</h2><ol><li>On <strong>Dashboard</strong>, add a TYT/AYT full mock or a single-subject exam and enter its date, duration, and results.</li><li>Open <strong>My Mistakes</strong> to save a missed question as text or attach a supported image. Add subject and topic labels; if it came from an exam, capture it there to keep the exam context.</li><li>Open <strong>Study Plan</strong> to see due questions, topic priorities, and focused practice. Its stopwatch uses the same timer shown in <strong>Clock</strong>.</li></ol>
+<h2 id="data">Where your data lives</h2><p>Hamartia stores its records in this OS user's application-data folder. Data is not synced between computers automatically. Create a ZIP backup in Settings before moving records. See <a href="./backup-and-restore/">Backup and restore</a> and <a href="./privacy-and-consent/">Privacy and consent</a>.</p>
+<aside class="note"><strong>AI is optional.</strong> Exam entry, review scheduling, topic summaries, practice records, and Clock work without an AI provider. Study Agent and question analysis are separate optional features with distinct data flows.</aside>
+</article>
+      <nav class="page-switch" aria-label="Language versions"><a href="./tr/" lang="tr" hreflang="tr">Read this page in Türkçe</a></nav>
     </main>
-
-    <footer><a class="brand" href="#top" aria-label="Hamartia home"><img src="./assets/hamartia-mark.svg" alt=""> <span>Hamartia</span></a><p>Built for steady progress, one session at a time.</p><a href="https://github.com/Nec0ti/hamartia">View the source ↗</a><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">MIT license ↗</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">Latest release ↗</a></footer>
-  </body>
-</html>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">License</a><span>Docs updated: 2026-11-15</span></footer>
+</body></html>

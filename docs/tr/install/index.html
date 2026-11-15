@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Windows veya Linux için paketlenmiş masaüstü yükleyicisini seç."><link rel="canonical" href="https://nec0ti.github.io/hamartia/tr/install/">
+  <link rel="icon" type="image/svg+xml" href="../../assets/hamartia-favicon.svg">
+  <link rel="stylesheet" href="../../styles.css"><title>İşletim sistemine göre kurulum · Hamartia</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">İçeriğe geç</a>
+  <header class="site-header"><a class="brand" href="../" aria-label="Hamartia"><img src="../../assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <div class="header-actions"><span class="edition">Kullanım kılavuzu</span><a class="language-link" href="../../install/" lang="en" hreflang="en">English</a></div>
+  </header>
+  <div class="page-layout">
+    <aside class="sidebar"><p class="sidebar-title">Dokümantasyon</p><nav aria-label="Dokümantasyon sayfaları"><ol><li><a href="../">Başlarken</a></li><li><a href="../purpose-and-scope/">Amaç ve kapsam</a></li><li><a href="../study-workflows/">Çalışma akışları</a></li><li><a href="../mistakes-and-review/">Yanlışlar ve tekrar</a></li><li><a href="../exam-formats-and-maarif/">Sınav biçimleri ve Maarif</a></li><li><a href="../install/" aria-current="page">İşletim sistemine göre kurulum</a></li><li><a href="../study-agent/">Çalışma Asistanı ve sağlayıcılar</a></li><li><a href="../privacy-and-consent/">Gizlilik ve onay</a></li><li><a href="../backup-and-restore/">Yedekleme ve geri yükleme</a></li><li><a href="../clock-and-reminders/">Saat ve hatırlatıcılar</a></li><li><a href="../accessibility-and-language/">Erişilebilirlik ve dil</a></li><li><a href="../learning-evidence/">Öğrenme kanıtı ve iddialar</a></li><li><a href="../faq/">Sık sorulan sorular</a></li><li><a href="../troubleshooting/">Sorun giderme</a></li><li><a href="../contributing/">Katkı</a></li></ol></nav>
+      <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">En son sürüm ↗</a><a href="https://github.com/Nec0ti/hamartia">Kaynak kod ↗</a></div>
+    </aside>
+    <main id="content" class="article"><p class="breadcrumb">Türkçe / İşletim sistemine göre kurulum</p><h1>İşletim sistemine göre kurulum</h1><p class="page-description">Windows veya Linux için paketlenmiş masaüstü yükleyicisini seç.</p><article>
+<p class="lead">Hamartia; Windows yükleyicisi, Debian paketi ve Linux AppImage yayımlar. Güncel dosyaları <a href="https://github.com/Nec0ti/hamartia/releases/latest">GitHub Releases</a> sayfasından indir. Paketler x64 içindir; şu anda macOS paketi belgelenmiyor.</p>
+<h2 id="windows">Windows 10/11</h2><ol><li>Windows <code>.exe</code> yükleyicisini indir.</li><li>Çalıştır ve yükleyici adımlarını izle. İstersen yükleme klasörünü seç.</li><li>Kurulu kısayoldan Hamartia'yı aç. Kullanıcı verileri geçerli Windows kullanıcısının uygulama verisi dizininde ayrı tutulur.</li></ol><p>Windows yükleyiciyi engeller veya uyarı verirse devam etmeye karar vermeden önce dosyanın projenin Releases sayfasından geldiğini doğrula. Başka yerlerdeki benzer adlı ikili dosyaları indirme.</p>
+<h2 id="debian">Debian ve uyumlu dağıtımlar</h2><p>Sürümdeki <code>.deb</code> dosyasını indir. Sistem paket yükleyicisinde aç veya dosyanın bulunduğu dizinde şu komutu çalıştır:</p><pre><code>sudo apt install ./Hamartia-linux-x64.deb</code></pre><p>Dosya adı farklıysa indirdiğin gerçek adı kullan. Paket yöneticisi bağımlılıkların kurulmasını isteyebilir.</p>
+<h2 id="appimage">Linux AppImage</h2><p>AppImage'i indir ve bulunduğu dizinde şu komutları çalıştır:</p><pre><code>chmod +x Hamartia-linux-x64.AppImage
+./Hamartia-linux-x64.AppImage</code></pre><p>Dosya adı farklıysa gerçek adı kullan. Bazı masaüstü ortamları FUSE veya sistem entegrasyonu gerektirir; açılmazsa dağıtımının belgelerine bak.</p>
+<h2 id="first-run">İlk açılış</h2><p>Uygulama İngilizce açılır. Dili Ayarlar'dan değiştir. Yerel çalışma verileri işletim sistemi kullanıcısının uygulama veri klasöründe kalır ve kendin silmediğin sürece güncelleme veya yeniden kurulumdan sonra korunur. Kaldırmadan ya da bilgisayar değiştirmeden önce yedek al. <a href="../backup-and-restore/">Yedekleme ve geri yükleme</a> ile <a href="../troubleshooting/">Sorun giderme</a> sayfalarına bak.</p>
+</article>
+      <nav class="page-switch" aria-label="Dil sürümleri"><a href="../../install/" lang="en" hreflang="en">Bu sayfayı şu dilde oku English</a></nav>
+    </main>
+  </div>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">Lisans</a><span>Doküman güncellemesi: 2026-11-15</span></footer>
+</body></html>

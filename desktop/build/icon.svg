@@ -4,5 +4,5 @@
     <path d="M96 144h120M296 144h120M216 144v96c0 72 48 112 120 112h80"/>
     <path d="M96 360h112"/>
   </g>
-  <circle cx="120" cy="360" r="25" fill="#ffffff"/>
+  <circle cx="120" cy="360" r="28" fill="#ffffff"/>
 </svg>

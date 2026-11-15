@@ -5,7 +5,7 @@ const path = require('node:path')
 const { chromium } = require('playwright')
 
 const pages = [
-  '', 'purpose-and-scope/', 'study-workflows/', 'mistakes-and-review/',
+  '', 'system-architecture/', 'purpose-and-scope/', 'study-workflows/', 'mistakes-and-review/',
   'exam-formats-and-maarif/', 'install/', 'study-agent/', 'privacy-and-consent/',
   'backup-and-restore/', 'clock-and-reminders/', 'accessibility-and-language/',
   'learning-evidence/', 'faq/', 'troubleshooting/', 'contributing/',

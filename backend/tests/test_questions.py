@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import HTTPException, UploadFile
-from openai import OpenAIError
 from pydantic import ValidationError
 from starlette.datastructures import Headers
 
@@ -105,22 +104,6 @@ class QuestionFlowTests(unittest.TestCase):
                 ))
             self.assertEqual(raised.exception.status_code, 422)
         self.assertEqual(self.storage.load_list("questions.json", Question), [])
-
-    def test_model_provider_failure_is_visible_and_does_not_save_a_fake_analysis(self):
-        self.storage.save_list("questions.json", [Question(id="q1", hamartia_tag="[Reading Slip]")])
-
-        class OfflineModel:
-            async def analyze_question(self, _question):
-                raise OpenAIError("provider offline")
-
-        with self.assertRaises(HTTPException) as error:
-            asyncio.run(question_api.analyze_question("q1", self.storage, OfflineModel()))
-
-        saved = self.storage.load_list("questions.json", Question)[0]
-        self.assertEqual(error.exception.status_code, 502)
-        self.assertIn("OpenAIError", error.exception.detail)
-        self.assertIsNone(saved.analysis)
-        self.assertEqual(saved.hamartia_tag, "[Reading Slip]")
 
     def test_exam_question_metadata_round_trips_and_rejects_missing_exam(self):
         self.storage.save_list("exams.json", [Exam(

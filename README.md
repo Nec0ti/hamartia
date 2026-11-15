@@ -2,7 +2,7 @@
 
 ![Hamartia review path mark](assets/brand/hamartia-mark.svg)
 
-A local-first study tool for recording missed questions, spotting patterns in mistakes, and turning them into targeted practice and review. Hamartia grew from Turkish mock-exam workflows, including LGS and YKS. The current app supports TYT/AYT full mocks and single-subject exams; subject and topic labels are free text. Its built-in net calculation uses the YKS wrong-answer penalty, so other mock-exam workflows can reuse it when their scoring is compatible; different exam structures or scoring rules may need adaptation through a contribution or fork. The interface currently supports English and Turkish. Hamartia is original software licensed under MIT; contributions and forks are welcome. It does not use content from external platforms.
+A local-first study tool for recording missed questions, spotting patterns in mistakes, and turning them into targeted practice and review. Hamartia grew from Turkish mock-exam workflows, including LGS and YKS. The app supports TYT/AYT full mocks, single-subject exams, and topic practice sessions; subject and topic labels are free text. Records use an immutable scoring-profile snapshot: older and profile-omitting records keep the legacy YKS rule, while users can choose or define versioned exact-rational profiles for new exams and practice sessions. Profile names are user-entered and are not official or authority-validated rules. The interface supports English and Turkish. Hamartia is original software licensed under MIT; contributions and forks are welcome. It does not use content from external platforms.
 
 ## Documentation
 
@@ -78,6 +78,7 @@ PYTHONPATH=backend python backend/benchmarks/benchmark_backup.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_question_order.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_practice_sessions.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_exam_profiles.py
+PYTHONPATH=backend python backend/benchmarks/benchmark_practice_profiles.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_mixed_workloads.py
 PYTHONPATH=backend python backend/benchmarks/benchmark_clock_api.py
 python3 scripts/benchmark_docs.py
@@ -85,7 +86,7 @@ python3 scripts/benchmark_docs.py
 
 `benchmark_docs.py` parses the checked-in rendered wiki with Python's standard library and makes no network requests. It validates the 17 EN/TR routes, locale attributes, matching navigation and active items, paired section anchors, local links/assets, and 20 rubric entries against exact excerpts in their cited rendered sections and the screenshot protocol. It writes `reports/2026-11-15-docs-benchmark-results.json`. External links are counted but not fetched. The output labels `ai_included: false`.
 
-The versioned exam scoring profile slice, its non-AI persisted API benchmark, and its limitations are documented in [`reports/2026-11-15-exam-scoring-profiles.md`](reports/2026-11-15-exam-scoring-profiles.md). It covers exam records; completed topic-practice sets still use the legacy YKS rule.
+The exam scoring profile implementation is documented in [`reports/2026-11-15-exam-scoring-profiles.md`](reports/2026-11-15-exam-scoring-profiles.md), with the PracticeSession, focused-timer, Study Agent host-selection, and backup extension in [`reports/2026-11-16-practice-scoring-profiles.md`](reports/2026-11-16-practice-scoring-profiles.md). Its persisted API benchmark uses synthetic fixtures and mounts no provider routes.
 
 The task workbook contains ten paired tasks total (20 locale-specific prompts, ten per locale), including cross-page synthesis, false premises, synthetic broken/stale-link decoys, privacy/scope/Clock gates, and fixed-viewport screenshot tasks. `docs/benchmark/answer_key.json` is a separate weighted human rubric with page/anchor evidence. Human administration requires at least two independent single-locale testers per locale, seeded task ordering, and a fresh browser profile per tester. Each tester must score at least 43/50; the two locale cohort means must sum to at least 90/100; every tester must earn full credit on all four critical tasks in their locale. No human runs or screenshots are included in the automated result yet. The task and key files are checked into the repository and therefore inspectable: an evaluator can withhold the key during a session, but this is not a cryptographically sealed or anti-gaming blind test. Screenshots, visual usability, and retrieval accuracy require human administration and scoring.
 

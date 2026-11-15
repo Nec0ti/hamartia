@@ -107,6 +107,14 @@ Excluded from benchmarks: model loading/running, prompt quality, AI response qua
 - GitHub Actions frontend/backend jobs succeeded for `feat: add a local mistake review loop` and review-undo commits. Local Git tree matches the GitHub `codex/hamartia-rebuild` tree SHA; source `master` remains at `c5642d0`. Normal Git transport is unavailable due to DNS; the branch is committed through the GitHub API.
 - 2026-11-14 full-mock result: 81 backend tests, 7 frontend tests, Vite build, and real-browser TYT/AYT create/reload/edit/delete + section missed-question capture smoke passed. Five benchmarks completed without AI calls; report: `reports/2026-11-14-full-mock-results.md`. This checkout has no real user `backend/data` sample; the real local model still needs manual testing on the other computer.
 
+## 2026-11-16 practice scoring profiles
+
+- Extended the existing `exam_profiles.json` catalog to practice-session records; no second catalog. New records can select a user-defined exact-rational profile and persist the full immutable snapshot. Old JSON and archives retain `legacy-yks@1`; practice accuracy remains `correct / (correct + incorrect)`, and practice records grant no XP. Exam scoring and XP are unchanged.
+- Manual, agent-approved, and focused-timer creates persist the snapshot. Edits preserve the prior snapshot when selection is omitted and resolve an explicitly selected catalog version otherwise. Focus timer drafts persist their snapshot across reload, profile edits, completion, and retry. Same-key retries are idempotent, and altered content with the same key is rejected.
+- Summaries/trends are grouped by profile ID and version. The Study Agent's profile selection stays host-owned, appears in the exact preview digest, is recomputed at create, and cannot be set by provider arguments. This applies to ChatGPT and configured-provider mocks; no live provider was called.
+- Current and profile-free legacy ZIP restores are covered. The independent non-AI API benchmark uses literal profile/score/full-row/group oracles, unique/bounded metadata checks, timer millisecond boundaries, retry safety, and complete catalog/snapshot backup comparisons. It mounts only provider-free application routes and does not measure model quality or resources. Details: `reports/2026-11-16-practice-scoring-profiles.md`.
+- Verification: backend 174/174, frontend 32/32, desktop 40/40; frontend production build passed with the existing large-chunk warning; practice profile benchmark `--repeats 3` and bilingual docs integrity benchmark passed. Browser smoke was not executable here because Chromium could not load `libglib-2.0.so.0`; no real AI/provider execution was run.
+
 ## Open decisions
 
 - How should full TYT/AYT practice exams and branch exams be distinguished in exam entry?

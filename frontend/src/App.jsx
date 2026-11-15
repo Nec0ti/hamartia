@@ -51,6 +51,11 @@ export default function App() {
     }
   }, [t])
 
+  const openSettings = useCallback(() => {
+    setSettingsOpen(true)
+    loadSettings()
+  }, [loadSettings])
+
   const panel = useMemo(() => {
     if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {
       setQuestionExam(exam)
@@ -58,10 +63,10 @@ export default function App() {
     }} />
     if (activeTab === 'questions') return <QuestionsTab initialExam={questionExam} />
     if (activeTab === 'studyplan') return <StudyPlanTab />
-    if (activeTab === 'studyagent') return <StudyAgentTab />
+    if (activeTab === 'studyagent') return <StudyAgentTab settings={settings} settingsOpen={settingsOpen} onOpenSettings={openSettings} />
     if (activeTab === 'cosmos') return <CosmosTab />
     return <ComingSoon tabId={activeTab} />
-  }, [activeTab, questionExam])
+  }, [activeTab, questionExam, settings, settingsOpen, openSettings])
 
   return (
     <div className="flex h-full flex-col">
@@ -71,9 +76,7 @@ export default function App() {
           if (tab !== 'questions') setQuestionExam(null)
           setActiveTab(tab)
         }}
-        onOpenSettings={() => {
-          setSettingsOpen(true)
-        }}
+        onOpenSettings={openSettings}
       />
       <main className="min-h-[calc(100vh-57px)] flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {panel}

@@ -100,6 +100,10 @@ export const settings = {
     client.patch('/settings', payload).then((r) => r.data),
 }
 
+export const studyAgent = {
+  local: (payload) => client.post('/study-agent/local', payload).then((r) => r.data),
+}
+
 /* --------------------------- healthcheck / misc ------------------------- */
 
 export const health = {
@@ -113,4 +117,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, practice, questions, cosmos, user, settings, health }
+export default { exams, practice, questions, cosmos, user, settings, studyAgent, health }

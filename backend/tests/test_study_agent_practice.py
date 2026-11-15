@@ -183,7 +183,9 @@ class StudyAgentPracticeTests(unittest.TestCase):
 
     def test_labeled_numeric_prefixes_are_rejected_but_labeled_comma_boundaries_are_allowed(self):
         evidence, ambiguous = extract_fields([
-            "correct: 1,200, incorrect: 2.5, blank: 3, duration_minutes: 1,000, duration_seconds: 30"
+            "correct: 1,200, incorrect: 2.5, blank: 3, duration_minutes: 1,000, duration_seconds: 30",
+            "correct: 1 , 200",
+            "correct: 1 . 5",
         ])
         self.assertEqual(ambiguous, {})
         self.assertNotIn("correct", evidence)

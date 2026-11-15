@@ -41,9 +41,9 @@ def _patterns(field: str) -> list[re.Pattern]:
     labels = rf"(?<!\w)(?:{ALIASES[field]})(?!\w)"
     next_label = "|".join(f"(?:{value})" for value in ALIASES.values())
     # A comma is a valid boundary only when it introduces another labeled
-    # field. Keep rejecting decimal and thousands separators that would
-    # otherwise let the parser accept a numeric prefix (for example 1,200).
-    numeric_end = rf"(?![\d.]|\s+\d|,(?!\s*(?:{next_label})\s*:))\b"
+    # field. Keep rejecting decimal and thousands separators, including
+    # whitespace before punctuation, that could expose a numeric prefix.
+    numeric_end = rf"(?![\d.]|\s+\d|\s*,(?!\s*(?:{next_label})\s*:)|\s*\.\s*\d)\b"
     correction = r"(?:(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:\s*)?"
     if field in {"subject", "topic"}:
         next_label = "|".join(f"(?:{value})" for value in ALIASES.values())

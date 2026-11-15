@@ -237,6 +237,21 @@ class StudyAgentCliTests(unittest.TestCase):
         )
         self.assertEqual(corrected["fields"]["correct"], 7)
         self.assertNotIn("correct", corrected["ambiguous"])
+        punctuated_correction = prepare_practice(
+            ["I got 5 right; Correction: I got 7 right."], "en",
+            [
+                {"field": "correct", "quote": "5 right"},
+                {"field": "correct", "quote": "Correction: I got 7 right"},
+            ],
+        )
+        self.assertEqual(punctuated_correction["fields"]["correct"], 7)
+        self.assertNotIn("correct", punctuated_correction["ambiguous"])
+        unrelated_clause = prepare_practice(
+            ["I got 5 right; I practiced Functions."], "en",
+            [{"field": "correct", "quote": "5 right"}],
+        )
+        self.assertEqual(unrelated_clause["fields"]["correct"], 5)
+        self.assertNotIn("correct", unrelated_clause["ambiguous"])
 
     def test_duplicate_or_unicode_mismatched_quotes_are_rejected(self):
         repeated = prepare_practice(["I got 5 right.", "I got 5 right."], "en", [{"field": "correct", "quote": "5 right"}])

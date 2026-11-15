@@ -1,6 +1,7 @@
 """Measure local question-image storage and tagging without calling a model."""
 
 import asyncio
+import hashlib
 import json
 import random
 import tempfile
@@ -60,10 +61,21 @@ async def run(count=24, repeats=7, json_output=None):
         storage.save_list("exams.json", [sectioned_exam])
         with patch.object(questions, "DATA_DIR", root), patch.object(questions, "UPLOAD_DIR", root / "uploads"), \
                 patch.object(questions, "_utcnow", return_value=FIXED_NOW):
+            fixture_started = time.perf_counter()
+            upload_fixtures = [make_upload(index) for index in range(count)]
+            upload_fixture_generation_seconds = time.perf_counter() - fixture_started
+            upload_fixture_bytes = 0
+            upload_fixture_hashes = []
+            for upload in upload_fixtures:
+                upload.file.seek(0)
+                contents = upload.file.read()
+                upload_fixture_bytes += len(contents)
+                upload_fixture_hashes.append(hashlib.sha256(contents).hexdigest())
+                upload.file.seek(0)
+
             started = time.perf_counter()
             uploaded_records = []
-            for index in range(count):
-                upload = make_upload(index)
+            for index, upload in enumerate(upload_fixtures):
                 try:
                     uploaded_records.append(await questions.upload_question(
                         upload, f"Seeded question text {index}", SUBJECTS[(index // 4) % len(SUBJECTS)],
@@ -83,8 +95,21 @@ async def run(count=24, repeats=7, json_output=None):
                 subject=SUBJECTS[(index // 4) % len(SUBJECTS)], topic=TOPICS[index % len(TOPICS)],
                 created_at=FIXED_NOW,
             ) for index, item in enumerate(uploaded_records)]
+            uploaded_ids = [item.id for item in uploaded_records]
+            assert len(set(uploaded_ids)) == count, "upload API returned duplicate question IDs"
+            assert len({item.id for item in saved}) == count, "persisted question IDs are not unique"
+            assert len({item.image_name for item in saved}) == count, "persisted upload filenames are not unique"
             assert all(item.id.startswith("q_") and item.image_name.startswith("q_")
                        and item.image_path == f"uploads/{item.image_name}" for item in saved)
+            assert [item.id for item in saved] == uploaded_ids
+            expected_upload_hashes = {item.image_name: upload_fixture_hashes[index]
+                                      for index, item in enumerate(uploaded_records)}
+            actual_upload_hashes = {
+                item.image_name: hashlib.sha256((root / item.image_path).read_bytes()).hexdigest()
+                for item in saved
+            }
+            assert actual_upload_hashes == expected_upload_hashes
+            assert sum((root / item.image_path).stat().st_size for item in saved) == upload_fixture_bytes
             assert_oracle([item.model_dump(mode="json") for item in saved],
                           [item.model_dump(mode="json") for item in expected_questions],
                           "full uploaded question records")
@@ -248,7 +273,8 @@ async def run(count=24, repeats=7, json_output=None):
             "seed": SEED,
             "questions": count,
             "valid_png_dimensions": ["256x256", "512x384", "1024x768"],
-            "image_bytes": sum(path.stat().st_size for path in (root / "uploads").iterdir()),
+            "image_bytes": upload_fixture_bytes,
+            "upload_fixture_generation_seconds": round(upload_fixture_generation_seconds, 4),
             "upload_seconds": round(upload_seconds, 4),
             "uploads_per_second": round(count / upload_seconds, 2),
             "list_seconds": round(list_seconds, 4),

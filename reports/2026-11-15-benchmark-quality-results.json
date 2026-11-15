@@ -20,8 +20,8 @@
           "seed": 20261114
         },
         "export": {
-          "p50_seconds": 1.161728,
-          "p95_seconds": 1.172073,
+          "p50_seconds": 1.098423,
+          "p95_seconds": 1.106085,
           "samples": 3
         },
         "failure_safety": "checksum-corrupt restore preserved target; missing upload references and ZIP traversal paths were rejected",
@@ -36,8 +36,8 @@
           "questions": 24
         },
         "restore": {
-          "p50_seconds": 0.138502,
-          "p95_seconds": 0.139877,
+          "p50_seconds": 0.13594,
+          "p95_seconds": 0.140162,
           "samples": 3
         },
         "restore_snapshot": "pre-existing data was snapshotted and preserved each run",
@@ -48,12 +48,12 @@
           3688548
         ],
         "validation": {
-          "p50_seconds": 0.135085,
-          "p95_seconds": 0.136883,
+          "p50_seconds": 0.145225,
+          "p95_seconds": 0.150937,
           "samples": 3
         }
       },
-      "wall_seconds": 9.11
+      "wall_seconds": 8.98
     },
     "benchmark_mixed_workloads": {
       "result": {
@@ -61,7 +61,7 @@
         "benchmark": "persisted_mixed_study_workloads",
         "concurrent_appends": {
           "records": 16,
-          "seconds": 1.124724,
+          "seconds": 1.090734,
           "workers": 4
         },
         "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
@@ -73,9 +73,9 @@
           "seed": 20261114
         },
         "first_service_load_seconds": {
-          "exams.json": 0.016444,
-          "practice_sessions.json": 0.101161,
-          "questions.json": 0.062159
+          "exams.json": 0.015637,
+          "practice_sessions.json": 0.103273,
+          "questions.json": 0.062316
         },
         "oracle_self_checks": [
           "mixed progression XP corrupted",
@@ -88,23 +88,23 @@
           "questions.json": 3021091
         },
         "practice_summaries_full_history": {
-          "p50_seconds": 0.117082,
-          "p95_seconds": 0.148194,
+          "p50_seconds": 0.117388,
+          "p95_seconds": 0.149918,
           "samples": 21
         },
         "progression_full_history": {
-          "p50_seconds": 0.022317,
-          "p95_seconds": 0.025901,
+          "p50_seconds": 0.02201,
+          "p95_seconds": 0.027146,
           "samples": 21
         },
         "question_delete_10_records": {
-          "p50_seconds": 0.18071,
-          "p95_seconds": 0.240552,
+          "p50_seconds": 0.186634,
+          "p95_seconds": 0.243147,
           "samples": 10
         },
         "question_insights_full_history": {
-          "p50_seconds": 0.134212,
-          "p95_seconds": 0.174059,
+          "p50_seconds": 0.133153,
+          "p95_seconds": 0.173222,
           "samples": 21
         },
         "question_review_activity": {
@@ -115,8 +115,8 @@
           "today_questions": 174
         },
         "question_update_10_records": {
-          "p50_seconds": 0.186056,
-          "p95_seconds": 0.233144,
+          "p50_seconds": 0.18382,
+          "p95_seconds": 0.230913,
           "samples": 10
         },
         "records": {
@@ -143,23 +143,23 @@
         },
         "warm_load": {
           "exams.json": {
-            "p50_seconds": 0.02098,
-            "p95_seconds": 0.046372,
+            "p50_seconds": 0.019776,
+            "p95_seconds": 0.049712,
             "samples": 21
           },
           "practice_sessions.json": {
-            "p50_seconds": 0.102289,
-            "p95_seconds": 0.126949,
+            "p50_seconds": 0.095794,
+            "p95_seconds": 0.10571,
             "samples": 21
           },
           "questions.json": {
-            "p50_seconds": 0.071343,
-            "p95_seconds": 0.104314,
+            "p50_seconds": 0.071028,
+            "p95_seconds": 0.102938,
             "samples": 21
           }
         }
       },
-      "wall_seconds": 22.0
+      "wall_seconds": 21.89
     },
     "benchmark_practice_sessions": {
       "result": {
@@ -175,7 +175,7 @@
         "runs": [
           {
             "correctness": "every topic aggregate and ordered trend matches an independent oracle",
-            "first_full_summary_seconds": 0.032988,
+            "first_full_summary_seconds": 0.034221,
             "oracle_self_checks": [
               "practice net corrupted"
             ],
@@ -183,14 +183,14 @@
             "sessions": 1000,
             "topics": 676,
             "warm_full_summary": {
-              "p50_seconds": 0.032827,
-              "p95_seconds": 0.043096,
+              "p50_seconds": 0.031645,
+              "p95_seconds": 0.041628,
               "samples": 7
             }
           },
           {
             "correctness": "every topic aggregate and ordered trend matches an independent oracle",
-            "first_full_summary_seconds": 0.317401,
+            "first_full_summary_seconds": 0.293266,
             "oracle_self_checks": [
               "practice net corrupted"
             ],
@@ -198,15 +198,15 @@
             "sessions": 10000,
             "topics": 1282,
             "warm_full_summary": {
-              "p50_seconds": 0.304539,
-              "p95_seconds": 0.325803,
+              "p50_seconds": 0.29473,
+              "p95_seconds": 0.333278,
               "samples": 7
             }
           }
         ],
         "seed": 20261114
       },
-      "wall_seconds": 4.57
+      "wall_seconds": 4.43
     },
     "benchmark_question_order": {
       "result": {
@@ -229,8 +229,8 @@
             "persisted_bytes": 651504,
             "questions": 1008,
             "warm_full_summary": {
-              "p50_seconds": 0.033278,
-              "p95_seconds": 0.050098,
+              "p50_seconds": 0.032457,
+              "p95_seconds": 0.047199,
               "samples": 7
             }
           },
@@ -243,27 +243,27 @@
             "persisted_bytes": 6487369,
             "questions": 10008,
             "warm_full_summary": {
-              "p50_seconds": 0.372889,
-              "p95_seconds": 0.403218,
+              "p50_seconds": 0.372802,
+              "p95_seconds": 0.424615,
               "samples": 7
             }
           }
         ],
         "seed": 20261114
       },
-      "wall_seconds": 4.82
+      "wall_seconds": 4.84
     },
     "benchmark_questions": {
       "result": {
         "ai_included": false,
-        "attempt_seconds": 0.0057,
+        "attempt_seconds": 0.0025,
         "benchmark": "local_question_flow",
         "code_path_fault_probes": [
           "lost upload append",
           "lost persisted review attempt"
         ],
         "correctness": "full persisted records and full insights matched independent oracles after upload, tagging, attempt, edit, delete, and section-linked capture",
-        "delete_seconds": 0.0037,
+        "delete_seconds": 0.0025,
         "environment": {
           "logical_cpus": 8,
           "platform": "Linux-7.3.0-x86_64-with-glibc2.44",
@@ -272,18 +272,18 @@
           "seed": 20261114
         },
         "fault_probe_timing": "excluded from all reported performance samples",
-        "image_bytes": 17183080,
-        "insight_seconds": 0.0008,
+        "image_bytes": 23741860,
+        "insight_seconds": 0.0017,
         "insights_warm": {
-          "p50_seconds": 0.000903,
-          "p95_seconds": 0.003326,
+          "p50_seconds": 0.000783,
+          "p95_seconds": 0.001976,
           "samples": 7
         },
         "limitations": "PNG fixtures mix seeded block-textured and high-entropy pixels; no real corpus or AI/image-understanding path is used.",
         "list_seconds": 0.0005,
         "list_warm": {
-          "p50_seconds": 0.000708,
-          "p95_seconds": 0.001899,
+          "p50_seconds": 0.000413,
+          "p95_seconds": 0.000466,
           "samples": 7
         },
         "oracle_self_checks": [
@@ -295,51 +295,52 @@
           "invalid PNG signature"
         ],
         "repeated_deletes": {
-          "p50_seconds": 0.002706,
-          "p95_seconds": 0.004776,
+          "p50_seconds": 0.003203,
+          "p95_seconds": 0.004828,
           "samples": 7
         },
         "repeated_updates": {
-          "p50_seconds": 0.003225,
-          "p95_seconds": 0.005236,
+          "p50_seconds": 0.003262,
+          "p95_seconds": 0.00348,
           "samples": 7
         },
-        "review_seconds": 0.0031,
-        "section_question_insight_seconds": 0.0015,
-        "section_question_upload_seconds": 0.1147,
+        "review_seconds": 0.0022,
+        "section_question_insight_seconds": 0.0016,
+        "section_question_upload_seconds": 0.1153,
         "section_questions": 24,
         "seed": 20261114,
-        "text_capture_seconds": 0.1288,
-        "text_captures_per_second": 186.33,
+        "text_capture_seconds": 0.1319,
+        "text_captures_per_second": 182.0,
         "update_seconds": 0.0025,
-        "upload_seconds": 1.1563,
-        "uploads_per_second": 20.76,
+        "upload_fixture_generation_seconds": 1.0057,
+        "upload_seconds": 0.0951,
+        "uploads_per_second": 252.41,
         "valid_png_dimensions": [
           "256x256",
           "512x384",
           "1024x768"
         ]
       },
-      "wall_seconds": 3.09
+      "wall_seconds": 3.2
     },
     "benchmark_storage": {
       "result": {
         "ai_included": false,
-        "append_records_per_second": 54.06,
-        "append_seconds": 18.4979,
+        "append_records_per_second": 49.39,
+        "append_seconds": 20.2459,
         "benchmark": "json_exam_storage_sequential_append_stress",
         "correctness": "append/read/update/delete and progression assertions passed",
         "corrupt_input_cases": [
           "truncated JSON rejected without overwriting source"
         ],
         "delete_one": {
-          "p50_seconds": 0.03371,
-          "p95_seconds": 0.034138,
+          "p50_seconds": 0.033909,
+          "p95_seconds": 0.034429,
           "samples": 7
         },
         "document_update": {
-          "p50_seconds": 0.001686,
-          "p95_seconds": 0.003319,
+          "p50_seconds": 0.002034,
+          "p95_seconds": 0.002828,
           "samples": 7
         },
         "environment": {
@@ -355,28 +356,28 @@
         ],
         "persisted_json_bytes": 309935,
         "progression_full_history": {
-          "p50_seconds": 0.012077,
-          "p95_seconds": 0.0148,
+          "p50_seconds": 0.013326,
+          "p95_seconds": 0.015902,
           "samples": 7
         },
-        "read_seconds": 0.0194,
+        "read_seconds": 0.0186,
         "records": 1000,
         "sectioned_full_mocks": 10,
         "seed": 20261114,
         "update_one": {
-          "p50_seconds": 0.033238,
-          "p95_seconds": 0.034315,
+          "p50_seconds": 0.033622,
+          "p95_seconds": 0.035409,
           "samples": 7
         },
         "warm_read": {
-          "p50_seconds": 0.011165,
-          "p95_seconds": 0.013056,
+          "p50_seconds": 0.011034,
+          "p95_seconds": 0.013245,
           "samples": 7
         }
       },
-      "wall_seconds": 19.68
+      "wall_seconds": 21.44
     }
   },
   "seed": 20261114,
-  "suite_wall_seconds": 63.27
+  "suite_wall_seconds": 64.77
 }

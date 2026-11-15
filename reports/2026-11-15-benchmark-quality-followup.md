@@ -4,7 +4,7 @@ Date: 2026-11-15
 
 ## Scope
 
-This follow-up tightens the persisted question, backup, and mixed-history benchmarks. Question records are compared as complete persisted objects after upload, tagging, attempts, review, edits, deletes, text capture, and section-linked capture. The final question-insights response is checked against an independently constructed oracle for review state, same-day counts, topic groups, curriculum references, and order buckets.
+This follow-up tightens the persisted question, backup, and mixed-history benchmarks. Question records are compared as complete persisted objects after upload, tagging, attempts, review, edits, deletes, text capture, and section-linked capture. The final question-insights response is checked against an independently constructed oracle for review state, same-day counts, topic groups, curriculum references, and order buckets. Question upload fixtures are generated and hashed before timing starts; the timed upload interval covers only API upload operations. The pre-delete fixture-byte total is reported, each stored image hash/size is checked, and returned/persisted question IDs and filenames must be unique.
 
 Two untimed fault probes exercise real question API operations while an injected atomic-write fault silently drops (1) the appended question record and (2) a recorded review attempt. The API still reports success; the full-state oracle must reject the resulting stored state. These probes demonstrate detection of these two named persistence faults only. They do not mutate production source or establish coverage for arbitrary defects. The earlier oracle comparator self-checks remain separate.
 
@@ -14,13 +14,13 @@ No production application code or local-AI path was added or changed. No AI prov
 
 ## Validation
 
-Ran the six default benchmark scripts sequentially using Python 3.12.15 on Linux `7.3.0-x86_64-with-glibc2.44` with 8 logical CPUs reported. Combined wall time was 63.27 seconds. Every script succeeded and emitted `ai_included:false` with seed `20261114`.
+Ran the six default benchmark scripts sequentially using Python 3.12.15 on Linux `7.3.0-x86_64-with-glibc2.44` with 8 logical CPUs reported. Combined wall time was 64.77 seconds. Every script succeeded and emitted `ai_included:false` with seed `20261114`.
 
 | Benchmark | Default data and observed checks |
 |---|---|
-| Storage | 1,000 exams / 309,935 JSON bytes; full CRUD/progression oracle passed; sequential append stress 18.4979 s (54.06 records/s); truncated JSON rejected. |
-| Questions | 24 uploads / 17,183,080 image bytes; complete persisted-state checks and full post-mutation insights oracle passed; both injected write faults were detected; invalid inputs left records unchanged. |
-| Backup/restore | 96 exams, 24 questions, 96 practice sessions; 28,612,786 upload bytes with per-file sizes 19,174–3,688,548 bytes; 28,624,545-byte archive; export p50/p95 1.161728/1.172073 s, validation 0.135085/0.136883 s, restore 0.138502/0.139877 s; complete record/settings and upload checks passed. |
+| Storage | 1,000 exams / 309,935 JSON bytes; full CRUD/progression oracle passed; sequential append stress 20.2459 s (49.39 records/s); truncated JSON rejected. |
+| Questions | 24 uploads / 23,741,860 fixture bytes; fixture generation took 1.0057 s outside the API upload timer; API uploads took 0.0951 s (252.41/s). Full persisted-state/insights oracles, unique-ID/filename checks, and stored-image hash/size checks passed; both injected write faults were detected. |
+| Backup/restore | 96 exams, 24 questions, 96 practice sessions; 28,612,786 upload bytes with per-file sizes 19,174–3,688,548 bytes; 28,624,545-byte archive; export p50/p95 1.098423/1.106085 s, validation 0.145225/0.150937 s, restore 0.135940/0.140162 s; complete record/settings and upload checks passed. |
 | Question order | 1,008 and 10,008 questions; unique positions, per-stage counts/medians, and invalid references matched the oracle. |
 | Practice history | 1,000 and 10,000 sessions; every aggregate and ordered trend matched the oracle. |
 | Mixed persisted history | 1,500 exams, 2,500 questions, 4,000 practice sessions; 64 image references / 6,095,309 bytes (19,167–194,177 bytes each) and 993,890 question-text characters; full progression, question-priority, practice, update/delete, and threaded append checks passed. |

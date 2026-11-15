@@ -153,6 +153,10 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15 or November 16th."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15 or 2026.11.16."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15 or 11/16."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15, or 16."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15; or 16."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was 2026-11-15\nor 16."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I studied on 2026-11-15 or 16:30."], "evidence": [{"field": "date", "quote": "on 2026-11-15"}]}, "incomplete", None, False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["The date was November 15 or 16."], "evidence": [{"field": "date", "quote": "November 15"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 15 Kasım veya 16."], "evidence": [{"field": "date", "quote": "15 Kasım"}]}, "ambiguous", "date", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["Tarih 2026-11-15 veya 15 Kasım."], "evidence": [{"field": "date", "quote": "2026-11-15"}]}, "ambiguous", "date", False),
@@ -168,12 +172,23 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 seconds and thirty seconds."], "evidence": [{"field": "duration_seconds", "quote": "45 seconds"}]}, "ambiguous", "duration_seconds", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["45 dakika ve otuz dakika sürdü."], "evidence": [{"field": "duration_minutes", "quote": "45 dakika"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 minutes plus one and a half minutes."], "evidence": [{"field": "duration_minutes", "quote": "45 minutes"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 minutes, plus thirty minutes."], "evidence": [{"field": "duration_minutes", "quote": "45 minutes"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I spent 45 minutes; plus 30 minutes."], "evidence": [{"field": "duration_minutes", "quote": "45 minutes"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I spent 45 minutes\nplus 30 minutes."], "evidence": [{"field": "duration_minutes", "quote": "45 minutes"}]}, "ambiguous", "duration_minutes", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["It took 45 seconds, and thirty seconds."], "evidence": [{"field": "duration_seconds", "quote": "45 seconds"}]}, "ambiguous", "duration_seconds", False),
+        ({"command": "study.practice.prepare", "language": "tr", "messages": ["45 dakika, ve otuz dakika sürdü."], "evidence": [{"field": "duration_minutes", "quote": "45 dakika"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "tr", "messages": ["45 dakika ya da bir buçuk saat sürdü."], "evidence": [{"field": "duration_minutes", "quote": "45 dakika"}]}, "ambiguous", "duration_minutes", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I practiced Functions."], "evidence": [{"field": "topic", "quote": "practiced Functions"}]}, "incomplete", "correct", True),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I practiced Functions."], "evidence": [{"field": "topic", "quote": "unquoted guess"}]}, "incomplete", "correct", True),
     ]
     for request, status, field, is_missing in probes:
-        _assert_rejected_probe(request, status=status, field=field, missing=is_missing)
+        result = _assert_rejected_probe(request, status=status, field=field, missing=is_missing)
+        if request["messages"] == ["I studied on 2026-11-15 or 16:30."] and (
+            result.get("fields", {}).get("date") != "2026-11-15"
+            or "date" in result.get("missing", [])
+            or "date" in result.get("ambiguous", {})
+        ):
+            raise AssertionError("a time continuation was incorrectly treated as a date alternative")
 
     # A correction is the one allowed resolution of conflicting user turns.
     correction = {**base, "messages": [*base["messages"], "Correction: I got 3 right."]}
@@ -225,7 +240,7 @@ def run_trial(count: int, seed: int) -> dict:
         _assert_rejected_probe(request, status=status, field=field, missing=missing)
     adversarial_count = adversarial_probes(seed)
     return {
-        "records_checked": count, "seconds": elapsed, "rejected_probes": len(negatives) + adversarial_count,
+        "records_checked": count, "seconds": elapsed, "probes_checked": len(negatives) + adversarial_count,
         "side_effects": {
             "provider_calls": {"measurement": "structurally_excluded", "runtime_counted": False},
             "writes": {"measurement": "structurally_excluded", "runtime_counted": False},

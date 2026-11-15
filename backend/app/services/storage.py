@@ -5,14 +5,17 @@ Guarantees:
     collections raise instead of hiding or overwriting student data.
   * Atomic writes — each save writes to a temp file then renames, so a crash
     mid-write can never corrupt an existing file.
-  * Thread safety — a per-file lock serializes concurrent access.
+  * Thread/process safety — mutations serialize across threads and processes.
 """
 
 from __future__ import annotations
 
 import json
+import errno
 import os
 import threading
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, List, TypeVar
 
@@ -21,6 +24,7 @@ T = TypeVar("T", bound=object)
 _FILE_LOCKS: dict[str, threading.Lock] = {}
 _FILE_LOCKS_GUARD = threading.Lock()
 _DATA_MUTATION_LOCKS: dict[str, threading.RLock] = {}
+_PROCESS_MUTATION_DEPTH = threading.local()
 
 
 def data_mutation_lock(data_dir: Path) -> threading.RLock:
@@ -32,6 +36,72 @@ def data_mutation_lock(data_dir: Path) -> threading.RLock:
             lock = threading.RLock()
             _DATA_MUTATION_LOCKS[key] = lock
         return lock
+
+
+@contextmanager
+def _process_mutation_lock(data_dir: Path):
+    canonical_dir = Path(data_dir).resolve()
+    path = canonical_dir.with_name(f".{canonical_dir.name}.mutation.lock")
+    key = str(canonical_dir)
+    depths = getattr(_PROCESS_MUTATION_DEPTH, "by_directory", None)
+    if depths is None:
+        depths = _PROCESS_MUTATION_DEPTH.by_directory = {}
+    if depths.get(key, 0):
+        depths[key] += 1
+        try:
+            yield
+        finally:
+            depths[key] -= 1
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as lock_file:
+        lock_file.seek(0, os.SEEK_END)
+        if lock_file.tell() == 0:
+            lock_file.write(b"\0")
+            lock_file.flush()
+        if os.name == "nt":
+            import msvcrt
+            lock_file.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as exc:
+                    if exc.errno not in (errno.EACCES, errno.EDEADLK) and getattr(exc, "winerror", None) not in (33, 36):
+                        raise StorageError(f"Cannot lock data directory {data_dir}: {exc}") from exc
+                    time.sleep(0.05)
+        else:
+            import fcntl
+            while True:
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                    break
+                except OSError as exc:
+                    if exc.errno != errno.EINTR:
+                        raise StorageError(f"Cannot lock data directory {data_dir}: {exc}") from exc
+        try:
+            depths[key] = 1
+            yield
+        finally:
+            depths.pop(key, None)
+            if os.name == "nt":
+                lock_file.seek(0)
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def _mutation_locks(data_dir: Path):
+    with data_mutation_lock(data_dir), _process_mutation_lock(data_dir):
+        yield
+
+
+@contextmanager
+def data_mutation_guard(data_dir: Path):
+    """Serialize a multi-file operation against local and other-process writes."""
+    with _mutation_locks(data_dir):
+        yield
 
 
 class StorageError(RuntimeError):
@@ -115,13 +185,13 @@ class StorageService:
             return self._load_list_unlocked(filename, model_cls)
 
     def save_list(self, filename: str, items: List[Any]) -> None:
-        with data_mutation_lock(self.data_dir), self._lock_for(filename):
+        with _mutation_locks(self.data_dir), self._lock_for(filename):
             serialized = [self._dump_record(item) for item in items]
             self._write_atomic(filename, json.dumps(serialized, indent=2, ensure_ascii=False))
 
     def update_list(self, filename: str, model_cls: type, update: Callable[[List[Any]], bool]) -> bool:
         """Apply and persist a list mutation while holding its file lock."""
-        with data_mutation_lock(self.data_dir), self._lock_for(filename):
+        with _mutation_locks(self.data_dir), self._lock_for(filename):
             items = self._load_list_unlocked(filename, model_cls)
             if not update(items):
                 return False
@@ -131,7 +201,7 @@ class StorageService:
 
     def append_list(self, filename: str, item: Any, model_cls: type) -> None:
         """Append one validated record without losing concurrent updates."""
-        with data_mutation_lock(self.data_dir), self._lock_for(filename):
+        with _mutation_locks(self.data_dir), self._lock_for(filename):
             try:
                 items = self._load_list_unlocked(filename, model_cls)
             except StorageError as exc:
@@ -159,7 +229,7 @@ class StorageService:
 
     def update_doc(self, filename: str, model_cls: type, update: Callable[[Any], bool]) -> bool:
         """Apply and persist a document mutation while holding its file lock."""
-        with data_mutation_lock(self.data_dir), self._lock_for(filename):
+        with _mutation_locks(self.data_dir), self._lock_for(filename):
             model = self._load_doc_unlocked(filename, model_cls) or model_cls()
             if not update(model):
                 return False
@@ -167,5 +237,5 @@ class StorageService:
             return True
 
     def save_doc(self, filename: str, model: Any) -> None:
-        with data_mutation_lock(self.data_dir), self._lock_for(filename):
+        with _mutation_locks(self.data_dir), self._lock_for(filename):
             self._write_atomic(filename, json.dumps(model.model_dump(mode="json"), indent=2, ensure_ascii=False))

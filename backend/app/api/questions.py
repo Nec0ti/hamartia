@@ -19,7 +19,7 @@ from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
 from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt
 from app.services.ai_service import AIService, get_ai
-from app.services.storage import StorageError, StorageService, data_mutation_lock
+from app.services.storage import StorageError, StorageService, data_mutation_guard
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -95,7 +95,7 @@ async def upload_question(
     elif not (ocr_text or "").strip():
         raise HTTPException(status_code=422, detail="Add an image or question text")
 
-    with data_mutation_lock(DATA_DIR):
+    with data_mutation_guard(DATA_DIR):
         try:
             exam_section_total = None
             if exam_id:
@@ -290,7 +290,7 @@ async def delete_question(question_id: str, storage: StorageService = Depends(ge
     deleted = []
     image_path = None
 
-    with data_mutation_lock(DATA_DIR):
+    with data_mutation_guard(DATA_DIR):
         def remove(questions):
             nonlocal image_path
             for index, question in enumerate(questions):

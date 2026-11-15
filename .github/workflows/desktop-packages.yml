@@ -61,6 +61,7 @@ jobs:
       - if: matrix.target == 'windows'
         run: npm run dist:win --prefix desktop
       - run: python desktop/smoke_backend.py
+      - run: python -m unittest discover -s backend/tests -p test_storage_process_lock.py -v
       - if: matrix.target == 'linux'
         run: bash .github/scripts/linux-safe-storage-smoke.sh protected desktop/dist/linux-unpacked
       - if: matrix.target == 'linux'

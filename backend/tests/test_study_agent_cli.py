@@ -328,12 +328,12 @@ class StudyAgentCliTests(unittest.TestCase):
             text=True, capture_output=True, cwd=BACKEND_DIR, check=True, timeout=5,
         )
         lines = [json.loads(line) for line in process.stdout.splitlines()]
-        self.assertEqual(lines[0], {"status": "error", "error": "request_too_large"})
+        self.assertEqual(lines[0], {"status": "error", "error": "request_too_large", "write_allowed": False})
         self.assertEqual(lines[1]["status"], "ready")
 
     def test_cli_rejects_oversized_envelope_without_processing(self):
         result = run_json_line('{"payload":"' + ("x" * MAX_LINE_LENGTH) + '"}')
-        self.assertEqual(result, {"status": "error", "error": "request_too_large"})
+        self.assertEqual(result, {"status": "error", "error": "request_too_large", "write_allowed": False})
 
     def test_tool_has_no_write_capability(self):
         result = dispatch_cli({"command": "study.practice.prepare", "language": "en", "messages": ["hello"], "evidence": []})

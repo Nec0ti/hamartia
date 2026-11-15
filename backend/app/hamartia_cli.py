@@ -31,14 +31,14 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def run_json_line(line: str) -> dict[str, Any]:
     if len(line.encode("utf-8")) > MAX_LINE_LENGTH:
-        return {"status": "error", "error": "request_too_large"}
+        return {"status": "error", "error": "request_too_large", "write_allowed": False}
     try:
         envelope = json.loads(line, object_pairs_hook=_unique_object)
         if not isinstance(envelope, dict):
             return {"status": "error", "error": "request_must_be_an_object"}
         return dispatch_cli(envelope)
     except (ValueError, ValidationError, TypeError):
-        return {"status": "error", "error": "invalid_or_unsupported_command"}
+        return {"status": "error", "error": "invalid_or_unsupported_command", "write_allowed": False}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,14 +55,14 @@ def main(argv: list[str] | None = None) -> int:
         while oversized and line and not line.endswith(newline):
             line = stream.readline(MAX_LINE_LENGTH + 1)
         if oversized:
-            result = {"status": "error", "error": "request_too_large"}
+            result = {"status": "error", "error": "request_too_large", "write_allowed": False}
         else:
             try:
                 if isinstance(line, bytes):
                     line = line.decode("utf-8", errors="strict")
                 result = run_json_line(line)
             except UnicodeDecodeError:
-                result = {"status": "error", "error": "invalid_or_unsupported_command"}
+                result = {"status": "error", "error": "invalid_or_unsupported_command", "write_allowed": False}
         sys.stdout.write(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n")
         sys.stdout.flush()
     return 0

@@ -104,7 +104,8 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
 
 def _assert_rejected_probe(request: dict, *, status: str, field: str | None = None, missing: bool = False) -> dict:
     result = run_json_line(json.dumps(request, ensure_ascii=False))
-    if result.get("status") != status or result.get("write_allowed") is True:
+    _assert_exact_read_only_gate(result)
+    if result.get("status") != status:
         raise AssertionError(f"expected read-only {status} result, got {result.get('status')}")
     if field:
         if missing and (field not in result.get("missing", []) or field in result.get("ambiguous", {})):
@@ -112,6 +113,21 @@ def _assert_rejected_probe(request: dict, *, status: str, field: str | None = No
         if not missing and (field not in result.get("ambiguous", {}) or field in result.get("missing", [])):
             raise AssertionError(f"{field} did not remain specifically ambiguous")
     return result
+
+
+def _assert_exact_read_only_gate(result: dict) -> None:
+    if result.get("write_allowed") is not False:
+        raise AssertionError("every CLI result must explicitly set write_allowed to false")
+
+
+def self_check_exact_read_only_gate() -> None:
+    _assert_exact_read_only_gate({"write_allowed": False})
+    for unsafe_result in ({}, {"write_allowed": None}, {"write_allowed": True}, {"write_allowed": 0}):
+        try:
+            _assert_exact_read_only_gate(unsafe_result)
+        except AssertionError:
+            continue
+        raise AssertionError(f"benchmark gate accepted an unsafe value: {unsafe_result!r}")
 
 
 def assert_prepare_is_structurally_side_effect_free() -> None:
@@ -197,6 +213,7 @@ def adversarial_probes(seed: int) -> int:
         {"field": "correct", "quote": "Correction: I got 3 right"},
     ]
     corrected = run_json_line(json.dumps(correction, ensure_ascii=False))
+    _assert_exact_read_only_gate(corrected)
     expected_corrected = {**expected, "correct": 3}
     expected_evidence = {
         item["field"]: {
@@ -215,6 +232,7 @@ def adversarial_probes(seed: int) -> int:
 
 
 def run_trial(count: int, seed: int) -> dict:
+    self_check_exact_read_only_gate()
     assert_prepare_is_structurally_side_effect_free()
     rng = random.Random(seed)
     fixtures = [fixture(index) for index in range(count)]
@@ -223,9 +241,10 @@ def run_trial(count: int, seed: int) -> dict:
     started = time.perf_counter()
     for index, (line, (_, expected, expected_evidence, expected_digest)) in enumerate(zip(encoded, fixtures, strict=True)):
         result = run_json_line(line)
+        _assert_exact_read_only_gate(result)
         if result.get("status") != "ready" or result.get("fields") != expected:
             raise AssertionError(f"independent CLI oracle mismatch at row {index}")
-        if result.get("write_allowed") is not False or result.get("preview_digest") != expected_digest:
+        if result.get("preview_digest") != expected_digest:
             raise AssertionError(f"independent exact-preview digest mismatch at row {index}")
         if result.get("verified_evidence") != expected_evidence:
             raise AssertionError(f"independent quote/value/offset oracle mismatch at row {index}")

@@ -142,9 +142,9 @@ _DATE_CANDIDATES = re.compile(
 _DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
-_RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|saat)"
-_RELATIVE_DATE_OFFSET = rf"(?:(?:in\s+)?{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}(?:\s+(?:later|afterwards?|after(?:\s+that)?|from\s+now|sonra))?)"
-_RELATIVE_DATE_QUALIFIER = r"(?:(?:the\s+)?(?:next|following|upcoming|gelecek|önümüzdeki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|saat))"
+_RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|sene|saat)"
+_RELATIVE_DATE_OFFSET = rf"(?:(?:(?:in|within)\s+)?{_COUNT_NUMBER}\s+{_RELATIVE_DATE_UNIT}(?:\s+(?:later|afterwards?|after(?:\s+that)?|from\s+now|sonra))?)"
+_RELATIVE_DATE_QUALIFIER = r"(?:(?:(?:in|within)\s+)?(?:the\s+)?(?:next|following|upcoming|gelecek|önümüzdeki)\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat)|bir\s+sonraki\s+(?:day|week|month|year|hour|gün|hafta|ay|yıl|yil|sene|saat))"
 _RELATIVE_DATE_COMPACT_OFFSET = r"\d{1,5}(?:d|w|h)(?:\s+(?:later|afterwards?|after(?:\s+that)?|sonra))?"
 _DATE_RELATIVE_ALTERNATIVE = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"

@@ -397,6 +397,162 @@ class PracticeSessionCreate(PracticeSessionData):
     pass
 
 
+# ---------------------------------------------------------------------------
+# Clock and active study timer (backend/data/clock.json)
+# ---------------------------------------------------------------------------
+
+
+class ClockPreferences(BaseModel):
+    pomodoro_work_minutes: int = Field(default=25, ge=1, le=180)
+    pomodoro_break_minutes: int = Field(default=5, ge=1, le=60)
+    pomodoro_cycle: bool = False
+    notifications_opt_in: bool = False
+
+
+class ClockAlarm(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    label: str = Field(min_length=1, max_length=80)
+    kind: Literal["once", "weekdays"]
+    one_off_at_ms: int | None = Field(default=None, ge=0)
+    local_time: str = ""
+    weekdays: list[int] = Field(default_factory=list, max_length=7)
+    enabled: bool = True
+    next_at_ms: int | None = Field(default=None, ge=0)
+    overdue_at_ms: int | None = Field(default=None, ge=0)
+    last_fired_at_ms: int | None = Field(default=None, ge=0)
+
+    @field_validator("label")
+    @classmethod
+    def normalize_alarm_label(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("alarm label is required")
+        return value
+
+    @field_validator("local_time")
+    @classmethod
+    def validate_local_time(cls, value: str) -> str:
+        if value and (len(value) != 5 or value[2] != ":" or not value[:2].isdigit() or not value[3:].isdigit()):
+            raise ValueError("local_time must use HH:MM")
+        if value and (int(value[:2]) > 23 or int(value[3:]) > 59):
+            raise ValueError("local_time must use a valid 24-hour time")
+        return value
+
+    @field_validator("weekdays")
+    @classmethod
+    def validate_weekdays(cls, value: list[int]) -> list[int]:
+        if any(day < 0 or day > 6 for day in value) or len(set(value)) != len(value):
+            raise ValueError("weekdays must be unique values from 0 to 6")
+        return value
+
+    @model_validator(mode="after")
+    def validate_alarm_schedule(self):
+        if self.kind == "once":
+            if self.one_off_at_ms is None or self.local_time or self.weekdays:
+                raise ValueError("one-off alarms require a timestamp and no weekday schedule")
+            if self.next_at_ms is not None and self.next_at_ms != self.one_off_at_ms:
+                raise ValueError("one-off next occurrence must match its timestamp")
+        elif self.one_off_at_ms is not None or not self.local_time or not self.weekdays:
+            raise ValueError("weekday alarms require a local time and at least one weekday")
+        if self.enabled and self.next_at_ms is None:
+            raise ValueError("enabled alarms require their next occurrence")
+        return self
+
+
+class PracticeDraft(BaseModel):
+    date: str
+    subject: str = Field(min_length=1, max_length=120)
+    topic: str = Field(min_length=1, max_length=120)
+    correct: int = Field(default=0, ge=0)
+    incorrect: int = Field(default=0, ge=0)
+    blank: int = Field(default=0, ge=0)
+
+    @field_validator("date")
+    @classmethod
+    def validate_draft_date(cls, value: str) -> str:
+        try:
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("date must use YYYY-MM-DD") from exc
+        if parsed.strftime("%Y-%m-%d") != value:
+            raise ValueError("date must use YYYY-MM-DD")
+        return value
+
+    @field_validator("subject", "topic")
+    @classmethod
+    def normalize_draft_labels(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("subject and topic are required")
+        return value
+
+
+class ClockLap(BaseModel):
+    elapsed_ms: int = Field(ge=0, le=31_536_000_000)
+    recorded_at_ms: int = Field(ge=0)
+
+
+class ActiveClockTimer(BaseModel):
+    kind: Literal["practice", "pomodoro", "countdown", "stopwatch"]
+    status: Literal["running", "paused", "overdue"]
+    elapsed_ms: int = Field(default=0, ge=0, le=31_536_000_000)
+    started_at_ms: int | None = Field(default=None, ge=0)
+    deadline_at_ms: int | None = Field(default=None, ge=0)
+    duration_ms: int = Field(default=0, ge=0, le=86_400_000)
+    remaining_ms: int = Field(default=0, ge=0, le=86_400_000)
+    phase: Literal["work", "break"] | None = None
+    cycle_enabled: bool = False
+    cycle_count: int = Field(default=0, ge=0, le=1_000_000)
+    overdue_at_ms: int | None = Field(default=None, ge=0)
+    laps: list[ClockLap] = Field(default_factory=list, max_length=100)
+    practice_draft: PracticeDraft | None = None
+
+    @model_validator(mode="after")
+    def validate_active_timer(self):
+        if (self.kind == "practice") != (self.practice_draft is not None):
+            raise ValueError("only practice timers carry a practice draft")
+        if self.kind == "pomodoro":
+            if self.phase is None or self.duration_ms < 1_000:
+                raise ValueError("Pomodoro timers require a phase and duration")
+        elif self.phase is not None or self.cycle_enabled or self.cycle_count:
+            raise ValueError("Pomodoro fields are only valid for Pomodoro timers")
+        if self.kind == "countdown" and self.duration_ms < 1_000:
+            raise ValueError("countdown timers require a duration")
+        if self.kind in ("practice", "stopwatch") and (self.duration_ms or self.remaining_ms or self.deadline_at_ms):
+            raise ValueError("stopwatch timers do not use a countdown deadline")
+        if self.kind in ("countdown", "pomodoro"):
+            if self.elapsed_ms or self.started_at_ms or self.laps:
+                raise ValueError("countdown timers do not use stopwatch state")
+        if self.status == "running":
+            if self.kind in ("countdown", "pomodoro") and self.deadline_at_ms is None:
+                raise ValueError("running countdown timers require a deadline")
+            if self.kind in ("practice", "stopwatch") and self.started_at_ms is None:
+                raise ValueError("running stopwatch timers require a start timestamp")
+            if self.overdue_at_ms is not None:
+                raise ValueError("running timers cannot be overdue")
+        elif self.started_at_ms is not None or self.deadline_at_ms is not None:
+            raise ValueError("paused and overdue timers cannot keep a running timestamp")
+        if self.status == "overdue":
+            if self.kind not in ("countdown", "pomodoro") or self.overdue_at_ms is None or self.remaining_ms:
+                raise ValueError("only expired countdown timers can be overdue")
+        elif self.overdue_at_ms is not None:
+            raise ValueError("only overdue timers can have an overdue timestamp")
+        return self
+
+
+class ClockState(BaseModel):
+    preferences: ClockPreferences = Field(default_factory=ClockPreferences)
+    alarms: list[ClockAlarm] = Field(default_factory=list, max_length=128)
+    active_timer: ActiveClockTimer | None = None
+
+    @model_validator(mode="after")
+    def require_unique_alarm_ids(self):
+        identifiers = [alarm.id for alarm in self.alarms]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("clock alarm IDs must be unique")
+        return self
+
+
 def _utcnow_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 

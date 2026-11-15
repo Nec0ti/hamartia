@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Send, Square, LogIn, LogOut, ExternalLink, Sparkles } from 'lucide-react'
 import { useI18n } from '../i18n.jsx'
 import api from '../services/api'
+import { summarizeStudyAgentContext } from '../utils/studyAgentContext.js'
 
 const desktop = () => window.hamartiaDesktop?.chatgpt
 
@@ -137,12 +138,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     try {
       if (provider === 'local') {
         const [insights, sessions] = await Promise.all([api.questions.insights(), api.practice.insights()])
-        const context = JSON.stringify({
-          pending_questions: insights.pending_questions ?? 0,
-          scheduled_questions: insights.scheduled_questions ?? 0,
-          topics: (insights.topics || []).slice(0, 8).map(({ subject, topic, pending_count, tags }) => ({ subject, topic, pending_count, tags })),
-          topic_practice: sessions.slice(0, 8).map(({ subject, topic, session_count, net, accuracy }) => ({ subject, topic, session_count, net, accuracy })),
-        }).slice(0, 6000)
+        const context = summarizeStudyAgentContext(insights, sessions)
         const result = await api.studyAgent.local({
           consent: true,
           message: message.trim(),

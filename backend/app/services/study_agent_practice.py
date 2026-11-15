@@ -39,6 +39,11 @@ class Evidence:
 
 def _patterns(field: str) -> list[re.Pattern]:
     labels = rf"(?<!\w)(?:{ALIASES[field]})(?!\w)"
+    next_label = "|".join(f"(?:{value})" for value in ALIASES.values())
+    # A comma is a valid boundary only when it introduces another labeled
+    # field. Keep rejecting decimal and thousands separators that would
+    # otherwise let the parser accept a numeric prefix (for example 1,200).
+    numeric_end = rf"(?![\d.]|\s+\d|,(?!\s*(?:{next_label})\s*:))\b"
     correction = r"(?:(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*:\s*)?"
     if field in {"subject", "topic"}:
         next_label = "|".join(f"(?:{value})" for value in ALIASES.values())
@@ -46,9 +51,9 @@ def _patterns(field: str) -> list[re.Pattern]:
     if field == "date":
         return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
     if field in {"correct", "incorrect", "blank"}:
-        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,]|\s+\d)\b")]
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(?<![\w.,+\-])(\d{{1,5}}){numeric_end}")]
     unit_labels = ALIASES[field]
-    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,]|\s+\d)\b")]
+    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(?<![\w.,+\-])(\d{{1,5}}){numeric_end}")]
 
 
 def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, list[str]]]:

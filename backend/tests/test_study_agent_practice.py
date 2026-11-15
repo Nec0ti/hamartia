@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.api import practice, study_agent
 from app.models.schemas import PracticeSession, Settings
 from app.services.storage import StorageService
-from app.services.study_agent_practice import parse_proposal
+from app.services.study_agent_practice import extract_fields, parse_proposal
 
 
 FULL_MESSAGES = [
@@ -177,6 +177,20 @@ class StudyAgentPracticeTests(unittest.TestCase):
         self.assertEqual(response.json()["fields"]["subject"], "Mathematics")
         self.assertEqual(response.json()["fields"]["topic"], "Functions")
         self.assertEqual(response.json()["evidence"]["topic"]["quote"], "topic: Functions")
+        self.assertEqual(response.json()["fields"], FULL_PROPOSAL)
+        self.assertEqual(response.json()["missing"], [])
+        self.assertEqual(response.json()["ambiguous"], {})
+
+    def test_labeled_numeric_prefixes_are_rejected_but_labeled_comma_boundaries_are_allowed(self):
+        evidence, ambiguous = extract_fields([
+            "correct: 1,200, incorrect: 2.5, blank: 3, duration_minutes: 1,000, duration_seconds: 30"
+        ])
+        self.assertEqual(ambiguous, {})
+        self.assertNotIn("correct", evidence)
+        self.assertNotIn("incorrect", evidence)
+        self.assertNotIn("duration_minutes", evidence)
+        self.assertEqual(evidence["blank"].value, 3)
+        self.assertEqual(evidence["duration_seconds"].value, 30)
 
 
 class ConfiguredStudyAgentProposalTests(unittest.TestCase):

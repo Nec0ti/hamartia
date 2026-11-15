@@ -67,7 +67,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
         {/* Brand mark + title. */}
         <div className="mr-2 flex items-center gap-2 sm:mr-6">
           <img src="/hamartia-mark-light.svg" alt="Hamartia" className="h-8 w-8" />
-          <span className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
+          <span aria-hidden="true" className="hidden text-lg font-bold tracking-tight text-canvas-text sm:inline">
             Hamartia
           </span>
         </div>

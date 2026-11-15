@@ -525,9 +525,23 @@ async function main() {
     await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@2`)
     assert.equal(await page.locator('tbody tr').count(), 1)
     await page.getByRole('cell', { name: '8,00', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Deneme ekle' }).click()
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    await page.getByLabel('Ders', { exact: true }).fill('Blank Zero V1 Fixture')
+    await page.getByLabel('Doğru', { exact: true }).fill('0')
+    await page.getByLabel('Yanlış', { exact: true }).fill('0')
+    await page.getByLabel('Boş', { exact: true }).fill('4')
+    const [blankZeroExamResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Denemeyi kaydet' }).click(),
+    ])
+    const blankZeroExam = await blankZeroExamResponse.json()
+    assert.deepEqual([blankZeroExam.net, blankZeroExam.blank, blankZeroExam.scoring_profile.version], [0, 4, 1])
     await page.getByLabel('Geçmişi puanlama profili sürümüne göre filtrele', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
-    assert.equal(await page.locator('tbody tr').count(), 1)
+    assert.equal(await page.locator('tbody tr').count(), 2)
     await page.getByRole('cell', { name: '10,00', exact: true }).waitFor()
+    await page.getByRole('cell', { name: '0,0', exact: true }).waitFor()
+    await page.getByText('Ortalama net').locator('xpath=../..').getByText('5,00', { exact: true }).waitFor()
 
     // Exact red-team regression: correct=1, wrong=0, blank=1; four blanks
     // produce API net 4, XP 0, and must contribute to the Dashboard average.
@@ -566,6 +580,7 @@ async function main() {
 
     await page.context().request.delete(`${apiUrl}/exams/${profiledExam.id}`)
     await page.context().request.delete(`${apiUrl}/exams/${v2Exam.id}`)
+    await page.context().request.delete(`${apiUrl}/exams/${blankZeroExam.id}`)
     await page.context().request.delete(`${apiUrl}/exams/${blankExam.id}`)
     await page.context().request.delete(`${apiUrl}/exams/${legacyProfileExam.id}`)
 

@@ -43,11 +43,12 @@ test('profile versions remain isolated in history aggregates', () => {
 
 test('every all-blank recorded exam contributes to its profile average, including zero score', () => {
   const exams = [
+    { id: 'answered', correct: 12, incorrect: 4, blank: 4, net: 10 },
     { id: 'blank-credit', correct: 0, incorrect: 0, blank: 4, net: 4 },
     { id: 'blank-zero-credit', correct: 0, incorrect: 0, blank: 4, net: 0 },
     { id: 'empty', correct: 0, incorrect: 0, blank: 0, net: 0 },
   ]
-  assert.equal(averageRecordedNet(exams), 2)
+  assert.equal(averageRecordedNet(exams), 14 / 3)
   assert.equal(averageRecordedNet([{ correct: 0, incorrect: 0, blank: 0, net: 0 }]), 0)
 })
 

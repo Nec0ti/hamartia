@@ -14,8 +14,8 @@
   },
   "api_list_oracle": "each timed GET /exams response equals all nine complete persisted rows",
   "api_list_timing": {
-    "p50_seconds": 0.003943,
-    "p95_seconds": 0.005347,
+    "p50_seconds": 0.008777,
+    "p95_seconds": 0.01184,
     "samples": 3
   },
   "backup_restore": "all nine complete exam rows and six complete custom profile versions matched independent vectors",

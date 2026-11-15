@@ -9,6 +9,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-14 desktop packaging and release automation plan](2026-11-14-desktop-delivery-plan.md)
 - [2026-11-14 frozen Linux backend bundle verification](2026-11-14-desktop-backend-bundle.md)
 - [2026-11-15 repeatable AI-free benchmark hardening](2026-11-15-benchmark-hardening.md)
+- [2026-11-15 multi-process storage and loopback HTTP benchmark](2026-11-15-system-resilience-benchmark.md)
 - [2026-11-15 independent benchmark oracles and adversarial fixtures](2026-11-15-benchmark-oracle-hardening.md)
 - [2026-11-15 benchmark fault probes and mixed-size datasets](2026-11-15-benchmark-quality-followup.md)
 - [2026-11-15 ChatGPT plan Study Agent implementation and verification](2026-11-15-chatgpt-plan-study-agent.md)

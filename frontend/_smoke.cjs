@@ -695,7 +695,13 @@ async function main() {
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
               })
               if (!response.ok) return { status: 'failed', detail: await response.text() }
-              return { status: 'completed', draft: await response.json() }
+              const draft = await response.json()
+              window.__practiceDraftResponse = draft
+              if (payload.language === 'en' && payload.messages.length === 1 && payload.messages[0].startsWith('date: 2026-11-15')) {
+                if (JSON.stringify(draft.missing) !== JSON.stringify(['topic'])) throw new Error(`Expected only the topic field to be missing; got ${JSON.stringify(draft.missing)}`)
+                if (JSON.stringify(draft.questions) !== JSON.stringify(['Which topic did you practice?'])) throw new Error(`Unexpected practice clarification: ${JSON.stringify(draft.questions)}`)
+              }
+              return { status: 'completed', draft }
             }
             window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
@@ -734,7 +740,19 @@ async function main() {
     await page.getByLabel('Describe the practice set you completed').fill(practiceEntry)
     await page.getByRole('checkbox').check()
     await page.getByRole('button', { name: 'Send to OpenAI' }).click()
-    await page.getByText('Which topic did you practice?').waitFor()
+    try {
+      await page.getByText('Which topic did you practice?').waitFor()
+    } catch (error) {
+      const state = await page.evaluate(() => ({
+        language: localStorage.getItem('hamartia.language'),
+        payload: window.__mockAgentPayload,
+        draft: window.__practiceDraftResponse,
+        liveText: [...document.querySelectorAll('[aria-live]')].map((element) => element.innerText),
+        bodyText: document.body.innerText.slice(-1200),
+      }))
+      console.error('Practice clarification smoke state:', JSON.stringify(state))
+      throw error
+    }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
     const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)

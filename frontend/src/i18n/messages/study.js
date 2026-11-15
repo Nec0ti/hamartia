@@ -42,7 +42,7 @@ export default {
   'study.completedActivity': { en: 'Activity you completed', tr: 'Tamamladığın çalışma' },
   'study.observation': { en: 'What did you notice?', tr: 'Ne gözlemledin?' },
   'study.evidenceReference': { en: 'Reference link (optional)', tr: 'Kaynak bağlantısı (isteğe bağlı)' },
-  'study.evidenceReferenceLink': { en: 'Open reference', tr: 'Kaynağı aç' },
+  'study.evidenceReferenceLink': { en: 'Open reference ({{host}})', tr: 'Kaynağı aç ({{host}})' },
   'study.saveEvidence': { en: 'Save reflection', tr: 'Yansımayı kaydet' },
   'study.savedEvidence': { en: 'Saved reflections', tr: 'Kaydedilen yansımalar' },
   'study.noEvidence': { en: 'No reflections saved yet.', tr: 'Henüz yansıma kaydedilmedi.' },

@@ -12,6 +12,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
+import idna
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
@@ -20,7 +21,7 @@ from pydantic import BaseModel, computed_field, Field, field_validator, model_va
 
 
 def _valid_http_hostname(hostname: str) -> bool:
-    """Accept IP literals and syntactically valid IDNA DNS names."""
+    """Accept IP literals and UTS46 non-transitional IDNA DNS names."""
     if not hostname:
         return False
     try:
@@ -28,13 +29,9 @@ def _valid_http_hostname(hostname: str) -> bool:
         return True
     except ValueError:
         pass
-    # Browsers can parse noncanonical numeric hosts as IPv4 addresses even
-    # when ipaddress rejects them (for example, integer or zero-padded forms).
-    if re.fullmatch(r"[0-9.]+", hostname):
-        return False
     try:
-        ascii_hostname = hostname.encode("idna").decode("ascii")
-    except UnicodeError:
+        ascii_hostname = idna.encode(hostname, uts46=True, transitional=False, std3_rules=True).decode("ascii")
+    except idna.IDNAError:
         return False
     if ascii_hostname.endswith("."):
         ascii_hostname = ascii_hostname[:-1]
@@ -47,13 +44,6 @@ def _valid_http_hostname(hostname: str) -> bool:
             or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) is None
         ):
             return False
-        if label.lower().startswith("xn--"):
-            try:
-                round_trip = label.encode("ascii").decode("idna").encode("idna").decode("ascii")
-            except UnicodeError:
-                return False
-            if round_trip.lower() != label.lower():
-                return False
     return True
 
 

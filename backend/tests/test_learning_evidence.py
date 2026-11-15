@@ -39,6 +39,8 @@ class LearningEvidenceTests(unittest.TestCase):
         ))
         self.assertEqual(record.reference_url, "https://example.org/notes?q=1#work")
         self.assertEqual(payload(reference_url="https://münich.example/notes").reference_url, "https://münich.example/notes")
+        self.assertEqual(payload(reference_url="https://faß.de/notes").reference_url, "https://faß.de/notes")
+        self.assertEqual(payload(reference_url="https://xn--fa-hia.de/notes").reference_url, "https://xn--fa-hia.de/notes")
         self.assertEqual(payload(reference_url="https://[2001:db8::1]/notes").reference_url, "https://[2001:db8::1]/notes")
         for updates in (
             {"date": "15-11-2026"}, {"subject": " "}, {"topic": "\t"},
@@ -47,10 +49,12 @@ class LearningEvidenceTests(unittest.TestCase):
             {"observation": "x" * 3001}, {"reference_url": "https://exa mple.com"},
             {"reference_url": "https://bad_host.example"}, {"reference_url": "https://bad!.example"},
             {"reference_url": "https://-bad.example"}, {"reference_url": "https://xn--a.example"},
-            {"reference_url": "https://2130706433"}, {"reference_url": "https://127.000.000.001"},
         ):
             with self.subTest(updates=updates), self.assertRaises(ValidationError):
                 payload(**updates)
+        self.assertEqual(payload(reference_url="https://0x7f000001").reference_url, "https://0x7f000001")
+        self.assertEqual(payload(reference_url="https://0x7f.1").reference_url, "https://0x7f.1")
+        self.assertEqual(payload(reference_url="https://１２７。０。０。１").reference_url, "https://１２７。０。０。１")
 
     def test_crud_persists_only_to_evidence_collection_and_preserves_identity(self):
         created = asyncio.run(learning_evidence.create_evidence(payload(), self.storage))

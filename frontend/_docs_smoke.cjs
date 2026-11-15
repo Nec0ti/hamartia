@@ -78,8 +78,8 @@ async function main() {
         if (route.includes('learning-evidence/')) {
           const article = await page.locator('main article').innerText()
           for (const phrase of lang === 'en'
-            ? ['activity you completed', 'your own report', 'does not fetch links', 'open only references you trust']
-            : ['tamamladığın çalışmayı', 'kendi beyanındır', 'bağlantıları getirmez', 'güvendiğin kaynakları kendin aç']) {
+            ? ['activity you completed', 'your own report', 'pass hostname syntax checks', 'host as your browser parses it', 'does not fetch links']
+            : ['tamamladığın çalışmayı', 'kendi beyanındır', 'ana bilgisayar adı sözdizimi denetimini', 'tarayıcının yorumladığı ana bilgisayar adını', 'bağlantıları getirmez']) {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing learning evidence boundary: ${phrase}`)
           }
         }

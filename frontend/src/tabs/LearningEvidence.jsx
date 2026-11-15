@@ -8,6 +8,10 @@ const emptyForm = () => ({ date: localDateToday(), subject: '', topic: '', activ
 const inputClass = 'mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text outline-none focus:border-canvas-accent'
 const buttonClass = 'rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50'
 
+function browserParsedHost(value) {
+  try { return new URL(value).host } catch { return value }
+}
+
 export default function LearningEvidence({ topics = [] }) {
   const { t, locale } = useI18n()
   const [records, setRecords] = useState([])
@@ -126,7 +130,7 @@ export default function LearningEvidence({ topics = [] }) {
             </span>
           </div>
           <p className="mt-2 whitespace-pre-wrap text-sm text-canvas-muted">{record.observation}</p>
-          {record.reference_url && <a href={record.reference_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block break-all text-xs text-canvas-text underline">{t('study.evidenceReferenceLink')}</a>}
+          {record.reference_url && <a href={record.reference_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block break-all text-xs text-canvas-text underline">{t('study.evidenceReferenceLink', { host: browserParsedHost(record.reference_url) })}</a>}
         </article>
       ))}
     </div>

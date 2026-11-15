@@ -161,6 +161,9 @@ def adversarial_probes(seed: int) -> int:
         ({"command": "study.practice.prepare", "language": "en", "messages": ["correct: 5, or 7"], "evidence": [{"field": "correct", "quote": "correct: 5, or 7"}]}, "ambiguous", "correct", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "I got 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}, {"field": "correct", "quote": "7 right"}]}, "ambiguous", "correct", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Or 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "We studied error correction, and I got 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Correction methods were reviewed; I got 7 right."] , "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Update chapter; I got 7 right."] , "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Maybe 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Perhaps 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Alternatively 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
@@ -222,6 +225,9 @@ def adversarial_probes(seed: int) -> int:
     # transcript scan can detect the ambiguity or apply an explicit correction.
     transcript_cases = [
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Or 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["I got 5 right", "7 right"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "We studied error correction, and I got 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["I got 5 right", "I got 7 right"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Correction methods were reviewed; I got 7 right."] , "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["I got 5 right", "I got 7 right"]),
+        ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Update chapter; I got 7 right."] , "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["I got 5 right", "I got 7 right"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Maybe 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["7 right"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Perhaps 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["7 right"]),
         ({"command": "study.practice.prepare", "language": "en", "messages": ["I got 5 right.", "Alternatively 7 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "correct", ["7 right"]),

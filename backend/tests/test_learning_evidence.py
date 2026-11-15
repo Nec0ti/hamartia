@@ -38,11 +38,15 @@ class LearningEvidenceTests(unittest.TestCase):
             "Math", "Quadratics", "Solved three fresh examples", "I mixed up the signs at first.",
         ))
         self.assertEqual(record.reference_url, "https://example.org/notes?q=1#work")
+        self.assertEqual(payload(reference_url="https://münich.example/notes").reference_url, "https://münich.example/notes")
+        self.assertEqual(payload(reference_url="https://[2001:db8::1]/notes").reference_url, "https://[2001:db8::1]/notes")
         for updates in (
             {"date": "15-11-2026"}, {"subject": " "}, {"topic": "\t"},
             {"activity": " "}, {"observation": " "}, {"reference_url": "javascript:alert(1)"},
             {"reference_url": "https://user:pass@example.org"}, {"activity": "x" * 501},
-            {"observation": "x" * 3001},
+            {"observation": "x" * 3001}, {"reference_url": "https://exa mple.com"},
+            {"reference_url": "https://bad_host.example"}, {"reference_url": "https://bad!.example"},
+            {"reference_url": "https://-bad.example"},
         ):
             with self.subTest(updates=updates), self.assertRaises(ValidationError):
                 payload(**updates)

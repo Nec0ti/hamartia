@@ -6,6 +6,8 @@ classes, so the shape of the JSON files is enforced at the Python boundary.
 """
 
 from datetime import datetime
+import ipaddress
+import re
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -15,6 +17,31 @@ from pydantic import BaseModel, computed_field, Field, field_validator, model_va
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
 # ---------------------------------------------------------------------------
+
+
+def _valid_http_hostname(hostname: str) -> bool:
+    """Accept IP literals and syntactically valid IDNA DNS names."""
+    if not hostname:
+        return False
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        pass
+    try:
+        ascii_hostname = hostname.encode("idna").decode("ascii")
+    except UnicodeError:
+        return False
+    if ascii_hostname.endswith("."):
+        ascii_hostname = ascii_hostname[:-1]
+    if not ascii_hostname or len(ascii_hostname) > 253:
+        return False
+    labels = ascii_hostname.split(".")
+    return all(
+        len(label) <= 63
+        and re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) is not None
+        for label in labels
+    )
 
 
 class Settings(BaseModel):
@@ -441,7 +468,12 @@ class LearningEvidenceData(BaseModel):
         try:
             parsed = urlsplit(value)
             _ = parsed.port
-            valid = parsed.scheme in {"http", "https"} and bool(parsed.hostname) and parsed.username is None and parsed.password is None
+            valid = (
+                parsed.scheme in {"http", "https"}
+                and _valid_http_hostname(parsed.hostname or "")
+                and parsed.username is None
+                and parsed.password is None
+            )
         except ValueError:
             valid = False
         if not valid:

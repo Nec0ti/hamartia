@@ -34,7 +34,7 @@ test('local study context is summarized and bounded without question text', () =
   assert.deepEqual(JSON.parse(result).topic_practice, [{ subject: 'Math', topic: 'Functions', session_count: 3, net: 7, accuracy: 0.8 }])
 })
 
-async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true } = {}) {
+async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, platform = process.platform } = {}) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-siwc-'))
   const { publicKey, privateKey } = await generateKeyPair('RS256')
   const jwk = await exportJWK(publicKey)
@@ -115,7 +115,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true }
     throw new Error(`Unexpected mock request: ${url}`)
   }
   const client = createChatGPT({
-    app: { getPath: () => directory }, safeStorage, fetchImpl, getBackendUrl: () => 'http://127.0.0.1:43210',
+    app: { getPath: () => directory }, safeStorage, fetchImpl, platform, getBackendUrl: () => 'http://127.0.0.1:43210',
     shell: { openExternal: async (value) => {
       if (openExternalError) throw openExternalError
       authorizationUrls.push(value)
@@ -153,7 +153,9 @@ test('mocked sign-in stores only encrypted credentials and streams direct Respon
   assert.equal((await testApp.client.status()).planUse, true)
   const saved = await fs.readFile(path.join(testApp.directory, 'chatgpt-credentials.bin'))
   assert.doesNotMatch(saved.toString(), /access-secret|refresh-secret|student@example/)
-  assert.equal((await fs.stat(path.join(testApp.directory, 'chatgpt-credentials.bin'))).mode & 0o777, 0o600)
+  if (process.platform !== 'win32') {
+    assert.equal((await fs.stat(path.join(testApp.directory, 'chatgpt-credentials.bin'))).mode & 0o777, 0o600)
+  }
   assert.equal(testApp.tokenBodies[0].get('client_id'), 'oaiapp_test')
   assert.equal(testApp.tokenBodies[0].get('code_verifier')?.length > 40, true)
   assert.equal(testApp.tokenBodies[0].has('client_secret'), false)
@@ -186,7 +188,7 @@ test('newly issued client registration is retained when code exchange fails and 
 })
 
 test('plan-use cannot proceed when secure storage is unavailable or Linux falls back to basic_text', async (t) => {
-  const testApp = await setup({ backend: 'basic_text' })
+  const testApp = await setup({ backend: 'basic_text', platform: 'linux' })
   t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
   assert.deepEqual(await testApp.client.status(), { connected: false, unavailable: true })
   await assert.rejects(testApp.client.signIn(), /Protected credential storage is unavailable/)

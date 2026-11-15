@@ -1,7 +1,7 @@
 const path = require('node:path')
 
 function backendInvocation({ isPackaged, resourcesPath, desktopDir, platform, python }, args = []) {
-  const pathApi = platform === 'win32' ? path.win32 : path
+  const pathApi = platform === 'win32' ? path.win32 : path.posix
   if (isPackaged) {
     const executable = `hamartia-backend${platform === 'win32' ? '.exe' : ''}`
     return {

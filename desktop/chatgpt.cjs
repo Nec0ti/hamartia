@@ -67,7 +67,7 @@ function safeError(status, code) {
   return 'The ChatGPT study agent could not complete this request. Please try again.'
 }
 
-function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () => Date.now(), getBackendUrl, sendDelta }) {
+function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () => Date.now(), getBackendUrl, sendDelta, platform = process.platform }) {
   const file = path.join(app.getPath('userData'), 'chatgpt-credentials.bin')
   const hostFile = path.join(app.getPath('userData'), 'chatgpt-host-id')
   let refreshInFlight
@@ -79,7 +79,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
   function storageAvailable() {
     try {
       if (storageBlocked || !safeStorage.isEncryptionAvailable()) return false
-      if (process.platform === 'linux') return ['gnome_libsecret', 'kwallet', 'kwallet5', 'kwallet6'].includes(safeStorage.getSelectedStorageBackend())
+      if (platform === 'linux') return ['gnome_libsecret', 'kwallet', 'kwallet5', 'kwallet6'].includes(safeStorage.getSelectedStorageBackend())
       return true
     } catch {
       return false

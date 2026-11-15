@@ -548,14 +548,13 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
           preview_digest: draft.preview_digest,
           write_allowed: false,
         }
-        const functionItem = { type: 'function_call', call_id: call.call_id, name: call.name, arguments: call.arguments }
         const followup = await requestResponses({
           model,
           instructions,
           input: [
             { type: 'additional_tools', role: 'developer', tools: additionalTools },
             inputTranscript,
-            functionItem,
+            ...initial.output,
             { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(safeToolResult) },
           ],
           store: false,

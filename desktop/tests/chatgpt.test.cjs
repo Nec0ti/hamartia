@@ -211,8 +211,9 @@ test('practice-entry calls one strict evidence tool, verifies host transcript, a
   const messages = ['subject: Matematik', 'correct: 7']
   const argumentsText = JSON.stringify({ evidence: [{ field: 'subject', quote: 'subject: Matematik' }] })
   const functionCall = { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText, status: 'completed' }
+  const reasoningItem = { type: 'reasoning', id: 'rs_1', summary: [] }
   testApp.setResponseStreams([
-    [{ type: 'response.completed', response: { id: 'response-1', output: [functionCall] } }],
+    [{ type: 'response.completed', response: { id: 'response-1', output: [reasoningItem, functionCall] } }],
     [{ type: 'response.completed', response: { id: 'response-2', output: [{ type: 'message', role: 'assistant', content: [] }] } }],
   ])
   const deltas = []
@@ -244,10 +245,10 @@ test('practice-entry calls one strict evidence tool, verifies host transcript, a
   assert.deepEqual(followup.input[0], request.input[0])
   assert.deepEqual(followup.input[1], request.input[1])
   assert.match(followup.instructions, /Turkish/)
-  assert.deepEqual(followup.input[2], { type: 'function_call', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText })
-  assert.equal(followup.input[3].type, 'function_call_output')
-  assert.equal(followup.input[3].call_id, 'call_1')
-  assert.equal(JSON.parse(followup.input[3].output).write_allowed, false)
+  assert.deepEqual(followup.input.slice(2, 4), [reasoningItem, functionCall])
+  assert.equal(followup.input[4].type, 'function_call_output')
+  assert.equal(followup.input[4].call_id, 'call_1')
+  assert.equal(JSON.parse(followup.input[4].output).write_allowed, false)
   assert.equal(followup.store, false)
   assert.equal(followup.stream, true)
   assert.equal(Object.hasOwn(followup, 'previous_response_id'), false)

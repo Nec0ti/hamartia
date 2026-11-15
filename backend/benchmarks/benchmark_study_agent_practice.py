@@ -63,7 +63,7 @@ def create_entry(messages, fields, storage):
         evidence=draft["evidence"], preview_digest=draft["preview_digest"],
         approval_id=approval_id,
     )
-    return asyncio.run(practice.practice_agent_create(request, storage)), approval_id
+    return asyncio.run(practice.practice_agent_create(request, storage)), approval_id, request
 
 
 def forbid_provider_calls():
@@ -99,6 +99,23 @@ def validate_saved_id(value, approval_id, seen_ids):
         raise AssertionError("persisted practice IDs are not unique")
     seen_ids.add(value)
     return value
+
+
+def independently_expected_record_id(approval_id, request):
+    """Recompute the stored key from the captured approval payload, without app helpers."""
+    payload = {
+        "language": request.language,
+        "messages": request.messages,
+        "proposal": request.proposal,
+        "fields": request.fields.model_dump(),
+        "evidence": request.evidence,
+        "evidence_claims": [item.model_dump() for item in request.evidence_claims] if request.evidence_claims is not None else None,
+        "preview_digest": request.preview_digest,
+        "duplicate_choice": request.duplicate_choice,
+    }
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    fingerprint = hashlib.sha256(canonical).hexdigest()
+    return f"practice_agent_{uuid.UUID(approval_id).hex}_{fingerprint}"
 
 
 def evidence_fixture(correct):
@@ -166,7 +183,7 @@ def create_evidence_entry(messages, language, claims, fields, storage, duplicate
         approval_id=approval_id,
         duplicate_choice=duplicate_choice,
     )
-    return asyncio.run(practice.practice_agent_create(request, storage)), draft["preview_digest"], approval_id
+    return asyncio.run(practice.practice_agent_create(request, storage)), draft["preview_digest"], approval_id, request
 
 
 def run_evidence_tool_protocol():
@@ -175,6 +192,7 @@ def run_evidence_tool_protocol():
         data_dir = Path(directory)
         storage = StorageService(data_dir)
         with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
+            started_at = datetime.now(timezone.utc)
             messages_a, fields_a, claims_a = evidence_fixture(12)
             rejected = asyncio.run(practice.practice_agent_draft(
                 practice.AgentDraftRequest(
@@ -189,10 +207,10 @@ def run_evidence_tool_protocol():
             if storage.load_list("practice_sessions.json", PracticeSession):
                 raise AssertionError("rejected evidence draft wrote a record")
 
-            saved_a, digest_a, approval_a = create_evidence_entry(messages_a, "en", claims_a, fields_a, storage)
+            saved_a, digest_a, approval_a, request_a = create_evidence_entry(messages_a, "en", claims_a, fields_a, storage)
             if not saved_a.id.startswith(f"practice_agent_{uuid.UUID(approval_a).hex}_"):
                 raise AssertionError("persisted record is not bound to the explicit approval key")
-            expected_a = expected_row(fields_a, saved_a)
+            expected_a = expected_row(fields_a, saved_a, independently_expected_record_id(approval_a, request_a))
 
             duplicate = asyncio.run(practice.practice_agent_draft(
                 practice.AgentDraftRequest(messages=messages_a, language="en", evidence_claims=claims_a), storage,
@@ -217,10 +235,10 @@ def run_evidence_tool_protocol():
                 raise AssertionError("unapproved duplicate evidence request wrote a record")
 
             messages_b, fields_b, claims_b = evidence_fixture(13)
-            saved_b, digest_b, approval_b = create_evidence_entry(messages_b, "en", claims_b, fields_b, storage, "new")
+            saved_b, digest_b, approval_b, request_b = create_evidence_entry(messages_b, "en", claims_b, fields_b, storage, "new")
             if not saved_b.id.startswith(f"practice_agent_{uuid.UUID(approval_b).hex}_"):
                 raise AssertionError("explicit duplicate approval key was not bound to the persisted record")
-            expected_b = expected_row(fields_b, saved_b)
+            expected_b = expected_row(fields_b, saved_b, independently_expected_record_id(approval_b, request_b))
             replay_request = practice.AgentCreateRequest(
                 messages=messages_b, language="en", evidence_claims=claims_b,
                 proposal=fields_b, fields=PracticeSessionCreate.model_validate(fields_b).model_dump(),
@@ -234,6 +252,8 @@ def run_evidence_tool_protocol():
             else:
                 if replayed.id != saved_b.id:
                     raise AssertionError("replayed explicit approval did not return the existing record")
+                if replayed.id != independently_expected_record_id(approval_b, replay_request):
+                    raise AssertionError("replayed ID differs from the independent approval fingerprint")
 
             messages_c, fields_c, claims_c = evidence_fixture(14)
             draft_c = asyncio.run(practice.practice_agent_draft(
@@ -272,14 +292,14 @@ def run_evidence_tool_protocol():
                 raise AssertionError("same-key changed duplicate choice wrote a record")
 
             intentional_approval = str(uuid.uuid4())
-            saved_c, digest_c, returned_approval = create_evidence_entry(
+            saved_c, digest_c, returned_approval, request_c = create_evidence_entry(
                 messages_b, "en", claims_b, fields_b, storage, "new", approval_id=intentional_approval,
             )
             if returned_approval != intentional_approval or saved_c.id == saved_b.id:
                 raise AssertionError("separate intentional duplicate approval did not receive its own replay key")
             if not saved_c.id.startswith(f"practice_agent_{uuid.UUID(intentional_approval).hex}_"):
                 raise AssertionError("intentional duplicate was not bound to its approval key")
-            expected_c = expected_row(fields_b, saved_c)
+            expected_c = expected_row(fields_b, saved_c, independently_expected_record_id(intentional_approval, request_c))
 
             messages_tr = [
                 "Türkçe dersinde Fonksiyon çalıştım.",
@@ -300,15 +320,18 @@ def run_evidence_tool_protocol():
                 {"field": "duration_minutes", "quote": "45 dakika"},
                 {"field": "duration_seconds", "quote": "10 saniye"},
             ]
-            saved_tr, digest_tr, approval_tr = create_evidence_entry(
+            saved_tr, digest_tr, approval_tr, request_tr = create_evidence_entry(
                 messages_tr, "tr", claims_tr, fields_tr, storage,
             )
             if not saved_tr.id.startswith(f"practice_agent_{uuid.UUID(approval_tr).hex}_"):
                 raise AssertionError("Turkish multi-message record is not bound to the explicit approval key")
-            expected_tr = expected_row(fields_tr, saved_tr)
+            expected_tr = expected_row(fields_tr, saved_tr, independently_expected_record_id(approval_tr, request_tr))
 
+            finished_at = datetime.now(timezone.utc)
             persisted = storage.load_list("practice_sessions.json", PracticeSession)
             actual = [item.model_dump() for item in persisted]
+            for item in persisted:
+                validate_saved_timestamp(item.created_at, started_at, finished_at)
             assert_oracle(actual, [expected_a, expected_b, expected_c, expected_tr], "provider-free evidence tool full persisted rows")
             return {
                 "records_checked": 4,
@@ -337,9 +360,12 @@ def run_trial(count):
             expected = []
             for index in range(count):
                 messages, fields = entry(index)
-                saved, approval_id = create_entry(messages, fields, storage)
+                saved, approval_id, request = create_entry(messages, fields, storage)
                 validate_saved_id(saved.id, approval_id, seen_ids)
-                expected.append(expected_row(fields, saved))
+                expected_id = independently_expected_record_id(approval_id, request)
+                if saved.id != expected_id:
+                    raise AssertionError("stored ID differs from the independent approval fingerprint")
+                expected.append(expected_row(fields, saved, expected_id))
             elapsed = time.perf_counter() - started
             finished_at = datetime.now(timezone.utc)
 

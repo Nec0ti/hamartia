@@ -112,8 +112,7 @@ _DATE = re.compile(r"(?i)(?:\bdate(?:\s*:\s*|\s+)|\btarih(?:\s*:\s*|\s+)|\bon\s+
 _SUBJECT_PATTERNS = (
     re.compile(r"(?i)(?:subject|class|course|ders)\s+(?:is|was|:|olarak|im|im:)?\s*([\wÇĞİÖŞÜçğıöşü& -]{2,60})"),
     re.compile(r"(?i)\b(?:in|for)\s+(?:my\s+)?([\wÇĞİÖŞÜçğıöşü& -]{2,50}?)\s+(?:class|course)\b"),
-    re.compile(r"(?i)\bin\s+([\wÇĞİÖŞÜçğıöşü& -]{2,50}?)(?=[,.!?]|$)"),
-    re.compile(r"(?i)([\wÇĞİÖŞÜçğıöşü& -]{2,50}?)\s+(?:practice|practise|practice\s+test|test\s+set)\b"),
+    re.compile(r"(?i)\bin\s+([\wÇĞİÖŞÜçğıöşü& -]{2,50}?)(?=\s+(?:on|about|today|yesterday|during|for)\b|[,;.!?]|$)"),
     re.compile(r"(?i)([\wÇĞİÖŞÜçğıöşü& -]{2,50}?)\s+dersinde\b"),
 )
 _TOPIC_PATTERNS = (
@@ -147,34 +146,89 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
     if field in ambiguous:
         return None
     if field in parsed:
-        return parsed[field].value
+        value = parsed[field].value
+        if field in {"subject", "topic"} and re.search(r"(?i)\s+(?:and|or|&|ve|ile)\s+", str(value)):
+            return None
+        trusted, alternatives = _context_field_values(field, surrounding)
+        if not trusted or (alternatives and alternatives != {value}):
+            return None
+        return value
 
     if field in _COUNT_PATTERNS:
         matches = list(_COUNT_PATTERNS[field].finditer(parse_candidate))
         if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
-            return int(matches[0].group(1))
+            value = int(matches[0].group(1))
+            trusted, alternatives = _context_field_values(field, surrounding)
+            return value if trusted and (not alternatives or alternatives == {value}) else None
         return None
     if field == "duration_minutes":
         matches = list(_DURATION_MINUTES.finditer(parse_candidate))
         if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
-            return int(matches[0].group(1))
+            value = int(matches[0].group(1))
+            trusted, alternatives = _context_field_values(field, surrounding)
+            return value if trusted and (not alternatives or alternatives == {value}) else None
         return None
     if field == "duration_seconds":
         matches = list(_DURATION_SECONDS.finditer(parse_candidate))
         if len(matches) == 1 and not _number_has_unsafe_boundary(parse_candidate, surrounding, matches[0]):
-            return int(matches[0].group(1))
+            value = int(matches[0].group(1))
+            trusted, alternatives = _context_field_values(field, surrounding)
+            return value if trusted and (not alternatives or alternatives == {value}) else None
         return None
     if field == "date":
         matches = list(_DATE.finditer(parse_candidate))
         if len(matches) == 1:
-            return matches[0].group(1)
+            value = matches[0].group(1)
+            trusted, alternatives = _context_field_values(field, surrounding)
+            return value if trusted and (not alternatives or alternatives == {value}) else None
         return None
     patterns = _SUBJECT_PATTERNS if field == "subject" else _TOPIC_PATTERNS
     matches = [match.group(1).strip(" .,:;!?\t\n") for pattern in patterns for match in pattern.finditer(parse_candidate)]
-    matches = list(dict.fromkeys(value for value in matches if value))
+    matches = list(dict.fromkeys(
+        value for value in matches
+        if value and not re.fullmatch(r"(?:\d{4}-\d{2}-\d{2}|\d+)", value)
+    ))
     if field == "topic" and any(re.search(r"(?i)\s+(?:and|&|ve|ile)\s+", value) for value in matches):
         return None
-    return matches[0] if len(matches) == 1 else None
+    if len(matches) != 1:
+        return None
+    value = matches[0]
+    trusted, alternatives = _context_field_values(field, surrounding)
+    return value if trusted and (not alternatives or alternatives == {value}) else None
+
+
+def _context_field_values(field: str, context: str) -> tuple[bool, set[str | int]]:
+    """Inspect the full sentence so a quote cannot select one of two facts."""
+    explicit, explicit_ambiguous = extract_fields([context])
+    if field in explicit_ambiguous:
+        return False, set()
+    values: set[str | int] = set()
+    if field in explicit:
+        values.add(explicit[field].value)
+    if field in _COUNT_PATTERNS:
+        pattern = _COUNT_PATTERNS[field]
+    elif field == "duration_minutes":
+        pattern = _DURATION_MINUTES
+    elif field == "duration_seconds":
+        pattern = _DURATION_SECONDS
+    elif field == "date":
+        pattern = _DATE
+    else:
+        patterns = _SUBJECT_PATTERNS if field == "subject" else _TOPIC_PATTERNS
+        matches = [match.group(1).strip(" .,:;!?\t\n") for item in patterns for match in item.finditer(context)]
+        matches = list(dict.fromkeys(
+            value for value in matches
+            if value and not re.fullmatch(r"(?:\d{4}-\d{2}-\d{2}|\d+)", value)
+        ))
+        if any(re.search(r"(?i)\s+(?:and|or|&|ve|ile)\s+", value) for value in matches):
+            return False, set()
+        values.update(matches)
+        return True, values
+    for match in pattern.finditer(context):
+        if field in (set(_COUNT_PATTERNS) | {"duration_minutes", "duration_seconds"}) and _number_has_unsafe_boundary(context, context, match):
+            continue
+        values.add(int(match.group(1)) if field != "date" else match.group(1))
+    return True, values
 
 
 def _conversation_questions(language: str, missing: list[str], ambiguous: dict[str, list[str]]) -> list[str]:

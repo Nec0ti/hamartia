@@ -43,9 +43,9 @@ def _patterns(field: str) -> list[re.Pattern]:
     if field == "date":
         return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{4}}-\d{{2}}-\d{{2}})")]
     if field in {"correct", "incorrect", "blank"}:
-        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(\d{{1,5}})\b")]
+        return [re.compile(rf"(?i){correction}{labels}\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,])\b")]
     unit_labels = ALIASES[field]
-    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(\d{{1,5}})\b")]
+    return [re.compile(rf"(?i){correction}(?<!\w)(?:{unit_labels})(?!\w)\s*:\s*(?<![\w.,+\-])(\d{{1,5}})(?![\d.,])\b")]
 
 
 def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, list[str]]]:

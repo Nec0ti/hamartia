@@ -93,6 +93,21 @@ class StudyAgentCliTests(unittest.TestCase):
         for field, message, quote in cases:
             with self.subTest(field=field, message=message, quote=quote):
                 self.assertIsNone(parse_quote_value(field, quote, message))
+        self.assertIsNone(parse_quote_value("correct", "correct: 1.5", "correct: 1.5"))
+        self.assertIsNone(parse_quote_value("duration_minutes", "duration_minutes: 1.5", "duration_minutes: 1.5"))
+
+    def test_quote_cannot_cherry_pick_one_value_from_sentence_alternatives(self):
+        count_message = "I got 5 right and 7 right."
+        for quote in ("5 right", "7 right"):
+            with self.subTest(quote=quote):
+                result = prepare_practice([count_message], "en", [{"field": "correct", "quote": quote}])
+                self.assertNotIn("correct", result["fields"])
+                self.assertIn("correct", result["ambiguous"])
+
+        topic_message = "I worked on Functions or Geometry."
+        result = prepare_practice([topic_message], "en", [{"field": "topic", "quote": "worked on Functions"}])
+        self.assertNotIn("topic", result["fields"])
+        self.assertIn("topic", result["ambiguous"])
 
     def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
         self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))

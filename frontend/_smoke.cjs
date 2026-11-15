@@ -77,10 +77,32 @@ async function main() {
       }
     })
 
+    let releaseInitialSettingsGet
+    let notifyInitialSettingsGet
+    const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
+    const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
+    await page.route(`${apiUrl}/settings`, async (route) => {
+      if (route.request().method() === 'GET') {
+        notifyInitialSettingsGet()
+        await initialSettingsGetGate
+      }
+      await route.continue()
+    })
     const started = performance.now()
-    await page.goto(baseUrl, { waitUntil: 'networkidle' })
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
     await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    await initialSettingsGetIntercepted
+    await page.getByRole('button', { name: 'Open settings' }).click()
+    await page.getByRole('status').getByText('Loading saved settings…').waitFor()
+    assert.equal(await page.getByLabel('API key').isDisabled(), true)
+    assert.equal(await page.getByRole('button', { name: 'Save', exact: true }).isDisabled(), true)
+    releaseInitialSettingsGet()
+    await page.getByLabel('API key').waitFor({ state: 'visible' })
+    await page.waitForFunction(() => !document.querySelector('#settings-api-key')?.disabled)
+    await page.getByRole('button', { name: 'Close settings' }).click()
+    await page.unroute(`${apiUrl}/settings`)
+    await page.waitForLoadState('networkidle')
     await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
     assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
     await page.getByRole('cell', { name: 'Nov 14, 2026', exact: true }).waitFor()

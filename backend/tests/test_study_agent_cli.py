@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import sys
@@ -51,7 +52,22 @@ class StudyAgentCliTests(unittest.TestCase):
         })
         self.assertEqual(result["verified_evidence"]["correct"]["quote"], "12 right")
         self.assertEqual(result["verified_evidence"]["correct"]["start"], MESSAGES[0].index("12 right"))
-        self.assertEqual(len(result["preview_digest"]), 64)
+        canonical = {
+            "fields": {
+                **result["fields"], "scoring_profile_id": None, "scoring_profile_version": None,
+            },
+            "evidence": result["verified_evidence"],
+            "scoring_profile": {
+                "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
+                "country_label": "Türkiye", "scoring_rule": {
+                    "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+                },
+            },
+        }
+        expected_digest = hashlib.sha256(json.dumps(
+            canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        self.assertEqual(result["preview_digest"], expected_digest)
 
     def test_turkish_natural_phrases_are_parsed_and_questions_follow_saved_language(self):
         message = "Matematik dersinde Fonksiyon çalıştım; 12 doğru, 3 yanlış, 1 boş yaptım. 45 dakika ve 10 saniye sürdü. Tarih 2026-11-15."

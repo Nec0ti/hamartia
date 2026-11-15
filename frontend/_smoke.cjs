@@ -162,9 +162,9 @@ async function main() {
     const practiceSection = page.getByRole('region', { name: 'Konu çalışma setleri' })
     await practiceSection.getByLabel('Ders').fill('Matematik')
     await practiceSection.getByLabel('Konu').fill('Fonksiyon')
-    await practiceSection.getByLabel('Doğru').fill('8')
-    await practiceSection.getByLabel('Yanlış').fill('2')
-    await practiceSection.getByLabel('Boş').fill('1')
+    await practiceSection.getByRole('spinbutton', { name: 'Doğru', exact: true }).fill('8')
+    await practiceSection.getByRole('spinbutton', { name: 'Yanlış', exact: true }).fill('2')
+    await practiceSection.getByRole('spinbutton', { name: 'Boş', exact: true }).fill('1')
     await practiceSection.getByLabel('Dakika').fill('25')
     await practiceSection.getByLabel('Saniye').fill('10')
     assert.equal(await practiceSection.locator('form').evaluate((form) => form.checkValidity()), true)
@@ -265,7 +265,7 @@ async function main() {
     const oldHistory = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Önceki setler (2)' }) })
     if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
     await page.getByRole('button', { name: 'Seti düzenle 1 Kas 2026 Fonksiyon' }).click()
-    await practiceSection.locator('form').getByLabel('Doğru').fill('10')
+    await practiceSection.locator('form').getByRole('spinbutton', { name: 'Doğru', exact: true }).fill('10')
     await practiceSection.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
     await practiceSection.getByText('92,3% cevaplanan doğruluğu').waitFor()
     if (!await oldHistory.evaluate((element) => element.open)) await oldHistory.locator('summary').click()
@@ -469,9 +469,9 @@ async function main() {
     await profiledPracticeForm.getByLabel('Ders').fill('Matematik')
     await profiledPracticeForm.getByLabel('Konu').fill('Fonksiyon')
     await profiledPracticeForm.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
-    await profiledPracticeForm.getByLabel('Doğru').fill('8')
-    await profiledPracticeForm.getByLabel('Yanlış').fill('2')
-    await profiledPracticeForm.getByLabel('Boş').fill('1')
+    await profiledPracticeForm.getByRole('spinbutton', { name: 'Doğru', exact: true }).fill('8')
+    await profiledPracticeForm.getByRole('spinbutton', { name: 'Yanlış', exact: true }).fill('2')
+    await profiledPracticeForm.getByRole('spinbutton', { name: 'Boş', exact: true }).fill('1')
     const [profiledPracticeResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
       profiledPracticeForm.getByRole('button', { name: 'Seti kaydet' }).click(),
@@ -481,7 +481,7 @@ async function main() {
     const customPracticeGroup = page.locator('article').filter({ hasText: 'Custom Half Rule · v1' })
     await customPracticeGroup.waitFor()
     await customPracticeGroup.getByRole('button', { name: /Seti düzenle/ }).first().click()
-    await profiledPracticeForm.getByLabel('Doğru').fill('9')
+    await profiledPracticeForm.getByRole('spinbutton', { name: 'Doğru', exact: true }).fill('9')
     const [editedPracticeResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === `/practice/${profiledPractice.id}` && response.request().method() === 'PUT'),
       profiledPracticeForm.getByRole('button', { name: 'Değişiklikleri kaydet' }).click(),

@@ -20,6 +20,7 @@ Timer fixtures call the production `frontend/src/clock/practiceDuration.js` help
 
 - Backend unittest discovery: 174/174 passed.
 - Frontend tests: 36/36 passed; desktop tests: 40/40 passed.
+- Study Agent CLI and practice-entry benchmarks passed after their independent digest oracles were updated for explicit profile references and full immutable profile snapshots; the practice-entry benchmark confirms different exact digests for identical evidence under literal v1/v2 snapshots.
 - Frontend production build passed; Vite retains its large-chunk warning.
 - `benchmark_practice_profiles.py --repeats 3` passed with 14 records and 13 profile/version/topic groups. It exercised complete current and legacy backup round-trips, all six timer boundaries, and legacy ID-only completion recovery.
 - `scripts/benchmark_docs.py` passed for 17 rendered routes per locale, checking 108 evidence excerpts with no errors.

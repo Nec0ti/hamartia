@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from app.models.schemas import ClockState, CosmosData, Exam, PracticeSession, Question, Settings, UserStats
+from app.models.schemas import ClockState, CosmosData, Exam, LearningEvidence, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
 from app.services.storage import data_mutation_guard
 
@@ -26,9 +26,10 @@ JSON_MODELS = {
     "agent_documents.json": ("dict_list", dict),
     "settings.json": ("doc", Settings),
     "practice_sessions.json": ("list", PracticeSession),
+    "learning_evidence.json": ("list", LearningEvidence),
     "clock.json": ("doc", ClockState),
 }
-OPTIONAL_BACKUP_JSON = {"practice_sessions.json", "clock.json"}
+OPTIONAL_BACKUP_JSON = {"practice_sessions.json", "learning_evidence.json", "clock.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -54,6 +55,7 @@ def _defaults():
         "agent_documents.json": [],
         "settings.json": Settings().model_dump(mode="json"),
         "practice_sessions.json": [],
+        "learning_evidence.json": [],
         "clock.json": ClockState().model_dump(mode="json"),
     }
 

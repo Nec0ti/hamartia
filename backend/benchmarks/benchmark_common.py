@@ -73,4 +73,4 @@ def probe_oracle_self_check(actual, expected, mutate, label):
         assert_oracle(perturbed, expected, label)
     except AssertionError:
         return label
-    raise AssertionError(f"oracle failed to reject mutation: {label}")
+    raise AssertionError(f"oracle failed to reject perturbation: {label}")

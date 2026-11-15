@@ -5,7 +5,7 @@ import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
 import { useClock } from '../clock/ClockContext.jsx'
-import { practiceDurationFromElapsedMilliseconds } from '../clock/practiceDuration.js'
+import { completeFocusedPractice } from '../clock/completePractice.js'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
@@ -56,6 +56,7 @@ function asPracticeTimer(session) {
       correct: session.correct, incorrect: session.incorrect, blank: session.blank,
       completion_id: session.completion_id || null,
       scoring_profile: session.scoring_profile || LEGACY_PROFILE,
+      completion_payload: session.completion_payload || null,
     },
   }
 }
@@ -167,7 +168,9 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
 
   const set = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
 
-  const adjust = (key, delta) => setActive((current) => current && ({ ...current, [key]: Math.max(0, current[key] + delta) }))
+  const adjust = (key, delta) => setActive((current) => current && (current.completion_payload
+    ? current
+    : { ...current, [key]: Math.max(0, current[key] + delta) }))
 
   const finishFocus = async () => {
     if (active.correct + active.incorrect + active.blank === 0) {
@@ -176,24 +179,12 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
     }
     setSaving(true)
     setError('')
-    const seconds = elapsedSeconds(active)
-    const duration = practiceDurationFromElapsedMilliseconds(seconds * 1000)
     try {
-      const completionId = active.completion_id || crypto.randomUUID()
-      if (!active.completion_id) {
-        await updateClock((current) => ({
-          ...current,
-          active_timer: { ...current.active_timer, practice_draft: { ...current.active_timer.practice_draft, completion_id: completionId } },
-        }))
-      }
-      await api.practice.create({
-        date: active.date, subject: active.subject, topic: active.topic,
-        correct: active.correct, incorrect: active.incorrect, blank: active.blank,
-        ...duration,
-        scoring_profile_id: active.scoring_profile.profile_id,
-        scoring_profile_version: active.scoring_profile.version,
-      }, completionId)
-      await updateClock((current) => ({ ...current, active_timer: null }))
+      await completeFocusedPractice({
+        timer: currentTimer, now: Date.now(), updateClock, reloadClock: reload,
+        createPractice: api.practice.create,
+        clearClock: () => updateClock((current) => ({ ...current, active_timer: null })),
+      })
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -230,11 +221,11 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
           <output aria-label={t('study.elapsedTime')} className="font-mono text-2xl font-semibold tabular-nums text-canvas-text">{timeLabel(currentSeconds)}</output>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" disabled={!clockLoaded} aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" disabled={!clockLoaded} aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
+          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" disabled={!clockLoaded || active.completion_payload} aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" disabled={!clockLoaded || active.completion_payload} aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {active.running_since ? <button type="button" disabled={!clockLoaded} onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" disabled={!clockLoaded} onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>}
-          <button type="button" disabled={!clockLoaded} onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
+          {!active.completion_payload && (active.running_since ? <button type="button" disabled={!clockLoaded} onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" disabled={!clockLoaded} onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>)}
+          <button type="button" disabled={!clockLoaded || active.completion_payload} onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
           <button type="button" disabled={saving || !clockLoaded} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
         </div>
       </section>}

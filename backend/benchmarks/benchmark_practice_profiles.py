@@ -133,7 +133,9 @@ def rewrite_as_legacy_archive(source, destination):
     files["practice_sessions.json"] = (json.dumps(sessions, ensure_ascii=False, indent=2) + "\n").encode()
     clock_state = json.loads(files["clock.json"])
     if clock_state.get("active_timer"):
-        clock_state["active_timer"].get("practice_draft", {}).pop("scoring_profile", None)
+        draft = clock_state["active_timer"].get("practice_draft", {})
+        draft.pop("scoring_profile", None)
+        draft.pop("completion_payload", None)
     files["clock.json"] = (json.dumps(clock_state, ensure_ascii=False, indent=2) + "\n").encode()
     manifest["files"] = [{
         "path": name, "size": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
@@ -286,15 +288,29 @@ def run(repeats=3):
                     "correct": 2, "incorrect": 1, "blank": 0, "completion_id": completion_id,
                     "scoring_profile": half_v1,
                 }
+                focus_values = payload(timer_draft["date"], timer_draft["subject"], timer_draft["topic"],
+                                       2, 1, 0, half_v1, duration_minutes, duration_seconds)
+                timer_draft["completion_payload"] = {**focus_values, "scoring_profile": half_v1}
+                expected_current_active_timer = {
+                    "kind": "practice", "status": "paused", "elapsed_ms": 60_999,
+                    "started_at_ms": None, "deadline_at_ms": None,
+                    "duration_ms": 0, "remaining_ms": 0,
+                    "work_duration_ms": 0, "break_duration_ms": 0, "phase": None,
+                    "cycle_enabled": False, "cycle_count": 0, "overdue_at_ms": None, "laps": [],
+                    "practice_draft": {
+                        "date": "2026-11-10", "subject": "Mathematics", "topic": "Fractions",
+                        "correct": 2, "incorrect": 1, "blank": 0, "completion_id": completion_id,
+                        "scoring_profile": half_v1,
+                        "completion_payload": {**focus_values, "scoring_profile": half_v1},
+                    },
+                }
                 saved_timer = client.patch("/clock", json={"active_timer": {
                     "kind": "practice", "status": "paused", "elapsed_ms": elapsed_ms,
                     "practice_draft": timer_draft,
                 }})
                 require(saved_timer.status_code == 200 and
-                        saved_timer.json()["active_timer"]["practice_draft"]["scoring_profile"] == half_v1,
-                        "focus timer did not persist full scoring snapshot")
-                focus_values = payload(timer_draft["date"], timer_draft["subject"], timer_draft["topic"],
-                                       2, 1, 0, half_v1, duration_minutes, duration_seconds)
+                        saved_timer.json()["active_timer"] == expected_current_active_timer,
+                        "focus timer did not persist the complete independent active-timer fixture")
                 first_focus = client.post("/practice", json=focus_values, headers={"Idempotency-Key": completion_id})
                 focus_actual = first_focus.json()
                 records.append(expected_row(focus_actual, {key: value for key, value in focus_values.items()
@@ -387,8 +403,8 @@ def run(repeats=3):
                     require([item.model_dump(mode="json") for item in restored_profiles] == expected_profiles,
                             "current backup restore changed the shared append-only profile catalog")
                     restored_clock = json.loads((restored_dir / "clock.json").read_text(encoding="utf-8"))
-                    require(restored_clock["active_timer"]["practice_draft"]["scoring_profile"] == half_v1,
-                            "current backup restore changed focus timer snapshot")
+                    require(restored_clock["active_timer"] == expected_current_active_timer,
+                            "current backup restore changed the complete active timer/practice draft")
 
                     legacy_zip = Path(backup_root) / "legacy.zip"
                     legacy_restore = Path(backup_root) / "legacy-restore"
@@ -416,8 +432,16 @@ def run(repeats=3):
                     old_profiles = StorageService(legacy_restore).load_list("exam_profiles.json", ExamScoringProfile)
                     require(old_profiles == [], "legacy archive unexpectedly restored a custom profile catalog")
                     old_clock = json.loads((legacy_restore / "clock.json").read_text(encoding="utf-8"))
-                    require(old_clock["active_timer"]["practice_draft"]["scoring_profile"]["profile_id"] == "legacy-yks",
-                            "legacy clock draft did not receive the safe profile default")
+                    expected_legacy_active_timer = {
+                        **expected_current_active_timer,
+                        "practice_draft": {
+                            **expected_current_active_timer["practice_draft"],
+                            "scoring_profile": legacy_profile,
+                            "completion_payload": None,
+                        },
+                    }
+                    require(old_clock["active_timer"] == expected_legacy_active_timer,
+                            "legacy restore changed active timer fields or failed to default its full practice draft")
 
                 return {
                     "benchmark": "versioned_practice_scoring_profiles",
@@ -429,7 +453,7 @@ def run(repeats=3):
                     "summary_seconds": {
                         "p50": statistics.median(summary_samples), "p95": percentile(summary_samples, 0.95),
                     },
-                    "correctness": "literal full profile snapshots, exact-rational scores, bounded unique metadata, complete rows and groups, legacy/current backup round-trips and focus retry matched independent fixtures",
+                    "correctness": "literal full profile snapshots, exact-rational scores, bounded unique metadata, complete rows, groups and active timer states, legacy/current backup round-trips, and focus retry matched independent fixtures",
                     "timer_boundary": {"elapsed_ms": elapsed_ms, "duration_minutes": duration_minutes,
                                        "duration_seconds": duration_seconds,
                                        "cases_ms": [case[0] for case in timer_cases],

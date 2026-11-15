@@ -156,6 +156,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("The date was 2026-11-15 or November 16th.", "2026-11-15"),
             ("The date was 2026-11-15 or 2026.11.16.", "2026-11-15"),
             ("The date was 2026-11-15 or 11/16.", "2026-11-15"),
+            ("The date was 2026-11-15 or 16.11.", "2026-11-15"),
+            ("The date was 2026-11-15 or 2.03.", "2026-11-15"),
             ("The date was 2026-11-15, or 16.", "2026-11-15"),
             ("The date was 2026-11-15; or 16.", "2026-11-15"),
             ("The date was 2026-11-15\nor 16.", "2026-11-15"),

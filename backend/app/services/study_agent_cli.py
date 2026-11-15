@@ -160,7 +160,7 @@ _DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1
 _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?!(?:[01]?\d|2[0-3])\.[0-5]\d(?!\d))(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?!(?:[01]?\d|2[0-3])\.(?:1[3-9]|[2-5]\d)(?!\d))(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _RELATIVE_DATE_UNIT = r"(?:days?|weeks?|months?|years?|hours?|gün|hafta|ay|yıl|yil|sene|saat)"

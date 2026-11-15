@@ -143,7 +143,8 @@ _DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.
 _DATE_RELATIVE_ALTERNATIVE = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?—–-]*\s*(?:or|either|veya|ya\s+da)\s+"
     r"(?:tomorrow|(?:the\s+)?(?:next|following)\s+day|the\s+day\s+after(?:\s+that)?|"
-    r"yarın|yarin|(?:bir\s+)?sonraki\s+gün|ertesi\s+gün)\b"
+    r"(?:a|one)\s+day\s+later|(?:a|one)\s+day\s+after(?:\s+that)?|"
+    r"yarın|yarin|(?:bir\s+)?sonraki\s+gün|ertesi\s+gün|bir\s+gün\s+sonra)\b"
 )
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"

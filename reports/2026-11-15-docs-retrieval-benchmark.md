@@ -29,7 +29,7 @@ The checked-in result is [`2026-11-15-docs-benchmark-results.json`](2026-11-15-d
 - Three synthetic decoys checked: an absent local route, an absent local anchor, and a reserved `example.invalid` stale-link example. No external request is made.
 - `ai_included: false`, `network_access: false`; the task answer and screenshot scoring fields remain `pending` / `pending_manual`.
 
-The automated result measures wiki/task-pack integrity only. It does not score whether a reader can find or synthesize an answer, compare factual fluency, measure completion time, inspect a screenshot, or assess accessibility with assistive technology. No human task session or screenshot evaluation was conducted for this report. Such results must be recorded separately against the human rubric; they must not be inferred from the automated pass.
+The automated result measures wiki/task-pack integrity only. It does not score whether a reader can find or synthesize an answer, compare factual fluency, measure completion time, inspect a screenshot, or assess accessibility with assistive technology. No human task session or screenshot evaluation was conducted for this report. Such results must be recorded separately against the human rubric; they must not be inferred from the automated pass. The administration protocol requires at least two independent testers, each completing both locales; criteria apply to each complete run, without averaging away a failed critical case or tester. See [`docs/benchmark/README.md`](../docs/benchmark/README.md) for booklet generation, fresh-profile use, key withholding, and hash/seed recording.
 
 ## Reproducibility and boundaries
 

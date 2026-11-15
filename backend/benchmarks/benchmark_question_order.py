@@ -11,7 +11,7 @@ from statistics import median
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
-from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation
+from benchmark_common import assert_oracle, emit, measure, probe_oracle_self_check
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -113,7 +113,7 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
             ]
             assert_oracle(topic_priorities(questions + invalid, today=TODAY, exams=exams)["question_order"],
                           expected_rows, "invalid question-order references excluded")
-            mutation_probes = [probe_detects_mutation(
+            oracle_self_checks = [probe_oracle_self_check(
                 summary, expected_rows,
                 lambda rows: rows[0]["early"].__setitem__("median_seconds", -1),
                 "question-order median corrupted",
@@ -123,7 +123,7 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
                 "persisted_bytes": (storage.data_dir / "questions.json").stat().st_size,
                 "warm_full_summary": measure(summarize, repeats),
                 "correctness": "unique in-range positions and each stage count/median match oracle; unknown, missing-order, and out-of-range references are excluded",
-                "mutation_probes": mutation_probes,
+                "oracle_self_checks": oracle_self_checks,
             })
     emit({"benchmark": "question_order_summary", "seed": SEED, "runs": results}, json_output)
 

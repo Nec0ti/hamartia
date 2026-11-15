@@ -13,7 +13,7 @@ from pathlib import Path
 
 from app.models.schemas import Exam, Question, Settings
 from app.services.backup import BackupError, create_backup, extract_backup, restore_backup
-from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation, seeded_png
+from benchmark_common import assert_oracle, emit, measure, probe_oracle_self_check, seeded_png
 
 SEED = 20261114
 
@@ -157,7 +157,7 @@ def main(file_count=24, repeats=3, json_output=None):
             "p95_seconds": round(ordered[max(0, (repeats * 95 + 99) // 100 - 1)], 6),
         }
         assert {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in (restored / "uploads").iterdir()} == expected_hashes
-        mutation_probes = [probe_detects_mutation(
+        oracle_self_checks = [probe_oracle_self_check(
             json.loads((restored / "questions.json").read_text(encoding="utf-8")),
             expected_questions,
             lambda rows: rows.pop(),
@@ -171,7 +171,7 @@ def main(file_count=24, repeats=3, json_output=None):
             "restore_snapshot": "pre-existing data was snapshotted and preserved each run",
             "correctness": "upload hashes and restored exams/questions/settings matched expected values",
             "failure_safety": "checksum-corrupt restore preserved target; missing upload references and ZIP traversal paths were rejected",
-            "mutation_probes": mutation_probes,
+            "oracle_self_checks": oracle_self_checks,
             "limitations": "Synthetic seeded PNG pixels and metadata; no personal files or full live user corpus.",
         }, json_output)
 

@@ -17,7 +17,7 @@ from app.api import questions
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, Question
 from app.services.storage import StorageService
-from benchmark_common import assert_oracle, emit, probe_detects_mutation, seeded_png
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check, seeded_png
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -86,7 +86,7 @@ async def run(count=24, repeats=7, json_output=None):
             insight_seconds = time.perf_counter() - started
             expected_insights = _expected_insights(saved, TODAY)
             assert_oracle(insights, expected_insights, "question insights full output")
-            mutation_probes = [probe_detects_mutation(
+            oracle_self_checks = [probe_oracle_self_check(
                 insights, expected_insights,
                 lambda output: output["topics"][0].__setitem__("pending_count", -1),
                 "question pending count corrupted",
@@ -207,7 +207,7 @@ async def run(count=24, repeats=7, json_output=None):
             "section_question_upload_seconds": round(section_question_upload_seconds, 4),
             "section_question_insight_seconds": round(section_insight_seconds, 4),
             "correctness": "upload, query, edit, attempt, review, and deletion assertions passed",
-            "mutation_probes": mutation_probes,
+            "oracle_self_checks": oracle_self_checks,
             "rejected_uploads": ["blank text", "invalid PNG signature"],
             "limitations": "PNG pixels are deterministic synthetic noise; no AI or image-understanding path is called.",
         }, json_output)

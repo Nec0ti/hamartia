@@ -11,7 +11,7 @@ from pathlib import Path
 from app.core.progression import progression_summary
 from app.models.schemas import Exam, UserStats
 from app.services.storage import StorageError, StorageService
-from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation
+from benchmark_common import assert_oracle, emit, measure, probe_oracle_self_check
 
 SEED = 20261114
 
@@ -100,7 +100,7 @@ def main(count=1000, repeats=7, json_output=None):
         progression = progression_summary(storage.load_list("exams.json", Exam), today=date(2026, 11, 14))
         progression_expected = _expected_progression(expected_after_update, set(deleted))
         assert_oracle(progression, progression_expected, "storage progression")
-        mutation_probes = [probe_detects_mutation(
+        oracle_self_checks = [probe_oracle_self_check(
             progression, progression_expected,
             lambda output: output.__setitem__("total_xp", output["total_xp"] + 1),
             "progression XP off by one",
@@ -132,7 +132,7 @@ def main(count=1000, repeats=7, json_output=None):
             "document_update": document_stats,
             "progression_full_history": progression_stats,
             "correctness": "append/read/update/delete and progression assertions passed",
-            "mutation_probes": mutation_probes,
+            "oracle_self_checks": oracle_self_checks,
             "corrupt_input_cases": ["truncated JSON rejected without overwriting source"],
             "limitations": "Sequential append rewrites the full growing JSON list (O(n^2)); this is a stress case, not the mixed daily-flow workload.",
         }, json_output)

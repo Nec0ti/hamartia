@@ -60,16 +60,17 @@ def assert_oracle(actual, expected, label="benchmark oracle"):
         raise AssertionError(f"{label} mismatch")
 
 
-def probe_detects_mutation(actual, expected, mutate, label):
-    """Prove an oracle comparison rejects a deterministic wrong-result mutant.
+def probe_oracle_self_check(actual, expected, mutate, label):
+    """Check that the oracle comparator rejects a handcrafted output perturbation.
 
     This is correctness harness self-checking only. It is never called in a timed
-    operation and intentionally does not contribute a benchmark sample.
+    operation and intentionally does not contribute a benchmark sample. It checks
+    comparator wiring/sensitivity, not code-level mutation testing.
     """
-    mutant = copy.deepcopy(actual)
-    mutate(mutant)
+    perturbed = copy.deepcopy(actual)
+    mutate(perturbed)
     try:
-        assert_oracle(mutant, expected, label)
+        assert_oracle(perturbed, expected, label)
     except AssertionError:
         return label
     raise AssertionError(f"oracle failed to reject mutation: {label}")

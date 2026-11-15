@@ -16,7 +16,7 @@ from app.core.progression import progression_summary
 from app.core.study_plan import topic_priorities
 from app.models.schemas import Exam, PracticeSession, Question, ReviewAttempt
 from app.services.storage import StorageService
-from benchmark_common import assert_oracle, emit, probe_detects_mutation
+from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -203,14 +203,14 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
         expected_practice = _expected_practice(sessions)
         practice_result = practice_topic_summaries(storage.load_list("practice_sessions.json", PracticeSession))
         assert_oracle(practice_result, expected_practice, "mixed practice groups")
-        mutation_probes = [
-            probe_detects_mutation(progression_result, expected_progression,
+        oracle_self_checks = [
+            probe_oracle_self_check(progression_result, expected_progression,
                                    lambda value: value.__setitem__("total_xp", value["total_xp"] + 1),
                                    "mixed progression XP corrupted"),
-            probe_detects_mutation(priority_result, expected_priorities,
+            probe_oracle_self_check(priority_result, expected_priorities,
                                    lambda value: value["reviews"].pop(),
                                    "mixed review row omitted"),
-            probe_detects_mutation(practice_result, expected_practice,
+            probe_oracle_self_check(practice_result, expected_practice,
                                    lambda rows: rows[0]["trend"].pop(),
                                    "mixed practice trend omitted"),
         ]
@@ -260,7 +260,7 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             "question_update_10_records": update, "question_delete_10_records": delete,
             "concurrent_appends": {"workers": 4, "records": len(concurrent), "seconds": round(concurrent_seconds, 6)},
             "correctness": "progression, due/scheduled and same-day review activity, order insights, practice groups/trends, mutations, and all appended IDs match independent oracles",
-            "mutation_probes": mutation_probes,
+            "oracle_self_checks": oracle_self_checks,
         }, json_output)
 
 

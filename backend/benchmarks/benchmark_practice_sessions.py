@@ -9,7 +9,7 @@ from pathlib import Path
 from app.core.practice import practice_topic_summaries
 from app.models.schemas import PracticeSession
 from app.services.storage import StorageService
-from benchmark_common import assert_oracle, emit, measure, probe_detects_mutation
+from benchmark_common import assert_oracle, emit, measure, probe_oracle_self_check
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
@@ -48,7 +48,7 @@ def measure_count(count, repeats):
         expected = _oracle(sessions)
         assert len(summaries) == expected_groups
         assert_oracle(summaries, expected, "practice full summary")
-        mutation_probes = [probe_detects_mutation(
+        oracle_self_checks = [probe_oracle_self_check(
             summaries, expected,
             lambda rows: rows[0].__setitem__("net", rows[0]["net"] + 1),
             "practice net corrupted",
@@ -59,7 +59,7 @@ def measure_count(count, repeats):
             "first_full_summary_seconds": measure(summarize, 1, warmups=0)["p50_seconds"],
             "warm_full_summary": measure(summarize, repeats),
             "correctness": "every topic aggregate and ordered trend matches an independent oracle",
-            "mutation_probes": mutation_probes,
+            "oracle_self_checks": oracle_self_checks,
         }
 
 

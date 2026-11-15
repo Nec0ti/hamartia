@@ -102,6 +102,8 @@ class StudyAgentCliTests(unittest.TestCase):
             ("correct", "correct: -5"),
             ("correct", "correct: 1,200"),
             ("correct", "correct: 1 200"),
+            ("correct", "correct: 5 or 7"),
+            ("correct", "correct: five or 7"),
         ):
             with self.subTest(field=field, text=text):
                 accepted, _ambiguous = extract_fields([text])
@@ -126,6 +128,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("I got 5 or 7 right.", "7 right", "en"),
             ("I got between 5 and 7 right.", "7 right", "en"),
             ("5 veya 7 doğru yaptım.", "7 doğru", "tr"),
+            ("I got five or 7 right.", "7 right", "en"),
+            ("Beş veya 7 doğru yaptım.", "7 doğru", "tr"),
+            ("I got 5 right; correct: 5 or 7", "correct: 5", "en"),
         ]
         for message, quote, language in cases:
             with self.subTest(message=message, quote=quote):
@@ -136,6 +141,19 @@ class StudyAgentCliTests(unittest.TestCase):
         date_result = prepare_practice([date_message], "en", [{"field": "date", "quote": "2026-11-15"}])
         self.assertNotIn("date", date_result["fields"])
         self.assertIn("date", date_result["ambiguous"])
+        mixed_date = "The date was 2026-11-15 or November 16."
+        mixed_result = prepare_practice([mixed_date], "en", [{"field": "date", "quote": "2026-11-15"}])
+        self.assertNotIn("date", mixed_result["fields"])
+        self.assertIn("date", mixed_result["ambiguous"])
+
+    def test_duration_alternatives_accept_only_neither_candidate(self):
+        for context, quote in (
+            ("It took 45 min or an hour.", "45 min"),
+            ("45 dakika ya da bir saat sürdü.", "45 dakika"),
+            ("It took 45 min or sixty seconds.", "45 min"),
+        ):
+            with self.subTest(context=context):
+                self.assertIsNone(parse_quote_value("duration_minutes", quote, context))
 
     def test_ambiguous_topics_dates_and_durations_are_not_guessed(self):
         self.assertIsNone(parse_quote_value("topic", "I practiced Functions and Geometry."))

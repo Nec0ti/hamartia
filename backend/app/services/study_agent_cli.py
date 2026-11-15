@@ -103,13 +103,17 @@ _UNPUNCTUATED_QUESTION = re.compile(
 )
 _COMPOSITE_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\s+\d+\s*(?:minutes?|mins?|dakika)\b")
 _HOUR_DURATION = re.compile(r"(?i)\b\d+\s*(?:hours?|hrs?|h|saat)\b")
-_DATE_CANDIDATES = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
-_DURATION_CHUNK = r"\d{1,5}\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b"
-_DURATION_ALTERNATIVE = re.compile(rf"(?i){_DURATION_CHUNK}\s+(?:or|either|veya|ya\s+da)\s+{_DURATION_CHUNK}")
+_DATE_CANDIDATES = re.compile(
+    r"(?i)\b(?:\d{4}-\d{2}-\d{2}|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:,?\s+\d{4})?)\b"
+)
+_NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki)"
+_COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
+_DURATION_CHUNK = rf"(?:\d{{1,5}}|{_NUMBER_WORD})\s*(?:hours?|hrs?|h|saat|minutes?|mins?|dakika|seconds?|secs?|saniye)\b"
+_DURATION_ALTERNATIVE = re.compile(rf"(?i){_DURATION_CHUNK}(?:\s+(?:or|either|veya|ya\s+da)\s+|\s+(?:or|veya)\s+){_DURATION_CHUNK}")
 _COUNT_ALTERNATIVES: dict[str, re.Pattern[str]] = {
-    "correct": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+|answers?\s+)?(?:correct(?:ly)?|right|doğru|dogru)\b"),
-    "incorrect": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+|answers?\s+)?(?:incorrect(?:ly)?|wrong|yanlış|yanlis)\b"),
-    "blank": re.compile(r"(?i)(?:\bbetween\s+\d+\s+(?:and|to)\s+\d+|\b\d+\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+\d+)\s*(?:questions?\s+)?(?:blank|boş|bos)\b"),
+    "correct": re.compile(rf"(?i)(?:\bbetween\s+{_COUNT_NUMBER}\s+(?:and|to)\s+{_COUNT_NUMBER}|\b{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER})\s*(?:questions?\s+|answers?\s+)?(?:correct(?:ly)?|right|doğru|dogru)\b|\b(?:correct|doğru|dogru)\s*:\s*{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER}"),
+    "incorrect": re.compile(rf"(?i)(?:\bbetween\s+{_COUNT_NUMBER}\s+(?:and|to)\s+{_COUNT_NUMBER}|\b{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER})\s*(?:questions?\s+|answers?\s+)?(?:incorrect(?:ly)?|wrong|yanlış|yanlis)\b|\b(?:incorrect|wrong|yanlış|yanlis)\s*:\s*{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER}"),
+    "blank": re.compile(rf"(?i)(?:\bbetween\s+{_COUNT_NUMBER}\s+(?:and|to)\s+{_COUNT_NUMBER}|\b{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER})\s*(?:questions?\s+)?(?:blank|boş|bos)\b|\b(?:blank|boş|bos)\s*:\s*{_COUNT_NUMBER}\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+{_COUNT_NUMBER}"),
 }
 
 _COUNT_PATTERNS: dict[str, re.Pattern[str]] = {

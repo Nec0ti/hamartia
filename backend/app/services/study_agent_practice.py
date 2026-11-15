@@ -25,6 +25,9 @@ ALIASES = {
     "duration_minutes": "duration_minutes|minutes|dakika|süre_dakika|sure_dakika",
     "duration_seconds": "duration_seconds|seconds|saniye|süre_saniye|sure_saniye",
 }
+_LABELED_NUMERIC_ALTERNATIVE = re.compile(
+    r"(?i)^\s*(?:or|either|veya|ya\s+da|and|to|ile|ila|[-–])\s*(?:\d{1,5}|zero|one|two|three|four|five|six|seven|eight|nine|ten|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on)\b"
+)
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,8 @@ def extract_fields(messages: list[str]) -> tuple[dict[str, Evidence], dict[str, 
             for pattern in _patterns(field):
                 for match in pattern.finditer(message):
                     if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} and re.search(r"\d\s+$", message[:match.start(1)]):
+                        continue
+                    if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} and _LABELED_NUMERIC_ALTERNATIVE.search(message[match.end(1):]):
                         continue
                     raw = match.group(1).strip()
                     value = int(raw) if field in {"correct", "incorrect", "blank", "duration_minutes", "duration_seconds"} else raw

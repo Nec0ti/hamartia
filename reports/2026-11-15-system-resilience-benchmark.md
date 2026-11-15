@@ -34,8 +34,8 @@ The HTTP measurements include TCP loopback, HTTP serialization, routing, Pydanti
 - `PYTHONPATH=backend python -m unittest discover -s backend/tests -q` — 120 tests passed.
 - `python -m compileall -q backend/benchmarks/benchmark_system_resilience.py backend/app/services/storage.py` — passed.
 - `git diff --check` — clean.
-- CI runs the bounded benchmark on Ubuntu and the deterministic held-lock/contention tests in the Windows/Linux packaging matrix.
+- CI runs the bounded benchmark on Ubuntu and the held-lock/process-contention tests in the Windows/Linux packaging matrix.
 
 ## Limits
 
-Results are a synthetic single-machine sample, not a performance target. The abrupt-death point is immediately before `Path.replace`; the crash/restart experiment runs on Linux CI and locally, and validates that a fully written temp file cannot corrupt the previous complete file. It does not simulate power loss, torn filesystem metadata, disk-full conditions, or every crash point; Windows crash replacement behavior is not claimed as verified. The HTTP request mix is limited to `/exams`, and concurrency is capped at eight clients. The deterministic held-lock and multi-writer process tests run in both Windows and Linux packaging CI. Multi-process direct storage mutations are serialized, but multiple API server processes remain prevented by the lifetime `DataDirectoryLock`.
+Results are a synthetic single-machine sample, not a performance target. The abrupt-death point is immediately before `Path.replace`; the crash/restart experiment runs on Linux CI and locally, and validates that a fully written temp file cannot corrupt the previous complete file. It does not simulate power loss, torn filesystem metadata, disk-full conditions, or every crash point; Windows crash replacement behavior is not claimed as verified. The HTTP request mix is limited to `/exams`, and concurrency is capped at eight clients. The held-lock OS probe and multi-writer process tests run in both Windows and Linux packaging CI. Multi-process direct storage mutations are serialized, but multiple API server processes remain prevented by the lifetime `DataDirectoryLock`.

@@ -246,6 +246,36 @@ class StudyAgentCliTests(unittest.TestCase):
         )
         self.assertEqual(punctuated_correction["fields"]["correct"], 7)
         self.assertNotIn("correct", punctuated_correction["ambiguous"])
+        omitted_conflict_hint = prepare_practice(
+            ["I got 5 right.", "Or 7 right."], "en",
+            [{"field": "correct", "quote": "5 right"}],
+        )
+        self.assertNotIn("correct", omitted_conflict_hint["fields"])
+        self.assertIn("correct", omitted_conflict_hint["ambiguous"])
+        omitted_correction_hint = prepare_practice(
+            ["I got 5 right.", "Correction: I got 7 right."], "en",
+            [{"field": "correct", "quote": "5 right"}],
+        )
+        self.assertEqual(omitted_correction_hint["fields"]["correct"], 7)
+        self.assertEqual(omitted_correction_hint["verified_evidence"]["correct"]["message_index"], 1)
+        self.assertEqual(omitted_correction_hint["verified_evidence"]["correct"]["quote"], "Correction: I got 7 right")
+        joined_correction = prepare_practice(
+            ["I got 5 right; and Correction: I got 7 right."], "en",
+            [{"field": "correct", "quote": "5 right"}],
+        )
+        self.assertEqual(joined_correction["fields"]["correct"], 7)
+        self.assertEqual(joined_correction["verified_evidence"]["correct"]["quote"], "and Correction: I got 7 right")
+        for later in ("Maybe 7 right.", "Perhaps 7 right.", "Alternatively 7 right."):
+            with self.subTest(later=later):
+                result = prepare_practice(["I got 5 right.", later], "en", [{"field": "correct", "quote": "5 right"}])
+                self.assertIn("correct", result["ambiguous"])
+        for later, language in (("or the next day", "en"), ("ya da ertesi gün", "tr")):
+            with self.subTest(later=later):
+                result = prepare_practice(
+                    ["I studied on 2026-11-15." if language == "en" else "Tarih 2026-11-15.", later], language,
+                    [{"field": "date", "quote": "on 2026-11-15" if language == "en" else "Tarih 2026-11-15"}],
+                )
+                self.assertIn("date", result["ambiguous"])
         unrelated_clause = prepare_practice(
             ["I got 5 right; I practiced Functions."], "en",
             [{"field": "correct", "quote": "5 right"}],

@@ -78,12 +78,13 @@ def _sentence_context(message: str, start: int, end: int) -> str:
     left = left_boundary + 1
     right = right_boundary
     context = message[left:right].strip()
-    continuation = r"(?i)^\s*,?\s*(?:or|either|veya|ya\s+da|plus|and|ve|ile|ek|ilave)\b"
+    continuation = r"(?i)^\s*,?\s*(?:or|either|veya|ya\s+da|plus|and|ve|ile|ek|ilave|maybe|perhaps|alternatively|belki|galiba)\b"
+    correction_start = r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b"
 
     # Keep a neighboring clause with the quoted statement only when it begins
     # with a connector. This catches punctuation-split alternatives without
     # merging ordinary separate statements or explicit corrections.
-    if left_boundary >= 0 and re.match(continuation, context):
+    if left_boundary >= 0 and re.match(continuation, context) and not re.match(correction_start, context):
         previous_left_candidates = [message.rfind(mark, 0, left_boundary) for mark in boundaries]
         previous_left = max(previous_left_candidates, default=-1) + 1
         context = f"{message[previous_left:left_boundary].strip()} {context}".strip()
@@ -92,7 +93,7 @@ def _sentence_context(message: str, start: int, end: int) -> str:
         next_right_candidates = [message.find(mark, next_left) for mark in boundaries]
         next_right = min((position for position in next_right_candidates if position >= 0), default=len(message))
         following = message[next_left:next_right].strip()
-        if re.match(continuation, following):
+        if re.match(continuation, following) and not re.match(correction_start, following):
             context = f"{context} {following}".strip()
     return context
 
@@ -118,6 +119,7 @@ def _number_has_unsafe_boundary(candidate: str, context: str, match: re.Match[st
 _HEDGE_OR_NEGATION = re.compile(
     r"(?i)(?:\bnot\b|\bno\b|\bnever\b|\bdidn't\b|\bdidnt\b|\bwasn't\b|\bwasnt\b|\bhaven't\b|\bhavent\b|\bmaybe\b|\bperhaps\b|\babout\s+\d|\baround\s+\d|\bat\s+least\s+\d|\bapproximately\b|\bapprox\.?\b|\broughly\b|\bprobably\b|\bi think\b|\bi guess\b|\bif\b|\bwhether\b|\bcould\b|\bwould\b|\bsuppose\b|\bimagine\b|\bhypothetical\b|\bexample\b|\bteacher\s+(?:said|says)\b|\b(?:he|she|they)\s+said\b|\bnet\b|\byaklaşık\b|\bcivarında\b|\bbelki\b|\bsanırım\b|\bgaliba\b|\bdeğil\b|\byok\b|\byapmadım\b|\bhiçbir\b|\bvarsay\w*\b|\bolsaydı\b|\börneğin\b|\böğretmen\w*\s+(?:dedi|söyledi)\b|\b(?:dedi|söyledi)\b)"
 )
+_ALTERNATIVE_MARKER = re.compile(r"(?i)\b(?:alternatively|as an alternative|other option|belki|galiba)\b")
 _UNPUNCTUATED_QUESTION = re.compile(
     r"(?i)(?:^\s*(?:did|do|does|is|are|was|were|can|could|would|should|what|when|where|why|how|whether|kaç|ne|hangi|mi|mı|mu|mü)\b|\b(?:mi|mı|mu|mü)\s*$)"
 )
@@ -126,7 +128,8 @@ _DATE_CANDIDATE_PATTERN = rf"(?<!\w)(?:\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}}|\d{{1
 _DATE_CANDIDATES = re.compile(
     rf"(?i){_DATE_CANDIDATE_PATTERN}"
 )
-_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;]?\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
+_DATE_SHORTHAND_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:\d{{1,2}}(?:st|nd|rd|th)?(?:[/.-]\d{{1,2}})?)(?![\d:])")
+_DATE_RELATIVE_ALTERNATIVE = re.compile(rf"(?i){_DATE_CANDIDATE_PATTERN}\s*[,;.!?]*\s*(?:or|either|veya|ya\s+da)\s+(?:(?:the\s+)?(?:next|following)\s+day|(?:ertesi|sonraki)\s+gün)")
 _NUMBER_WORD = r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a|an|sıfır|bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|on\s+bir|on\s+iki|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan)"
 _COUNT_NUMBER = rf"(?:\d{{1,5}}|{_NUMBER_WORD})"
 _COUNT_CONNECTOR = r"(?:,\s*(?:(?:or|and|to|veya|ya\s+da|ile|ila)\s*)?|\s+(?:or|and|to|veya|ya\s+da|ile|ila|[-–])\s+)"
@@ -177,17 +180,18 @@ def parse_quote_value(field: str, quote: str, context: str | None = None) -> str
         or "?" in surrounding
         or _UNPUNCTUATED_QUESTION.search(surrounding)
         or _HEDGE_OR_NEGATION.search(surrounding)
+        or _ALTERNATIVE_MARKER.search(surrounding)
         or (field in {"duration_minutes", "duration_seconds"} and _HOUR_DURATION.search(surrounding))
         or (field in {"duration_minutes", "duration_seconds"} and _DURATION_ALTERNATIVE.search(surrounding))
         or (field == "duration_minutes" and _DURATION_MINUTES_ADDITIVE.search(surrounding))
         or (field == "duration_seconds" and _DURATION_SECONDS_ADDITIVE.search(surrounding))
         or (field in {"duration_minutes", "duration_seconds"} and _DURATION_FRACTIONAL.search(surrounding))
-        or (field == "date" and (len(set(_DATE_CANDIDATES.findall(surrounding))) > 1 or _DATE_SHORTHAND_ALTERNATIVE.search(surrounding)))
+        or (field == "date" and (len(set(_DATE_CANDIDATES.findall(surrounding))) > 1 or _DATE_SHORTHAND_ALTERNATIVE.search(surrounding) or _DATE_RELATIVE_ALTERNATIVE.search(surrounding)))
         or (field in _COUNT_ALTERNATIVES and _COUNT_ALTERNATIVES[field].search(surrounding))
     ):
         return None
     parse_candidate = re.sub(
-        r"(?i)^\s*(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*[:,]?\s*",
+        r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\s*[:,]?\s*",
         "", candidate,
     )
     # Labeled text stays supported, but use the existing deterministic parser.
@@ -280,6 +284,114 @@ def _context_field_values(field: str, context: str) -> tuple[bool, set[str | int
     return True, values
 
 
+def _is_explicit_correction(context: str) -> bool:
+    return bool(re.match(
+        r"(?i)^\s*(?:and\s+)?(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b",
+        context,
+    ))
+
+
+def _transcript_field_resolution(field: str, messages: list[str]) -> tuple[bool, Evidence | None, list[str]]:
+    """Resolve supported transcript candidates in host order, independent of provider quote hints."""
+    events: list[tuple[int, int, Evidence | None, bool, str]] = []
+
+    def add_candidate(index: int, quote: str, start: int, end: int, context: str) -> None:
+        correction = _is_explicit_correction(context)
+        occurrences = _occurrences(messages, quote)
+        if correction:
+            correction_quote = context.strip()
+            correction_start = messages[index].find(correction_quote)
+            if correction_start >= 0:
+                quote = correction_quote
+                start = correction_start
+                end = start + len(quote)
+                occurrences = _occurrences(messages, quote)
+        if len(occurrences) != 1 or occurrences[0] != (index, start, end):
+            events.append((index, start, None, False, quote))
+            return
+        value = parse_quote_value(field, quote, context)
+        if value is None:
+            events.append((index, start, None, False, quote))
+            return
+        events.append((index, start, Evidence(value, index, quote), correction, quote))
+
+    for index, message in enumerate(messages):
+        explicit, explicit_ambiguous = extract_fields([message])
+        for quote in explicit_ambiguous.get(field, []):
+            start = message.find(quote)
+            context = _sentence_context(message, start, start + len(quote)) if start >= 0 else message
+            events.append((index, max(start, 0), None, False, quote))
+        if field in explicit and field not in explicit_ambiguous:
+            quote = explicit[field].quote
+            start = message.find(quote)
+            context = _sentence_context(message, start, start + len(quote))
+            add_candidate(index, quote, start, start + len(quote), context)
+
+        if field in _COUNT_PATTERNS:
+            patterns = (_COUNT_PATTERNS[field],)
+        elif field == "duration_minutes":
+            patterns = (_DURATION_MINUTES,)
+        elif field == "duration_seconds":
+            patterns = (_DURATION_SECONDS,)
+        elif field == "date":
+            patterns = (_DATE,)
+        else:
+            patterns = _SUBJECT_PATTERNS if field == "subject" else _TOPIC_PATTERNS
+        seen: set[tuple[int, int]] = set()
+        for pattern in patterns:
+            for match in pattern.finditer(message):
+                if field in {"subject", "topic"} and re.fullmatch(r"(?:\d{4}-\d{2}-\d{2}|\d+)", match.group(1).strip()):
+                    continue
+                start, end = match.span()
+                if (start, end) in seen:
+                    continue
+                seen.add((start, end))
+                quote = match.group(0)
+                context = _sentence_context(message, start, end)
+                add_candidate(index, quote, start, end, context)
+
+    if field == "date":
+        joined = "\n".join(messages)
+        if _DATE_RELATIVE_ALTERNATIVE.search(joined):
+            events.append((len(messages), 0, None, False, "relative date continuation"))
+
+    events.sort(key=lambda item: (item[0], item[1]))
+    current: Evidence | None = None
+    current_is_correction = False
+    unresolved = False
+    ambiguous_quotes: list[str] = []
+    for _index, _start, evidence, correction, quote in events:
+        if evidence is None:
+            unresolved = True
+            current = None
+            current_is_correction = False
+            ambiguous_quotes.append(quote)
+            continue
+        if correction:
+            current = evidence
+            current_is_correction = True
+            unresolved = False
+            ambiguous_quotes = []
+            continue
+        if unresolved:
+            ambiguous_quotes.append(quote)
+            continue
+        if current is None:
+            current = evidence
+            current_is_correction = False
+        elif current.value != evidence.value:
+            unresolved = True
+            ambiguous_quotes.extend((current.quote, evidence.quote))
+            current = None
+            current_is_correction = False
+
+    if unresolved:
+        return True, None, list(dict.fromkeys(item for item in ambiguous_quotes if item))
+    if current_is_correction:
+        return False, current, []
+    return False, None, []
+
+
 def _conversation_questions(language: str, missing: list[str], ambiguous: dict[str, list[str]]) -> list[str]:
     prompts = {
         "en": {
@@ -363,7 +475,7 @@ def prepare_practice(
             continue
         evidence = Evidence(value=value, message_index=message_index, quote=claim.quote)
         previous = accepted.get(field)
-        correction = bool(re.match(r"(?i)^\s*(?:correction|actually|update|düzeltme|duzeltme|aslında|güncelleme|guncelleme)\b", context))
+        correction = _is_explicit_correction(context)
         if previous and previous.value != value and not correction:
             ambiguous[field] = list(dict.fromkeys([previous.quote, claim.quote]))
             accepted.pop(field, None)
@@ -371,6 +483,18 @@ def prepare_practice(
             ambiguous[field] = list(dict.fromkeys([*ambiguous[field], claim.quote]))
         else:
             accepted[field] = evidence
+            ambiguous.pop(field, None)
+
+    # Provider quote hints cannot hide a later conflict or correction in the
+    # host-owned transcript. Resolve every supported field candidate in source
+    # order, and let only an explicit, locally verified correction supersede it.
+    for field in FIELDS:
+        transcript_ambiguous, correction, transcript_quotes = _transcript_field_resolution(field, messages)
+        if transcript_ambiguous:
+            ambiguous[field] = list(dict.fromkeys([*ambiguous.get(field, []), *transcript_quotes]))
+            accepted.pop(field, None)
+        elif correction is not None:
+            accepted[field] = correction
             ambiguous.pop(field, None)
 
     missing = [field for field in FIELDS if field not in accepted and field not in ambiguous]

@@ -511,7 +511,10 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
           strict: true,
         }]
         const initial = await requestResponses({
-          model, instructions, input: [inputTranscript], additional_tools: additionalTools,
+          model, instructions, input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
+            inputTranscript,
+          ],
           store: false, stream: true,
         }, controller.signal, requestId, null, accessToken)
         const calls = Array.isArray(initial.output) ? initial.output.filter((item) => item?.type === 'function_call') : []
@@ -550,11 +553,11 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
           model,
           instructions,
           input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
             inputTranscript,
             functionItem,
             { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(safeToolResult) },
           ],
-          additional_tools: additionalTools,
           store: false,
           stream: true,
         }, controller.signal, requestId, null, accessToken)

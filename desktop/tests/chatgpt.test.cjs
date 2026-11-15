@@ -227,18 +227,27 @@ test('practice-entry calls one strict evidence tool, verifies host transcript, a
   assert.match(request.instructions, /Turkish/)
   assert.equal(request.store, false)
   assert.equal(request.stream, true)
-  assert.equal(request.additional_tools.length, 1)
-  assert.equal(request.additional_tools[0].name, 'hamartia_practice_prepare')
-  assert.equal(request.additional_tools[0].strict, true)
-  assert.deepEqual(request.additional_tools[0].parameters.required, ['evidence'])
-  assert.equal(request.additional_tools[0].parameters.additionalProperties, false)
-  assert.deepEqual(request.input, [{ role: 'user', content: JSON.stringify({ student_messages: messages }) }])
+  assert.equal(Object.hasOwn(request, 'additional_tools'), false)
+  assert.deepEqual(request.input[0], {
+    type: 'additional_tools', role: 'developer', tools: [{
+      type: 'function', name: 'hamartia_practice_prepare',
+      description: 'Submit exact student-message quotes for local verification and a read-only practice preview.',
+      parameters: request.input[0].tools[0].parameters, strict: true,
+    }],
+  })
+  const tool = request.input[0].tools[0]
+  assert.equal(tool.name, 'hamartia_practice_prepare')
+  assert.equal(tool.strict, true)
+  assert.deepEqual(tool.parameters.required, ['evidence'])
+  assert.equal(tool.parameters.additionalProperties, false)
+  assert.deepEqual(request.input[1], { role: 'user', content: JSON.stringify({ student_messages: messages }) })
   assert.deepEqual(followup.input[0], request.input[0])
+  assert.deepEqual(followup.input[1], request.input[1])
   assert.match(followup.instructions, /Turkish/)
-  assert.deepEqual(followup.input[1], { type: 'function_call', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText })
-  assert.equal(followup.input[2].type, 'function_call_output')
-  assert.equal(followup.input[2].call_id, 'call_1')
-  assert.equal(JSON.parse(followup.input[2].output).write_allowed, false)
+  assert.deepEqual(followup.input[2], { type: 'function_call', call_id: 'call_1', name: 'hamartia_practice_prepare', arguments: argumentsText })
+  assert.equal(followup.input[3].type, 'function_call_output')
+  assert.equal(followup.input[3].call_id, 'call_1')
+  assert.equal(JSON.parse(followup.input[3].output).write_allowed, false)
   assert.equal(followup.store, false)
   assert.equal(followup.stream, true)
   assert.equal(Object.hasOwn(followup, 'previous_response_id'), false)

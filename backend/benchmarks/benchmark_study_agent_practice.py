@@ -1,12 +1,15 @@
-"""Benchmark the AI-free verified Study Agent practice draft/create boundary."""
+"""Benchmark the AI-free host verification/create path (not a provider round trip)."""
 
 import argparse
 import asyncio
 import hashlib
 import json
+import re
 import tempfile
 import time
 import uuid
+from contextlib import ExitStack
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,6 +17,7 @@ from fastapi import HTTPException
 
 from app.api import practice
 from app.models.schemas import PracticeSession, PracticeSessionCreate
+from app.services.ai_service import AIService
 from app.services.storage import StorageService
 from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
@@ -41,7 +45,7 @@ def expected_row(fields, saved, expected_id=None):
     }
 
 
-def approval_id_for(digest=None, duplicate_choice=None):
+def approval_id_for():
     # Each explicit approval click gets a fresh key; retries reuse the captured key.
     return str(uuid.uuid4())
 
@@ -52,13 +56,49 @@ def create_entry(messages, fields, storage):
     ))
     if draft["missing"] or draft["ambiguous"] or not draft["preview_digest"] or draft["proposal_mismatch"]:
         raise AssertionError("benchmark fixture unexpectedly needed clarification")
+    approval_id = approval_id_for()
     request = practice.AgentCreateRequest(
         messages=messages, language="en", proposal=draft["proposal"],
         fields=PracticeSessionCreate.model_validate(draft["fields"]).model_dump(),
         evidence=draft["evidence"], preview_digest=draft["preview_digest"],
-        approval_id=approval_id_for(draft["preview_digest"]),
+        approval_id=approval_id,
     )
-    return asyncio.run(practice.practice_agent_create(request, storage))
+    return asyncio.run(practice.practice_agent_create(request, storage)), approval_id
+
+
+def forbid_provider_calls():
+    """Install a fail-fast tripwire around every Study Agent provider entry point."""
+    stack = ExitStack()
+    stack.enter_context(patch.object(AIService, "study_chat", side_effect=AssertionError("provider call in host-only benchmark")))
+    stack.enter_context(patch.object(AIService, "study_practice_prepare", side_effect=AssertionError("provider call in host-only benchmark")))
+    return stack
+
+
+def validate_saved_timestamp(value, started_at, finished_at):
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise AssertionError("persisted creation timestamp is not UTC ISO-8601")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as error:
+        raise AssertionError("persisted creation timestamp is not valid ISO-8601") from error
+    # The storage contract truncates creation times to whole seconds.
+    lower_bound = started_at.replace(microsecond=0)
+    upper_bound = finished_at.replace(microsecond=0)
+    if parsed.tzinfo != timezone.utc or not lower_bound <= parsed <= upper_bound:
+        raise AssertionError("persisted creation timestamp falls outside the measured operation")
+    return value
+
+
+def validate_saved_id(value, approval_id, seen_ids):
+    pattern = r"practice_agent_[0-9a-f]{32}_[0-9a-f]{64}"
+    if not isinstance(value, str) or not re.fullmatch(pattern, value):
+        raise AssertionError("persisted practice ID does not match the expected UUID/fingerprint structure")
+    if not value.startswith(f"practice_agent_{uuid.UUID(approval_id).hex}_"):
+        raise AssertionError("persisted practice ID is not bound to the submitted approval UUID")
+    if value in seen_ids:
+        raise AssertionError("persisted practice IDs are not unique")
+    seen_ids.add(value)
+    return value
 
 
 def evidence_fixture(correct):
@@ -87,9 +127,12 @@ def independently_expected_tool_evidence(messages, fields, claims):
     expected = {}
     for claim in claims:
         quote = claim["quote"]
-        start = messages[0].index(quote)
+        matches = [(index, message.index(quote)) for index, message in enumerate(messages) if quote in message]
+        if len(matches) != 1:
+            raise AssertionError("independent fixture quote is absent or repeated in the transcript")
+        message_index, start = matches[0]
         expected[claim["field"]] = {
-            "value": fields[claim["field"]], "message_index": 0, "quote": quote,
+            "value": fields[claim["field"]], "message_index": message_index, "quote": quote,
             "start": start, "end": start + len(quote),
         }
     return expected
@@ -127,11 +170,11 @@ def create_evidence_entry(messages, language, claims, fields, storage, duplicate
 
 
 def run_evidence_tool_protocol():
-    """Exercise deterministic host verification/create without provider latency or calls."""
+    """Exercise deterministic host verification/create without provider round trips."""
     with tempfile.TemporaryDirectory(prefix="hamartia-agent-evidence-bench-") as directory:
         data_dir = Path(directory)
         storage = StorageService(data_dir)
-        with patch.object(practice, "DATA_DIR", data_dir):
+        with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
             messages_a, fields_a, claims_a = evidence_fixture(12)
             rejected = asyncio.run(practice.practice_agent_draft(
                 practice.AgentDraftRequest(
@@ -238,12 +281,38 @@ def run_evidence_tool_protocol():
                 raise AssertionError("intentional duplicate was not bound to its approval key")
             expected_c = expected_row(fields_b, saved_c)
 
+            messages_tr = [
+                "Türkçe dersinde Fonksiyon çalıştım.",
+                "12 doğru, 3 yanlış, 1 boş yaptım.",
+                "45 dakika ve 10 saniye sürdü. Tarih 2026-11-16.",
+            ]
+            fields_tr = {
+                "date": "2026-11-16", "subject": "Türkçe", "topic": "Fonksiyon", "correct": 12,
+                "incorrect": 3, "blank": 1, "duration_minutes": 45, "duration_seconds": 10,
+            }
+            claims_tr = [
+                {"field": "subject", "quote": "Türkçe dersinde"},
+                {"field": "topic", "quote": "dersinde Fonksiyon çalıştım"},
+                {"field": "date", "quote": "Tarih 2026-11-16"},
+                {"field": "correct", "quote": "12 doğru"},
+                {"field": "incorrect", "quote": "3 yanlış"},
+                {"field": "blank", "quote": "1 boş"},
+                {"field": "duration_minutes", "quote": "45 dakika"},
+                {"field": "duration_seconds", "quote": "10 saniye"},
+            ]
+            saved_tr, digest_tr, approval_tr = create_evidence_entry(
+                messages_tr, "tr", claims_tr, fields_tr, storage,
+            )
+            if not saved_tr.id.startswith(f"practice_agent_{uuid.UUID(approval_tr).hex}_"):
+                raise AssertionError("Turkish multi-message record is not bound to the explicit approval key")
+            expected_tr = expected_row(fields_tr, saved_tr)
+
             persisted = storage.load_list("practice_sessions.json", PracticeSession)
             actual = [item.model_dump() for item in persisted]
-            assert_oracle(actual, [expected_a, expected_b, expected_c], "provider-free evidence tool full persisted rows")
+            assert_oracle(actual, [expected_a, expected_b, expected_c, expected_tr], "provider-free evidence tool full persisted rows")
             return {
-                "records_checked": 3,
-                "verified_previews": 4,
+                "records_checked": 4,
+                "verified_previews": 5,
                 "fixed_evidence_claims": len(claims_a),
                 "rejected_evidence_writes": 0,
                 "unapproved_duplicate_writes": 0,
@@ -251,8 +320,8 @@ def run_evidence_tool_protocol():
                 "same_key_changed_preview_writes": 0,
                 "same_key_changed_choice_writes": 0,
                 "intentional_identical_duplicate_saves": 1,
-                "provider_calls": 0,
-                "inference_or_latency_included": False,
+                "provider_exclusion": "fail-fast tripwires patch both Study Agent provider entry points; host APIs are called directly",
+                "provider_round_trip_or_latency_included": False,
                 "oracle": "independent fixture values, exact quote offsets and digest, captured approval UUID binding, and every persisted row",
             }
 
@@ -261,16 +330,25 @@ def run_trial(count):
     with tempfile.TemporaryDirectory(prefix="hamartia-agent-entry-bench-") as directory:
         data_dir = Path(directory)
         storage = StorageService(data_dir)
-        with patch.object(practice, "DATA_DIR", data_dir):
+        seen_ids = set()
+        started_at = datetime.now(timezone.utc)
+        with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
             started = time.perf_counter()
             expected = []
             for index in range(count):
                 messages, fields = entry(index)
-                expected.append(expected_row(fields, create_entry(messages, fields, storage)))
+                saved, approval_id = create_entry(messages, fields, storage)
+                validate_saved_id(saved.id, approval_id, seen_ids)
+                expected.append(expected_row(fields, saved))
             elapsed = time.perf_counter() - started
+            finished_at = datetime.now(timezone.utc)
 
             persisted = storage.load_list("practice_sessions.json", PracticeSession)
             actual = [item.model_dump() for item in persisted]
+            if len(seen_ids) != count or len({item.id for item in persisted}) != count:
+                raise AssertionError("persisted benchmark IDs are not unique across every row")
+            for item in persisted:
+                validate_saved_timestamp(item.created_at, started_at, finished_at)
             assert_oracle(actual, expected, "practice-entry full persisted rows")
             oracle_probe = probe_oracle_self_check(
                 actual, expected,
@@ -329,7 +407,6 @@ def measure_workload(count, repeats):
         "full_draft_and_approved_create_p50_seconds": round(durations[len(durations) // 2], 6),
         "full_draft_and_approved_create_p95_seconds": round(durations[-1], 6),
         "correctness": "every persisted field, computed value, and metadata field matches the independent input oracle",
-        "provider_calls": 0,
     })
     return result
 

@@ -420,13 +420,14 @@ async function main() {
       litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', has_api_key: true,
     })
     await page.getByText('Ayarlar kaydedildi.').waitFor()
+    const settingsKeyPath = path.join(dataDir, 'settings.json')
+    assert.equal(JSON.parse(await fs.readFile(settingsKeyPath, 'utf8')).api_key, 'smoke-secret')
     await page.getByLabel('Kayıtlı API anahtarını sil').check()
     const [settingsClear] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/settings' && response.request().method() === 'PATCH'),
       page.getByRole('button', { name: 'Kaydet', exact: true }).click(),
     ])
     assert.equal((await settingsClear.json()).has_api_key, false)
-    const settingsKeyPath = path.join(dataDir, 'settings.json')
     assert.equal(JSON.parse(await fs.readFile(settingsKeyPath, 'utf8')).api_key, '')
     const settingsKeyManagementMs = Math.round(performance.now() - backupStarted)
     assert.match(await page.getByRole('link', { name: 'Yedeği indir' }).getAttribute('href'), /\/backup$/)

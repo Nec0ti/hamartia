@@ -51,10 +51,7 @@ export default function App() {
     }
   }, [t])
 
-  const openSettings = useCallback(() => {
-    setSettingsOpen(true)
-    loadSettings()
-  }, [loadSettings])
+  const openSettings = useCallback(() => setSettingsOpen(true), [])
 
   const panel = useMemo(() => {
     if (activeTab === 'dashboard') return <DashboardTab onUploadQuestion={(exam) => {

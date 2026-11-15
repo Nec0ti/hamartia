@@ -1,5 +1,7 @@
 # Backlog log
 
+- 2026-11-15: Replaced the single-page guide with a generated static 16-page English/Turkish wiki. Getting Started is first in both locales. Pages cover app/data architecture, student workflows, review scheduling and pattern limits, exam/Maarif scope, Windows 10/11 and Linux installs, provider/consent boundaries, privacy, backup/restore, Clock notification limits, accessibility/language, learning-evidence limits, FAQ, troubleshooting, and contributions. The Python standard-library generator publishes 32 pages with reciprocal language links and parallel nav/section anchors. Docs browser smoke passed all 32 routes, internal links, EN/TR section parity, 390px layout, and keyboard skip link. See `reports/2026-11-15-bilingual-wiki-docs.md`. No docs benchmark, AI call, or model test was run.
+
 - 2026-11-15: Added an optional, explicitly selected configured-endpoint Study Agent provider while retaining ChatGPT as the default. Per-request consent names the exact URL, bounded study summary, and use of a saved API key; non-loopback destinations and unencrypted HTTP are warned about. No provider tests, benchmarks, or model calls were added or run; manual endpoint verification on another computer remains pending. Static compilation and frontend build passed. Report: `reports/2026-11-15-configured-study-agent-provider.md`.
 
 ## 2026-11-15 — desktop delivery and ARETE-001

@@ -74,10 +74,11 @@
 ## P6 — product experience follow-up
 
 - [x] Add a Clock tab for local time, shared practice/Pomodoro/countdown/stopwatch timing, alarms/reminders, and safe backup/restart reconciliation; no streak pressure or exit friction.
-- [ ] Add repository wiki documentation for the system architecture, data/backup boundaries, study workflows, and provider consent.
+- [x] Publish a 16-page EN/TR static wiki for Getting Started, system architecture, study workflows, mistake/review behavior, exam/Maarif scope, OS installs, providers/consent/privacy, backup, Clock, accessibility/language, learning-evidence boundaries, FAQ, troubleshooting, and contribution; validate route and translation parity ([report](reports/2026-11-15-bilingual-wiki-docs.md)).
 - [ ] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The current benchmark quality pass adds full question post-mutation oracles, two named untimed persistence fault probes, and skewed mixed-size persisted fixtures ([report](reports/2026-11-15-benchmark-quality-followup.md)); multi-process/crash recovery and loopback HTTP remain open.
-- [ ] Redesign the public guide layout in a separate phase, then add a docs benchmark last to check navigation, accessibility, and task completion without telemetry.
+- [x] Redesign the public guide as a responsive, keyboard-navigable bilingual wiki; validate navigation, links, mobile width, and page parity without telemetry.
+- [ ] Add the blind bilingual docs retrieval benchmark only after the wiki release and system-benchmark work; do not add it in this docs phase.
 
 ## Next small task
 
-Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Clock is implemented; continue P6 with repository wiki docs, stronger system benchmarks, then the docs benchmark. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete the P5 real SIWC and consumer-machine package checks, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Clock and wiki docs are implemented; continue P6 with stronger system benchmarks, then add the blind docs retrieval benchmark last. Verify subsequent ARETE numbering on a later merged PR.

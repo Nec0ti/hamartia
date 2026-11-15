@@ -1,5 +1,7 @@
 # Backlog log
 
+- 2026-11-15: Added an optional, explicitly selected configured-endpoint Study Agent provider while retaining ChatGPT as the default. Per-request consent names the exact URL, bounded study summary, and use of a saved API key; non-loopback destinations and unencrypted HTTP are warned about. No provider tests, benchmarks, or model calls were added or run; manual endpoint verification on another computer remains pending. Static compilation and frontend build passed. Report: `reports/2026-11-15-configured-study-agent-provider.md`.
+
 ## 2026-11-15 — desktop delivery and ARETE-001
 
 - PR [#5](https://github.com/Nec0ti/hamartia/pull/5) merged to `master` as `26ee65afc0d986ac170e7eb9f366f450327a5f36`. Native Windows Server 2022 and Ubuntu 22.04 package jobs passed: NSIS install/launch/uninstall, Debian install/launch/remove, AppImage launch, unpacked Electron smoke, and frozen backend persistence smoke.

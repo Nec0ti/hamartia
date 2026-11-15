@@ -46,7 +46,7 @@
 
 ## P3 — verification on another computer
 
-- [ ] Verify on a separate computer the OpenAI-compatible endpoint/model settings saved by the app.
+- [ ] Verify on a separate computer the OpenAI-compatible endpoint/model settings saved by the app, including the configured-endpoint Study Agent.
 - [ ] Verify image transfer to a multimodal endpoint with a real model; do not run local AI tests or benchmarks in this repository.
 
 ## P4 — product language and delivery
@@ -59,11 +59,12 @@
 
 ## P5 — study agent
 
-- [x] Add explicit-consent Sign in with ChatGPT subscription usage as the Study Agent provider. The existing local question-analysis feature stays separate; a local Study Agent provider is a future phase.
+- [x] Add explicit-consent Sign in with ChatGPT subscription usage as the default Study Agent provider; add the configured OpenAI-compatible endpoint as an explicit optional provider. Question analysis remains separate.
+- [x] Show per-request endpoint consent and trust warnings for the configured Study Agent; keep the saved API key in the backend and disclose when it is sent for authentication.
 - [x] Test the OAuth and API integration with mocks; exclude real ChatGPT/local model calls from CI and benchmarks.
 - [x] Verify native packaged Electron `safeStorage` behavior on Ubuntu 22.04 (GNOME Secret Service accepted; `basic_text` rejected) and Windows Server 2022 (native Windows protected storage round-trip) in CI; see [the 2026-11-15 verification report](reports/2026-11-15-chatgpt-plan-study-agent.md).
 - [ ] Complete a real SIWC login/inference/sign-out on a user's desktop; verify package behavior on consumer Windows 10/11 and a separate Debian desktop. Never include account tokens in test data or reports.
 
 ## Next small task
 
-Next: complete real SIWC account checks and consumer-machine package checks on supported desktop platforms. A local Study Agent provider is a later phase; the existing local question-analysis flow remains separate. Keep model execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.
+Next: complete real SIWC account checks and consumer-machine package checks on supported desktop platforms, then manually verify the configured Study Agent endpoint on another computer. Keep all real provider execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.

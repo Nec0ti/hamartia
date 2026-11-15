@@ -14,6 +14,11 @@ from app.services.storage import StorageError, StorageService
 from benchmark_common import assert_oracle, emit, measure, probe_oracle_self_check
 
 SEED = 20261114
+LEGACY_YKS_SNAPSHOT = {
+    "profile_id": "legacy-yks", "version": 1,
+    "display_name": "YKS (legacy)", "country_label": "Türkiye",
+    "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
+}
 
 def main(count=1000, repeats=7, json_output=None):
     if not repeats + 2 <= count <= 1000 or not 3 <= repeats <= 11:
@@ -41,6 +46,7 @@ def main(count=1000, repeats=7, json_output=None):
                 "net": correct - incorrect / 4,
                 "xp": max(0, int((correct - incorrect / 4) * correct * 1.5
                                  - (1 if index == 3 else 1 + index % 180) * incorrect * 0.25)),
+                "scoring_profile": LEGACY_YKS_SNAPSHOT,
                 "duration_minutes": (0 if index == 3 else 1 + index % 180),
                 "duration_seconds": index % 60, "created_at": "", "sections": sections,
             }

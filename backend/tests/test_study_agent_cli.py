@@ -169,6 +169,9 @@ class StudyAgentCliTests(unittest.TestCase):
             ("45 dakika ya da bir buçuk saat sürdü.", "45 dakika"),
             ("It took 45 min or 1.5 minutes.", "45 min"),
             ("It took 45 sec or 1.5 seconds.", "45 sec"),
+            ("It took 45 min or 1/2 hour.", "45 min"),
+            ("It took 45 min or ½ hour.", "45 min"),
+            ("It took 45 minutes or a half hour.", "45 minutes"),
         ):
             with self.subTest(context=context):
                 self.assertIsNone(parse_quote_value("duration_minutes", quote, context))

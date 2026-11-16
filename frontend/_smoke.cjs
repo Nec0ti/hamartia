@@ -4,6 +4,8 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
+const { onePixelPng } = require('./smokeFixtures.cjs')
+const { diagnosticPracticeState, diagnosticRequests, isSettingsRequestUrl, settingsRoutePattern, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -11,7 +13,7 @@ async function waitForServer(child, url, name) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (child.exitCode !== null) throw new Error(`Server exited early (${child.exitCode})`)
     try {
-      const response = await fetch(url)
+      const response = await fetch(url, { signal: AbortSignal.timeout(1000) })
       if (response.ok) return
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100))
@@ -19,7 +21,11 @@ async function waitForServer(child, url, name) {
   throw new Error(`Timed out waiting for ${name}`)
 }
 
-async function main() {
+function localFetch(url, init = {}) {
+  return fetch(url, { ...init, signal: init.signal || AbortSignal.timeout(10_000) })
+}
+
+async function main(smokeRun) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-browser-'))
   const baseUrl = 'http://127.0.0.1:5174'
   const uploads = path.join(dataDir, 'uploads')
@@ -29,7 +35,7 @@ async function main() {
     subject: 'Matematik', topic: 'Fonksiyon', hamartia_tag: '[Knowledge Gap]',
     created_at: '2026-11-14T09:00:00Z', reviewed_at: '', review_attempts: [],
   }]))
-  await fs.writeFile(path.join(uploads, 'q1.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL6sAAAAASUVORK5CYII=', 'base64'))
+  await fs.writeFile(path.join(uploads, 'q1.png'), onePixelPng)
   const python = process.env.HAMARTIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')
   const launcher = spawn(python, [path.resolve(__dirname, '../scripts/dev.py')], {
     cwd: path.resolve(__dirname, '..'),
@@ -39,10 +45,43 @@ async function main() {
   let serverErrors = ''
   launcher.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
   let browser
+  let cleanupPromise
+  const cleanupResources = async () => {
+    if (!cleanupPromise) {
+      cleanupPromise = (async () => {
+        if (browser) {
+          try {
+            await withTimeout(browser.close(), 5000, 'Chromium shutdown')
+          } catch {
+            if (typeof browser.process !== 'function') throw new Error('Chromium shutdown timed out and its process cannot be reaped.')
+            const browserProcess = browser.process()
+            if (browserProcess && browserProcess.exitCode === null) {
+              const exited = new Promise((resolve) => browserProcess.once('exit', resolve))
+              browserProcess.kill('SIGKILL')
+              await withTimeout(exited, 2000, 'Chromium forced shutdown')
+            }
+          }
+        }
+        if (launcher.exitCode === null) {
+          const exited = new Promise((resolve) => launcher.once('exit', resolve))
+          launcher.kill('SIGTERM')
+          try {
+            await withTimeout(exited, 5000, 'Dev server shutdown')
+          } catch {
+            launcher.kill('SIGKILL')
+            await withTimeout(exited, 2000, 'Dev server forced shutdown')
+            throw new Error('Dev server required forced termination; detached child cleanup is unconfirmed, so fixture data is preserved.')
+          }
+        }
+      })()
+    }
+    return cleanupPromise
+  }
+  smokeRun.cleanup = cleanupResources
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
-    const seedResponse = await fetch(`${apiUrl}/exams`, {
+    const seedResponse = await localFetch(`${apiUrl}/exams`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-11-14', exam_type: 'branch', subject: 'Matematik', duration_minutes: 30, correct: 30, incorrect: 4, blank: 2 }),
@@ -50,14 +89,16 @@ async function main() {
     if (!seedResponse.ok) throw new Error(`Locale fixture failed: ${await seedResponse.text()}`)
     const localeExam = await seedResponse.json()
     browser = await chromium.launch({
+      timeout: 30_000,
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
     })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+    const page = await withTimeout(browser.newPage({ viewport: { width: 1280, height: 900 } }), 30_000, 'Browser page creation')
     const pageErrors = []
     const consoleErrors = []
     const failedResponses = []
     const appRequests = []
+    const settingsRouteEvaluations = []
     let createdQuestion
     let linkedQuestion
     let practiceSession
@@ -73,21 +114,39 @@ async function main() {
       if (request.url().startsWith(apiUrl)) {
         const jsonBody = request.headers()['content-type']?.includes('application/json')
         const requestUrl = new URL(request.url())
-        appRequests.push({ path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
+        appRequests.push({ url: request.url(), origin: requestUrl.origin, path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
       }
     })
+    smokeRun.diagnostics = () => {
+      const pageUrl = new URL(page.url())
+      return `; page origin=${pageUrl.origin}; page path=${pageUrl.pathname}; expected API origin=${apiUrl}; route registered=${settingsRouteRegistered}; route pattern=${settingsRouteMatcher}; recent API requests=${JSON.stringify(diagnosticRequests(appRequests.slice(-8)))}; route matcher evaluations=${JSON.stringify(settingsRouteEvaluations.slice(-20))}; page errors=${JSON.stringify(pageErrors)}`
+    }
 
     let releaseInitialSettingsGet
     let notifyInitialSettingsGet
+    const settingsRouteMatcher = settingsRoutePattern(apiUrl)
     const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
     const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
-    await page.route(`${apiUrl}/settings`, async (route) => {
+    let interceptedInitialSettingsGet = false
+    let settingsRouteRegistered = false
+    await page.route(settingsRouteMatcher, async (route) => {
+      const requestUrl = new URL(route.request().url())
+      const matched = isSettingsRequestUrl(requestUrl, apiUrl)
+      if (settingsRouteEvaluations.length < 40) {
+        settingsRouteEvaluations.push({ method: route.request().method(), origin: requestUrl.origin, path: requestUrl.pathname, matched })
+      }
+      if (!matched) {
+        await route.continue()
+        return
+      }
       if (route.request().method() === 'GET') {
+        interceptedInitialSettingsGet = true
         notifyInitialSettingsGet()
         await initialSettingsGetGate
       }
       await route.continue()
     })
+    settingsRouteRegistered = true
     const started = performance.now()
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
@@ -103,7 +162,12 @@ async function main() {
     })
     assert.equal(keyboardFocus.style, 'solid')
     assert(keyboardFocus.width >= 2, `Expected a visible keyboard focus ring, got ${keyboardFocus.width}px`)
-    await initialSettingsGetIntercepted
+    await withTimeout(
+      initialSettingsGetIntercepted,
+      10_000,
+      'Initial GET /settings was not intercepted',
+      () => `${smokeRun.diagnostics()}; route handler ran=${interceptedInitialSettingsGet}`,
+    )
     await page.getByRole('button', { name: 'Open settings' }).click()
     await page.getByRole('status').getByText('Loading saved settings…').waitFor()
     assert.equal(await page.getByLabel('API key').isDisabled(), true)
@@ -112,7 +176,8 @@ async function main() {
     await page.getByLabel('API key').waitFor({ state: 'visible' })
     await page.waitForFunction(() => !document.querySelector('#settings-api-key')?.disabled)
     await page.getByRole('button', { name: 'Close settings' }).click()
-    await page.unroute(`${apiUrl}/settings`)
+    await page.unroute(settingsRouteMatcher)
+    smokePhase = 'study, profile, and local API browser flow'
     await page.waitForLoadState('networkidle')
     await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
     assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
@@ -141,7 +206,7 @@ async function main() {
     await page.getByRole('img', { name: 'Net değişimi · Tüm dersler' }).waitFor()
     await page.getByRole('img', { name: 'Performans radarı: hız, odak, isabet ve dayanıklılık' }).waitFor()
     await page.getByText('14/11', { exact: true }).waitFor()
-    const deleteFixture = await fetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
+    const deleteFixture = await localFetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
     assert.equal(deleteFixture.ok, true, `Locale fixture cleanup failed: ${await deleteFixture.text()}`)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText('Henüz deneme kaydı yok.').waitFor()
@@ -217,7 +282,7 @@ async function main() {
     if (!focusResponse.ok()) throw new Error(`Focused practice save failed ${focusResponse.status()}: ${await focusResponse.text()}`)
     await page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.status() === 503)
     assert.equal(await resumedSection.count(), 1, 'The focused draft must remain available after clock clear fails')
-    assert.equal((await (await fetch(`${apiUrl}/practice`)).json()).filter((item) => item.subject === 'Matematik' && item.topic === 'Fonksiyon').length, 2)
+    assert.equal((await (await localFetch(`${apiUrl}/practice`)).json()).filter((item) => item.subject === 'Matematik' && item.topic === 'Fonksiyon').length, 2)
     const [retryPracticeResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
       resumedSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
@@ -283,7 +348,7 @@ async function main() {
     assert.equal((await wrongAttemptResponse.json()).review_attempts.at(-1).correct, false)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    assert.equal((await (await fetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
+    assert.equal((await (await localFetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
     assert.equal(await page.getByRole('region', { name: 'Odaklı çalışma oturumu' }).count(), 0)
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
@@ -325,7 +390,7 @@ async function main() {
     assert.equal(persistedAttempt.attempt_day, localAttemptDay)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
+    assert.equal((await (await localFetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
     const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
@@ -647,7 +712,7 @@ async function main() {
     await textCard.getByRole('button', { name: 'Kaydet' }).click()
     const updatedCard = page.locator('article').filter({ hasText: 'Güncellenmiş soru metni' })
     await updatedCard.getByRole('button', { name: /Soruyu sil Edebiyat/ }).waitFor()
-    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
+    assert.equal((await (await localFetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
     await page.getByLabel('Hatalarda ve program referanslarında ara').fill('Explain a made-up pattern')
     await updatedCard.waitFor()
     assert.equal(await page.locator('article[data-question-id]').count(), 1)
@@ -741,6 +806,7 @@ async function main() {
                 method: 'POST', headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims,
                   scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version }),
+                signal: AbortSignal.timeout(10_000),
               })
               const responseBody = await response.text()
               window.__practiceDraftHttp = { status: response.status, body: responseBody }
@@ -802,11 +868,11 @@ async function main() {
         liveText: [...document.querySelectorAll('[aria-live]')].map((element) => element.innerText),
         bodyText: document.body.innerText.slice(-1200),
       }))
-      console.error('Practice clarification smoke state:', JSON.stringify({ ...state, pageErrors, failedResponses, appRequests }))
+      console.error('Practice clarification smoke state:', JSON.stringify(diagnosticPracticeState({ ...state, pageErrors, consoleErrors, failedResponses, appRequests })))
       throw error
     }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
-    const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
+    const noPrematureRecord = await (await localFetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)
     await page.getByLabel('Describe the practice set you completed').fill('topic: Functions')
     await page.getByRole('checkbox').check()
@@ -817,7 +883,7 @@ async function main() {
     page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Approve this preview and save' }).click()
     await page.getByText('Practice set saved. You can start another entry.').waitFor()
-    assert.deepEqual((await (await fetch(`${apiUrl}/practice`)).json()).find((item) => item.date === '2026-11-15' && item.subject === 'Mathematics' && item.topic === 'Functions').scoring_profile,
+    assert.deepEqual((await (await localFetch(`${apiUrl}/practice`)).json()).find((item) => item.date === '2026-11-15' && item.subject === 'Mathematics' && item.topic === 'Functions').scoring_profile,
       { ...customProfile, scoring_rule: { correct_points: '1/1', wrong_penalty: '1/2', blank_points: '0/1' } })
     assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
       message: 'topic: Functions',
@@ -854,7 +920,7 @@ async function main() {
     await page.getByText(/en fazla 8 konu çalışma özeti/).waitFor()
     const missingLabelForm = new FormData()
     missingLabelForm.set('ocr_text', 'Synthetic unlabelled question')
-    const missingLabelResponse = await fetch(`${apiUrl}/questions`, { method: 'POST', body: missingLabelForm })
+    const missingLabelResponse = await localFetch(`${apiUrl}/questions`, { method: 'POST', body: missingLabelForm })
     assert.equal(missingLabelResponse.status, 201)
     const missingLabelQuestion = await missingLabelResponse.json()
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
@@ -879,7 +945,7 @@ async function main() {
     await page.getByRole('button', { name: 'Cosmos' }).click()
     await page.getByText('Ders belirtilmedi', { exact: true }).first().waitFor()
     await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
-    const missingLabelDelete = await fetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
+    const missingLabelDelete = await localFetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
     assert.equal(missingLabelDelete.ok, true)
 
     // A legacy practice draft is removed only after the durable clock PATCH succeeds.
@@ -1001,7 +1067,7 @@ async function main() {
     const dueDeadline = Date.now() + 8_000
     let dueState
     while (Date.now() < dueDeadline) {
-      dueState = await (await fetch(`${apiUrl}/clock`)).json()
+      dueState = await (await localFetch(`${apiUrl}/clock`)).json()
       if (dueState.alarms.find((alarm) => alarm.id === dueAlarm.id)?.overdue_at_ms) break
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -1084,7 +1150,7 @@ async function main() {
     assert.deepEqual(Object.keys(savedEvidence).sort(), ['activity', 'created_at', 'date', 'id', 'observation', 'reference_url', 'subject', 'topic'])
     await evidenceRegion.getByRole('button', { name: 'Üç yeni mercek sorusu çözdüm yansımasını sil' }).click()
     await evidenceRegion.getByText('Henüz yansıma kaydedilmedi.').waitFor()
-    assert.deepEqual(await (await fetch(`${apiUrl}/learning-evidence`)).json(), [])
+    assert.deepEqual(await (await localFetch(`${apiUrl}/learning-evidence`)).json(), [])
     assert.equal((await page.context().request.delete(`${apiUrl}/questions/${evidenceSuggestionQuestion.id}`)).status(), 200)
     failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
     const expectedClockErrors = consoleErrors.filter((item) => item.location.url !== `${apiUrl}/clock` || !item.text.includes('503 (Service Unavailable)'))
@@ -1135,17 +1201,14 @@ async function main() {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error
   } finally {
-    await browser?.close()
-    if (launcher.exitCode === null) {
-      launcher.kill('SIGTERM')
-      await new Promise((resolve) => launcher.once('exit', resolve))
-    }
+    await cleanupResources()
     await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
     await fs.rm(dataDir, { recursive: true, force: true })
   }
 }
 
-main().catch((error) => {
+const smokeRun = { cleanup: async () => {}, diagnostics: () => '' }
+withDeadline(() => main(smokeRun), 8 * 60 * 1000, () => smokeRun.diagnostics(), (error) => smokeRun.cleanup(error)).catch((error) => {
   console.error(error)
   process.exitCode = 1
 })

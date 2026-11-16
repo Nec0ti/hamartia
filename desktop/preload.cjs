@@ -5,6 +5,12 @@ contextBridge.exposeInMainWorld('hamartiaDesktop', Object.freeze({
     'hamartia:restore-backup',
     language === 'tr' ? 'tr' : 'en',
   ),
+  social: Object.freeze({
+    signIn: (agreementVersion) => ipcRenderer.invoke('hamartia:social:sign-in', agreementVersion),
+    getProfile: (agreementVersion) => ipcRenderer.invoke('hamartia:social:get-profile', agreementVersion),
+    patchProfile: (patch, agreementVersion) => ipcRenderer.invoke('hamartia:social:patch-profile', patch, agreementVersion),
+    signOut: () => ipcRenderer.invoke('hamartia:social:sign-out'),
+  }),
   chatgpt: Object.freeze({
     status: () => ipcRenderer.invoke('hamartia:chatgpt:status'),
     signIn: () => ipcRenderer.invoke('hamartia:chatgpt:sign-in'),

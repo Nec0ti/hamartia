@@ -2,12 +2,12 @@
   "benchmark": "hamartia-bilingual-docs-integrity-v1",
   "task_set_id": "hamartia-wiki-retrieval-v1",
   "task_pack_sha256": "ac2b1157236e8499a6f1e15bd7599132d3ab19c309aff8236416c854a7f84721",
-  "rendered_wiki_sha256": "aa9a0859a7e199d97f50f54569f4b3eee35e0a2b54af709ba08caf98bb65873d",
+  "rendered_wiki_sha256": "d4130e05b5138c444168503a265b52989f7f334d8dd9d4254df7fc53e8c0fd3e",
   "protocol_sha256": "d2170c2ed0ab0a1496e613cf2ac7d10d75160f6ba54b6698f70f391aae4db26c",
   "checker_sha256": "75af5c987fba221b609884f81cb9c44c94bc8230c0786141f5017e2d8d4d2645",
   "hash_sensitivity_self_checks": {
     "task_pack_members": 3,
-    "rendered_wiki_members": 37,
+    "rendered_wiki_members": 39,
     "protocol_files": 1,
     "checker_files": 1
   },
@@ -21,7 +21,7 @@
   "nav_routes_per_locale": 17,
   "active_nav_items_checked": 34,
   "paired_h2_anchor_orders_checked": 17,
-  "local_links_and_assets_checked": 816,
+  "local_links_and_assets_checked": 818,
   "external_links_syntactically_counted_not_fetched": 130,
   "answer_rubrics_checked": 20,
   "exact_evidence_excerpts_checked": 108,

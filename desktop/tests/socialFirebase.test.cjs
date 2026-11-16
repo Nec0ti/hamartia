@@ -74,6 +74,21 @@ test('Firebase sign-in cancellation is normal and incomplete configuration opens
   assert.equal(attempts, 1)
 })
 
+test('signing out cancels an in-progress Google callback as a normal outcome', async () => {
+  const probe = fakeSdk()
+  let cancelOAuth
+  const oauth = {
+    signIn: () => new Promise((resolve) => { cancelOAuth = () => resolve(null) }),
+    cancel: () => cancelOAuth?.(),
+  }
+  const auth = createSocialFirebaseAuth({ environment: ENVIRONMENT, oauth, loadSdk: async () => probe.sdk })
+  const pendingSignIn = auth.signIn()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(await auth.signOut(), { status: 'signedOut' })
+  assert.deepEqual(await pendingSignIn, { status: 'cancelled' })
+  assert.equal(probe.calls.some(([name]) => name === 'signInWithCredential'), false)
+})
+
 test('installed Firebase Node SDK supports memory-only Google credential sign-in through a local auth emulator endpoint', async (context) => {
   const requests = []
   const server = http.createServer(async (request, response) => {

@@ -131,7 +131,7 @@ test('desktop Google OAuth rejects duplicate attempts and can cancel the active 
   await waitForAuthorizeUrl(testApp)
   await assert.rejects(testApp.oauth.signIn(), /already in progress/)
   testApp.oauth.cancel()
-  await assert.rejects(pending, /cancelled/)
+  assert.equal(await pending, null)
   assert.equal(testApp.tokenRequests.length, 0)
 })
 

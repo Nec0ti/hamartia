@@ -75,7 +75,8 @@ function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, allowLoopb
 
   function isTrustedSender(event) {
     try {
-      return Boolean(getBackendUrl() && event.senderFrame?.parent === null && new URL(event.senderFrame.url).origin === getBackendUrl())
+      const trustedOrigin = getBackendUrl() ? new URL(getBackendUrl()).origin : null
+      return Boolean(trustedOrigin && event.senderFrame?.parent === null && new URL(event.senderFrame.url).origin === trustedOrigin)
     } catch {
       return false
     }

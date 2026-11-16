@@ -339,6 +339,7 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', (event) => {
+  socialOAuth.cancel()
   if (!backend || backend.exitCode !== null) return
   event.preventDefault()
   if (stoppingBackend) return

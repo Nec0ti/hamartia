@@ -104,7 +104,7 @@ function waitForAuthorization({ state, clientId, challenge, shell, createServer,
       return true
     }
     const attempt = {
-      cancel: () => finish(null, new Error('Google sign-in was cancelled.')),
+      cancel: () => finish({ cancelled: true }),
     }
 
     server = createServer((request, response) => {

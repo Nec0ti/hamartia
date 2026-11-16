@@ -21,7 +21,7 @@ function setup({ apiOrigin = 'https://social.example.test', fetchImpl } = {}) {
     auth,
     apiOrigin,
     allowLoopbackHttp: true,
-    getBackendUrl: () => 'http://127.0.0.1:41234',
+    getBackendUrl: () => 'http://127.0.0.1:41234/',
     fetchImpl: fetchImpl || (async (url, options) => {
       requests.push({ url: String(url), options })
       return { ok: true, json: async () => PROFILE }

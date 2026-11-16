@@ -59,7 +59,14 @@ async function main() {
         assert.equal(await page.locator('main#content h1').count(), 1, `${route} has exactly one H1`)
         assert.equal(await page.locator('.sidebar [aria-current="page"]').count(), 1, `${route} has one active nav item`)
         assert.equal(await page.locator('.sidebar li').count(), pages.length, `${route} nav parity`)
-        assert.equal(await page.locator('.sidebar li:first-child a').getAttribute('href'), index === 0 ? './' : '../', `${route} starts with Getting Started`)
+        assert.equal(await page.locator('.sidebar details').count(), 3, `${route} has grouped navigation`)
+        assert.equal(await page.locator('.sidebar details[open] [aria-current="page"]').count(), 1, `${route} expands the active group`)
+        assert.equal(await page.locator('.sidebar .nav-group:first-of-type li:first-child a').getAttribute('href'), index === 0 ? './' : '../', `${route} starts with Getting Started`)
+        assert.equal(await page.locator('main#content h1 + .page-description').count(), 1, `${route} places a subtitle after the page title`)
+        assert.equal(await page.locator('.page-toc a').count(), await page.locator('main article h2').count(), `${route} has an in-page link for each section`)
+        assert.equal(await page.locator('.product-nav a').count(), 3, `${route} has product navigation`)
+        assert.equal(await page.locator('.edition').innerText(), lang === 'en' ? 'Desktop package · v0.1.0' : 'Masaüstü paketi · v0.1.0', `${route} shows the packaged app version`)
+        assert.equal(await page.locator('.site-footer a[href$="/issues/new"]').count(), 1, `${route} has a feedback link`)
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at 390px`)
         assert.equal(await page.locator('main article h2').count() >= 1, true, `${route} contains article sections`)
 
@@ -130,6 +137,8 @@ async function main() {
           : `/${pages[index]}`, `${route} language counterpart`)
 
         const sectionIds = await page.locator('main article h2').evaluateAll(nodes => nodes.map(node => node.id))
+        const tocIds = await page.locator('.page-toc a').evaluateAll(nodes => nodes.map(node => new URL(node.href).hash.slice(1)))
+        assert.deepEqual(tocIds, sectionIds, `${route} contents match section anchors`)
         localeSnapshots[lang].push({ route, sectionIds })
 
         const hrefs = await page.locator('a[href]').evaluateAll(nodes => nodes.map(node => node.href))

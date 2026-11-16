@@ -232,3 +232,10 @@
 - The report conditionally describes the under-15 restriction, age-token verification, and 15–17 differentiated-service requirements in the regulation published 2026-10-10, while flagging its stated 2026-01-01 effective date discrepancy and leaving provider classification/applicability to Turkish counsel.
 - No server or live provider configuration was inspected; no credentials, contact, deployment, implementation, or launch approval. Audience, host/data path, retention/deletion, legal classification, provider transfers, and all existing social launch gates remain unresolved.
 - Report: `reports/2026-11-16-social-legal-privacy-hosting-readiness.md`.
+
+## 2026-11-17 documentation and README presentation
+
+- Kept the generated static GitHub Pages architecture and polished all 34 EN/TR routes with hierarchical expandable navigation, active-page state, product links, current desktop package semver, breadcrumbs, per-page section TOCs, footer feedback link, and responsive CSS. Getting Started gained a paired guide map, Study workflows gained clearer nested sectioning, and FAQ/backup text was updated from the current onboarding-profile behavior.
+- Reworked the root README into a concise project overview with direct release/docs paths, a feature guide map, local quickstart, platform packages, data/provider disclosures, contribution path, backlog, and license.
+- Reviewed page bodies before editing; retained the already detailed provider, privacy, scoring, backup, evidence, Clock, installation, troubleshooting, accessibility, purpose, progression, mistake, architecture, and contribution material.
+- Generator, Python compilation, offline docs integrity benchmark, 34-route Playwright docs smoke, screenshots at 1440 px and 390 px, and `git diff --check` passed. Human retrieval/usability and full accessibility remain open. No AI/model/provider or external-link calls were made. See `reports/2026-11-17-docs-readme-polish.md`.

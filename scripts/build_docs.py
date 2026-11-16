@@ -1,11 +1,14 @@
 """Build the static bilingual Hamartia help wiki from this page catalog."""
 
 from html import escape
+import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 BASE = "https://nec0ti.github.io/hamartia/"
+APP_VERSION = json.loads((ROOT / "desktop" / "package.json").read_text(encoding="utf-8"))["version"]
 
 PAGES = {
     "getting-started": {
@@ -16,6 +19,7 @@ PAGES = {
 <h2 id="first-session">3. Record your first session</h2><ol><li>On <strong>Dashboard</strong>, add a TYT/AYT full mock or a single-subject exam and enter its date, duration, and results.</li><li>Open <strong>My Mistakes</strong> to save a missed question as text or attach a supported image. Add subject and topic labels; if it came from an exam, capture it there to keep the exam context.</li><li>Open <strong>Study Plan</strong> to see due questions, topic priorities, and focused practice. Its stopwatch uses the same timer shown in <strong>Clock</strong>.</li></ol>
 <h2 id="data">Where your data lives</h2><p>Hamartia stores its records in this OS user's application-data folder. Data is not synced between computers automatically. Create a ZIP backup in Settings before moving records. See <a href="../backup-and-restore/">Backup and restore</a> and <a href="../privacy-and-consent/">Privacy and consent</a>.</p>
 <aside class="note"><strong>AI is optional.</strong> Exam entry, review scheduling, topic summaries, practice records, and Clock work without an AI provider. Study Agent and question analysis are separate optional features with distinct data flows.</aside>
+<h2 id="guide-map">Choose a guide</h2><table class="guide-map"><thead><tr><th>Start here</th><th>What you will find</th></tr></thead><tbody><tr><td><a href="../study-workflows/">Study workflows</a></td><td>Connect exams, saved mistakes, practice sets, and review.</td></tr><tr><td><a href="../exam-formats-and-maarif/">Exam formats and Maarif</a></td><td>Understand supported exam records, scoring profiles, and curriculum-reference limits.</td></tr><tr><td><a href="../privacy-and-consent/">Privacy and consent</a></td><td>See what stays local and what an optional provider request can include.</td></tr><tr><td><a href="../backup-and-restore/">Backup and restore</a></td><td>Move a backup safely and learn which credentials it excludes.</td></tr><tr><td><a href="../troubleshooting/">Troubleshooting</a></td><td>Find first steps for install, provider, backup, and Clock problems.</td></tr></tbody></table>
 """),
         "tr": ("Başlarken", "Hamartia'yı yükle, dili seç ve ilk çalışma kaydını oluştur.", """
 <p class="lead">Hamartia; deneme geçmişini, yanlış soruları, odaklı çalışmayı ve tekrar kayıtlarını bu bilgisayarda tutar. Masaüstü uygulamasıyla başla; AI sağlayıcısı kullanmak zorunlu değildir.</p>
@@ -24,6 +28,7 @@ PAGES = {
 <h2 id="first-session">3. İlk çalışma kaydını oluştur</h2><ol><li><strong>Ana Sayfa</strong>'nda TYT/AYT tam denemesi veya tek ders denemesi ekle; tarih, süre ve sonuçları gir.</li><li>Bir yanlış soruyu metin olarak kaydetmek veya desteklenen bir görsel eklemek için <strong>Yanlışlarım</strong>'ı aç. Ders ve konu etiketleri ekle; denemeden geldiyse deneme bağlamını korumak için soruyu oradan kaydet.</li><li>Vadesi gelen soruları, konu önceliklerini ve odaklı çalışmayı görmek için <strong>Çalışma Planı</strong>'nı aç. Planın kronometresi <strong>Saat</strong>'teki aynı zamanlayıcıyı kullanır.</li></ol>
 <h2 id="data">Veriler nerede saklanır?</h2><p>Hamartia kayıtlarını bu işletim sistemi kullanıcısına ait uygulama verisi klasöründe tutar. Veriler bilgisayarlar arasında otomatik eşitlenmez. Kayıtları taşımadan önce Ayarlar'dan ZIP yedeği oluştur. <a href="../backup-and-restore/">Yedekleme ve geri yükleme</a> ile <a href="../privacy-and-consent/">Gizlilik ve onay</a> sayfalarına bak.</p>
 <aside class="note"><strong>AI isteğe bağlıdır.</strong> Deneme girişi, tekrar planlama, konu özetleri, çalışma kayıtları ve Saat bir AI sağlayıcısı olmadan çalışır. Çalışma Asistanı ve soru analizi ayrı ve isteğe bağlı özelliklerdir; veri akışları farklıdır.</aside>
+<h2 id="guide-map">Kılavuz seç</h2><table class="guide-map"><thead><tr><th>Başlangıç</th><th>Bu sayfada neler var?</th></tr></thead><tbody><tr><td><a href="../study-workflows/">Çalışma akışları</a></td><td>Denemeleri, kaydedilen yanlışları, çalışma setlerini ve tekrarı ilişkilendir.</td></tr><tr><td><a href="../exam-formats-and-maarif/">Sınav biçimleri ve Maarif</a></td><td>Desteklenen sınav kayıtlarını, puanlama profillerini ve program referansı sınırlarını öğren.</td></tr><tr><td><a href="../privacy-and-consent/">Gizlilik ve onay</a></td><td>Hangi verilerin yerel kaldığını ve isteğe bağlı sağlayıcı isteğinin neleri içerebileceğini gör.</td></tr><tr><td><a href="../backup-and-restore/">Yedekleme ve geri yükleme</a></td><td>Yedeği güvenle taşı ve hangi kimlik bilgilerinin dışarıda kaldığını öğren.</td></tr><tr><td><a href="../troubleshooting/">Sorun giderme</a></td><td>Kurulum, sağlayıcı, yedek ve Saat sorunları için ilk adımları bul.</td></tr></tbody></table>
 """),
     },
     "system-architecture": {
@@ -59,16 +64,16 @@ PAGES = {
     "study-workflows": {
         "en": ("Study workflows", "How exam entry, saved mistakes, topic practice, and review connect.", """
 <p class="lead">The app keeps the student's records connected without requiring an AI call. A typical loop starts with an exam result, continues with selected missed questions, then returns to those questions or a topic practice session.</p>
-<h2 id="exam">Record an exam</h2><p>Dashboard accepts TYT/AYT full mocks and single-subject exams. Full mocks keep section results together while preserving subject summaries. Select a versioned scoring profile before entering correct, incorrect, blank, and duration values. The legacy YKS profile applies a 1/4 wrong-answer penalty; custom profiles use the exact rational rule shown in the editor. Saved exams keep a snapshot of that rule, so editing a profile creates a new version without changing old results. XP remains based on the fixed raw-count activity formula and is not a score or measure of mastery. You can edit or delete a saved exam.</p>
+<h2 id="exam">Record an exam</h2><p>Dashboard accepts TYT/AYT full mocks and single-subject exams. Full mocks keep section results together while preserving subject summaries. You can edit or delete a saved exam.</p><h3>Scoring profiles and saved results</h3><p>Select a versioned scoring profile before entering correct, incorrect, blank, and duration values. The legacy YKS profile applies a 1/4 wrong-answer penalty; custom profiles use the exact rational rule shown in the editor. Saved exams keep a snapshot of that rule, so editing a profile creates a new version without changing old results. XP remains based on the fixed raw-count activity formula and is not a score or measure of mastery.</p>
 <h2 id="mistakes">Capture mistakes</h2><p>Open My Mistakes or use the incorrect-answer entry from an exam. Save text, attach a supported image, add subject/topic labels, and optionally record exam question number, solve order, or time spent. Curriculum reference fields are optional and user-entered. Saved records can be edited, searched, reviewed, and deleted.</p>
-<h2 id="practice">Study and review</h2><p>Study Plan groups due questions by topic, shows available mistake tags and exam-order counts, and offers focused practice. Each completed practice set stores the selected versioned scoring-profile snapshot alongside date, subject/topic, counts, and time. Create and edit the shared profile catalog from Dashboard → Scoring Profiles. The catalog accepts user-defined exact-rational rules; old sets keep the legacy YKS snapshot. Trends are separated by subject, topic, profile, and version. Accuracy uses correct + incorrect, so blanks are excluded; practice sets do not grant XP.</p>
+<h2 id="practice">Study and review</h2><p>Study Plan groups due questions by topic, shows available mistake tags and exam-order counts, and offers focused practice.</p><h3>Practice records and trends</h3><p>Each completed practice set stores the selected versioned scoring-profile snapshot alongside date, subject/topic, counts, and time. Create and edit the shared profile catalog from Dashboard → Scoring Profiles. The catalog accepts user-defined exact-rational rules; old sets keep the legacy YKS snapshot. Trends are separated by subject, topic, profile, and version. Accuracy uses correct + incorrect, so blanks are excluded; practice sets do not grant XP.</p>
 <h2 id="progress">Read progress carefully</h2><p>Exam, review, practice, and Clock histories report what was entered. Missing records, free-text labels, and self-reported answers affect their summaries. Cosmos adds XP, level, streak, and review-topic orbits from saved records; those are progression displays, not evidence of mastery. See <a href="../cosmos-and-progression/">Cosmos and progression</a>, <a href="../mistakes-and-review/">Mistakes and review</a>, and <a href="../learning-evidence/">Learning evidence</a>.</p>
 """),
         "tr": ("Çalışma akışları", "Deneme girişi, yanlış sorular, konu çalışması ve tekrarın nasıl bağlandığı.", """
 <p class="lead">Uygulama, AI çağrısı gerektirmeden öğrencinin kayıtlarını ilişkilendirir. Tipik akış deneme sonucuyla başlar, seçilen yanlış sorularla sürer, sonra bu sorulara veya konu çalışmasına geri döner.</p>
-<h2 id="exam">Deneme kaydet</h2><p>Ana Sayfa TYT/AYT tam denemelerini ve tek ders denemelerini kabul eder. Tam denemeler bölüm sonuçlarını bir arada tutarken ders özetlerini de korur. Doğru, yanlış, boş ve süre değerlerini girmeden önce sürümlü bir puanlama profili seç. Eski YKS profili yanlış başına 1/4 ceza uygular; özel profiller düzenleyicide gösterilen kesin rasyonel kuralı kullanır. Kaydedilen deneme bu kuralın anlık görüntüsünü saklar; profili düzenlemek eski sonuçları değiştirmeden yeni sürüm oluşturur. XP sabit ham-sayı etkinlik formülüne dayanır; puan veya ustalık ölçüsü değildir. Denemeyi düzenleyebilir ya da silebilirsin.</p>
+<h2 id="exam">Deneme kaydet</h2><p>Ana Sayfa TYT/AYT tam denemelerini ve tek ders denemelerini kabul eder. Tam denemeler bölüm sonuçlarını bir arada tutarken ders özetlerini de korur. Denemeyi düzenleyebilir ya da silebilirsin.</p><h3>Puanlama profilleri ve kayıtlı sonuçlar</h3><p>Doğru, yanlış, boş ve süre değerlerini girmeden önce sürümlü bir puanlama profili seç. Eski YKS profili yanlış başına 1/4 ceza uygular; özel profiller düzenleyicide gösterilen kesin rasyonel kuralı kullanır. Kaydedilen deneme bu kuralın anlık görüntüsünü saklar; profili düzenlemek eski sonuçları değiştirmeden yeni sürüm oluşturur. XP sabit ham-sayı etkinlik formülüne dayanır; puan veya ustalık ölçüsü değildir.</p>
 <h2 id="mistakes">Yanlışları kaydet</h2><p>Yanlışlarım'ı aç veya denemedeki yanlış cevap girişini kullan. Metin kaydet, desteklenen bir görsel ekle, ders/konu etiketleri ekle; istersen soru numarası, çözüm sırası veya süreyi de kaydet. Program referansı alanları isteğe bağlıdır ve kullanıcı tarafından doldurulur. Kayıtları düzenleyebilir, arayabilir, gözden geçirebilir veya silebilirsin.</p>
-<h2 id="practice">Çalış ve tekrar et</h2><p>Çalışma Planı vadesi gelen soruları konuya göre gruplar, kayıtlı hata etiketlerini ve denemedeki soru sırası sayılarını gösterir, odaklı çalışma başlatır. Tamamlanan her çalışma seti seçilen sürümlü puanlama profilinin anlık görüntüsünü; tarihi, ders/konusu, sayılarını ve süresini saklar. Ortak profil kataloğunu Ana Sayfa → Puanlama profilleri bölümünden oluşturup düzenleyebilirsin. Katalog kullanıcı tanımlı kesin-rasyonel kuralları kabul eder; eski setler eski YKS anlık görüntüsünü korur. Eğilimler ders, konu, profil ve sürüme göre ayrılır. Doğruluk paydası doğru + yanlıştır; boşlar hariçtir. Çalışma setleri XP kazandırmaz.</p>
+<h2 id="practice">Çalış ve tekrar et</h2><p>Çalışma Planı vadesi gelen soruları konuya göre gruplar, kayıtlı hata etiketlerini ve denemedeki soru sırası sayılarını gösterir, odaklı çalışma başlatır.</p><h3>Çalışma kayıtları ve eğilimler</h3><p>Tamamlanan her çalışma seti seçilen sürümlü puanlama profilinin anlık görüntüsünü; tarihi, ders/konusu, sayılarını ve süresini saklar. Ortak profil kataloğunu Ana Sayfa → Puanlama profilleri bölümünden oluşturup düzenleyebilirsin. Katalog kullanıcı tanımlı kesin-rasyonel kuralları kabul eder; eski setler eski YKS anlık görüntüsünü korur. Eğilimler ders, konu, profil ve sürüme göre ayrılır. Doğruluk paydası doğru + yanlıştır; boşlar hariçtir. Çalışma setleri XP kazandırmaz.</p>
 <h2 id="progress">İlerlemeyi dikkatle yorumla</h2><p>Deneme, tekrar, çalışma ve Saat geçmişleri girilmiş kayıtları raporlar. Eksik kayıtlar, serbest metin etiketleri ve öğrencinin kendi bildirdiği yanıtlar özetleri etkiler. Cosmos XP, seviye, seri ve tekrar konu yörüngelerini bu kayıtlardan üretir; bunlar ustalık kanıtı değildir. <a href="../cosmos-and-progression/">Cosmos ve ilerleme</a>, <a href="../mistakes-and-review/">Yanlışlar ve tekrar</a> ile <a href="../learning-evidence/">Öğrenme kanıtı</a> sayfalarına bak.</p>
 """),
     },
@@ -201,14 +206,14 @@ PAGES = {
     "backup-and-restore": {
         "en": ("Backup and restore", "Create a portable ZIP and safely restore it on this or another computer.", """
 <p class="lead">Backups are manual ZIP files. Store them somewhere you control and protect them as private study records. Hamartia does not sync them automatically.</p>
-<h2 id="create">Create a backup</h2><ol><li>Open Settings and select <strong>Download backup</strong>.</li><li>Save the ZIP to a location you can find. Move it to another computer using a transfer method you trust.</li><li>The archive includes study records, learning-evidence reflections, question images, settings except secret key material, and Clock state. The configured endpoint API key and ChatGPT sign-in credentials are not included.</li></ol>
+<h2 id="create">Create a backup</h2><ol><li>Open Settings and select <strong>Download backup</strong>.</li><li>Save the ZIP to a location you can find. Move it to another computer using a transfer method you trust.</li><li>The archive includes study records, learning-evidence reflections, optional local onboarding and student-profile data, question images, settings except secret key material, and Clock state. The configured endpoint API key and ChatGPT sign-in credentials are not included.</li></ol>
 <h2 id="restore">Restore in the desktop app</h2><ol><li>Open Settings and choose <strong>Restore backup</strong>, then select the ZIP.</li><li>Read the confirmation. Restore replaces current study data; Hamartia first saves a timestamped snapshot of the existing data folder.</li><li>Confirm and keep the app open while it validates, restores, restarts, and reloads.</li></ol><p>Clock timers restore paused with their remaining/elapsed time frozen at backup creation; imported reminders restore disabled. Review them and explicitly resume or enable them.</p>
 <h2 id="older">Older backups and errors</h2><p>Current restore validates archive paths, sizes, checksums, data schemas, and referenced uploads before replacing data. Older supported archives without newer optional records receive safe defaults. A failed validation should leave current data in place. Keep the original ZIP until you have checked the restored records. See <a href="../troubleshooting/">Troubleshooting</a>.</p>
 <aside class="note"><strong>Restore is replacement.</strong> It does not merge two histories. Make a fresh backup of the destination computer first if you may need its current data.</aside>
 """),
         "tr": ("Yedekleme ve geri yükleme", "Taşınabilir ZIP yedeği oluştur ve bu ya da başka bir bilgisayarda güvenle geri yükle.", """
 <p class="lead">Yedekler elle oluşturulan ZIP dosyalarıdır. Özel çalışma kayıtları olarak koruyup kontrol ettiğin bir yerde sakla. Hamartia otomatik eşitleme yapmaz.</p>
-<h2 id="create">Yedek oluştur</h2><ol><li>Ayarlar'ı açıp <strong>Download backup</strong> seçeneğini seç.</li><li>ZIP'i bulabileceğin bir yere kaydet. Başka bilgisayara güvendiğin bir aktarım yöntemiyle taşı.</li><li>Arşiv çalışma kayıtlarını, öğrenme kanıtı yansımalarını, soru görsellerini, gizli anahtar malzemesi hariç ayarları ve Saat durumunu içerir. Yapılandırılmış uç noktanın API anahtarı ile ChatGPT giriş kimlik bilgileri eklenmez.</li></ol>
+<h2 id="create">Yedek oluştur</h2><ol><li>Ayarlar'ı açıp <strong>Download backup</strong> seçeneğini seç.</li><li>ZIP'i bulabileceğin bir yere kaydet. Başka bilgisayara güvendiğin bir aktarım yöntemiyle taşı.</li><li>Arşiv çalışma kayıtlarını, öğrenme kanıtı yansımalarını, isteğe bağlı yerel ilk kullanım ve öğrenci profili verilerini, soru görsellerini, gizli anahtar malzemesi hariç ayarları ve Saat durumunu içerir. Yapılandırılmış uç noktanın API anahtarı ile ChatGPT giriş kimlik bilgileri eklenmez.</li></ol>
 <h2 id="restore">Masaüstü uygulamasında geri yükle</h2><ol><li>Ayarlar'da <strong>Restore backup</strong> seç ve ZIP dosyasını seç.</li><li>Onayı oku. Geri yükleme mevcut çalışma verilerini değiştirir; Hamartia önce mevcut veri klasörünün tarihli bir kopyasını alır.</li><li>Onayla ve doğrulama, geri yükleme, yeniden başlatma ve yeniden yükleme bitene kadar uygulamayı açık tut.</li></ol><p>Saat zamanlayıcıları yedek oluşturulduğu andaki kalan/geçen süreyle duraklatılmış geri yüklenir; alınan hatırlatıcılar kapalı geri yüklenir. Gözden geçirip açıkça sürdür veya etkinleştir.</p>
 <h2 id="older">Eski yedekler ve hatalar</h2><p>Güncel geri yükleme, veriyi değiştirmeden önce arşiv yollarını, boyutları, sağlama toplamlarını, veri şemalarını ve başvurulan yüklemeleri doğrular. Yeni isteğe bağlı kayıtları içermeyen eski desteklenen arşivler güvenli varsayılanlarla tamamlanır. Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır. Geri yüklenen kayıtları kontrol edene kadar özgün ZIP'i sakla. <a href="../troubleshooting/">Sorun giderme</a> sayfasına bak.</p>
 <aside class="note"><strong>Geri yükleme değiştirme işlemidir.</strong> İki geçmişi birleştirmez. Hedef bilgisayardaki mevcut veriye sonra ihtiyaç duyabilirsin; önce yeni bir yedek al.</aside>
@@ -266,17 +271,23 @@ PAGES = {
     },
     "faq": {
         "en": ("FAQ", "Short answers to common setup, data, scoring, and study questions.", """
+<p class="lead">These answers summarize common product boundaries. Use the linked guides for the exact workflows and steps.</p>
 <h2 id="offline">Does Hamartia need AI?</h2><p>No. The main exam, mistake, practice, review, and Clock flows are local. Study Agent and question analysis are optional.</p>
 <h2 id="sync">Does it sync my records?</h2><p>No automatic cross-device sync. Create and move a backup yourself. Credentials are not carried in the backup.</p>
+<h2 id="profile">What is the optional student profile?</h2><p>It is an editable, local profile for age in years, free-form grade/curriculum, study preferences, goals, and a built-in avatar. It is optional and separate from exam results. You can edit or clear it in Settings; it is included in backups, but excluded from Study Agent and question-analysis requests. See <a href="../privacy-and-consent/">Privacy and consent</a> and <a href="../backup-and-restore/">Backup and restore</a>.</p>
 <h2 id="formats">Does it score LGS or every exam?</h2><p>It records TYT/AYT full mocks and single-subject exams, with the legacy YKS profile available by default. You can define and version a custom exact-rational scoring rule for other formats, but the profile name and country label are user-entered and do not certify official alignment. See <a href="../exam-formats-and-maarif/">Exam formats</a>.</p>
+<h2 id="old-results">What happens to results if I edit a scoring profile?</h2><p>Saved exams and practice sets keep an immutable snapshot of the selected rule. Editing a profile creates a new version for future records; old results and trends remain tied to their original profile version. See <a href="../study-workflows/">Study workflows</a>.</p>
 <h2 id="local-ai">Is the configured endpoint guaranteed local?</h2><p>No. The URL can name a remote host; Hamartia does not verify locality or network isolation. See <a href="../study-agent/">Study Agent</a>.</p>
 <h2 id="alarm">Will a reminder wake my computer?</h2><p>No. Delivery is not guaranteed while the app is closed or the computer sleeps. See <a href="../clock-and-reminders/">Clock and reminders</a>.</p>
 <h2 id="marks">Does a better streak or XP prove that I learned more?</h2><p>No. These are app progression records. They are not an independent learning assessment. See <a href="../learning-evidence/">Learning evidence</a>.</p>
 """),
         "tr": ("Sık sorulan sorular", "Kurulum, veri, puanlama ve çalışma hakkındaki kısa yanıtlar.", """
+<p class="lead">Yanıtlar sık sorulan ürün sınırlarını özetler. İşleyiş ve adımlar için bağlantılı kılavuzlara bak.</p>
 <h2 id="offline">Hamartia AI gerektirir mi?</h2><p>Hayır. Temel deneme, yanlış, çalışma, tekrar ve Saat akışları yereldir. Çalışma Asistanı ve soru analizi isteğe bağlıdır.</p>
 <h2 id="sync">Kayıtlarım eşitleniyor mu?</h2><p>Cihazlar arasında otomatik eşitleme yoktur. Yedeği kendin oluşturup taşı. Kimlik bilgileri yedeğe eklenmez.</p>
+<h2 id="profile">İsteğe bağlı öğrenci profili nedir?</h2><p>Yaşın tam yıl olarak girildiği; sınıf/program bilgisinin serbest metinle yazıldığı, çalışma tercihleri, hedefler ve hazır avatar için düzenlenebilir yerel bir profildir. İsteğe bağlıdır ve deneme sonuçlarından ayrıdır. Ayarlar'dan düzenleyebilir veya temizleyebilirsin; yedeklere eklenir ancak Çalışma Asistanı ve soru analizi isteklerine dahil edilmez. <a href="../privacy-and-consent/">Gizlilik ve onay</a> ile <a href="../backup-and-restore/">Yedekleme ve geri yükleme</a> sayfalarına bak.</p>
 <h2 id="formats">LGS'yi veya her sınavı puanlıyor mu?</h2><p>TYT/AYT tam denemeleri ve tek ders denemelerini kaydeder; eski YKS profili varsayılan olarak kullanılabilir. Başka biçimler için kesin rasyonel kurala sahip özel puanlama profili tanımlayıp sürümleyebilirsin; ancak profil adı ve ülke etiketi kullanıcı tarafından girilir ve resmî eşleştirmeyi belgelemez. <a href="../exam-formats-and-maarif/">Sınav biçimleri</a> sayfasına bak.</p>
+<h2 id="old-results">Puanlama profilini düzenlersem sonuçlar ne olur?</h2><p>Kaydedilmiş denemeler ve çalışma setleri seçilen kuralın değiştirilemez anlık görüntüsünü korur. Profili düzenlemek sonraki kayıtlar için yeni sürüm oluşturur; eski sonuçlar ve eğilimler özgün profil sürümüne bağlı kalır. <a href="../study-workflows/">Çalışma akışları</a> sayfasına bak.</p>
 <h2 id="local-ai">Yapılandırılmış uç noktanın yerel olduğu garanti mi?</h2><p>Hayır. Adres uzaktaki ana makineyi gösterebilir; Hamartia yerelliği veya ağ yalıtımını doğrulamaz. <a href="../study-agent/">Çalışma Asistanı</a> sayfasına bak.</p>
 <h2 id="alarm">Hatırlatıcı bilgisayarımı uyandırır mı?</h2><p>Hayır. Uygulama kapalıyken veya bilgisayar uykudayken teslimat garantisi yoktur. <a href="../clock-and-reminders/">Saat ve hatırlatıcılar</a> sayfasına bak.</p>
 <h2 id="marks">Seri veya XP'nin artması daha çok öğrendiğimi kanıtlar mı?</h2><p>Hayır. Bunlar uygulamadaki ilerleme kayıtlarıdır; bağımsız öğrenme ölçümü değildir. <a href="../learning-evidence/">Öğrenme kanıtı</a> sayfasına bak.</p>
@@ -322,6 +333,10 @@ NAV = {
 }
 ORDER = list(PAGES)
 SLUG_BY_LABEL = {lang: dict(zip(NAV[lang], ORDER)) for lang in ("en", "tr")}
+NAV_GROUPS = {
+    "en": [("Start here", ("getting-started", "purpose-and-scope", "system-architecture")), ("Study and review", ("study-workflows", "mistakes-and-review", "exam-formats-and-maarif", "cosmos-and-progression", "clock-and-reminders", "learning-evidence")), ("Set up and reference", ("install", "study-agent", "privacy-and-consent", "backup-and-restore", "accessibility-and-language", "faq", "troubleshooting", "contributing"))],
+    "tr": [("Başlangıç", ("getting-started", "purpose-and-scope", "system-architecture")), ("Çalışma ve tekrar", ("study-workflows", "mistakes-and-review", "exam-formats-and-maarif", "cosmos-and-progression", "clock-and-reminders", "learning-evidence")), ("Kurulum ve başvuru", ("install", "study-agent", "privacy-and-consent", "backup-and-restore", "accessibility-and-language", "faq", "troubleshooting", "contributing"))],
+}
 
 
 def route(lang: str, slug: str) -> str:
@@ -348,12 +363,20 @@ def render(lang: str, slug: str) -> str:
     root_prefix = "../" if current_depth else "./"
     if lang == "tr":
         root_prefix = ("../../" if current_depth else "../")
-    nav_items = []
-    for label in NAV[lang]:
-        target = SLUG_BY_LABEL[lang][label]
-        href = relative_href(lang, slug, lang, target)
-        current = ' aria-current="page"' if target == slug else ""
-        nav_items.append(f'<li><a href="{escape(href)}"{current}>{escape(label)}</a></li>')
+    labels_by_slug = {target: label for label, target in SLUG_BY_LABEL[lang].items()}
+    nav_groups = []
+    for group_label, targets in NAV_GROUPS[lang]:
+        items = []
+        for target in targets:
+            href = relative_href(lang, slug, lang, target)
+            current = ' aria-current="page"' if target == slug else ""
+            items.append(f'<li><a href="{escape(href)}"{current}>{escape(labels_by_slug[target])}</a></li>')
+        open_attr = " open" if slug in targets else ""
+        nav_groups.append(f'<details class="nav-group"{open_attr}><summary>{escape(group_label)}</summary><ol>{"".join(items)}</ol></details>')
+    toc_items = []
+    for anchor, heading in re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', body, flags=re.DOTALL):
+        label = re.sub(r"<[^>]+>", "", heading)
+        toc_items.append(f'<li><a href="#{escape(anchor)}">{escape(label)}</a></li>')
     other = "tr" if lang == "en" else "en"
     language_label = "Türkçe" if other == "tr" else "English"
     language_href = relative_href(lang, slug, other, slug)
@@ -371,17 +394,19 @@ def render(lang: str, slug: str) -> str:
 <body>
   <a class="skip-link" href="#content">{'Skip to content' if lang == 'en' else 'İçeriğe geç'}</a>
   <header class="site-header"><a class="brand" href="{relative_href(lang, slug, lang, 'getting-started')}" aria-label="Hamartia"><img src="{root_prefix}assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
-    <div class="header-actions"><span class="edition">{'User guide' if lang == 'en' else 'Kullanım kılavuzu'}</span><a class="language-link" href="{escape(language_href)}" lang="{other}" hreflang="{other}">{language_label}</a></div>
+    <nav class="product-nav" aria-label="{'Product navigation' if lang == 'en' else 'Ürün gezintisi'}"><a href="{relative_href(lang, slug, lang, 'getting-started')}" aria-current="page">{'Guide' if lang == 'en' else 'Kılavuz'}</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">{'Download' if lang == 'en' else 'İndir'}</a><a href="https://github.com/Nec0ti/hamartia">{'Source' if lang == 'en' else 'Kaynak kod'}</a></nav>
+    <div class="header-actions"><span class="edition">{'Desktop package · v' if lang == 'en' else 'Masaüstü paketi · v'}{APP_VERSION}</span><a class="language-link" href="{escape(language_href)}" lang="{other}" hreflang="{other}">{language_label}</a></div>
   </header>
   <div class="page-layout">
-    <aside class="sidebar"><p class="sidebar-title">{'Documentation' if lang == 'en' else 'Dokümantasyon'}</p><nav aria-label="{'Documentation pages' if lang == 'en' else 'Dokümantasyon sayfaları'}"><ol>{''.join(nav_items)}</ol></nav>
+    <aside class="sidebar"><p class="sidebar-title">{'Documentation' if lang == 'en' else 'Dokümantasyon'}</p><nav aria-label="{'Documentation pages' if lang == 'en' else 'Dokümantasyon sayfaları'}">{''.join(nav_groups)}</nav>
       <div class="sidebar-footer"><a href="https://github.com/Nec0ti/hamartia/releases/latest">{'Latest release ↗' if lang == 'en' else 'En son sürüm ↗'}</a><a href="https://github.com/Nec0ti/hamartia">{'Source code ↗' if lang == 'en' else 'Kaynak kod ↗'}</a></div>
     </aside>
-    <main id="content" class="article"><p class="breadcrumb">{lang_name} / {escape(title)}</p><h1>{escape(title)}</h1><p class="page-description">{escape(description)}</p><article>{body}</article>
+    <main id="content" class="article"><p class="breadcrumb"><a href="{relative_href(lang, slug, lang, 'getting-started')}">{'Documentation' if lang == 'en' else 'Dokümantasyon'}</a> / {lang_name} / {escape(title)}</p><h1>{escape(title)}</h1><p class="page-description">{escape(description)}</p><article>{body}</article>
       <nav class="page-switch" aria-label="{'Language versions' if lang == 'en' else 'Dil sürümleri'}"><a href="{escape(language_href)}" lang="{other}" hreflang="{other}">{'Read this page in' if lang == 'en' else 'Bu sayfayı şu dilde oku'} {language_label}</a></nav>
     </main>
+    <aside class="page-toc"><p class="toc-title">{'On this page' if lang == 'en' else 'Bu sayfada'}</p><nav aria-label="{'On this page' if lang == 'en' else 'Bu sayfada'}"><ol>{''.join(toc_items)}</ol></nav></aside>
   </div>
-  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">{'License' if lang == 'en' else 'Lisans'}</a><span>{'Docs updated' if lang == 'en' else 'Doküman güncellemesi'}: 2026-11-15</span></footer>
+  <footer class="site-footer"><span>Hamartia · MIT License</span><a href="https://github.com/Nec0ti/hamartia/blob/master/LICENSE">{'License' if lang == 'en' else 'Lisans'}</a><a href="https://github.com/Nec0ti/hamartia/issues/new">{'Report a documentation problem' if lang == 'en' else 'Dokümantasyon sorununu bildir'}</a><span>{'Docs updated' if lang == 'en' else 'Doküman güncellemesi'}: 2026-11-17</span></footer>
 </body></html>
 '''
 

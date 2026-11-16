@@ -396,10 +396,40 @@ async def analyze_question(
             detail=f"Yerel model isteği başarısız oldu ({type(exc).__name__}); sunucu adresi, model ve erişim ayarlarını kontrol et.",
         ) from exc
     updated = []
+    stale_during_provider = False
+    oversized_during_provider = False
 
     def save_analysis(items):
+        nonlocal stale_during_provider, oversized_during_provider
         for item in items:
             if item.id == question_id:
+                # update_list runs this callback while holding the data-directory
+                # mutation lock and questions.json lock. Rebuild the approved
+                # fingerprint inside that critical section so PATCH/settings
+                # writes cannot land between the freshness check and this save.
+                latest_settings = storage.load_doc("settings.json", Settings) or Settings()
+                latest_ai = AIService(
+                    base_url=latest_settings.litellm_base_url,
+                    model_name=latest_settings.model_name,
+                    api_key=latest_settings.api_key,
+                    max_retries=0,
+                )
+                try:
+                    require_utf8_byte_limit(item.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+                    require_utf8_byte_limit(item.id, 512, "question_id")
+                    require_utf8_byte_limit(item.created_at, 128, "created_at")
+                    require_utf8_byte_limit(item.image_name, 1024, "image_name")
+                    require_utf8_byte_limit(item.image_path, 2048, "image_path")
+                    require_utf8_byte_limit(latest_settings.litellm_base_url, 4096, "litellm_base_url")
+                    require_utf8_byte_limit(latest_settings.model_name, 1024, "model_name")
+                    require_utf8_byte_limit(latest_settings.api_key, 4096, "api_key")
+                    latest_prompt = latest_ai._build_prompt(item, data_dir=DATA_DIR)
+                except (QuestionAnalysisPayloadTooLarge, ValueError):
+                    oversized_during_provider = True
+                    return False
+                if _analysis_fingerprint(item, latest_ai, latest_prompt) != snapshot.fingerprint:
+                    stale_during_provider = True
+                    return False
                 item.analysis = analysis
                 item.hamartia_tag = analysis.verdict.hamartia_tag
                 updated.append(item)
@@ -407,6 +437,10 @@ async def analyze_question(
         return False
 
     if not storage.update_list("questions.json", Question, save_analysis):
+        if oversized_during_provider:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large")
+        if stale_during_provider:
+            raise HTTPException(status_code=409, detail="Question or endpoint settings changed during analysis; review the request again")
         raise HTTPException(status_code=404, detail="Question not found")
     return updated[0]
 

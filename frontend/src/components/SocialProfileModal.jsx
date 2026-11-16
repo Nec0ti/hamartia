@@ -153,7 +153,7 @@ export default function SocialProfileModal({ open, onClose }) {
       <div className="mb-4 space-y-2 text-sm">
         <p>{t('social.legalLinks')}</p>
         <ul className="list-inside list-disc">
-          <li><a className="underline" href={language === 'tr' ? 'https://nec0ti.github.io/hamartia/tr/user-agreement/v0.1-draft/' : 'https://nec0ti.github.io/hamartia/user-agreement/v0.1-draft/'} target="_blank" rel="noreferrer">{t('social.userAgreement')}</a></li>
+          <li><a className="underline" href={language === 'tr' ? 'https://nec0ti.github.io/hamartia/tr/user-agreement-v0.1-draft.html' : 'https://nec0ti.github.io/hamartia/user-agreement-v0.1-draft.html'} target="_blank" rel="noreferrer">{t('social.userAgreement')}</a></li>
           <li><a className="underline" href={language === 'tr' ? 'https://nec0ti.github.io/hamartia/tr/privacy-and-consent/' : 'https://nec0ti.github.io/hamartia/privacy-and-consent/'} target="_blank" rel="noreferrer">{t('social.privacyNotice')}</a></li>
         </ul>
         <label className="flex items-start gap-2 text-sm">

@@ -1,8 +1,9 @@
 """Desktop-only frontend serving and backend process settings."""
 
-import ipaddress
 import hmac
+import ipaddress
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -106,15 +107,17 @@ def configure_frontend(app: FastAPI):
     @app.get("/desktop/ready", include_in_schema=False)
     async def desktop_ready(
         response: Response,
-        x_hamartia_control_token: str | None = Header(default=None),
+        x_hamartia_control_nonce: str | None = Header(default=None),
     ):
         expected = os.environ.get("HAMARTIA_CONTROL_TOKEN", "")
-        if not expected or not x_hamartia_control_token or not hmac.compare_digest(
-            expected, x_hamartia_control_token
-        ):
-            raise HTTPException(status_code=403, detail="Invalid desktop control token")
+        if not expected:
+            raise HTTPException(status_code=403, detail="Desktop control token is unavailable")
+        if not x_hamartia_control_nonce or not re.fullmatch(r"[0-9a-f]{64}", x_hamartia_control_nonce):
+            raise HTTPException(status_code=400, detail="Invalid desktop readiness nonce")
         response.status_code = 204
-        response.headers["X-Hamartia-Control-Token-Verified"] = "true"
+        response.headers["X-Hamartia-Control-Proof"] = hmac.new(
+            expected.encode("utf-8"), x_hamartia_control_nonce.encode("ascii"), "sha256"
+        ).hexdigest()
 
     @app.post("/desktop/shutdown", include_in_schema=False)
     async def shutdown_desktop_backend(x_hamartia_control_token: str | None = Header(default=None)):

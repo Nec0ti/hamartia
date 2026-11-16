@@ -5,7 +5,7 @@ const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 const { backendInvocation } = require('./backendInvocation.cjs')
-const { isDesktopBackendReady } = require('./backendReadiness.cjs')
+const { waitUntilReady } = require('./backendReadiness.cjs')
 const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
@@ -117,36 +117,12 @@ function startBackend(port) {
   return spawnBackend([], port)
 }
 
-async function waitUntilReady(child, url) {
-  const deadline = Date.now() + 30_000
-  let spawnError
-  child.once('error', (error) => { spawnError = error })
-
-  while (Date.now() < deadline) {
-    if (spawnError) throw spawnError
-    if (child.exitCode !== null) throw new Error(`Backend exited with code ${child.exitCode}`)
-    try {
-      const response = await fetch(`${url}/healthcheck/ready`, { signal: AbortSignal.timeout(1000) })
-      if (response.ok) {
-        const desktopReady = await fetch(`${url}/desktop/ready`, {
-          headers: { 'X-Hamartia-Control-Token': CONTROL_TOKEN },
-          signal: AbortSignal.timeout(1000),
-        })
-        if (isDesktopBackendReady(desktopReady)) return
-      }
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-
-  throw new Error('Timed out waiting for the local backend')
-}
-
 async function openWindow() {
   if (!backendUrl || (backend && backend.exitCode !== null)) {
     const port = await freePort()
     backendUrl = `http://${HOST}:${port}`
     backend = startBackend(port)
-    await waitUntilReady(backend, backendUrl)
+    await waitUntilReady(backend, backendUrl, CONTROL_TOKEN)
   }
 
   const icon = getWindowIconPath({
@@ -256,14 +232,14 @@ async function stopBackend() {
 async function restartBackend(port) {
   if (backend && backend.exitCode === null) {
     try {
-      await waitUntilReady(backend, backendUrl)
+      await waitUntilReady(backend, backendUrl, CONTROL_TOKEN)
       return
     } catch (error) {
       if (backend.exitCode === null) throw error
     }
   }
   backend = startBackend(port)
-  await waitUntilReady(backend, backendUrl)
+  await waitUntilReady(backend, backendUrl, CONTROL_TOKEN)
 }
 
 registerChatGPTIpc({ ipcMain, shell, getBackendUrl: () => backendUrl, chatgpt: { status: (...args) => chatgpt.status(...args), signIn: (...args) => chatgpt.signIn(...args), signOut: (...args) => chatgpt.signOut(...args), forgetAccount: (...args) => chatgpt.forgetAccount(...args), models: (...args) => chatgpt.models(...args), chat: (...args) => chatgpt.chat(...args), cancel: (...args) => chatgpt.cancel(...args) } })

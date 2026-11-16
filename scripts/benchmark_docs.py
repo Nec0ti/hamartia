@@ -361,6 +361,26 @@ def run_integrity() -> dict:
             "mevcut öğrenci konuşmasını", "beklenen alanı", "profili kimliği/sürümü",
             "kayıt kimlikleri ana bilgisayarda kalır", "net/xp hesaplar",
         )),
+        ("en", "study-agent"): ("sectioned-exam-capture", (
+            "1–6 explicitly named sections", "no default date, duration, section count, or subject roster",
+            "profile is selected on this device before provider dispatch", "not sent or treated as conversational facts",
+            "aggregates section counts", "computes net/xp", "transcript and signed continuation state are not persisted",
+        )),
+        ("tr", "study-agent"): ("sectioned-exam-capture", (
+            "1–6 bölümle", "varsayılan tarih, süre, bölüm sayısı veya ders listesi yoktur",
+            "puanlama profili sağlayıcıya gönderilmeden önce bu cihazda seçilir", "konuşma verisi sayılmaz",
+            "bölüm sonuçlarını toplar", "net/xp hesaplar", "konuşma ve imzalı devam durumu saklanmaz",
+        )),
+        ("en", "privacy-and-consent"): ("sectioned-exam-data", (
+            "1–6 user-specified sections", "No defaults or official subject roster are assumed",
+            "profile is selected on this device before provider dispatch", "not conversational facts",
+            "aggregates totals", "computes net/xp", "transcript and signed continuation state are not persisted",
+        )),
+        ("tr", "privacy-and-consent"): ("sectioned-exam-data", (
+            "1–6 bölümlü", "Varsayılan veya resmî ders listesi varsayılmaz",
+            "puanlama profili sağlayıcı çağrısından önce bu cihazda seçilir", "konuşma bilgisi sayılmaz",
+            "toplamları birleştirir", "net/xp hesaplar", "konuşma ve imzalı devam durumu saklanmaz",
+        )),
     }
     for (locale, page), (section_id, required_phrases) in exam_doc_requirements.items():
         if (locale, page) not in pages:

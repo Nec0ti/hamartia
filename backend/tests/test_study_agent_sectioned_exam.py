@@ -15,7 +15,7 @@ from app.models.schemas import Exam, ExamDeletedApprovalLedger, Settings, legacy
 from app.services.storage import StorageService
 from app.services.backup import create_backup, restore_backup
 from app.services.study_agent_exam import issue_exam_state_token
-from app.services.study_agent_sectioned_exam import MAX_SECTIONS, resolve_state_token
+from app.services.study_agent_sectioned_exam import MAX_SECTIONS, _question, resolve_state_token
 
 
 class StudyAgentSectionedExamTests(unittest.TestCase):
@@ -115,6 +115,8 @@ class StudyAgentSectionedExamTests(unittest.TestCase):
         self.assertEqual(self.rows(), [])
 
     def test_turkish_section_questions_are_localized(self):
+        self.assertEqual(_question("section_count", "en"), "Reply with one clear value for section count (1-6).")
+        self.assertEqual(_question("section_count", "tr"), "bölüm sayısı (1-6) için tek ve açık bir değer yaz.")
         messages, token = ["TYT"], None
         values = [("exam_type", "TYT"), ("date", "2026-11-16"), ("duration_minutes", "90"),
                   ("duration_seconds", "0"), ("section_count", "2")]

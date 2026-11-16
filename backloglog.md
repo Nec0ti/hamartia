@@ -1,5 +1,11 @@
 # Backlog log
 
+## 2026-11-16 — canceled remote social prototype
+
+- Removed Google/Firebase sign-in, remote profiles and forum, the separate API/PostgreSQL service and migrations, moderator/quota code, agreement drafts, dependencies, CI, and social-only tests/benchmarks. Direct messages were never implemented.
+- Kept the local student profile, onboarding/editor, XP levels, avatar cosmetics, and ChatGPT/configured OpenAI-compatible Study Agent providers. Existing user data and secrets were not inspected or changed; no server or provider was contacted.
+- Verification: frontend 54/54, desktop 56/56, backend 289 run / 288 pass / 1 Windows-only skip, offline docs integrity 17 routes per locale / 816 local links/assets / 156 excerpts, local profile benchmark passed with `ai_included: false` and zero provider/network tripwire calls, production build and release metadata checks passed. Browser smokes could not launch locally because Chromium lacks `libglib-2.0.so.0`; PR CI remains pending. See [cancellation report](reports/2026-11-16-social-prototype-canceled.md).
+
 ## 2026-11-16 — global study-tool positioning
 
 - Updated the internal purpose, workflow skill description, README, and bilingual purpose/scope documentation to describe Hamartia as useful across curricula while accurately identifying TYT/AYT full mocks as the current built-in full-mock formats. Generic single-subject exams, free-form curriculum references, custom exact-rational scoring profiles, and legacy YKS scoring are distinguished without claims of official alignment.

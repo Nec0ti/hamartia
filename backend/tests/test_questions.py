@@ -531,6 +531,7 @@ class QuestionFlowTests(unittest.TestCase):
             preview = asyncio.run(question_api.preview_question_analysis("q1", self.storage))
 
         self.assertEqual(preview["endpoint_class"], "remote")
+        self.assertEqual(preview["endpoint_authority"], "example.test:443")
         self.assertEqual(preview["scheme"], "https")
         self.assertEqual(preview["model"], "fixture-model")
         self.assertEqual(preview["payload"], {
@@ -543,7 +544,10 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(preview["auth_setting_category"], "configured_secret")
         self.assertEqual(preview["auth_value_category"], "configured_secret")
         self.assertNotIn("private-test-secret", json.dumps(preview))
-        self.assertNotIn("example.test", json.dumps(preview))
+        self.assertEqual(set(preview), {
+            "consent_id", "endpoint_class", "endpoint_authority", "scheme", "model", "payload",
+            "auth_setting_category", "auth_value_category",
+        })
         self.assertEqual(
             question_api.question_analysis_consents._snapshots[preview["consent_id"]].ai.max_retries,
             0,
@@ -582,6 +586,8 @@ class QuestionFlowTests(unittest.TestCase):
                 self.storage.save_doc("settings.json", Settings(litellm_base_url=url))
                 preview = asyncio.run(question_api.preview_question_analysis("q1", self.storage))
                 self.assertEqual((preview["endpoint_class"], preview["scheme"]), (expected_class, expected_scheme))
+                authority = "localhost:4000" if "localhost" in url else "example.test:80" if expected_scheme == "http" else "example.test:443"
+                self.assertEqual(preview["endpoint_authority"], authority)
 
         for url in (
             "https://user:password@example.test/v1",
@@ -646,6 +652,37 @@ class QuestionFlowTests(unittest.TestCase):
                 # Restore baseline before the next independent subcase.
                 self.storage.save_list("questions.json", [Question(id="q1", ocr_text="before")])
                 self.storage.save_doc("settings.json", Settings())
+
+    def test_image_change_invalidates_pending_consent(self):
+        self.uploads.mkdir()
+        image_path = self.uploads / "q.png"
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\ninitial")
+        self.storage.save_list("questions.json", [Question(
+            id="q1", image_name="q.png", image_path="uploads/q.png", ocr_text="question",
+        )])
+        preview = asyncio.run(question_api.preview_question_analysis("q1", self.storage))
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\nchanged")
+
+        with patch.object(question_api.AIService, "_completions", new_callable=AsyncMock) as provider:
+            with self.assertRaises(HTTPException) as invalid:
+                asyncio.run(question_api.analyze_question(
+                    "q1", question_api.AnalysisConsentApproval(consent_id=preview["consent_id"]), self.storage,
+                ))
+
+        self.assertEqual(invalid.exception.status_code, 409)
+        provider.assert_not_awaited()
+
+    def test_cancel_drops_snapshot_without_provider_request(self):
+        self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])
+        preview = asyncio.run(question_api.preview_question_analysis("q1", self.storage))
+        self.assertIn(preview["consent_id"], question_api.question_analysis_consents._snapshots)
+
+        cancelled = asyncio.run(question_api.cancel_question_analysis_preview(
+            "q1", preview["consent_id"],
+        ))
+
+        self.assertEqual(cancelled.status_code, 204)
+        self.assertNotIn(preview["consent_id"], question_api.question_analysis_consents._snapshots)
 
     def test_provider_failure_consumes_approval_without_retry(self):
         self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])

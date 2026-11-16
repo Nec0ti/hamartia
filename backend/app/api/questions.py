@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, ValidationError
 from fastapi.responses import FileResponse
 from openai import OpenAIError
@@ -227,24 +227,30 @@ def _analysis_fingerprint(question: Question, ai: AIService, prompt: list) -> st
     return hashlib.sha256(canonical).hexdigest()
 
 
-def _host_class_and_scheme(base_url: str) -> tuple[str, str]:
+def _host_class_scheme_and_authority(base_url: str) -> tuple[str, str, str]:
     parsed = urlsplit(base_url)
     hostname = parsed.hostname
     if parsed.scheme not in ("http", "https") or not hostname:
         raise HTTPException(status_code=422, detail="Configured endpoint URL is invalid")
     if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
         raise HTTPException(status_code=422, detail="Endpoint URLs with embedded credentials or query data cannot be reviewed safely")
+    try:
+        configured_port = parsed.port
+        port = configured_port if configured_port is not None else (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Configured endpoint URL is invalid") from exc
     local = hostname.casefold() == "localhost" or hostname.casefold().endswith(".localhost")
     if not local:
         try:
             local = ipaddress.ip_address(hostname).is_loopback
         except ValueError:
             local = False
-    return ("local" if local else "remote", parsed.scheme)
+    safe_host = f"[{hostname}]" if ":" in hostname else hostname
+    return ("local" if local else "remote", parsed.scheme, f"{safe_host}:{port}")
 
 
 def _analysis_disclosure(question: Question, settings: Settings, ai: AIService, prompt: list) -> dict:
-    host_class, scheme = _host_class_and_scheme(settings.litellm_base_url)
+    host_class, scheme, authority = _host_class_scheme_and_authority(settings.litellm_base_url)
     raw_key = settings.api_key
     if not raw_key:
         key_setting = "blank"
@@ -258,6 +264,7 @@ def _analysis_disclosure(question: Question, settings: Settings, ai: AIService, 
     image_included = any(item.get("type") == "image_url" for item in user_content)
     return {
         "endpoint_class": host_class,
+        "endpoint_authority": authority,
         "scheme": scheme,
         "model": settings.model_name,
         "payload": {
@@ -278,26 +285,41 @@ async def preview_question_analysis(
     storage: StorageService = Depends(get_storage),
 ):
     """Prepare a local-only, short-lived exact-request consent summary."""
-    questions = storage.load_list("questions.json", Question)
-    question = next((item for item in questions if item.id == question_id), None)
-    if question is None:
-        raise HTTPException(status_code=404, detail="Question not found")
-    settings = storage.load_doc("settings.json", Settings) or Settings()
-    ai = AIService(
-        base_url=settings.litellm_base_url,
-        model_name=settings.model_name,
-        api_key=settings.api_key,
-        max_retries=0,
-    )
-    prompt = ai._build_prompt(question, data_dir=DATA_DIR)
-    disclosure = _analysis_disclosure(question, settings, ai, prompt)
-    snapshot = question_analysis_consents.issue(
-        question=question,
-        ai=ai,
-        prompt=prompt,
-        fingerprint=_analysis_fingerprint(question, ai, prompt),
-    )
-    return {"consent_id": snapshot.consent_id, **disclosure}
+    if not question_analysis_consents.begin_preview():
+        raise HTTPException(status_code=429, detail="Question analysis preview capacity is busy; try again")
+    try:
+        questions = storage.load_list("questions.json", Question)
+        question = next((item for item in questions if item.id == question_id), None)
+        if question is None:
+            raise HTTPException(status_code=404, detail="Question not found")
+        settings = storage.load_doc("settings.json", Settings) or Settings()
+        ai = AIService(
+            base_url=settings.litellm_base_url,
+            model_name=settings.model_name,
+            api_key=settings.api_key,
+            max_retries=0,
+        )
+        prompt = ai._build_prompt(question, data_dir=DATA_DIR)
+        disclosure = _analysis_disclosure(question, settings, ai, prompt)
+        try:
+            snapshot = question_analysis_consents.issue(
+                question=question,
+                ai=ai,
+                prompt=prompt,
+                fingerprint=_analysis_fingerprint(question, ai, prompt),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail="Question analysis preview exceeds the safe memory limit") from exc
+        return {"consent_id": snapshot.consent_id, **disclosure}
+    finally:
+        question_analysis_consents.end_preview()
+
+
+@router.delete("/{question_id}/analysis-preview/{consent_id}", status_code=204)
+async def cancel_question_analysis_preview(question_id: str, consent_id: str):
+    """Release a dismissed local preview without contacting the configured endpoint."""
+    question_analysis_consents.discard(consent_id, question_id)
+    return Response(status_code=204)
 
 
 @router.post("/{question_id}/analyze", response_model=Question)

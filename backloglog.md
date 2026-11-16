@@ -1,5 +1,10 @@
 # Backlog log
 
+## 2026-11-17 — README logo visibility
+
+- Reduced the root README inline mark to 20 px and used the transparent black/white brand SVGs for light/dark GitHub themes.
+- GitHub GFM preserved the themed picture; Chromium loaded and visually displayed the matching SVG in both themes. No application tests were run; this is README-only. See `reports/2026-11-17-readme-logo-visibility.md`.
+
 ## 2026-11-16 — canceled remote social prototype
 
 - Removed Google/Firebase sign-in, remote profiles and forum, the separate API/PostgreSQL service and migrations, moderator/quota code, agreement drafts, dependencies, CI, and social-only tests/benchmarks. Direct messages were never implemented.

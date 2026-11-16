@@ -1,4 +1,4 @@
-<h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/hamartia-mark-light.svg"><img src="docs/assets/hamartia-favicon.svg" width="28" height="28" alt=""></picture> Hamartia</h1>
+<h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/hamartia-mark-light.svg"><img src="assets/brand/hamartia-mark.svg" width="20" height="20" alt=""></picture> Hamartia</h1>
 
 **Turn missed questions into a steady practice and review loop.** Hamartia is a local-first desktop study tool for learners across curricula. Record exams and questions, see patterns in saved mistakes, and plan focused practice without an AI provider.
 

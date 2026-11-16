@@ -1,5 +1,10 @@
 # Backlog log
 
+## 2026-11-16 — CLI Study Agent record workflows
+
+- Extended the bounded JSON-lines host interface from read-only PracticeSession preparation to draft and separately approved create commands for PracticeSession, LearningEvidence, text-only Question, branch Exam, and sectioned TYT/AYT Exam. Each command reuses the existing strict Pydantic request schema and create/draft handler; approvals include the exact preview digest and stable approval UUID, and PracticeSession's derived proposal is recomputed on the host. Caller-supplied parsed values, unknown fields, missing approval, incomplete drafts, and ambiguous evidence are rejected or return localized follow-up questions without writes.
+- Added full-flow integration coverage for all five types, zero-write-before-approval, exact retry idempotency, unknown/provider-value rejection, and English/Turkish follow-up prompts. The host-only persisted benchmark runs all five workflows with provider methods patched to fail and socket connects blocked. No provider/local model, browser, or real-device execution was run. See `reports/2026-11-16-study-agent-cli-workflows.md`.
+
 ## 2026-11-16 — PRs #49–#50 and forum submission quota
 
 - PR #49 fixed the local development API origin guard so hostile-origin multipart writes are rejected before parsing; the focused check confirmed no hostile question/upload files were created.

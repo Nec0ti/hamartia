@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
+from app.api import settings as settings_api
 from app.core.http_errors import safe_validation_error_handler
 from app.models.schemas import MAX_QUESTION_TEXT_BYTES, CouncilAnalysis, CurriculumReference, Exam, Question, Settings, SettingsUpdate
 from app.services.ai_service import MAX_QUESTION_IMAGE_BYTES
@@ -358,20 +359,64 @@ class QuestionFlowTests(unittest.TestCase):
     def test_edit_question_metadata_preserves_analysis_and_review_history(self):
         original = Question(
             id="q1", image_name="q.png", image_path="uploads/q.png", subject="Math", topic="Algebra",
-            ocr_text="old text", hamartia_tag="[Reading Slip]", reviewed_at="2026-11-01",
+            ocr_text="same prompt", hamartia_tag="[Reading Slip]",
+            analysis=CouncilAnalysis(verdict={"hamartia_tag": "[Knowledge Gap]", "difficulty": 1}),
+            reviewed_at="2026-11-01",
             review_attempts=[{"attempted_at": "2026-11-01T00:00:00Z", "correct": False}],
         )
         self.storage.save_list("questions.json", [original])
 
         updated = asyncio.run(question_api.update_question(
-            "q1", question_api.QuestionUpdate(subject=" Matematik ", topic=" Denklem ", ocr_text="new text"), self.storage,
+            "q1", question_api.QuestionUpdate(subject=" Matematik ", topic=" Denklem ", ocr_text="same prompt"), self.storage,
         ))
 
-        self.assertEqual((updated.subject, updated.topic, updated.ocr_text), ("Matematik", "Denklem", "new text"))
+        self.assertEqual((updated.subject, updated.topic, updated.ocr_text), ("Matematik", "Denklem", "same prompt"))
         self.assertEqual(updated.image_path, "uploads/q.png")
         self.assertEqual(updated.hamartia_tag, "[Reading Slip]")
+        self.assertIsNotNone(updated.analysis)
         self.assertEqual(updated.reviewed_at, "2026-11-01")
         self.assertEqual(len(updated.review_attempts), 1)
+
+    def test_editing_prompt_clears_stale_analysis_and_only_its_derived_tag(self):
+        original = Question(
+            id="q-analysis-edit", image_name="q.png", image_path="uploads/q.png",
+            ocr_text="old prompt", hamartia_tag="[Distractor Trap]",
+            analysis=CouncilAnalysis(verdict={"hamartia_tag": "[Distractor Trap]", "difficulty": 2}),
+        )
+        self.storage.save_list("questions.json", [original])
+
+        updated = asyncio.run(question_api.update_question(
+            "q-analysis-edit",
+            question_api.QuestionUpdate(subject="Math", topic="Algebra", ocr_text="new prompt"),
+            self.storage,
+        ))
+
+        self.assertIsNone(updated.analysis)
+        self.assertEqual(updated.hamartia_tag, "[Knowledge Gap]")
+
+    def test_editing_prompt_preserves_a_manual_tag_override(self):
+        original = Question(
+            id="q-manual-tag", ocr_text="old prompt", hamartia_tag="[Reading Slip]",
+            analysis=CouncilAnalysis(verdict={"hamartia_tag": "[Knowledge Gap]", "difficulty": 1}),
+        )
+        self.storage.save_list("questions.json", [original])
+
+        updated = asyncio.run(question_api.update_question(
+            "q-manual-tag",
+            question_api.QuestionUpdate(subject="Math", topic="Algebra", ocr_text="new prompt"),
+            self.storage,
+        ))
+
+        self.assertIsNone(updated.analysis)
+        self.assertEqual(updated.hamartia_tag, "[Reading Slip]")
+
+    def test_prompt_source_signature_includes_image_name_and_path(self):
+        original = Question(id="q-image-source", image_name="old.png", image_path="uploads/old.png", ocr_text="text")
+        renamed = original.model_copy(update={"image_name": "new.png"})
+        relocated = original.model_copy(update={"image_path": "uploads/new.png"})
+
+        self.assertNotEqual(question_api._analysis_source_fields(original), question_api._analysis_source_fields(renamed))
+        self.assertNotEqual(question_api._analysis_source_fields(original), question_api._analysis_source_fields(relocated))
 
     def test_edit_question_updates_curriculum_reference_and_omission_preserves_it(self):
         original = Question(
@@ -734,7 +779,8 @@ class QuestionFlowTests(unittest.TestCase):
 
         async def blocked_provider(_prompt):
             provider_entered.set()
-            await asyncio.to_thread(release_provider.wait, 5)
+            if not await asyncio.to_thread(release_provider.wait, 5):
+                raise TimeoutError("test did not release mocked provider")
             return json.dumps({"verdict": {"root_cause": "stale synthetic result", "difficulty": 1}})
 
         provider = AsyncMock(side_effect=blocked_provider)
@@ -766,6 +812,53 @@ class QuestionFlowTests(unittest.TestCase):
         [saved] = self.storage.load_list("questions.json", Question)
         self.assertEqual(saved.ocr_text, "prompt B")
         self.assertIsNone(saved.analysis)
+
+    def test_settings_change_during_provider_call_prevents_stale_analysis_persistence(self):
+        self.storage.save_list("questions.json", [Question(id="q-settings-race", ocr_text="approved prompt")])
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(question_api.router)
+        app.include_router(settings_api.router)
+        app.dependency_overrides[question_api.get_storage] = lambda: self.storage
+        app.dependency_overrides[settings_api.get_storage] = lambda: self.storage
+        provider_entered = threading.Event()
+        release_provider = threading.Event()
+
+        async def blocked_provider(_prompt):
+            provider_entered.set()
+            if not await asyncio.to_thread(release_provider.wait, 5):
+                raise TimeoutError("test did not release mocked provider")
+            return json.dumps({"verdict": {"root_cause": "stale settings result", "difficulty": 1}})
+
+        provider = AsyncMock(side_effect=blocked_provider)
+
+        with TestClient(app) as client, patch.object(question_api.AIService, "_completions", new=provider):
+            preview = client.post("/questions/q-settings-race/analysis-preview")
+            self.assertEqual(preview.status_code, 200)
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                pending_analysis = executor.submit(
+                    client.post,
+                    "/questions/q-settings-race/analyze",
+                    json={"consent_id": preview.json()["consent_id"]},
+                )
+                self.assertTrue(provider_entered.wait(5), "mock provider did not reach its blocking point")
+                changed_settings = client.patch("/settings", json={
+                    "litellm_base_url": "http://localhost:4001/v1",
+                    "model_name": "new-model",
+                })
+                self.assertEqual(changed_settings.status_code, 200)
+                release_provider.set()
+                response = pending_analysis.result(timeout=10)
+
+            self.assertEqual(response.status_code, 409)
+            provider.assert_awaited_once()
+
+        [saved] = self.storage.load_list("questions.json", Question)
+        self.assertEqual(saved.ocr_text, "approved prompt")
+        self.assertIsNone(saved.analysis)
+        saved_settings = self.storage.load_doc("settings.json", Settings)
+        self.assertEqual(saved_settings.model_name, "new-model")
 
     def test_oversized_question_patch_validation_does_not_echo_private_text(self):
         app = FastAPI()

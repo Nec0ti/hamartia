@@ -471,6 +471,21 @@ class QuestionUpdate(BaseModel):
         return require_utf8_byte_limit(value, MAX_QUESTION_TEXT_BYTES, "ocr_text")
 
 
+def _analysis_source_fields(question: Question) -> tuple[str, str, str]:
+    """Question fields used to select and label the saved prompt image/text."""
+    return question.ocr_text, question.image_name, question.image_path
+
+
+def _clear_stale_analysis(question: Question) -> None:
+    """Drop analysis output after its source changes, retaining manual tag overrides."""
+    if question.analysis is None:
+        return
+    generated_tag = question.analysis.verdict.hamartia_tag
+    question.analysis = None
+    if question.hamartia_tag == generated_tag:
+        question.hamartia_tag = "[Knowledge Gap]"
+
+
 @router.patch("/{question_id}", response_model=Question)
 async def update_question(
     question_id: str,
@@ -484,11 +499,14 @@ async def update_question(
             if question.id == question_id:
                 if not question.image_path and not payload.ocr_text.strip():
                     raise HTTPException(status_code=422, detail="A text-only question must keep question text")
+                old_analysis_sources = _analysis_source_fields(question)
                 question.subject = payload.subject.strip()
                 question.topic = payload.topic.strip()
                 question.ocr_text = payload.ocr_text
                 if payload.curriculum_reference is not None:
                     question.curriculum_reference = payload.curriculum_reference
+                if _analysis_source_fields(question) != old_analysis_sources:
+                    _clear_stale_analysis(question)
                 updated.append(question)
                 return True
         return False

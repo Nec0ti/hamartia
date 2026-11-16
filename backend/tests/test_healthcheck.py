@@ -8,9 +8,15 @@ from fastapi.testclient import TestClient
 
 from app.api import healthcheck
 from app.desktop import DesktopAuthGuard
+from app.main import app as local_app
 
 
 class HealthcheckTests(unittest.TestCase):
+    def test_local_api_does_not_mount_removed_social_routes(self):
+        paths = local_app.openapi()["paths"]
+        self.assertIn("/student-profile", paths)
+        self.assertFalse(any(path.startswith("/social") for path in paths))
+
     def make_client(self):
         app = FastAPI()
         app.include_router(healthcheck.router)

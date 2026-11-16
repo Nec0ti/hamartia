@@ -15,15 +15,12 @@ from app.core.http_errors import safe_validation_error_handler
 from app.desktop import configure_frontend, desktop_server_settings, frontend_directory, mount_frontend
 from app.models.schemas import Settings
 from app.main import app as main_app
-from app.social.application import create_social_app
 from app.services.storage import StorageService
 
 
 class SettingsApiTests(unittest.TestCase):
-    def test_both_asgi_services_register_input_redacting_validation_handler(self):
-        social_app = create_social_app("fixture-project", lambda _token: {})
+    def test_local_asgi_service_registers_input_redacting_validation_handler(self):
         self.assertIs(main_app.exception_handlers[RequestValidationError], safe_validation_error_handler)
-        self.assertIs(social_app.exception_handlers[RequestValidationError], safe_validation_error_handler)
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

@@ -10,11 +10,6 @@ const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
 const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
-const { createGoogleDesktopOAuth } = require('./googleDesktopOAuth.cjs')
-const { createSocialFirebaseAuth } = require('./socialFirebase.cjs')
-const { loadSocialPublicConfig } = require('./socialConfig.cjs')
-const { handleSocialDocumentWindowOpen } = require('./socialDocs.cjs')
-const { registerSocialIpc } = require('./socialIpc.cjs')
 const { probeSafeStorage } = require('./safeStorageSmoke.cjs')
 const { getWindowIconPath } = require('./windowIcon.cjs')
 
@@ -46,33 +41,6 @@ let backend
 let backendUrl
 let stoppingBackend = false
 let chatgpt
-const socialPublicConfig = loadSocialPublicConfig({
-  isPackaged: app.isPackaged,
-  resourcesPath: process.resourcesPath,
-  desktopDir: __dirname,
-})
-const socialOAuth = createGoogleDesktopOAuth({
-  clientId: socialPublicConfig.googleOAuthClientId,
-  shell,
-})
-const socialAuth = createSocialFirebaseAuth({
-  environment: {
-    HAMARTIA_FIREBASE_API_KEY: socialPublicConfig.firebase?.apiKey,
-    HAMARTIA_FIREBASE_AUTH_DOMAIN: socialPublicConfig.firebase?.authDomain,
-    HAMARTIA_FIREBASE_PROJECT_ID: socialPublicConfig.firebase?.projectId,
-    HAMARTIA_FIREBASE_APP_ID: socialPublicConfig.firebase?.appId,
-  },
-  oauth: socialOAuth,
-})
-
-registerSocialIpc({
-  ipcMain,
-  auth: socialAuth,
-  getBackendUrl: () => backendUrl,
-  apiOrigin: socialPublicConfig.socialApiOrigin,
-  agreementVersion: socialPublicConfig.agreementVersion,
-  allowLoopbackHttp: !app.isPackaged,
-})
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -154,7 +122,6 @@ async function openWindow() {
     },
   })
 
-  window.webContents.setWindowOpenHandler((details) => handleSocialDocumentWindowOpen(details, shell))
   window.webContents.on('will-navigate', (event, url) => {
     if (new URL(url).origin !== backendUrl) event.preventDefault()
   })
@@ -353,7 +320,6 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', (event) => {
-  socialOAuth.cancel()
   if (!backend || backend.exitCode !== null) return
   event.preventDefault()
   if (stoppingBackend) return

@@ -1,21 +1,23 @@
-"""JSON-lines entry point for Hamartia's read-only Study Agent CLI tool.
+"""JSON-lines entry point for Hamartia's local Study Agent record workflows.
 
 Run with ``PYTHONPATH=backend python -m app.hamartia_cli --jsonl``. Each input
-line is one bounded JSON command and each output line is one JSON result. The
-only supported command is ``study.practice.prepare``; this CLI cannot write,
-update, delete, access settings, invoke a provider, or execute shell commands.
+line is one bounded JSON command and each output line is one JSON result. Draft
+commands return host-verified previews; separate ``study.*.approve`` commands
+persist only a matching preview after explicit approval. The CLI cannot update,
+delete, access settings, invoke a provider, or execute shell commands.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 from typing import Any
 
 from pydantic import ValidationError
 
-from app.services.study_agent_cli import dispatch_cli
+from app.services.study_agent_cli import dispatch_record_command
 
 MAX_LINE_LENGTH = 256_000
 
@@ -36,7 +38,7 @@ def run_json_line(line: str) -> dict[str, Any]:
         envelope = json.loads(line, object_pairs_hook=_unique_object)
         if not isinstance(envelope, dict):
             return {"status": "error", "error": "request_must_be_an_object"}
-        return dispatch_cli(envelope)
+        return asyncio.run(dispatch_record_command(envelope))
     except (ValueError, ValidationError, TypeError):
         return {"status": "error", "error": "invalid_or_unsupported_command", "write_allowed": False}
 

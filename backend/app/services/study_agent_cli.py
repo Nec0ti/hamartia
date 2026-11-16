@@ -1,4 +1,4 @@
-"""Allowlisted, read-only tool contract for conversational practice entry."""
+"""Evidence-only Study Agent tools and local JSON-lines record commands."""
 
 from __future__ import annotations
 
@@ -652,6 +652,67 @@ def dispatch_cli(envelope: Mapping[str, Any]) -> dict[str, Any]:
     if request.language not in {"en", "tr"}:
         raise ValueError("language must be en or tr")
     return prepare_practice(request.messages, request.language, request.evidence)
+
+
+async def dispatch_record_command(envelope: Mapping[str, Any]) -> dict[str, Any]:
+    """Run one existing host draft or separately approved create operation."""
+    from fastapi import HTTPException
+    from fastapi.encoders import jsonable_encoder
+
+    from app.api import exams, learning_evidence, practice, questions
+    from app.core.config import DATA_DIR
+    from app.services.storage import StorageError, StorageService
+
+    routes = {
+        "study.practice.draft": (practice.AgentDraftRequest, practice.practice_agent_draft),
+        "study.practice.approve": (practice.AgentCreateRequest, practice.practice_agent_create),
+        "study.learning_evidence.draft": (learning_evidence.AgentLearningEvidenceDraftRequest, learning_evidence.learning_evidence_agent_draft),
+        "study.learning_evidence.approve": (learning_evidence.AgentLearningEvidenceCreateRequest, learning_evidence.learning_evidence_agent_create),
+        "study.question.draft": (questions.AgentQuestionDraftRequest, questions.question_agent_draft),
+        "study.question.approve": (questions.AgentQuestionCreateRequest, questions.question_agent_create),
+        "study.exam.draft": (exams.AgentExamDraftRequest, exams.exam_agent_draft),
+        "study.exam.approve": (exams.AgentExamCreateRequest, exams.exam_agent_create),
+        "study.sectioned_exam.draft": (exams.SectionedExamDraftRequest, exams.sectioned_exam_agent_draft),
+        "study.sectioned_exam.approve": (exams.SectionedExamCreateRequest, exams.sectioned_exam_agent_create),
+    }
+    command = envelope.get("command")
+    if command == "study.practice.prepare":
+        return dispatch_cli(envelope)
+    if command not in routes:
+        raise ValueError("Unsupported Study Agent command.")
+
+    is_approval = command.endswith(".approve")
+    if is_approval and envelope.get("approved") is not True:
+        raise ValueError("Explicit approval is required.")
+    if "proposal" in envelope:
+        raise ValueError("Caller-supplied values are not accepted; submit evidence quotes only.")
+    payload_type, handler = routes[command]
+    excluded = {"command", "approved"} if is_approval else {"command"}
+    payload = payload_type.model_validate({key: value for key, value in envelope.items() if key not in excluded})
+    try:
+        storage = StorageService(DATA_DIR)
+        if command == "study.practice.approve":
+            preview = await practice.practice_agent_draft(practice.AgentDraftRequest(
+                messages=payload.messages,
+                language=payload.language,
+                scoring_profile_id=payload.scoring_profile_id,
+                scoring_profile_version=payload.scoring_profile_version,
+                evidence_claims=payload.evidence_claims,
+            ), storage)
+            payload = payload.model_copy(update={"proposal": preview["proposal"]})
+        if is_approval or command in {"study.practice.draft", "study.exam.draft", "study.sectioned_exam.draft"}:
+            result = await handler(payload, storage)
+        else:
+            result = await handler(payload)
+    except HTTPException as exc:
+        return {"status": "error", "http_status": exc.status_code, "error": "request_rejected", "detail": exc.detail, "write_allowed": False}
+    except StorageError:
+        return {"status": "error", "error": "storage_unavailable", "write_allowed": False}
+    if is_approval:
+        return {"status": "saved", "record": jsonable_encoder(result), "write_allowed": False}
+    if isinstance(result, dict):
+        return {**jsonable_encoder(result), "write_allowed": False}
+    raise ValueError("Unexpected Study Agent response.")
 
 
 def dispatch_provider_tool(

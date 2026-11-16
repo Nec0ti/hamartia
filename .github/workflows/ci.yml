@@ -89,6 +89,9 @@ jobs:
       - run: python backend/benchmarks/benchmark_study_agent_cli.py --repeats 3
         env:
           PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_study_agent_cli_records.py --repeats 3
+        env:
+          PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_social_profiles.py
         env:
           PYTHONPATH: backend

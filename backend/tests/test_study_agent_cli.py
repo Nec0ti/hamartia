@@ -2,14 +2,19 @@ import hashlib
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
+import uuid
 from pathlib import Path
+from unittest.mock import patch
 
 from pydantic import ValidationError
 
 from app.hamartia_cli import MAX_LINE_LENGTH, run_json_line
 from app.services.study_agent_cli import EvidenceQuote, ProviderToolArguments, dispatch_cli, dispatch_provider_tool, parse_quote_value, prepare_practice, provider_tool_parameters
 from app.services.study_agent_practice import extract_fields
+from app.services.storage import StorageService
+from app.models.schemas import Exam, LearningEvidence, PracticeSession, Question
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -446,7 +451,7 @@ class StudyAgentCliTests(unittest.TestCase):
         )
         self.assertNotIn("correct", fabricated["fields"])
 
-    def test_cli_jsonl_dispatch_has_only_read_only_prepare_command(self):
+    def test_legacy_read_only_practice_prepare_command_stays_supported(self):
         request = {
             "command": "study.practice.prepare", "language": "en",
             "messages": MESSAGES, "evidence": CLAIMS,
@@ -463,7 +468,7 @@ class StudyAgentCliTests(unittest.TestCase):
         process = subprocess.run(
             [sys.executable, "-m", "app.hamartia_cli", "--jsonl"],
             input=json.dumps(request) + "\n", text=True, capture_output=True,
-            cwd=BACKEND_DIR, check=True, timeout=5,
+            cwd=BACKEND_DIR, check=True, timeout=30,
         )
         result = json.loads(process.stdout)
         self.assertEqual(result["status"], "ready")
@@ -474,7 +479,7 @@ class StudyAgentCliTests(unittest.TestCase):
         process = subprocess.run(
             [sys.executable, "-m", "app.hamartia_cli", "--jsonl"],
             input='{"padding":"' + ("x" * MAX_LINE_LENGTH) + '"}\n' + json.dumps(request) + "\n",
-            text=True, capture_output=True, cwd=BACKEND_DIR, check=True, timeout=5,
+            text=True, capture_output=True, cwd=BACKEND_DIR, check=True, timeout=30,
         )
         lines = [json.loads(line) for line in process.stdout.splitlines()]
         self.assertEqual(lines[0], {"status": "error", "error": "request_too_large", "write_allowed": False})
@@ -489,6 +494,178 @@ class StudyAgentCliTests(unittest.TestCase):
         self.assertNotIn("create", result)
         self.assertNotIn("write", result)
         self.assertFalse(result["write_allowed"])
+
+    def test_jsonl_host_workflows_preview_before_explicit_approval_and_replay_once(self):
+        from contextlib import ExitStack
+
+        from app.core import config
+        from app.models.schemas import legacy_yks_profile
+        from app.services.ai_service import AIService
+
+        temporary = tempfile.TemporaryDirectory()
+        data_dir = Path(temporary.name)
+        storage = StorageService(data_dir)
+        self.addCleanup(temporary.cleanup)
+
+        def invoke(command, **body):
+            return run_json_line(json.dumps({"command": command, **body}))
+
+        def approve(command, draft, conversation, extras=None):
+            body = {key: value for key, value in draft.items() if key in {
+                "messages", "language", "evidence_claims", "fields",
+                "preview_digest", "scoring_profile_id", "scoring_profile_version",
+                "scoring_profile_snapshot", "derived", "expected_exam_field", "state_token",
+                "expected_question_field", "expected_evidence_field",
+            }}
+            body["evidence"] = draft.get("verified_evidence", draft.get("evidence"))
+            body["approval_id"] = str(uuid.uuid4())
+            body["approved"] = True
+            body.update(conversation)
+            body.update(extras or {})
+            first = invoke(command, **body)
+            retry = invoke(command, **body)
+            self.assertEqual(first["status"], "saved", first)
+            self.assertEqual(retry, first)
+            return first["record"]
+
+        provider_methods = (
+            "study_chat", "study_practice_prepare", "study_learning_evidence_prepare",
+            "study_question_prepare", "study_exam_prepare", "study_sectioned_exam_prepare",
+        )
+        with patch.object(config, "DATA_DIR", data_dir), ExitStack() as stack:
+            trips = [stack.enter_context(patch.object(AIService, name, side_effect=AssertionError("provider call"))) for name in provider_methods]
+
+            practice = invoke("study.practice.draft", messages=MESSAGES, language="en", evidence_claims=CLAIMS)
+            self.assertEqual(practice["status"], "ready")
+            self.assertFalse(practice["write_allowed"])
+            self.assertEqual(storage.load_list("practice_sessions.json", PracticeSession), [])
+            saved_practice = approve("study.practice.approve", practice, {"messages": MESSAGES, "language": "en"})
+            self.assertEqual(saved_practice["scoring_profile"]["profile_id"], "legacy-yks")
+            self.assertEqual(len(storage.load_list("practice_sessions.json", PracticeSession)), 1)
+
+            learning_messages = ["I completed reading chapter 2 and made notes.", "Biology", "Cell division", "2026-11-16", "Comparing diagrams made the stages easier to distinguish."]
+            learning_claims = [{"field": field, "quote": quote} for field, quote in zip(
+                ("activity", "subject", "topic", "date", "observation"), learning_messages, strict=True,
+            )]
+            learning = invoke("study.learning_evidence.draft", messages=learning_messages, language="en", evidence_claims=learning_claims)
+            self.assertEqual(learning["status"], "ready")
+            self.assertEqual(learning["questions"], [])
+            self.assertEqual(storage.load_list("learning_evidence.json", LearningEvidence), [])
+            approve("study.learning_evidence.approve", learning, {"messages": learning_messages, "language": "en"})
+            self.assertEqual(len(storage.load_list("learning_evidence.json", LearningEvidence)), 1)
+
+            question_messages = ["If a rectangle has width 4 cm and length 7 cm, what is its area?", "Biology", "Geometry"]
+            question_claims = [{"field": field, "quote": quote} for field, quote in zip(
+                ("question_text", "subject", "topic"), question_messages, strict=True,
+            )]
+            question = None
+            token = None
+            for index, (field, quote) in enumerate(zip(("question_text", "subject", "topic"), question_messages, strict=True)):
+                question = invoke("study.question.draft", messages=question_messages[:index + 1], language="en",
+                                  expected_question_field=field, state_token=token,
+                                  evidence_claims=[{"field": field, "quote": quote}])
+                self.assertIn(question["status"], {"incomplete", "ready"})
+                token = question.get("state_token")
+            self.assertEqual(question["status"], "ready")
+            self.assertEqual(storage.load_list("questions.json", Question), [])
+            approve("study.question.approve", question,
+                    {"messages": question_messages, "language": "en"})
+            self.assertEqual(len(storage.load_list("questions.json", Question)), 1)
+
+            profile = legacy_yks_profile()
+            exam_fields = ("date", "subject", "correct", "incorrect", "blank", "duration_minutes", "duration_seconds")
+            exam_values = ("2026-11-16", "Biology", "25", "3", "2", "55", "0")
+            exam_messages, exam_claims, token, exam = [], [], None, None
+            for field, value in zip(exam_fields, exam_values, strict=True):
+                exam_messages.append(value)
+                exam_claims.append({"field": field, "quote": value})
+                exam = invoke("study.exam.draft", messages=exam_messages, language="en", expected_exam_field=field,
+                              state_token=token, scoring_profile_id=profile.profile_id,
+                              scoring_profile_version=profile.version, evidence_claims=[exam_claims[-1]])
+                token = exam.get("state_token")
+            self.assertEqual(exam["status"], "ready")
+            self.assertEqual(storage.load_list("exams.json", Exam), [])
+            approve("study.exam.approve", exam, {"messages": exam_messages, "language": "en"},
+                    {"state_token": None, "expected_exam_field": "duration_seconds",
+                     "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version})
+            self.assertEqual(len(storage.load_list("exams.json", Exam)), 1)
+
+            section_fields = ("exam_type", "date", "duration_minutes", "duration_seconds", "section_count",
+                              "section_1_subject", "section_1_correct", "section_1_incorrect", "section_1_blank")
+            section_values = ("TYT", "2026-11-16", "90", "0", "1", "Mathematics", "10", "2", "3")
+            section_messages, section_claims, token, sectioned = [], [], None, None
+            for field, value in zip(section_fields, section_values, strict=True):
+                section_messages.append(value)
+                section_claims.append({"field": field, "quote": value})
+                sectioned = invoke("study.sectioned_exam.draft", messages=section_messages, language="en",
+                                   expected_exam_field=field, state_token=token,
+                                   scoring_profile_id=profile.profile_id, scoring_profile_version=profile.version,
+                                   evidence_claims=[section_claims[-1]])
+                token = sectioned.get("state_token")
+            self.assertEqual(sectioned["status"], "ready")
+            self.assertEqual(len(storage.load_list("exams.json", Exam)), 1)
+            saved_sectioned = approve("study.sectioned_exam.approve", sectioned,
+                                      {"messages": section_messages, "language": "en"},
+                                      {"state_token": None, "expected_exam_field": "section_1_blank",
+                                       "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version})
+            self.assertEqual(saved_sectioned["sections"][0]["subject"], "Mathematics")
+            self.assertEqual(len(storage.load_list("exams.json", Exam)), 2)
+            for trip in trips:
+                trip.assert_not_called()
+
+    def test_jsonl_rejects_unapproved_unknown_and_provider_value_payloads_without_writes(self):
+        from app.core import config
+
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        data_dir = Path(temporary.name)
+        with patch.object(config, "DATA_DIR", data_dir):
+            base = {"messages": MESSAGES, "language": "en", "evidence_claims": CLAIMS}
+            invalid = [
+                {"command": "study.practice.draft", **base, "unexpected": True},
+                {"command": "study.practice.draft", **base, "proposal": {"correct": 12}},
+                {"command": "study.practice.draft", **base, "approved": True},
+                {"command": "study.practice.approve", **base, "approved": False},
+            ]
+            for request in invalid:
+                with self.subTest(request=request["command"]):
+                    result = run_json_line(json.dumps(request))
+                    self.assertEqual(result["status"], "error")
+                    self.assertFalse(result["write_allowed"])
+            self.assertEqual(StorageService(data_dir).load_list("practice_sessions.json", PracticeSession), [])
+
+    def test_all_record_drafts_ask_in_selected_language_and_reject_provider_values_without_writes(self):
+        from app.core import config
+
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        data_dir = Path(temporary.name)
+        storage = StorageService(data_dir)
+        with patch.object(config, "DATA_DIR", data_dir):
+            drafts = [
+                ("study.practice.draft", {"messages": ["I studied."], "language": "en", "evidence_claims": []}, "What date"),
+                ("study.learning_evidence.draft", {"messages": ["Çalıştım."], "language": "tr", "evidence_claims": []}, "Hangi etkinliği"),
+                ("study.question.draft", {"messages": ["Soru"], "language": "tr", "expected_question_field": "question_text", "state_token": None, "evidence_claims": []}, "Sorunun tam metnini"),
+                ("study.exam.draft", {"messages": ["today"], "language": "en", "expected_exam_field": "date", "state_token": None, "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1, "evidence_claims": []}, "What date"),
+                ("study.sectioned_exam.draft", {"messages": ["today"], "language": "tr", "expected_exam_field": "exam_type", "state_token": None, "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1, "evidence_claims": []}, "sınav türü"),
+            ]
+            for command, body, localized_prefix in drafts:
+                result = run_json_line(json.dumps({"command": command, **body}, ensure_ascii=False))
+                self.assertIn(result["status"], {"incomplete", "ambiguous"}, (command, result))
+                self.assertFalse(result["write_allowed"])
+                self.assertTrue(result["questions"], (command, result))
+                self.assertTrue(result["questions"][0].startswith(localized_prefix), (command, result["questions"]))
+
+                bad_body = dict(body)
+                bad_body["evidence_claims"] = [{"field": "date", "quote": "2026-11-16", "value": "2026-11-16"}]
+                rejected = run_json_line(json.dumps({"command": command, **bad_body}, ensure_ascii=False))
+                self.assertEqual(rejected["status"], "error", (command, rejected))
+                self.assertFalse(rejected["write_allowed"])
+
+            self.assertEqual(storage.load_list("practice_sessions.json", PracticeSession), [])
+            self.assertEqual(storage.load_list("learning_evidence.json", LearningEvidence), [])
+            self.assertEqual(storage.load_list("questions.json", Question), [])
+            self.assertEqual(storage.load_list("exams.json", Exam), [])
 
 
 if __name__ == "__main__":

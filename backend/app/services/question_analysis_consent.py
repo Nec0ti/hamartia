@@ -21,6 +21,7 @@ class QuestionAnalysisSnapshot:
     consent_id: str
     question_id: str
     question: Question
+    tag_at_preview: str
     ai: AIService
     prompt: list[dict[str, Any]]
     fingerprint: str
@@ -52,6 +53,7 @@ class QuestionAnalysisConsentRegistry:
         self,
         *,
         question: Question,
+        tag_at_preview: str,
         ai: AIService,
         prompt: list[dict[str, Any]],
         fingerprint: str,
@@ -61,6 +63,7 @@ class QuestionAnalysisConsentRegistry:
         retained_request = {
             "question_id": question.id,
             "created_at": question.created_at,
+            "tag_at_preview": tag_at_preview,
             "base_url": ai.base_url,
             "model_name": ai.model_name,
             "api_key": ai.api_key,
@@ -74,6 +77,7 @@ class QuestionAnalysisConsentRegistry:
             question_id=question.id,
             # The provider call needs only the question ID/timestamp after its prompt is frozen.
             question=Question(id=question.id, created_at=question.created_at),
+            tag_at_preview=tag_at_preview,
             ai=ai,
             prompt=prompt,
             fingerprint=fingerprint,

@@ -16,15 +16,25 @@ from app.services.question_analysis_consent import (
 
 
 class QuestionAnalysisConsentRegistryTests(unittest.TestCase):
-    def issue(self, registry, question_id="q1", prompt=None):
-        question = Question(id=question_id, ocr_text="synthetic")
+    def issue(self, registry, question_id="q1", prompt=None, tag="[Knowledge Gap]"):
+        question = Question(id=question_id, ocr_text="synthetic", hamartia_tag=tag)
         ai = AIService()
         return registry.issue(
             question=question,
+            tag_at_preview=question.hamartia_tag,
             ai=ai,
             prompt=prompt if prompt is not None else ai._build_prompt(question),
             fingerprint="synthetic-fingerprint",
         )
+
+    def test_snapshot_retains_only_preview_tag_separately_from_minimal_question(self):
+        registry = QuestionAnalysisConsentRegistry()
+
+        snapshot = self.issue(registry, tag="[Reading Slip]")
+
+        self.assertEqual(snapshot.tag_at_preview, "[Reading Slip]")
+        self.assertEqual(snapshot.question.ocr_text, "")
+        self.assertEqual(snapshot.question.hamartia_tag, "[Knowledge Gap]")
 
     def test_snapshot_expires_and_cannot_be_consumed(self):
         registry = QuestionAnalysisConsentRegistry()

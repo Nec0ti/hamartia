@@ -740,6 +740,40 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(saved.analysis.verdict.root_cause, "synthetic")
         self.assertEqual(replay.exception.status_code, 409)
 
+    def test_manual_tag_changed_back_to_default_after_preview_is_preserved(self):
+        self.storage.save_list("questions.json", [Question(
+            id="q-tag-preview", ocr_text="approved prompt", hamartia_tag="[Reading Slip]",
+        )])
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(question_api.router)
+        app.dependency_overrides[question_api.get_storage] = lambda: self.storage
+        provider = AsyncMock(return_value=json.dumps({
+            "verdict": {
+                "root_cause": "synthetic diagnosis",
+                "difficulty": 1,
+                "hamartia_tag": "[Distractor Trap]",
+            },
+        }))
+
+        with TestClient(app) as client, patch.object(question_api.AIService, "_completions", new=provider):
+            preview = client.post("/questions/q-tag-preview/analysis-preview")
+            self.assertEqual(preview.status_code, 200)
+            changed_tag = client.patch("/questions/q-tag-preview/tag", json={
+                "hamartia_tag": "[Knowledge Gap]",
+            })
+            self.assertEqual(changed_tag.status_code, 200)
+
+            response = client.post("/questions/q-tag-preview/analyze", json={
+                "consent_id": preview.json()["consent_id"],
+            })
+
+        self.assertEqual(response.status_code, 200)
+        provider.assert_awaited_once()
+        [saved] = self.storage.load_list("questions.json", Question)
+        self.assertEqual(saved.hamartia_tag, "[Knowledge Gap]")
+        self.assertEqual(saved.analysis.verdict.hamartia_tag, "[Distractor Trap]")
+
     def test_http_preview_cancel_and_approval_routes_keep_provider_behind_approval(self):
         self.storage.save_list("questions.json", [Question(id="q-http", ocr_text="synthetic")])
         app = FastAPI()

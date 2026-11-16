@@ -37,6 +37,7 @@ from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, 
 router = APIRouter(prefix="/questions", tags=["questions"])
 UPLOAD_DIR = DATA_DIR / "uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_ANALYSIS_TAG_BYTES = 128
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
 
@@ -311,6 +312,7 @@ async def preview_question_analysis(
             require_utf8_byte_limit(question.created_at, 128, "created_at")
             require_utf8_byte_limit(question.image_name, 1024, "image_name")
             require_utf8_byte_limit(question.image_path, 2048, "image_path")
+            require_utf8_byte_limit(question.hamartia_tag, MAX_ANALYSIS_TAG_BYTES, "hamartia_tag")
             require_utf8_byte_limit(settings.litellm_base_url, 4096, "litellm_base_url")
             require_utf8_byte_limit(settings.model_name, 1024, "model_name")
             require_utf8_byte_limit(settings.api_key, 4096, "api_key")
@@ -330,6 +332,7 @@ async def preview_question_analysis(
         try:
             snapshot = question_analysis_consents.issue(
                 question=question,
+                tag_at_preview=question.hamartia_tag,
                 ai=ai,
                 prompt=prompt,
                 fingerprint=_analysis_fingerprint(question, ai, prompt),
@@ -435,7 +438,7 @@ async def analyze_question(
                 # The mistake tag is not part of the provider payload. Preserve
                 # a user's edit made after preview or while the provider waited.
                 if (
-                    item.hamartia_tag == snapshot.question.hamartia_tag
+                    item.hamartia_tag == snapshot.tag_at_preview
                     and item.hamartia_tag == tag_at_dispatch
                 ):
                     item.hamartia_tag = analysis.verdict.hamartia_tag

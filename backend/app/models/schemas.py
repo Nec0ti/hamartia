@@ -654,6 +654,14 @@ class QuestionDeletedApprovalLedger(BaseModel):
     approval_ids: list[UUID] = Field(default_factory=list)
 
 
+class ExamDeletedApprovalLedger(BaseModel):
+    """Content-free Study Agent approval IDs retained after deleting captured exams."""
+
+    model_config = {"extra": "forbid"}
+
+    approval_ids: list[UUID] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Clock and active study timer (backend/data/clock.json)
 # ---------------------------------------------------------------------------

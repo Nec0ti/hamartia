@@ -13,6 +13,7 @@ from app.api import exams
 from app.core.http_errors import safe_validation_error_handler
 from app.models.schemas import Exam, ExamDeletedApprovalLedger, legacy_yks_profile
 from app.services.storage import StorageService
+from app.services.backup import create_backup, restore_backup
 from app.services.study_agent_exam import issue_exam_state_token
 from app.services.study_agent_sectioned_exam import MAX_SECTIONS, resolve_state_token
 
@@ -148,6 +149,15 @@ class StudyAgentSectionedExamTests(unittest.TestCase):
         self.assertEqual(replay.status_code, 409)
         ledger = self.storage.load_doc(exams.SECTIONED_AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger)
         self.assertEqual(ledger.approval_ids, [uuid.UUID(body["approval_id"])])
+        archive = self.data_dir / "sectioned-snapshot.zip"
+        restored = self.data_dir / "restored-sectioned"
+        create_backup(self.data_dir, archive)
+        restore_backup(archive, restored)
+        with patch.object(exams, "DATA_DIR", restored):
+            restored_replay = self.client.post("/exams/sectioned-agent-create", json=body)
+        self.assertEqual(restored_replay.status_code, 409)
+        restored_ledger = StorageService(restored).load_doc(exams.SECTIONED_AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger)
+        self.assertEqual(restored_ledger.approval_ids, [uuid.UUID(body["approval_id"])])
 
     def test_concurrent_same_preview_approval_creates_one_row(self):
         draft, messages = self.complete()

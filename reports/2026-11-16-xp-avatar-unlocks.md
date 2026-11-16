@@ -20,4 +20,5 @@ Scope: optional local student-profile avatar presets unlocked from the existing 
 - Onboarding browser smoke was attempted. The app/server started, but Chromium could not launch because this host lacks `libglib-2.0.so.0`; the bilingual disabled-state smoke assertions remain for CI.
 - The persisted profile benchmark (`benchmark_student_profile.py --repeats 3`) passed with 25 full-row oracles, `ai_included: false`, zero provider-tripwire calls, zero network-tripwire calls, and exact avatar boundary checks at 500/1,000/2,000 XP. These are local temporary-filesystem measurements, not production performance claims.
 - Offline documentation integrity passed for 17 routes per language, 818 local links/assets, and zero errors; the checked render hash is recorded in `reports/2026-11-15-docs-benchmark-results.json`.
+- Human documentation retrieval tasks and physical Windows/Debian install/persistence checks were NOT RUN; no separate device or human test group was available.
 - CI, package-install/launch checks, and independent review are pending for the PR. This change must remain unmerged until the parent coordinates the sequential ARETE release.

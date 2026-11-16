@@ -22,6 +22,11 @@ from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
 IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+MAX_QUESTION_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+class QuestionAnalysisPayloadTooLarge(ValueError):
+    """A legacy or changed saved image exceeds the safe analysis input limit."""
 
 # System prompt distilled from HAMARTIA.md. Injected at runtime so the harness
 # stays the single source of truth for the council's behavior.
@@ -52,10 +57,14 @@ class AIService:
         base_url: str = "http://localhost:4000/v1",
         model_name: str = "ollama/qwen2.5",
         api_key: str = "",
+        max_retries: int = 2,
+        http_client=None,
     ):
         self.base_url = base_url
         self.model_name = model_name
         self.api_key = api_key or "sk-placeholder"
+        self.max_retries = max_retries
+        self._http_client = http_client
         self._async_client: AsyncOpenAI | None = None
 
     @classmethod
@@ -72,16 +81,21 @@ class AIService:
 
     async def _ensure_async(self) -> AsyncOpenAI:
         if self._async_client is None:
-            self._async_client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+            self._async_client = AsyncOpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                max_retries=self.max_retries,
+                http_client=self._http_client,
+            )
         return self._async_client
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"AIService(model={self.model_name!r}, base={self.base_url!r})"
 
-    async def analyze_question(self, question: Question) -> CouncilAnalysis:
+    async def analyze_question(self, question: Question, prompt: list | None = None) -> CouncilAnalysis:
         """Run the full council over a question and attach the verdict."""
-        prompt = self._build_prompt(question)
-        raw = await self._completions(prompt)
+        request_prompt = prompt if prompt is not None else self._build_prompt(question)
+        raw = await self._completions(request_prompt)
         envelope = self._parse_envelope(raw)
         analysis = CouncilAnalysis.model_validate(envelope)
         analysis.analyzed_at = question.created_at
@@ -189,7 +203,7 @@ class AIService:
             raise ValueError("The configured endpoint attempted an additional tool call.")
         return prepared
 
-    def _build_prompt(self, question: Question) -> list:
+    def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:
         content = [{
             "type": "text",
             "text": (
@@ -199,12 +213,16 @@ class AIService:
             ),
         }]
         try:
-            image_path = resolve_question_image(DATA_DIR, question.image_path)
+            image_path = resolve_question_image(data_dir or DATA_DIR, question.image_path)
         except UnsafeUploadPath:
             image_path = None
         mime_type = IMAGE_MIME_TYPES.get(Path(question.image_name).suffix.lower())
         if mime_type and image_path and image_path.is_file():
-            encoded = b64encode(image_path.read_bytes()).decode("ascii")
+            with image_path.open("rb") as image_file:
+                image_bytes = image_file.read(MAX_QUESTION_IMAGE_BYTES + 1)
+            if len(image_bytes) > MAX_QUESTION_IMAGE_BYTES:
+                raise QuestionAnalysisPayloadTooLarge("Saved question image exceeds the analysis limit")
+            encoded = b64encode(image_bytes).decode("ascii")
             content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}})
         return [
             {"role": "system", "content": SYSTEM_PROMPT},

@@ -16,6 +16,18 @@ from uuid import UUID
 import idna
 from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
 
+MAX_QUESTION_TEXT_BYTES = 64 * 1024
+
+
+def require_utf8_byte_limit(value: str, maximum: int, field_name: str) -> str:
+    try:
+        size = len(value.encode("utf-8"))
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"{field_name} must be valid UTF-8 text") from exc
+    if size > maximum:
+        raise ValueError(f"{field_name} exceeds the {maximum}-byte limit")
+    return value
+
 # ---------------------------------------------------------------------------
 # Settings (backend/data/settings.json)
 # ---------------------------------------------------------------------------
@@ -71,6 +83,21 @@ class SettingsUpdate(BaseModel):
     model_name: str = "ollama/qwen2.5"
     api_key: str = ""
     clear_api_key: bool = False
+
+    @field_validator("litellm_base_url")
+    @classmethod
+    def bound_endpoint_url(cls, value: str) -> str:
+        return require_utf8_byte_limit(value, 4096, "litellm_base_url")
+
+    @field_validator("model_name")
+    @classmethod
+    def bound_model_name(cls, value: str) -> str:
+        return require_utf8_byte_limit(value, 1024, "model_name")
+
+    @field_validator("api_key")
+    @classmethod
+    def bound_api_key(cls, value: str) -> str:
+        return require_utf8_byte_limit(value, 4096, "api_key")
 
 
 # ---------------------------------------------------------------------------

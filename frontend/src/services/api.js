@@ -85,8 +85,12 @@ export const questions = {
   },
   update: (id, payload) => client.patch(`/questions/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/questions/${id}`).then((r) => r.data),
-  analyze: (id) =>
-    client.post(`/questions/${id}/analyze`).then((r) => r.data),
+  analysisPreview: (id) =>
+    client.post(`/questions/${id}/analysis-preview`).then((r) => r.data),
+  cancelAnalysisPreview: (id, consentId) =>
+    client.delete(`/questions/${id}/analysis-preview/${encodeURIComponent(consentId)}`),
+  analyze: (id, consentId) =>
+    client.post(`/questions/${id}/analyze`, { consent_id: consentId }).then((r) => r.data),
   tag: (id, hamartiaTag) =>
     client
       .patch(`/questions/${id}/tag`, { hamartia_tag: hamartiaTag })

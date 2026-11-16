@@ -24,6 +24,7 @@ export default {
   'error.badRequest': { en: 'The request could not be accepted. Check the entered values and try again.', tr: 'İstek kabul edilmedi. Girilen değerleri kontrol edip tekrar dene.' },
   'error.notFound': { en: 'The requested item could not be found.', tr: 'İstenen kayıt bulunamadı.' },
   'error.fileTooLarge': { en: 'The file is too large.', tr: 'Dosya boyutu çok büyük.' },
+  'error.analysisPayloadTooLarge': { en: 'This saved question or endpoint setting is too large to prepare safely. Question text may be at most 64 KiB UTF-8 and images 10 MiB. Shorten the text or use a smaller image, then review again.', tr: 'Bu kayıtlı soru veya uç nokta ayarı güvenli önizleme sınırını aşıyor. Soru metni en fazla 64 KiB UTF-8, görseller 10 MiB olabilir. Metni kısalt veya daha küçük görsel kullanıp yeniden incele.' },
   'error.fileType': { en: 'This file type is not supported.', tr: 'Bu dosya türü desteklenmiyor.' },
   'error.invalidData': { en: 'The request data is invalid. No changes were made.', tr: 'İstek verisi geçersiz. Değişiklik yapılmadı.' },
   'error.localAi': { en: 'The configured AI service could not complete the request. Check its address, model, and connection.', tr: 'Yapılandırılan AI hizmeti isteği tamamlayamadı. Adresini, modelini ve bağlantıyı kontrol et.' },

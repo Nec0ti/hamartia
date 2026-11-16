@@ -5,20 +5,30 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
 from app.api import settings
+from app.core.http_errors import safe_validation_error_handler
 from app.desktop import configure_frontend, desktop_server_settings, frontend_directory, mount_frontend
 from app.models.schemas import Settings
+from app.main import app as main_app
+from app.social.application import create_social_app
 from app.services.storage import StorageService
 
 
 class SettingsApiTests(unittest.TestCase):
+    def test_both_asgi_services_register_input_redacting_validation_handler(self):
+        social_app = create_social_app("fixture-project", lambda _token: {})
+        self.assertIs(main_app.exception_handlers[RequestValidationError], safe_validation_error_handler)
+        self.assertIs(social_app.exception_handlers[RequestValidationError], safe_validation_error_handler)
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp_dir.name)
         self.storage = StorageService(self.data_dir)
         self.app = FastAPI()
+        self.app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
         self.app.include_router(settings.router)
         self.client_context = patch.object(settings, "DATA_DIR", self.data_dir)
         self.client_context.start()
@@ -72,6 +82,14 @@ class SettingsApiTests(unittest.TestCase):
         self.assertEqual(cleared.status_code, 200)
         self.assertFalse(cleared.json()["has_api_key"])
         self.assertEqual(self.storage.load_doc("settings.json", Settings).api_key, "")
+
+    def test_oversized_api_key_validation_does_not_echo_submitted_secret(self):
+        synthetic_secret = "synthetic-no-echo-secret-" * 300
+        response = self.client.patch("/settings", json={"api_key": synthetic_secret})
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json(), {"detail": "Invalid request"})
+        self.assertNotIn(synthetic_secret, response.text)
 
 
 class DesktopServerTests(unittest.TestCase):

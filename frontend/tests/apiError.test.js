@@ -9,6 +9,7 @@ test('API failures become localized messages instead of leaking backend details'
   })
   assert.equal(handleApiError({ response: { status: 404, data: { detail: 'Soru bulunamadı' } } }, t).detail, 'localized:error.notFound')
   assert.equal(handleApiError({ response: { status: 413, data: { detail: 'A detailed server error' } } }, t).detail, 'localized:error.fileTooLarge')
+  assert.equal(handleApiError({ response: { status: 413, data: { detail: 'analysis_payload_too_large' } } }, t).detail, 'localized:error.analysisPayloadTooLarge')
   assert.equal(handleApiError({ response: { status: 502, data: { detail: 'Yerel model isteği başarısız oldu' } } }, t).detail, 'localized:error.localAi')
   assert.equal(handleApiError({ response: { status: 500, data: { detail: 'Storage unavailable: /private/path' } } }, t).detail, 'localized:error.server')
 })

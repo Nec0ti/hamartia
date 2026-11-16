@@ -5,26 +5,39 @@ mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
 from datetime import date, datetime
+import hashlib
+import ipaddress
 import json
 from typing import Annotated
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel, ValidationError
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel, ValidationError, field_validator
 from fastapi.responses import FileResponse
 from openai import OpenAIError
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt
-from app.services.ai_service import AIService, get_ai
+from app.models.schemas import (
+    MAX_QUESTION_TEXT_BYTES,
+    CurriculumReference,
+    Exam,
+    Question,
+    ReviewAttempt,
+    Settings,
+    require_utf8_byte_limit,
+)
+from app.services.ai_service import AIService, QuestionAnalysisPayloadTooLarge
+from app.services.question_analysis_consent import question_analysis_consents
 from app.services.storage import StorageError, StorageService, data_mutation_guard
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 UPLOAD_DIR = DATA_DIR / "uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_ANALYSIS_TAG_BYTES = 128
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 
 
@@ -58,6 +71,10 @@ async def upload_question(
         raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
     if len(curriculum_reference_json) > 4096:
         raise HTTPException(status_code=422, detail="Curriculum reference is too large")
+    try:
+        require_utf8_byte_limit(ocr_text or "", MAX_QUESTION_TEXT_BYTES, "ocr_text")
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
     try:
         reference_data = json.loads(curriculum_reference_json)
         if not isinstance(reference_data, dict):
@@ -202,37 +219,238 @@ async def get_question_image(question_id: str, storage: StorageService = Depends
     return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})
 
 
+class AnalysisConsentApproval(BaseModel):
+    consent_id: str
+
+
+def _analysis_fingerprint(question: Question, ai: AIService, prompt: list) -> str:
+    canonical = json.dumps(
+        {
+            "question_id": question.id,
+            "created_at": question.created_at,
+            "base_url": ai.base_url,
+            "model_name": ai.model_name,
+            "api_key": ai.api_key,
+            "prompt": prompt,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _host_class_scheme_and_authority(base_url: str) -> tuple[str, str, str]:
+    parsed = urlsplit(base_url)
+    hostname = parsed.hostname
+    if parsed.scheme not in ("http", "https") or not hostname:
+        raise HTTPException(status_code=422, detail="Configured endpoint URL is invalid")
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+        raise HTTPException(status_code=422, detail="Endpoint URLs with embedded credentials or query data cannot be reviewed safely")
+    try:
+        configured_port = parsed.port
+        port = configured_port if configured_port is not None else (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Configured endpoint URL is invalid") from exc
+    local = hostname.casefold() == "localhost" or hostname.casefold().endswith(".localhost")
+    if not local:
+        try:
+            local = ipaddress.ip_address(hostname).is_loopback
+        except ValueError:
+            local = False
+    safe_host = f"[{hostname}]" if ":" in hostname else hostname
+    return ("local" if local else "remote", parsed.scheme, f"{safe_host}:{port}")
+
+
+def _analysis_disclosure(question: Question, settings: Settings, ai: AIService, prompt: list) -> dict:
+    host_class, scheme, authority = _host_class_scheme_and_authority(settings.litellm_base_url)
+    raw_key = settings.api_key
+    if not raw_key:
+        key_setting = "blank"
+    elif raw_key.casefold() == "sk-placeholder":
+        key_setting = "placeholder"
+    else:
+        key_setting = "configured_secret"
+    sent_key = "placeholder" if ai.api_key.casefold() == "sk-placeholder" else "configured_secret"
+    user_content = prompt[1]["content"]
+    text_item = user_content[0]
+    image_included = any(item.get("type") == "image_url" for item in user_content)
+    return {
+        "endpoint_class": host_class,
+        "endpoint_authority": authority,
+        "scheme": scheme,
+        "model": settings.model_name,
+        "payload": {
+            "analysis_instructions_included": True,
+            "ocr_text_included": True,
+            "ocr_text_has_content": bool(question.ocr_text),
+            "image_filename_included": "Image filename:" in text_item["text"],
+            "saved_image_included": image_included,
+        },
+        "auth_setting_category": key_setting,
+        "auth_value_category": sent_key,
+    }
+
+
+@router.post("/{question_id}/analysis-preview")
+async def preview_question_analysis(
+    question_id: str,
+    storage: StorageService = Depends(get_storage),
+):
+    """Prepare a local-only, short-lived exact-request consent summary."""
+    if not question_analysis_consents.begin_preview():
+        raise HTTPException(status_code=429, detail="Question analysis preview capacity is busy; try again")
+    try:
+        questions = storage.load_list("questions.json", Question)
+        question = next((item for item in questions if item.id == question_id), None)
+        if question is None:
+            raise HTTPException(status_code=404, detail="Question not found")
+        settings = storage.load_doc("settings.json", Settings) or Settings()
+        try:
+            require_utf8_byte_limit(question.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+            require_utf8_byte_limit(question.id, 512, "question_id")
+            require_utf8_byte_limit(question.created_at, 128, "created_at")
+            require_utf8_byte_limit(question.image_name, 1024, "image_name")
+            require_utf8_byte_limit(question.image_path, 2048, "image_path")
+            require_utf8_byte_limit(question.hamartia_tag, MAX_ANALYSIS_TAG_BYTES, "hamartia_tag")
+            require_utf8_byte_limit(settings.litellm_base_url, 4096, "litellm_base_url")
+            require_utf8_byte_limit(settings.model_name, 1024, "model_name")
+            require_utf8_byte_limit(settings.api_key, 4096, "api_key")
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
+        ai = AIService(
+            base_url=settings.litellm_base_url,
+            model_name=settings.model_name,
+            api_key=settings.api_key,
+            max_retries=0,
+        )
+        try:
+            prompt = ai._build_prompt(question, data_dir=DATA_DIR)
+        except QuestionAnalysisPayloadTooLarge as exc:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
+        disclosure = _analysis_disclosure(question, settings, ai, prompt)
+        try:
+            snapshot = question_analysis_consents.issue(
+                question=question,
+                tag_at_preview=question.hamartia_tag,
+                ai=ai,
+                prompt=prompt,
+                fingerprint=_analysis_fingerprint(question, ai, prompt),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail="Question analysis preview exceeds the safe memory limit") from exc
+        return {"consent_id": snapshot.consent_id, **disclosure}
+    finally:
+        question_analysis_consents.end_preview()
+
+
+@router.delete("/{question_id}/analysis-preview/{consent_id}", status_code=204)
+async def cancel_question_analysis_preview(question_id: str, consent_id: str):
+    """Release a dismissed local preview without contacting the configured endpoint."""
+    question_analysis_consents.discard(consent_id, question_id)
+    return Response(status_code=204)
+
+
 @router.post("/{question_id}/analyze", response_model=Question)
 async def analyze_question(
     question_id: str,
+    approval: AnalysisConsentApproval,
     storage: StorageService = Depends(get_storage),
-    ai: AIService = Depends(get_ai),
 ):
-    """Run the Council of Minds and attach the five-counselor verdict."""
+    """Consume explicit one-use approval and run the frozen request snapshot."""
+    snapshot = question_analysis_consents.consume(approval.consent_id, question_id)
+    if snapshot is None:
+        raise HTTPException(status_code=409, detail="Consent expired or already used; review the request again")
+
     questions = storage.load_list("questions.json", Question)
     question = next((item for item in questions if item.id == question_id), None)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    settings = storage.load_doc("settings.json", Settings) or Settings()
+    current_ai = AIService(
+        base_url=settings.litellm_base_url,
+        model_name=settings.model_name,
+        api_key=settings.api_key,
+        max_retries=0,
+    )
     try:
-        analysis = await ai.analyze_question(question)
+        require_utf8_byte_limit(question.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+        require_utf8_byte_limit(question.id, 512, "question_id")
+        require_utf8_byte_limit(question.created_at, 128, "created_at")
+        require_utf8_byte_limit(question.image_name, 1024, "image_name")
+        require_utf8_byte_limit(question.image_path, 2048, "image_path")
+        require_utf8_byte_limit(settings.litellm_base_url, 4096, "litellm_base_url")
+        require_utf8_byte_limit(settings.model_name, 1024, "model_name")
+        require_utf8_byte_limit(settings.api_key, 4096, "api_key")
+        current_prompt = current_ai._build_prompt(question, data_dir=DATA_DIR)
+    except QuestionAnalysisPayloadTooLarge as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
+    if _analysis_fingerprint(question, current_ai, current_prompt) != snapshot.fingerprint:
+        raise HTTPException(status_code=409, detail="Question or endpoint settings changed; review the request again")
+
+    tag_at_dispatch = question.hamartia_tag
+    try:
+        analysis = await snapshot.ai.analyze_question(snapshot.question, prompt=snapshot.prompt)
     except OpenAIError as exc:
         raise HTTPException(
             status_code=502,
             detail=f"Yerel model isteği başarısız oldu ({type(exc).__name__}); sunucu adresi, model ve erişim ayarlarını kontrol et.",
         ) from exc
     updated = []
+    stale_during_provider = False
+    oversized_during_provider = False
 
     def save_analysis(items):
+        nonlocal stale_during_provider, oversized_during_provider
         for item in items:
             if item.id == question_id:
+                # update_list runs this callback while holding the data-directory
+                # mutation lock and questions.json lock. Rebuild the approved
+                # fingerprint inside that critical section so PATCH/settings
+                # writes cannot land between the freshness check and this save.
+                latest_settings = storage.load_doc("settings.json", Settings) or Settings()
+                latest_ai = AIService(
+                    base_url=latest_settings.litellm_base_url,
+                    model_name=latest_settings.model_name,
+                    api_key=latest_settings.api_key,
+                    max_retries=0,
+                )
+                try:
+                    require_utf8_byte_limit(item.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+                    require_utf8_byte_limit(item.id, 512, "question_id")
+                    require_utf8_byte_limit(item.created_at, 128, "created_at")
+                    require_utf8_byte_limit(item.image_name, 1024, "image_name")
+                    require_utf8_byte_limit(item.image_path, 2048, "image_path")
+                    require_utf8_byte_limit(latest_settings.litellm_base_url, 4096, "litellm_base_url")
+                    require_utf8_byte_limit(latest_settings.model_name, 1024, "model_name")
+                    require_utf8_byte_limit(latest_settings.api_key, 4096, "api_key")
+                    latest_prompt = latest_ai._build_prompt(item, data_dir=DATA_DIR)
+                except (QuestionAnalysisPayloadTooLarge, ValueError):
+                    oversized_during_provider = True
+                    return False
+                if _analysis_fingerprint(item, latest_ai, latest_prompt) != snapshot.fingerprint:
+                    stale_during_provider = True
+                    return False
                 item.analysis = analysis
-                item.hamartia_tag = analysis.verdict.hamartia_tag
+                # The mistake tag is not part of the provider payload. Preserve
+                # a user's edit made after preview or while the provider waited.
+                if (
+                    item.hamartia_tag == snapshot.tag_at_preview
+                    and item.hamartia_tag == tag_at_dispatch
+                ):
+                    item.hamartia_tag = analysis.verdict.hamartia_tag
                 updated.append(item)
                 return True
         return False
 
     if not storage.update_list("questions.json", Question, save_analysis):
+        if oversized_during_provider:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large")
+        if stale_during_provider:
+            raise HTTPException(status_code=409, detail="Question or endpoint settings changed during analysis; review the request again")
         raise HTTPException(status_code=404, detail="Question not found")
     return updated[0]
 
@@ -257,6 +475,26 @@ class QuestionUpdate(BaseModel):
     # Omitted/null preserves the saved reference; send {} to clear it.
     curriculum_reference: CurriculumReference | None = None
 
+    @field_validator("ocr_text")
+    @classmethod
+    def bound_ocr_text(cls, value: str) -> str:
+        return require_utf8_byte_limit(value, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+
+
+def _analysis_source_fields(question: Question) -> tuple[str, str, str]:
+    """Question fields used to select and label the saved prompt image/text."""
+    return question.ocr_text, question.image_name, question.image_path
+
+
+def _clear_stale_analysis(question: Question) -> None:
+    """Drop analysis output after its source changes, retaining manual tag overrides."""
+    if question.analysis is None:
+        return
+    generated_tag = question.analysis.verdict.hamartia_tag
+    question.analysis = None
+    if question.hamartia_tag == generated_tag:
+        question.hamartia_tag = "[Knowledge Gap]"
+
 
 @router.patch("/{question_id}", response_model=Question)
 async def update_question(
@@ -271,11 +509,14 @@ async def update_question(
             if question.id == question_id:
                 if not question.image_path and not payload.ocr_text.strip():
                     raise HTTPException(status_code=422, detail="A text-only question must keep question text")
+                old_analysis_sources = _analysis_source_fields(question)
                 question.subject = payload.subject.strip()
                 question.topic = payload.topic.strip()
                 question.ocr_text = payload.ocr_text
                 if payload.curriculum_reference is not None:
                     question.curriculum_reference = payload.curriculum_reference
+                if _analysis_source_fields(question) != old_analysis_sources:
+                    _clear_stale_analysis(question)
                 updated.append(question)
                 return True
         return False

@@ -24,7 +24,35 @@ function settingsRoutePattern(expectedOrigin) {
 }
 
 function diagnosticRequests(requests) {
-  return requests.map(({ method, origin, path }) => ({ method, origin, path }))
+  return requests.map(({ method, origin, path }) => {
+    let safePath = ''
+    try {
+      safePath = new URL(path, origin).pathname
+    } catch {}
+    return { method, origin, path: safePath }
+  })
+}
+
+function diagnosticPracticeState(state) {
+  return {
+    language: state.language,
+    workflow: state.payload?.workflow || '',
+    draftHttpStatus: state.draftHttp?.status ?? null,
+    missingFieldCount: Array.isArray(state.draft?.missing) ? state.draft.missing.length : null,
+    clarificationCount: Array.isArray(state.draft?.questions) ? state.draft.questions.length : null,
+    liveTextCount: Array.isArray(state.liveText) ? state.liveText.length : 0,
+    pageErrorCount: state.pageErrors?.length || 0,
+    cspConsoleError: state.consoleErrors?.some(({ text = '' }) => /content security policy/i.test(text)) || false,
+    failedResponses: (state.failedResponses || []).map(({ url, status }) => {
+      try {
+        const parsed = new URL(url)
+        return { origin: parsed.origin, path: parsed.pathname, status }
+      } catch {
+        return { status }
+      }
+    }),
+    requests: diagnosticRequests(state.appRequests || []),
+  }
 }
 
 function withDeadline(operation, timeoutMs, describe, cleanup) {
@@ -53,4 +81,4 @@ function withDeadline(operation, timeoutMs, describe, cleanup) {
   return Promise.race([work, deadline]).finally(() => clearTimeout(timer))
 }
 
-module.exports = { diagnosticRequests, withTimeout, isSettingsRequestUrl, settingsRoutePattern, withDeadline }
+module.exports = { diagnosticPracticeState, diagnosticRequests, withTimeout, isSettingsRequestUrl, settingsRoutePattern, withDeadline }

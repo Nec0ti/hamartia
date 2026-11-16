@@ -5,7 +5,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
 const { onePixelPng } = require('./smokeFixtures.cjs')
-const { diagnosticRequests, isSettingsRequestUrl, settingsRoutePattern, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
+const { diagnosticPracticeState, diagnosticRequests, isSettingsRequestUrl, settingsRoutePattern, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -802,10 +802,11 @@ async function main(smokeRun) {
               const evidence_claims = payload.messages.flatMap((message) => [...message.matchAll(/(?:^|,\s*)(date|subject|topic|correct|incorrect|blank|duration_minutes|duration_seconds):\s*([^,]+)/g)]
                 .filter((match) => fields.includes(match[1]))
                 .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
-              const response = await localFetch(`${backendUrl}/practice/agent-draft`, {
+              const response = await fetch(`${backendUrl}/practice/agent-draft`, {
                 method: 'POST', headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims,
                   scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version }),
+                signal: AbortSignal.timeout(10_000),
               })
               const responseBody = await response.text()
               window.__practiceDraftHttp = { status: response.status, body: responseBody }
@@ -867,7 +868,7 @@ async function main(smokeRun) {
         liveText: [...document.querySelectorAll('[aria-live]')].map((element) => element.innerText),
         bodyText: document.body.innerText.slice(-1200),
       }))
-      console.error('Practice clarification smoke state:', JSON.stringify({ ...state, pageErrors, failedResponses, appRequests }))
+      console.error('Practice clarification smoke state:', JSON.stringify(diagnosticPracticeState({ ...state, pageErrors, consoleErrors, failedResponses, appRequests })))
       throw error
     }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)

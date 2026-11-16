@@ -659,3 +659,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-046` sürümü, [#50 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/50) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-047
+
+## English
+
+`ARETE-047` includes the changes merged in [PR #51: fix: limit forum submissions per verified user](https://github.com/Nec0ti/hamartia/pull/51).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-047` sürümü, [#51 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/51) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

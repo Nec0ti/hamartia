@@ -8,7 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.social.application import create_social_app
-from app.social.security import FirebaseTokenVerifier
+from app.social.security import FirebaseTokenVerifier, FirebaseVerifierUnavailable
 
 
 PROJECT = "hamartia-benchmark-project"
@@ -26,7 +26,10 @@ class MockVerifier:
         if token == "verified":
             return CLAIMS
         if token in {"expired", "revoked", "signature-invalid"}:
-            raise ValueError("mock invalid token")
+            from app.social.security import InvalidFirebaseToken
+            raise InvalidFirebaseToken("mock invalid token")
+        if token == "unavailable":
+            raise FirebaseVerifierUnavailable("mock provider outage")
         if token == "wrong-audience":
             return {**CLAIMS, "aud": "another-project"}
         if token == "wrong-issuer":
@@ -44,6 +47,7 @@ def main():
         "expired": (401, {"detail": "Invalid bearer token"}),
         "revoked": (401, {"detail": "Invalid bearer token"}),
         "signature-invalid": (401, {"detail": "Invalid bearer token"}),
+        "unavailable": (503, {"detail": "Identity verification unavailable"}),
         "wrong-audience": (401, {"detail": "Invalid bearer token"}),
         "wrong-issuer": (401, {"detail": "Invalid bearer token"}),
     }

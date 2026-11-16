@@ -3,6 +3,14 @@
 from collections.abc import Callable, Mapping
 
 
+class InvalidFirebaseToken(Exception):
+    """The supplied Firebase ID token is invalid, expired, or revoked."""
+
+
+class FirebaseVerifierUnavailable(Exception):
+    """Firebase verification could not complete because its service is unavailable."""
+
+
 class FirebaseTokenVerifier:
     def __init__(self, project_id: str):
         if not project_id or project_id.strip() != project_id:
@@ -15,7 +23,12 @@ class FirebaseTokenVerifier:
     def __call__(self, token: str) -> Mapping[str, object]:
         from firebase_admin import auth
 
-        return auth.verify_id_token(token, app=self.app, check_revoked=True)
+        try:
+            return auth.verify_id_token(token, app=self.app, check_revoked=True)
+        except auth.InvalidIdTokenError as exc:
+            raise InvalidFirebaseToken from exc
+        except Exception as exc:
+            raise FirebaseVerifierUnavailable from exc
 
 
 def validate_identity(claims: Mapping[str, object], project_id: str) -> str:

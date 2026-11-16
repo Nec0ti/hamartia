@@ -2,7 +2,12 @@
 
 from fastapi import APIRouter, Header, HTTPException
 
-from app.social.security import Verifier, validate_identity
+from app.social.security import (
+    FirebaseVerifierUnavailable,
+    InvalidFirebaseToken,
+    Verifier,
+    validate_identity,
+)
 
 
 def create_router(project_id: str, verifier: Verifier) -> APIRouter:
@@ -14,15 +19,20 @@ def create_router(project_id: str, verifier: Verifier) -> APIRouter:
 
     @router.get("/me")
     async def me(authorization: str | None = Header(default=None)):
-        if not authorization or not authorization.startswith("Bearer "):
+        scheme, separator, token = authorization.partition(" ") if authorization else ("", "", "")
+        if not separator or scheme.casefold() != "bearer":
             raise HTTPException(status_code=401, detail="Invalid bearer token")
-        token = authorization[7:]
         if not token or any(char.isspace() for char in token):
             raise HTTPException(status_code=401, detail="Invalid bearer token")
         try:
             claims = verifier(token)
-            uid = validate_identity(claims, project_id)
+        except InvalidFirebaseToken as exc:
+            raise HTTPException(status_code=401, detail="Invalid bearer token") from exc
         except Exception as exc:
+            raise HTTPException(status_code=503, detail="Identity verification unavailable") from exc
+        try:
+            uid = validate_identity(claims, project_id)
+        except ValueError as exc:
             raise HTTPException(status_code=401, detail="Invalid bearer token") from exc
         return {"uid": uid}
 

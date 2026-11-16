@@ -1233,3 +1233,61 @@ Python derlemesi, statik sayfa üretimi, çevrimdışı dokümantasyon bütünl�
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Uygulama testleri, dış bağlantıları açma, sağlayıcı\/model çalıştırma, insanlarla bilgi bulma\/kullanılabilirlik deneyi ve tam erişilebilirlik denetimi yapılmadı\. Görseller yerelde incelendi; insan deneyi sonucu değildir\.
+
+## ARETE-066
+
+## English
+
+`ARETE-066` — [PR #70](https://github.com/Nec0ti/hamartia/pull/70): docs\: redesign public manual with dark theme
+
+### Highlights
+
+The public English and Turkish manuals now have a dark, responsive documentation layout\. The README logo is a compact title icon with GitHub light\/dark variants and a visible tile fallback\.
+
+### Behavior and why
+
+No application behavior changed\. The docs now provide clearer release context, manual navigation, topic categories, section links, and reading hierarchy\.
+
+### How to use
+
+Open the existing GitHub Pages guide\. Use the manual tab, grouped sidebar, on\-page links, and language switch to navigate\. The repository README adapts its title mark to GitHub's color scheme\.
+
+### Compatibility / migration
+
+Not applicable\. Documentation and README presentation changed; no app data, API, or package format changed\.
+
+### Verification
+
+Python compilation and docs generation, 34\-route Playwright docs smoke, offline integrity benchmark, 1440 px and 390 px screenshot review \(including Install with the third category active\), GitHub Markdown rendering and branch asset checks, and \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+No AI\/model\/provider call was made\. Human retrieval testing and a full screen\-reader\/WCAG audit remain pending\. External documentation links were not crawled\.
+
+## Türkçe
+
+`ARETE-066` — [PR #70](https://github.com/Nec0ti/hamartia/pull/70): docs\: redesign public manual with dark theme
+
+### Öne çıkanlar
+
+Herkese açık İngilizce ve Türkçe kılavuzlar koyu ve duyarlı bir dokümantasyon düzenine geçti\. README logosu, GitHub açık\/koyu temaları için varyantları ve görünür karo yedeği olan küçük bir başlık simgesidir\.
+
+### Davranış ve nedeni
+
+Uygulamanın davranışı değişmedi\. Dokümanlar artık sürüm bağlamını, kılavuz gezintisini, konu gruplarını, sayfa içi bağlantıları ve okuma hiyerarşisini daha açık sunuyor\.
+
+### Kullanım
+
+Mevcut GitHub Pages kılavuzunu aç\. Gezinmek için kılavuz sekmesini, gruplanmış yan menüyü, sayfa içi bağlantıları ve dil seçimini kullan\. Depo README başlık logosu GitHub temasına uyum sağlar\.
+
+### Uyumluluk / geçiş
+
+Gerekli değil\. Yalnızca doküman ve README sunumu değişti; uygulama verisi, API veya paket biçimi değişmedi\.
+
+### Doğrulama
+
+Python derleme ve doküman üretimi, 34 rotalı Playwright doküman smoke testi, çevrimdışı bütünlük benchmark'ı, 1440 px ve 390 px ekran görüntüsü incelemesi \(üçüncü kategorinin etkin olduğu Kurulum sayfası dahil\), GitHub Markdown\/asset kontrolleri ve \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+AI\/model\/sağlayıcı çağrısı yapılmadı\. İnsanlarla bilgi bulma testi ve kapsamlı ekran okuyucu\/WCAG incelemesi beklemede\. Harici dokümantasyon bağlantıları taranmadı\.

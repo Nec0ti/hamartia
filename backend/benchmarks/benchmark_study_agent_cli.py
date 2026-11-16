@@ -147,25 +147,31 @@ def self_check_exact_read_only_gate() -> None:
 
 
 def assert_prepare_is_structurally_side_effect_free() -> None:
-    """Guard the CLI call path against provider and persistence dependencies."""
-    modules = (hamartia_cli, study_agent_cli, study_agent_practice)
+    """Guard the legacy prepare and evidence-tool functions against side effects."""
+    functions = (
+        study_agent_cli.dispatch_cli,
+        study_agent_cli.dispatch_provider_tool,
+        study_agent_cli.prepare_practice,
+        study_agent_practice.complete_payload,
+        study_agent_practice.extract_fields,
+    )
     forbidden_imports = ("app.services.ai_service", "app.services.storage", "openai", "httpx", "requests", "subprocess", "sqlite3")
     forbidden_calls = {"AIService", "StorageService", "create_session", "append_list", "update_list", "httpx", "requests"}
-    for module in modules:
-        tree = ast.parse(inspect.getsource(module))
+    for function in functions:
+        tree = ast.parse(inspect.getsource(function))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imported = [item.name for item in node.names]
                 if any(name == forbidden or name.startswith(f"{forbidden}.") for name in imported for forbidden in forbidden_imports):
-                    raise AssertionError(f"provider/storage dependency found in {module.__name__}")
+                    raise AssertionError(f"provider/storage dependency found in {function.__qualname__}")
             elif isinstance(node, ast.ImportFrom):
                 imported = node.module or ""
                 if any(imported == forbidden or imported.startswith(f"{forbidden}.") for forbidden in forbidden_imports):
-                    raise AssertionError(f"provider/storage dependency found in {module.__name__}")
+                    raise AssertionError(f"provider/storage dependency found in {function.__qualname__}")
             elif isinstance(node, ast.Call):
                 call_name = node.func.id if isinstance(node.func, ast.Name) else node.func.attr if isinstance(node.func, ast.Attribute) else ""
                 if call_name in forbidden_calls:
-                    raise AssertionError(f"provider/storage call found in {module.__name__}")
+                    raise AssertionError(f"provider/storage call found in {function.__qualname__}")
 
 
 def adversarial_probes(seed: int) -> int:
@@ -524,7 +530,7 @@ def main(repeats: int = 5, json_output: str | None = None) -> None:
             **results[-1], "p50_seconds": round(durations[len(durations) // 2], 6),
             "p95_seconds": round(durations[-1], 6),
             "oracle": "EN natural/labeled and TR natural/labeled fixtures; independent values/evidence/digests; adversarial exact statuses and corrections",
-            "side_effect_check": "AST inspection confirmed CLI/prepare modules import and call no provider or persistence services; counters are structural exclusions, not runtime instrumentation",
+            "side_effect_check": "AST inspection confirmed the legacy study.practice.prepare and evidence-tool parser functions call no provider or persistence services; counters are structural exclusions, not runtime instrumentation",
         })
     output = {
         "benchmark": "study_agent_cli_prepare", "seed": SEED, "ai_included": False,

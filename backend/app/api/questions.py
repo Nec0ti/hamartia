@@ -37,6 +37,7 @@ from app.services.storage import StorageError, StorageService, data_mutation_gua
 from app.services.study_agent_question import (
     QuestionCaptureFields,
     QuestionQuote,
+    is_unique_latest_turn_quote,
     issue_question_state_token,
     prepare_question_capture,
     resolve_question_state_token,
@@ -56,6 +57,22 @@ def get_storage():
         return StorageService(DATA_DIR)
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail=f"Storage unavailable: {exc}")
+
+
+def build_question_agent_draft(
+    messages: list[str], language: str, expected_field: str,
+    prior_claims: list[dict[str, str]], current_claims: list[dict[str, str]],
+):
+    """Resolve one provider turn against host state and issue the next signed state if incomplete."""
+    if any(item["field"] != expected_field or not is_unique_latest_turn_quote(messages, item["quote"])
+           for item in current_claims):
+        raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
+    prepared = prepare_question_capture(messages, language, [*prior_claims, *current_claims])
+    if prepared["status"] != "ready":
+        prepared["state_token"] = issue_question_state_token(
+            messages, language, prepared["verified_evidence"],
+        )
+    return prepared
 
 
 def _utcnow() -> str:
@@ -203,14 +220,9 @@ async def question_agent_draft(payload: AgentQuestionDraftRequest):
     if expected != payload.expected_question_field:
         raise HTTPException(status_code=409, detail="The question-capture conversation changed. Review the current question again.")
     current_claims = [item.model_dump() for item in payload.evidence_claims]
-    if current_claims and (len(current_claims) != 1 or current_claims[0]["field"] != expected):
-        raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected field.")
-    prepared = prepare_question_capture(payload.messages, payload.language, [*prior_claims, *current_claims])
-    if prepared["status"] != "ready":
-        prepared["state_token"] = issue_question_state_token(
-            payload.messages, payload.language, prepared["verified_evidence"],
-        )
-    return prepared
+    if len(current_claims) > 1:
+        raise HTTPException(status_code=422, detail="Submit only the current expected field.")
+    return build_question_agent_draft(payload.messages, payload.language, expected, prior_claims, current_claims)
 
 
 @router.post("/agent-create", status_code=201, response_model=Question)

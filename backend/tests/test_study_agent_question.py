@@ -148,9 +148,39 @@ class StudyAgentQuestionTests(unittest.TestCase):
         self.assertEqual(second_draft["expected_field"], "topic")
 
         wrong_turn = self.draft_request([QUESTION_TEXT, "Biology", "Geometry"], "topic", [self.claim("topic", "Biology")], second_draft["state_token"])
-        self.assertEqual(wrong_turn.json()["status"], "ambiguous")
-        self.assertEqual(wrong_turn.json()["fields"]["subject"], "Biology")
-        self.assertIsNone(wrong_turn.json()["preview_digest"])
+        self.assertEqual(wrong_turn.status_code, 422, wrong_turn.text)
+        self.assertNotIn("preview_digest", wrong_turn.json())
+
+        fresh_token = issue_question_state_token([QUESTION_TEXT, "Biology"], "en", {
+            "question_text": {"quote": QUESTION_TEXT}, "subject": {"quote": "Biology"},
+        })
+        correct_turn = self.draft_request([QUESTION_TEXT, "Biology", "Geometry"], "topic", [self.claim("topic", "Geometry")], fresh_token)
+        self.assertEqual(correct_turn.status_code, 200, correct_turn.text)
+        self.assertEqual(correct_turn.json()["status"], "ready")
+        self.assertEqual(correct_turn.json()["fields"]["topic"], "Geometry")
+        self.assertEqual(self.rows(), [])
+
+    def test_empty_prior_state_cannot_advance_from_a_quote_in_an_older_turn(self):
+        first_text = "A triangle has sides 3, 4, and 5. Find its perimeter."
+        newest_text = "A rectangle has width 4 and length 7. Find its area."
+        first = self.draft_request([first_text], "question_text", [])
+        self.assertEqual(first.status_code, 200, first.text)
+        token = first.json()["state_token"]
+
+        stale = self.draft_request(
+            [first_text, newest_text], "question_text", [self.claim("question_text", first_text)], token,
+        )
+        self.assertEqual(stale.status_code, 422, stale.text)
+        self.assertNotIn("preview_digest", stale.json())
+        self.assertEqual(self.rows(), [])
+
+        fresh_token = issue_question_state_token([first_text], "en", {})
+        current = self.draft_request(
+            [first_text, newest_text], "question_text", [self.claim("question_text", newest_text)], fresh_token,
+        )
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual(current.json()["expected_field"], "subject")
+        self.assertEqual(current.json()["fields"]["question_text"], newest_text)
         self.assertEqual(self.rows(), [])
 
     def test_state_token_is_canonical_one_use_and_bound_to_exact_prefix(self):

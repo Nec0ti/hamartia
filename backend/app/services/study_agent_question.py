@@ -89,6 +89,12 @@ def _occurrences(message: str, quote: str) -> list[tuple[int, int]]:
     return found
 
 
+def is_unique_latest_turn_quote(messages: list[str], quote: str) -> bool:
+    """A provider hint must quote the whole newest student turn, uniquely across the transcript."""
+    return bool(messages and quote == messages[-1]
+                and sum(len(_occurrences(message, quote)) for message in messages) == 1)
+
+
 _META_INTENT = re.compile(
     r"(?i)^(?:maybe\s+i\s+(?:will|might|may)|i\s+(?:will|might|may|plan\s+to|intend\s+to)|"
     r"if\s+i\s+.{0,80}\s+i\s+(?:would|could)|(?:don't|do\s+not|won't|will\s+not)\s+"

@@ -2,7 +2,7 @@
   "benchmark": "hamartia-bilingual-docs-integrity-v1",
   "task_set_id": "hamartia-wiki-retrieval-v1",
   "task_pack_sha256": "c9b1a91d6d30744aaf59b8631ec29653c4050e4d181a38eca8b7a244e36e8ec5",
-  "rendered_wiki_sha256": "f3bae2e2ce193690e5e60fdb09f58d75d553bdb396c80b2307dd5dacd84776ad",
+  "rendered_wiki_sha256": "0538141b958eb8501bb0a4bd48bab3fd54fcf91d59fb2cc0c9236b50e6067317",
   "protocol_sha256": "d2170c2ed0ab0a1496e613cf2ac7d10d75160f6ba54b6698f70f391aae4db26c",
   "checker_sha256": "9779f6db648b2a9a0e92159624a7aa178e5cbe214fb92a41ae4084debe02beb7",
   "hash_sensitivity_self_checks": {

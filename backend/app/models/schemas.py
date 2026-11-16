@@ -646,6 +646,14 @@ class LearningEvidenceDeletedApprovalLedger(BaseModel):
     approval_ids: list[UUID] = Field(default_factory=list)
 
 
+class QuestionDeletedApprovalLedger(BaseModel):
+    """Content-free approval IDs retained to prevent replay after deleting an agent-created question."""
+
+    model_config = {"extra": "forbid"}
+
+    approval_ids: list[UUID] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Clock and active study timer (backend/data/clock.json)
 # ---------------------------------------------------------------------------

@@ -8,13 +8,14 @@ from datetime import date, datetime
 import hashlib
 import ipaddress
 import json
-from typing import Annotated
+import re
+from typing import Annotated, Literal
 from pathlib import Path
 from urllib.parse import urlsplit
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
-from pydantic import BaseModel, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from fastapi.responses import FileResponse
 from openai import OpenAIError
 
@@ -25,6 +26,7 @@ from app.models.schemas import (
     CurriculumReference,
     Exam,
     Question,
+    QuestionDeletedApprovalLedger,
     ReviewAttempt,
     Settings,
     require_utf8_byte_limit,
@@ -32,9 +34,17 @@ from app.models.schemas import (
 from app.services.ai_service import AIService, QuestionAnalysisPayloadTooLarge
 from app.services.question_analysis_consent import question_analysis_consents
 from app.services.storage import StorageError, StorageService, data_mutation_guard
+from app.services.study_agent_question import (
+    QuestionCaptureFields,
+    QuestionQuote,
+    issue_question_state_token,
+    prepare_question_capture,
+    resolve_question_state_token,
+)
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
+AGENT_APPROVALS_FILE = "question_agent_approvals.json"
 UPLOAD_DIR = DATA_DIR / "uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_ANALYSIS_TAG_BYTES = 128
@@ -176,6 +186,102 @@ async def upload_question(
                     pass
             raise
     return question
+
+
+@router.post("/agent-draft")
+async def question_agent_draft(payload: AgentQuestionDraftRequest):
+    """Validate the current expected quote and return a non-writing preview/follow-up."""
+    interactive = payload.state_token is not None or len(payload.messages) > 1
+    if payload.state_token is not None and len(payload.messages) < 2:
+        raise HTTPException(status_code=409, detail="The question-capture conversation state is invalid or expired.")
+    try:
+        prior_claims = resolve_question_state_token(payload.state_token, payload.messages, payload.language) if interactive else []
+        prior = prepare_question_capture(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    expected = prior["expected_field"] if prior else "question_text"
+    if expected != payload.expected_question_field:
+        raise HTTPException(status_code=409, detail="The question-capture conversation changed. Review the current question again.")
+    current_claims = [item.model_dump() for item in payload.evidence_claims]
+    if current_claims and (len(current_claims) != 1 or current_claims[0]["field"] != expected):
+        raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected field.")
+    prepared = prepare_question_capture(payload.messages, payload.language, [*prior_claims, *current_claims])
+    if prepared["status"] != "ready":
+        prepared["state_token"] = issue_question_state_token(
+            payload.messages, payload.language, prepared["verified_evidence"],
+        )
+    return prepared
+
+
+@router.post("/agent-create", status_code=201, response_model=Question)
+async def question_agent_create(payload: AgentQuestionCreateRequest, storage: StorageService = Depends(get_storage)):
+    prepared = prepare_question_capture(
+        payload.messages, payload.language, [item.model_dump() for item in payload.evidence_claims],
+    )
+    supplied_evidence = {field: item.model_dump() for field, item in payload.evidence.items()}
+    invalid = prepared["status"] != "ready"
+    field_mismatch = not invalid and (
+        payload.fields.model_dump() != prepared["fields"]
+        or supplied_evidence != prepared["verified_evidence"]
+    )
+    digest_mismatch = not invalid and not field_mismatch and payload.preview_digest != prepared["preview_digest"]
+    approval_body = {
+        "messages": payload.messages, "language": payload.language,
+        "evidence_claims": [item.model_dump() for item in payload.evidence_claims],
+        "fields": payload.fields.model_dump(), "evidence": supplied_evidence,
+        "preview_digest": payload.preview_digest,
+    }
+    fingerprint = hashlib.sha256(json.dumps(
+        approval_body, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    approval_prefix = f"q_agent_{payload.approval_id.hex}_"
+    record_id = f"{approval_prefix}{fingerprint}"
+    created = Question(
+        id=record_id,
+        ocr_text=payload.fields.question_text,
+        subject=payload.fields.subject,
+        topic=payload.fields.topic,
+        created_at=_utcnow(),
+    )
+    result: list[Question] = []
+    conflict = ""
+    invalid_request = ""
+    with data_mutation_guard(storage.data_dir):
+        ledger = storage.load_doc(AGENT_APPROVALS_FILE, QuestionDeletedApprovalLedger) or QuestionDeletedApprovalLedger()
+        if payload.approval_id in ledger.approval_ids:
+            conflict = "This approved question was deleted and cannot be recreated by replay."
+        else:
+            def append_or_replay(questions):
+                nonlocal conflict, invalid_request
+                existing = next((item for item in questions if item.id.startswith(approval_prefix)), None)
+                if existing:
+                    if (existing.id == record_id and existing.ocr_text == created.ocr_text
+                            and existing.subject == created.subject and existing.topic == created.topic):
+                        result.append(existing)
+                    else:
+                        conflict = "This approval ID was already used for different question content."
+                    return False
+                if invalid:
+                    invalid_request = "The question preview is incomplete or ambiguous."
+                    return False
+                if field_mismatch:
+                    invalid_request = "The approved preview does not match the verified student evidence."
+                    return False
+                if digest_mismatch:
+                    invalid_request = "The question preview changed. Review it again before saving."
+                    return False
+                questions.append(created)
+                result.append(created)
+                return True
+
+            storage.update_list("questions.json", Question, append_or_replay)
+    if conflict:
+        raise HTTPException(status_code=409, detail=conflict)
+    if invalid_request:
+        raise HTTPException(status_code=409 if digest_mismatch else 422, detail=invalid_request)
+    if not result:
+        raise HTTPException(status_code=500, detail="Could not save the question record.")
+    return result[0]
 
 
 @router.get("", response_model=list[Question])
@@ -468,6 +574,57 @@ class AttemptRequest(BaseModel):
     attempt_day: date | None = None
 
 
+class AgentQuestionDraftRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    messages: list[str] = Field(min_length=1, max_length=30)
+    language: Literal["en", "tr"]
+    expected_question_field: Literal["question_text", "subject", "topic"]
+    state_token: str | None = Field(default=None, max_length=24_000)
+    evidence_claims: list[QuestionQuote] = Field(max_length=1)
+
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, messages):
+        if any(not item.strip() or len(item) > 4000 for item in messages):
+            raise ValueError("Each student message must contain 1 to 4,000 characters.")
+        return messages
+
+
+class StrictQuestionCaptureFields(QuestionCaptureFields):
+    model_config = {"extra": "forbid"}
+
+
+class QuestionEvidenceItem(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    value: str = Field(max_length=MAX_QUESTION_TEXT_BYTES)
+    message_index: int = Field(ge=0, le=29)
+    quote: str = Field(min_length=1, max_length=MAX_QUESTION_TEXT_BYTES)
+    start: int = Field(ge=0, le=4000)
+    end: int = Field(ge=1, le=4000)
+    skipped: bool = False
+
+
+class AgentQuestionCreateRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    messages: list[str] = Field(min_length=1, max_length=30)
+    language: Literal["en", "tr"]
+    evidence_claims: list[QuestionQuote] = Field(min_length=3, max_length=3)
+    fields: StrictQuestionCaptureFields
+    evidence: dict[Literal["question_text", "subject", "topic"], QuestionEvidenceItem]
+    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approval_id: UUID
+
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, messages):
+        if any(not item.strip() or len(item) > 4000 for item in messages):
+            raise ValueError("Each student message must contain 1 to 4,000 characters.")
+        return messages
+
+
 class QuestionUpdate(BaseModel):
     subject: str
     topic: str
@@ -532,6 +689,14 @@ async def delete_question(question_id: str, storage: StorageService = Depends(ge
     image_path = None
 
     with data_mutation_guard(DATA_DIR):
+        agent_match = re.fullmatch(r"q_agent_([0-9a-f]{32})_[0-9a-f]{64}", question_id)
+        if agent_match:
+            approval_id = UUID(hex=agent_match.group(1))
+            ledger = storage.load_doc(AGENT_APPROVALS_FILE, QuestionDeletedApprovalLedger) or QuestionDeletedApprovalLedger()
+            if approval_id not in ledger.approval_ids:
+                ledger.approval_ids.append(approval_id)
+                storage.save_doc(AGENT_APPROVALS_FILE, ledger)
+
         def remove(questions):
             nonlocal image_path
             for index, question in enumerate(questions):

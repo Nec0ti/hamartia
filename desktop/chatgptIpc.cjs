@@ -33,7 +33,7 @@ function registerChatGPTIpc({ ipcMain, chatgpt, shell, getBackendUrl, createRequ
     const requestId = typeof payload.requestId === 'string' && /^[\w-]{20,80}$/.test(payload.requestId) ? payload.requestId : createRequestId()
     activeChats.set(requestId, event.sender.id)
     try {
-      return await chatgpt.chat({ message: payload.message, model: payload.model, language: payload.language, workflow: payload.workflow, messages: payload.messages, scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version, requestId }, (id, delta) => {
+      return await chatgpt.chat({ message: payload.message, model: payload.model, language: payload.language, workflow: payload.workflow, messages: payload.messages, scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version, expected_evidence_field: payload.expected_evidence_field, state_token: payload.state_token, requestId }, (id, delta) => {
         if (activeChats.get(id) === event.sender.id && !event.sender.isDestroyed()) event.sender.send(CHATGPT_DELTA_CHANNEL, { requestId: id, delta })
       })
     } finally {

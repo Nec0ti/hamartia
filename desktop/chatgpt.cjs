@@ -17,6 +17,8 @@ const MAX_MESSAGE_LENGTH = 4000
 const MAX_CONTEXT_LENGTH = 6000
 const PRACTICE_FIELDS = ['date', 'subject', 'topic', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds']
 const PRACTICE_TOOL_NAME = 'hamartia_practice_prepare'
+const LEARNING_EVIDENCE_FIELDS = ['date', 'subject', 'topic', 'activity', 'observation', 'reference_url']
+const LEARNING_EVIDENCE_TOOL_NAME = 'hamartia_learning_evidence_prepare'
 
 function practiceToolParameters() {
   return {
@@ -53,6 +55,46 @@ function validatePracticeToolArguments(value) {
       || !PRACTICE_FIELDS.includes(item.field)
       || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > 500) {
       throw new Error('ChatGPT returned invalid practice evidence arguments.')
+    }
+  }
+  return value
+}
+
+function learningEvidenceToolParameters() {
+  return {
+    type: 'object',
+    properties: {
+      evidence: {
+        type: 'array',
+        maxItems: 12,
+        items: {
+          type: 'object',
+          properties: {
+            field: { type: 'string', enum: LEARNING_EVIDENCE_FIELDS },
+            quote: { type: 'string', minLength: 1, maxLength: 3000 },
+          },
+          required: ['field', 'quote'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['evidence'],
+    additionalProperties: false,
+  }
+}
+
+function validateLearningEvidenceToolArguments(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some((key) => key !== 'evidence')) {
+    throw new Error('ChatGPT returned unsupported learning-evidence arguments.')
+  }
+  if (!Array.isArray(value.evidence) || value.evidence.length > 12) throw new Error('ChatGPT returned invalid learning-evidence arguments.')
+  for (const item of value.evidence) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).some((key) => !['field', 'quote'].includes(key))
+      || Object.keys(item).length !== 2
+      || !LEARNING_EVIDENCE_FIELDS.includes(item.field)
+      || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > 3000) {
+      throw new Error('ChatGPT returned invalid learning-evidence arguments.')
     }
   }
   return value
@@ -485,16 +527,19 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return completion
   }
 
-  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
-    if (!['chat', 'practice-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
+    if (!['chat', 'practice-entry', 'learning-evidence-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
     if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
     if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
+    if (workflow === 'learning-evidence-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Learning evidence requires up to 30 student messages of at most 4,000 characters each.')
+    if (workflow === 'learning-evidence-entry' && !['activity', 'subject', 'topic', 'date', 'observation'].includes(expected_evidence_field)) throw new Error('Unsupported expected learning-evidence field.')
+    if (workflow === 'learning-evidence-entry' && state_token !== null && (typeof state_token !== 'string' || state_token.length > 24_000)) throw new Error('Learning-evidence conversation state is invalid or expired.')
     const controller = new AbortController()
     chats.set(requestId, controller)
     try {
       const { accessToken } = await validAccessToken()
-      const context = workflow === 'practice-entry' ? '' : await studyContext(controller.signal)
+      const context = workflow === 'practice-entry' || workflow === 'learning-evidence-entry' ? '' : await studyContext(controller.signal)
       if (!(await models(controller.signal)).some((item) => item.slug === model)) throw new Error('Choose a model available to the signed-in ChatGPT account.')
       if (workflow === 'practice-entry') {
         const instructions = (
@@ -562,6 +607,81 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }, controller.signal, requestId, null, accessToken)
         if (Array.isArray(followup.output) && followup.output.some((item) => item?.type === 'function_call')) {
           throw new Error('ChatGPT attempted an additional practice tool call.')
+        }
+        return { status: 'completed', draft }
+      }
+      if (workflow === 'learning-evidence-entry') {
+        const instructions = (
+          `Prepare a learning-evidence draft in ${language === 'tr' ? 'Turkish' : 'English'}. Use the available ${LEARNING_EVIDENCE_TOOL_NAME} function exactly once. `
+          + `The local host currently expects only the ${expected_evidence_field} field. Submit only its exact quote and field name from the supplied student messages. `
+          + 'Do not send field values, transcript text, language, IDs, paths, completion claims, or write instructions. '
+          + 'Never infer that an activity is complete, a date, mastery, or a URL; do not paraphrase. '
+          + 'After the verified tool result, ask only the localized question returned by Hamartia or briefly say the exact preview is ready.'
+        )
+        const inputTranscript = { role: 'user', content: JSON.stringify({ student_messages: messages }) }
+        const additionalTools = [{
+          type: 'function',
+          name: LEARNING_EVIDENCE_TOOL_NAME,
+          description: 'Submit an exact quote for the currently expected learning-evidence field; read-only preview only.',
+          parameters: learningEvidenceToolParameters(),
+          strict: true,
+        }]
+        const initial = await requestResponses({
+          model, instructions, input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
+            inputTranscript,
+          ],
+          store: false, stream: true,
+        }, controller.signal, requestId, null, accessToken)
+        const calls = Array.isArray(initial.output) ? initial.output.filter((item) => item?.type === 'function_call') : []
+        if (calls.length !== 1) throw new Error('ChatGPT did not return exactly one learning-evidence tool call.')
+        const call = calls[0]
+        if (call.name !== LEARNING_EVIDENCE_TOOL_NAME || typeof call.call_id !== 'string' || !call.call_id) throw new Error('ChatGPT returned an unsupported learning-evidence tool call.')
+        let argumentsValue
+        try {
+          argumentsValue = validateLearningEvidenceToolArguments(JSON.parse(call.arguments))
+        } catch (error) {
+          if (error instanceof SyntaxError) throw new Error('ChatGPT returned malformed learning-evidence arguments.')
+          throw error
+        }
+        const backendUrl = getBackendUrl()
+        if (!backendUrl) throw new Error('Hamartia could not verify the learning evidence. Nothing was saved.')
+        const verifiedResponse = await fetchImpl(`${backendUrl}/learning-evidence/agent-draft`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            messages, language, expected_evidence_field,
+            state_token,
+            evidence_claims: argumentsValue.evidence,
+          }),
+          signal: controller.signal,
+        })
+        const draft = await verifiedResponse.json().catch(() => ({}))
+        if (!verifiedResponse.ok) throw new Error('Hamartia could not verify the learning evidence. Nothing was saved.')
+        const safeToolResult = {
+          status: draft.status,
+          fields: draft.fields,
+          verified_evidence: draft.verified_evidence,
+          missing: draft.missing,
+          ambiguous: draft.ambiguous,
+          questions: draft.questions,
+          preview_digest: draft.preview_digest,
+          write_allowed: false,
+        }
+        const followup = await requestResponses({
+          model,
+          instructions,
+          input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
+            inputTranscript,
+            ...initial.output,
+            { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(safeToolResult) },
+          ],
+          store: false,
+          stream: true,
+        }, controller.signal, requestId, null, accessToken)
+        if (Array.isArray(followup.output) && followup.output.some((item) => item?.type === 'function_call')) {
+          throw new Error('ChatGPT attempted an additional learning-evidence tool call.')
         }
         return { status: 'completed', draft }
       }

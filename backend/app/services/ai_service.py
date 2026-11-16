@@ -18,6 +18,12 @@ from app.core.formulas import net_score
 from app.models.schemas import CouncilAnalysis, CouncilVerdict, Question, Settings
 from app.services.storage import StorageService
 from app.services.study_agent_cli import PROVIDER_TOOL_NAME, dispatch_provider_tool, provider_tool_parameters
+from app.services.study_agent_learning_evidence import (
+    PROVIDER_TOOL_NAME as LEARNING_EVIDENCE_TOOL_NAME,
+    ProviderToolArguments as LearningEvidenceToolArguments,
+    dispatch_provider_tool as dispatch_learning_evidence_tool,
+    provider_tool_parameters as learning_evidence_tool_parameters,
+)
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -201,6 +207,84 @@ class AIService:
         final_message = followup.choices[0].message
         if final_message.tool_calls:
             raise ValueError("The configured endpoint attempted an additional tool call.")
+        return prepared
+
+    async def study_learning_evidence_prepare(
+        self, messages: list[str], language: str, expected_field: str = "activity",
+        prior_evidence_claims: list[dict] | None = None,
+    ) -> dict:
+        """Run an evidence-only tool cycle for one user-reported completed activity."""
+        client = await self._ensure_async()
+        system = (
+            "You are Hamartia's learning-evidence preparation assistant. Use the one available tool exactly once. "
+            "The tool accepts only exact quotes from student messages and field names; it does not accept values, "
+            "record IDs, transcript text, language, paths, completion flags, or write instructions. "
+            f"The host currently expects only the `{expected_field}` field; quote only that field. Never infer completion, mastery, a date, "
+            "a URL, or any value; do not paraphrase. A completed activity must be stated by the student as an "
+            "affirmative completed action. After the verified tool result, ask only the localized question it "
+            "supplies or briefly say the exact preview is ready. Answer in "
+            f"{'Turkish' if language == 'tr' else 'English'}."
+        )
+        transcript = {"role": "user", "content": json.dumps({"student_messages": messages}, ensure_ascii=False)}
+        function_tool = {
+            "type": "function",
+            "function": {
+                "name": LEARNING_EVIDENCE_TOOL_NAME,
+                "description": "Submit an exact quote for the currently expected learning-evidence field; read-only preview only.",
+                "parameters": learning_evidence_tool_parameters(),
+                "strict": True,
+            },
+        }
+        response = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "system", "content": system}, transcript],
+            tools=[function_tool],
+            tool_choice={"type": "function", "function": {"name": LEARNING_EVIDENCE_TOOL_NAME}},
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        message = response.choices[0].message
+        calls = message.tool_calls or []
+        if message.content not in (None, "") or len(calls) != 1:
+            raise ValueError("The configured endpoint did not return exactly one learning-evidence tool call.")
+        call = calls[0]
+        if call.type != "function" or call.function.name != LEARNING_EVIDENCE_TOOL_NAME or not call.id:
+            raise ValueError("The configured endpoint returned an unsupported learning-evidence tool call.")
+        try:
+            arguments = json.loads(call.function.arguments)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("The configured endpoint returned malformed learning-evidence arguments.") from exc
+        tool_arguments = LearningEvidenceToolArguments.model_validate(arguments)
+        current_claims = [item.model_dump() for item in tool_arguments.evidence]
+        prepared = dispatch_learning_evidence_tool(
+            {"evidence": [*(prior_evidence_claims or []), *current_claims]},
+            messages=messages, language=language,
+        )
+        tool_result = {
+            key: prepared[key]
+            for key in ("status", "fields", "verified_evidence", "missing", "ambiguous", "questions", "preview_digest", "write_allowed")
+        }
+        followup = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system},
+                transcript,
+                {"role": "assistant", "tool_calls": [{
+                    "id": call.id,
+                    "type": "function",
+                    "function": {"name": LEARNING_EVIDENCE_TOOL_NAME, "arguments": call.function.arguments},
+                }]},
+                {"role": "tool", "tool_call_id": call.id, "content": json.dumps(tool_result, ensure_ascii=False)},
+            ],
+            tools=[function_tool],
+            tool_choice="none",
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        final_message = followup.choices[0].message
+        if final_message.tool_calls:
+            raise ValueError("The configured endpoint attempted an additional learning-evidence tool call.")
+        prepared["evidence_claims"] = current_claims
         return prepared
 
     def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:

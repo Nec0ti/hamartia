@@ -74,6 +74,23 @@ test('ChatGPT IPC forwards the bounded create-only workflow and canonical langua
   await pending
 })
 
+test('ChatGPT IPC forwards the host-selected field hint and opaque signed learning-evidence state', async () => {
+  const testApp = setup()
+  const messages = ['I completed reading chapter 2.']
+  const stateToken = 'opaque-host-signed-state-token'
+  const pending = testApp.handlers.get('hamartia:chatgpt:chat')(testApp.event(), {
+    requestId: 'request-learning-012345', consent: true, message: messages[0], model: 'model-a', language: 'en',
+    workflow: 'learning-evidence-entry', messages, expected_evidence_field: 'subject', state_token: stateToken,
+  })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(testApp.calls.payload.workflow, 'learning-evidence-entry')
+  assert.equal(testApp.calls.payload.expected_evidence_field, 'subject')
+  assert.equal(testApp.calls.payload.state_token, stateToken)
+  assert.deepEqual(testApp.calls.payload.messages, messages)
+  testApp.finishChat()
+  await pending
+})
+
 test('only the webContents that started a ChatGPT request can cancel it or receive deltas', async () => {
   const testApp = setup()
   const event = testApp.event({ senderId: 7 })

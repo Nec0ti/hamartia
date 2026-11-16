@@ -144,6 +144,8 @@ test('forum requests use fixed private routes and the same agreement and in-memo
     ['/social/forum/posts/00000000-0000-0000-0000-000000000001/moderation', 'PATCH', 'no-store', 'error'],
   ])
   assert.ok(requests.every(({ options }) => options.headers.authorization === 'Bearer firebase-id-token'))
+  assert.equal(requests[1].options.headers['content-type'], 'application/json')
+  assert.equal(requests[3].options.headers['content-type'], 'application/json')
 })
 
 test('web emulator is connected before popup use and unsafe emulator origins fail closed', async () => {

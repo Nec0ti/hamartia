@@ -123,7 +123,7 @@ export function createSocialClient({
       headers: {
         authorization: `Bearer ${idToken}`,
         accept: 'application/json',
-        ...(method === 'PATCH' ? { 'content-type': 'application/json' } : {}),
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       cache: 'no-store',

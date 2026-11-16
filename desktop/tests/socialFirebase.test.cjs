@@ -57,7 +57,7 @@ test('Electron Firebase sign-in exchanges the Google token in main with explicit
   assert.deepEqual(probe.calls.find(([name]) => name === 'credential'), ['credential', 'google-id-token'])
   assert.deepEqual(await auth.getIdToken(), 'firebase-id-token')
   assert.deepEqual(await auth.signOut(), { status: 'signedOut' })
-  await assert.rejects(auth.getIdToken(), /Sign in to access/)
+  assert.equal(await auth.getIdToken(), null)
   assert.deepEqual(oauthCalls, ['signIn', 'cancel'])
 })
 
@@ -129,5 +129,5 @@ test('installed Firebase Node SDK supports memory-only Google credential sign-in
   assert.match(requests[0].url, /accounts:signInWithIdp/)
   assert.equal(requests[0].body.postBody, '&id_token=mock-google-id-token&providerId=google.com')
   await auth.signOut()
-  await assert.rejects(auth.getIdToken(), /Sign in to access/)
+  assert.equal(await auth.getIdToken(), null)
 })

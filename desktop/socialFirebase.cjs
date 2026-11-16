@@ -43,7 +43,7 @@ function createSocialFirebaseAuth({ environment = process.env, oauth, loadSdk = 
 
   async function getIdToken() {
     const { auth } = await getClient()
-    if (!auth.currentUser) throw new Error('Sign in to access your social profile.')
+    if (!auth.currentUser) return null
     return auth.currentUser.getIdToken()
   }
 

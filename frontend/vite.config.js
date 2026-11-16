@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import net from 'node:net'
 
 const FIREBASE_AUTH_HOSTS = 'https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://www.google.com'
 
-function socialProxyTarget(value) {
+export function socialProxyTarget(value) {
   const target = new URL(value || 'http://127.0.0.1:8765')
   const ip = target.hostname.startsWith('[') && target.hostname.endsWith(']')
     ? target.hostname.slice(1, -1)
@@ -17,11 +17,10 @@ function socialProxyTarget(value) {
   return target.origin
 }
 
-function contentSecurityPolicy() {
+export function contentSecurityPolicy(development) {
   return {
     name: 'hamartia-content-security-policy',
-    transformIndexHtml(_html, context) {
-      const development = Boolean(context.server)
+    transformIndexHtml() {
       const policy = [
         "default-src 'self'",
         development ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
@@ -39,23 +38,97 @@ function contentSecurityPolicy() {
   }
 }
 
+function desktopSocialConfig(environment) {
+  const firebase = {
+    apiKey: environment.HAMARTIA_FIREBASE_API_KEY || '',
+    authDomain: environment.HAMARTIA_FIREBASE_AUTH_DOMAIN || '',
+    projectId: environment.HAMARTIA_FIREBASE_PROJECT_ID || '',
+    appId: environment.HAMARTIA_FIREBASE_APP_ID || '',
+  }
+  const googleOAuthClientId = environment.HAMARTIA_GOOGLE_OAUTH_CLIENT_ID || ''
+  const socialApiOrigin = environment.HAMARTIA_SOCIAL_API_ORIGIN || ''
+  const agreementVersion = environment.HAMARTIA_SOCIAL_AGREEMENT_VERSION || ''
+  const agreementReviewed = environment.HAMARTIA_SOCIAL_AGREEMENT_REVIEWED === 'true'
+  const apiOriginIsHttps = (() => {
+    try {
+      const url = new URL(socialApiOrigin)
+      return url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash
+    } catch {
+      return false
+    }
+  })()
+  const configured = Object.values(firebase).every((value) => value.trim())
+    && /^[A-Za-z0-9._-]{10,255}\.apps\.googleusercontent\.com$/.test(googleOAuthClientId)
+    && apiOriginIsHttps
+    && agreementReviewed
+    && /^[A-Za-z0-9._-]{1,40}$/.test(agreementVersion)
+  return { configured, firebase, googleOAuthClientId, socialApiOrigin, agreementVersion: configured ? agreementVersion : '' }
+}
+
+export function socialBuildConfiguration(environment) {
+  const firebaseConfigured = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_APP_ID',
+  ].every((key) => Boolean(environment[key]?.trim()))
+  const browserEnabled = environment.VITE_SOCIAL_ENABLED === 'true'
+    && firebaseConfigured
+    && Boolean(environment.HAMARTIA_SOCIAL_API_TARGET)
+    && environment.VITE_SOCIAL_AGREEMENT_REVIEWED === 'true'
+    && /^[A-Za-z0-9._-]{1,40}$/.test(environment.VITE_SOCIAL_AGREEMENT_VERSION || '')
+  const desktop = desktopSocialConfig(environment)
+  return {
+    browserEnabled,
+    desktopEnabled: desktop.configured,
+    desktopPublicConfig: {
+      firebase: desktop.firebase,
+      googleOAuthClientId: desktop.googleOAuthClientId,
+      socialApiOrigin: desktop.socialApiOrigin,
+      agreementVersion: desktop.agreementVersion,
+    },
+  }
+}
+
+function publicConfigAsset(config) {
+  return {
+    name: 'hamartia-social-public-config',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'social-public-config.json',
+        source: JSON.stringify(config, null, 2),
+      })
+    },
+  }
+}
+
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react(), contentSecurityPolicy()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/social': {
-        target: socialProxyTarget(process.env.HAMARTIA_SOCIAL_API_TARGET),
-        changeOrigin: true,
-      },
-      // Dev-mode proxy: forward every non-asset request to the FastAPI
-      // backend so the React app can run from a single trusted origin.
-      // (Static assets are served by Vite itself and never reach this hook.)
-      '*': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const socialConfig = socialBuildConfiguration(env)
+
+  return {
+    define: {
+      __HAMARTIA_BROWSER_SOCIAL_ENABLED__: JSON.stringify(socialConfig.browserEnabled),
+      __HAMARTIA_DESKTOP_SOCIAL_ENABLED__: JSON.stringify(socialConfig.desktopEnabled),
+      __HAMARTIA_BROWSER_AGREEMENT_VERSION__: JSON.stringify(env.VITE_SOCIAL_AGREEMENT_REVIEWED === 'true' ? env.VITE_SOCIAL_AGREEMENT_VERSION || '' : ''),
+      __HAMARTIA_DESKTOP_AGREEMENT_VERSION__: JSON.stringify(socialConfig.desktopPublicConfig.agreementVersion),
+    },
+    plugins: [react(), contentSecurityPolicy(command === 'serve'), publicConfigAsset(socialConfig.desktopPublicConfig)],
+    server: {
+      port: 5173,
+      proxy: {
+        '/social': {
+          target: socialProxyTarget(env.HAMARTIA_SOCIAL_API_TARGET),
+          changeOrigin: true,
+        },
+        // Keep the existing local-study API proxy on one same-origin path.
+        '*': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        },
       },
     },
-  },
+  }
 })

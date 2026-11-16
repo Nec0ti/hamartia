@@ -6,9 +6,9 @@ contextBridge.exposeInMainWorld('hamartiaDesktop', Object.freeze({
     language === 'tr' ? 'tr' : 'en',
   ),
   social: Object.freeze({
-    signIn: () => ipcRenderer.invoke('hamartia:social:sign-in'),
-    getProfile: () => ipcRenderer.invoke('hamartia:social:get-profile'),
-    patchProfile: (patch) => ipcRenderer.invoke('hamartia:social:patch-profile', patch),
+    signIn: (agreementVersion) => ipcRenderer.invoke('hamartia:social:sign-in', agreementVersion),
+    getProfile: (agreementVersion) => ipcRenderer.invoke('hamartia:social:get-profile', agreementVersion),
+    patchProfile: (patch, agreementVersion) => ipcRenderer.invoke('hamartia:social:patch-profile', patch, agreementVersion),
     signOut: () => ipcRenderer.invoke('hamartia:social:sign-out'),
   }),
   chatgpt: Object.freeze({

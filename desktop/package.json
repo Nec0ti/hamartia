@@ -31,6 +31,7 @@
       "googleDesktopOAuth.cjs",
       "socialFirebase.cjs",
       "socialIpc.cjs",
+      "socialConfig.cjs",
       "preload.cjs",
       "chatgpt.cjs",
       "safeStorageSmoke.cjs",
@@ -44,6 +45,10 @@
       {
         "from": "../backend/dist/hamartia-backend",
         "to": "backend/hamartia-backend"
+      },
+      {
+        "from": "../frontend/dist/social-public-config.json",
+        "to": "social-public-config.json"
       },
       {
         "from": "build/icon.ico",

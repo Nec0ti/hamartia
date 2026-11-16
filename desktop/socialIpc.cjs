@@ -70,7 +70,7 @@ function validateProfilePatch(value) {
   return patch
 }
 
-function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, allowLoopbackHttp = false, fetchImpl = fetch }) {
+function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, agreementVersion = null, allowLoopbackHttp = false, fetchImpl = fetch }) {
   const trustedOrigin = parseSocialApiOrigin(apiOrigin, { allowLoopbackHttp })
 
   function isTrustedSender(event) {
@@ -89,9 +89,16 @@ function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, allowLoopb
     })
   }
 
+  function requireAgreement(version) {
+    if (!agreementVersion || version !== agreementVersion) {
+      throw new Error('Social sign-in is disabled until the reviewed agreement is accepted.')
+    }
+  }
+
   async function request(method, body) {
     if (!trustedOrigin) throw new Error('Social service is not configured.')
     const idToken = await auth.getIdToken()
+    if (!idToken) return { status: 'signedOut' }
     if (!validFirebaseIdToken(idToken)) throw new Error('Social identity is unavailable.')
     const response = await fetchImpl(`${trustedOrigin}${PROFILE_PATH}`, {
       method,
@@ -114,15 +121,18 @@ function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, allowLoopb
   }
 
   trustedHandler('sign-in', (...args) => {
-    if (args.length) throw new Error('Invalid social request.')
+    if (args.length !== 1) throw new Error('Invalid social request.')
+    requireAgreement(args[0])
     return auth.signIn()
   })
   trustedHandler('get-profile', (...args) => {
-    if (args.length) throw new Error('Invalid social request.')
+    if (args.length !== 1) throw new Error('Invalid social request.')
+    requireAgreement(args[0])
     return request('GET')
   })
   trustedHandler('patch-profile', (...args) => {
-    if (args.length !== 1) throw new Error('Invalid social request.')
+    if (args.length !== 2) throw new Error('Invalid social request.')
+    requireAgreement(args[1])
     return request('PATCH', validateProfilePatch(args[0]))
   })
   trustedHandler('sign-out', (...args) => {

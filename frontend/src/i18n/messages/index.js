@@ -9,5 +9,6 @@ import common from './common.js'
 import agent from './agent.js'
 import clock from './clock.js'
 import social from './social.js'
+import profile from './profile.js'
 
-export default Object.assign({}, navigation, settings, dashboard, exams, questions, study, cosmos, common, agent, clock, social)
+export default Object.assign({}, navigation, settings, dashboard, exams, questions, study, cosmos, common, agent, clock, social, profile)

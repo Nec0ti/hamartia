@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 import idna
-from pydantic import BaseModel, computed_field, Field, field_validator, model_validator
+from pydantic import BaseModel, computed_field, Field, StrictInt, field_validator, model_validator
 
 MAX_QUESTION_TEXT_BYTES = 64 * 1024
 
@@ -122,6 +122,32 @@ class UserStats(BaseModel):
     streak_days: int = 1
     last_active_date: str = "2026-10-07"
     radar_stats: RadarStats = Field(default_factory=RadarStats)
+
+
+class StudentProfile(BaseModel):
+    """Optional, user-entered local study profile; never an account identity."""
+
+    model_config = {"extra": "forbid"}
+
+    nickname: str | None = Field(default=None, max_length=80)
+    age_years: StrictInt | None = Field(default=None, ge=5, le=120)
+    grade_year: str | None = Field(default=None, max_length=80)
+    curriculum: str | None = Field(default=None, max_length=120)
+    study_preferences: str | None = Field(default=None, max_length=2000)
+    study_goals: str | None = Field(default=None, max_length=2000)
+    avatar_preset: Literal["sunrise", "moon", "leaf", "star", "book", "mountain", "wave", "lantern"] | None = None
+
+
+class StudentOnboarding(BaseModel):
+    """Local first-run progress and editable student profile."""
+
+    model_config = {"extra": "forbid"}
+
+    revision: StrictInt = Field(default=0, ge=0)
+    tutorial_completed: bool = False
+    tutorial_skipped: bool = False
+    survey_completed: bool = False
+    profile: StudentProfile = Field(default_factory=StudentProfile)
 
 
 # ---------------------------------------------------------------------------

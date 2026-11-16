@@ -10,6 +10,7 @@
     "test": "node --test",
     "test:docs": "node _docs_smoke.cjs",
     "test:browser": "node _smoke.cjs",
+    "test:onboarding": "node _onboarding_smoke.cjs",
     "bench:clock": "node benchmarks/benchmark_clock_engine.mjs"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
 import QuestionsTab from './tabs/QuestionsTab.jsx'
@@ -8,10 +8,13 @@ import CosmosTab from './tabs/CosmosTab.jsx'
 import ClockTab from './tabs/ClockTab.jsx'
 import ComingSoon from './tabs/ComingSoon.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
+import OnboardingModal from './components/OnboardingModal.jsx'
+import StudentProfileModal from './components/StudentProfileModal.jsx'
 import api from './services/api'
 import { handleApiError } from './services/api'
 import { useI18n } from './i18n.jsx'
 import { ClockProvider } from './clock/ClockContext.jsx'
+import { firstRunStage } from './studentProfile/profile.js'
 
 /**
  * App root. Owns active-tab selection and renders the shared navigation above
@@ -25,6 +28,11 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [questionExam, setQuestionExam] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [studentProfileOpen, setStudentProfileOpen] = useState(false)
+  const [onboarding, setOnboarding] = useState(null)
+  const onboardingRef = useRef(onboarding)
+  onboardingRef.current = onboarding
+  const [onboardingStage, setOnboardingStage] = useState(null)
   const [settings, setSettings] = useState(null)
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsError, setSettingsError] = useState(null)
@@ -45,6 +53,29 @@ function AppContent() {
   useEffect(() => {
     loadSettings()
   }, [loadSettings])
+
+  useEffect(() => {
+    let active = true
+    api.studentProfile.get().then((data) => {
+      if (!active) return
+      setOnboarding(data)
+      setOnboardingStage(firstRunStage(data))
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
+
+  const saveOnboarding = useCallback(async (draft) => {
+    const saved = await api.studentProfile.save(draft)
+    setOnboarding(saved)
+    setOnboardingStage(saved.survey_completed ? null : saved.tutorial_completed || saved.tutorial_skipped ? 'survey' : 'tutorial')
+    return saved
+  }, [])
+
+  const dismissOnboarding = useCallback(() => {
+    const current = onboardingRef.current
+    if (current) saveOnboarding({ ...current, tutorial_skipped: !current.tutorial_completed, survey_completed: true }).catch(() => {})
+    setOnboardingStage(null)
+  }, [saveOnboarding])
 
   const saveSettings = useCallback(async (draft) => {
     setSettingsError(null)
@@ -91,7 +122,23 @@ function AppContent() {
         loading={settingsLoading}
         onSave={saveSettings}
         onClose={() => setSettingsOpen(false)}
+        onEditProfile={() => { setSettingsOpen(false); setStudentProfileOpen(true) }}
+        onReplayTour={() => { setSettingsOpen(false); setOnboardingStage('tutorial') }}
         loadError={settingsError}
+      />
+      <StudentProfileModal
+        open={studentProfileOpen}
+        initial={onboarding}
+        onClose={() => setStudentProfileOpen(false)}
+        onSaved={setOnboarding}
+        onRestartOnboarding={() => setOnboardingStage('language')}
+      />
+      <OnboardingModal
+        stage={onboardingStage}
+        onboarding={onboarding}
+        onLanguage={() => {}}
+        onSave={saveOnboarding}
+        onDismiss={dismissOnboarding}
       />
     </div>
   )

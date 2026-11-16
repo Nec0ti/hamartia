@@ -27,6 +27,10 @@ function localFetch(url, init = {}) {
 
 async function main(smokeRun) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-browser-'))
+  await fs.writeFile(path.join(dataDir, 'onboarding.json'), JSON.stringify({
+    tutorial_completed: true, tutorial_skipped: false, survey_completed: true,
+    profile: { nickname: null, age_years: null, grade_year: null, curriculum: null, study_preferences: null, study_goals: null, avatar_preset: null },
+  }))
   const baseUrl = 'http://127.0.0.1:5174'
   const uploads = path.join(dataDir, 'uploads')
   await fs.mkdir(uploads)

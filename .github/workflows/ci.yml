@@ -35,6 +35,8 @@ jobs:
         working-directory: frontend
       - run: npm run test:docs
         working-directory: frontend
+      - run: npm run test:onboarding
+        working-directory: frontend
       - run: npm run test:browser
         working-directory: frontend
 
@@ -117,6 +119,9 @@ jobs:
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_clock_api.py
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_student_profile.py --repeats 3
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_system_resilience.py

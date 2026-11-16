@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import backup, clock, cosmos, exam_profiles, exams, learning_evidence, practice, questions, settings, study_agent
+from app.api import backup, clock, cosmos, exam_profiles, exams, learning_evidence, practice, questions, settings, student_profile, study_agent
 from app.core.config import DATA_DIR
 from app.core.http_errors import safe_validation_error_handler
 from app.services.data_lock import DataDirectoryLock
@@ -50,6 +50,7 @@ app.include_router(exam_profiles.router)
 app.include_router(practice.router)
 app.include_router(learning_evidence.router)
 app.include_router(clock.router)
+app.include_router(student_profile.router)
 app.include_router(questions.router)
 # 'user' is imported via __import__: the name shadows a Python stdlib module,
 # which breaks a plain `from app.api import user`.

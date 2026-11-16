@@ -108,6 +108,19 @@ async function main() {
             : ['Bölümlü TYT/AYT denemesi kaydı', 'öğrenci konuşmasını', 'kimlik, kurallar ve anlık görüntü ana bilgisayarda kalır', 'konuşma bilgisi sayılmaz', 'saklanmaz']) {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing sectioned-exam privacy boundary: ${phrase}`)
           }
+          for (const phrase of lang === 'en'
+            ? ['Student profile', 'age in whole years', 'not sent to social services', 'included in Study Agent or question-analysis', 'official alignment']
+            : ['Öğrenci profili', 'tam yıl olarak yaş', 'sosyal hizmetlere gönderilmez', 'Çalışma Asistanı', 'resmî uyum']) {
+            assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing local-profile privacy boundary: ${phrase}`)
+          }
+        }
+        if (pages[index] === '') {
+          const article = await page.locator('main article').innerText()
+          for (const phrase of lang === 'en'
+            ? ['first launch', 'English is selected by default', 'short walkthrough', 'optional survey', 'replay the walkthrough']
+            : ['İlk açılışta', 'varsayılan dil İngilizcedir', 'kısa tanıtım', 'isteğe bağlı anket', 'tanıtımı yeniden aç']) {
+            assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing first-run onboarding guidance: ${phrase}`)
+          }
         }
 
         const languageLink = page.locator('.header-actions .language-link')

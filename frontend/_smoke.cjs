@@ -819,6 +819,25 @@ async function main(smokeRun) {
               }
               return { status: 'completed', draft }
             }
+            if (payload.workflow === 'learning-evidence-entry') {
+              const field = payload.expected_evidence_field
+              const quote = payload.messages.at(-1)
+              const evidence_claims = field && quote ? [{ field, quote }] : []
+              window.__learningEvidenceProviderCalls = [...(window.__learningEvidenceProviderCalls || []), {
+                field, quote, language: payload.language,
+              }]
+              const response = await fetch(`${backendUrl}/learning-evidence/agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
+                signal: AbortSignal.timeout(10_000),
+              })
+              const responseBody = await response.text()
+              window.__learningEvidenceDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
+              window.__learningEvidenceDraftResponse = draft
+              return { status: 'completed', draft }
+            }
             window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
@@ -890,6 +909,66 @@ async function main(smokeRun) {
       model: 'mock-model', language: 'en', workflow: 'practice-entry', messages: [practiceEntry, 'topic: Functions'], consent: true,
       scoring_profile_id: customProfile.profile_id, scoring_profile_version: 1, requestId: undefined,
     })
+
+    await page.getByLabel('Study Agent mode').selectOption('learning-evidence-entry')
+    const createRequests = () => appRequests.filter((request) => request.path === '/learning-evidence/agent-create' && request.method === 'POST')
+    async function submitEvidenceMessage(text, expectedQuestion) {
+      await page.getByLabel('What activity have you already completed?').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'Send to OpenAI' }).click()
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    await submitEvidenceMessage('Maybe I completed chapter 2?', 'What activity have you already completed? State it as your own completed action.')
+    assert.equal(await page.getByRole('button', { name: 'Approve this preview and save' }).count(), 0)
+    assert.equal(createRequests().length, 0)
+    await submitEvidenceMessage('I worked on chapter 2.', 'Which subject was the activity for?')
+    assert.equal(await page.getByRole('button', { name: 'Approve this preview and save' }).count(), 0)
+    await submitEvidenceMessage('Biology', 'Which topic did you work on?')
+    await submitEvidenceMessage('Cell division', 'What date did you complete it? Reply with an explicit YYYY-MM-DD date.')
+    await submitEvidenceMessage('2026-11-16', 'What did you observe or produce? Describe it in your own words.')
+    await submitEvidenceMessage('Comparing the diagrams helped me distinguish the stages.', null)
+    await page.getByRole('heading', { name: 'Proposed learning-evidence record' }).waitFor()
+    await page.getByText('I worked on chapter 2.', { exact: true }).last().waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Approve this preview and save' }).count(), 1)
+    assert.equal(createRequests().length, 0)
+    await page.getByRole('button', { name: 'Cancel this draft' }).click()
+    await page.getByText('Draft cancelled. Nothing was saved.', { exact: true }).waitFor()
+    assert.equal(createRequests().length, 0)
+
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Çalışma Asistanı' }).click()
+    await page.getByText('student@example.test').waitFor()
+    await page.getByLabel('Çalışma Asistanı modu').selectOption('learning-evidence-entry')
+    async function submitEvidenceMessageTr(text, expectedQuestion) {
+      await page.getByLabel('Zaten hangi etkinliği tamamladın?').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'OpenAI’a gönder' }).click()
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    await submitEvidenceMessageTr('Birinci konuyu çalıştım.', 'Etkinlik hangi ders içindi?')
+    await submitEvidenceMessageTr('Biyoloji', 'Hangi konuda çalıştın?')
+    await submitEvidenceMessageTr('Hücre bölünmesi', 'Etkinliği hangi tarihte tamamladın? Açıkça YYYY-MM-DD biçiminde yanıtla.')
+    await submitEvidenceMessageTr('2026-11-16', 'Ne gözlemledin veya ne ortaya çıkardın? Kendi sözlerinle anlat.')
+    await submitEvidenceMessageTr('Şemaları karşılaştırınca aşamalar belirginleşti.', null)
+    await page.getByRole('heading', { name: 'Önerilen öğrenme kanıtı kaydı' }).waitFor()
+    await page.getByText('Birinci konuyu çalıştım.', { exact: true }).last().waitFor()
+    assert.equal(createRequests().length, 0)
+    await page.getByRole('button', { name: 'Bu önizlemeyi onayla ve kaydet' }).click()
+    await page.getByText('Öğrenme kanıtı kaydedildi. Yeni kayıt girebilirsin.', { exact: true }).waitFor()
+    assert.equal(createRequests().length, 1)
+    const approvedBody = createRequests()[0].body
+    const trPreview = await page.evaluate(() => window.__learningEvidenceDraftResponse)
+    assert.deepEqual(approvedBody.fields, {
+      date: '2026-11-16', subject: 'Biyoloji', topic: 'Hücre bölünmesi',
+      activity: 'Birinci konuyu çalıştım.', observation: 'Şemaları karşılaştırınca aşamalar belirginleşti.', reference_url: '',
+    })
+    assert.deepEqual(approvedBody.fields, trPreview.fields)
+    assert.deepEqual(approvedBody.evidence, trPreview.verified_evidence)
+    assert.equal(approvedBody.preview_digest, trPreview.preview_digest)
+    assert.equal(approvedBody.evidence.activity.quote, 'Birinci konuyu çalıştım.')
+    assert.equal((await (await localFetch(`${apiUrl}/learning-evidence`)).json()).length, 1)
+
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()
     await page.getByText('student@example.test').waitFor()

@@ -9,6 +9,9 @@ const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
 const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
+const { createGoogleDesktopOAuth } = require('./googleDesktopOAuth.cjs')
+const { createSocialFirebaseAuth } = require('./socialFirebase.cjs')
+const { registerSocialIpc } = require('./socialIpc.cjs')
 const { probeSafeStorage } = require('./safeStorageSmoke.cjs')
 const { getWindowIconPath } = require('./windowIcon.cjs')
 
@@ -40,6 +43,19 @@ let backend
 let backendUrl
 let stoppingBackend = false
 let chatgpt
+const socialOAuth = createGoogleDesktopOAuth({
+  clientId: process.env.HAMARTIA_GOOGLE_OAUTH_CLIENT_ID,
+  shell,
+})
+const socialAuth = createSocialFirebaseAuth({ environment: process.env, oauth: socialOAuth })
+
+registerSocialIpc({
+  ipcMain,
+  auth: socialAuth,
+  getBackendUrl: () => backendUrl,
+  apiOrigin: process.env.HAMARTIA_SOCIAL_API_ORIGIN,
+  allowLoopbackHttp: !app.isPackaged,
+})
 
 function freePort() {
   return new Promise((resolve, reject) => {

@@ -28,6 +28,9 @@
     "files": [
       "main.cjs",
       "chatgptIpc.cjs",
+      "googleDesktopOAuth.cjs",
+      "socialFirebase.cjs",
+      "socialIpc.cjs",
       "preload.cjs",
       "chatgpt.cjs",
       "safeStorageSmoke.cjs",
@@ -81,6 +84,7 @@
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
+    "firebase": "^13.3.0",
     "jose": "6.2.17"
   }
 }

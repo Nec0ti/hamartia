@@ -18,6 +18,23 @@ from app.hamartia_cli import run_json_line
 from app.services import study_agent_cli, study_agent_practice
 
 SEED = 20261115
+LEGACY_PROFILE = {
+    "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
+    "country_label": "Türkiye", "scoring_rule": {
+        "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+    },
+}
+
+
+def expected_preview_digest(fields: dict, evidence: dict) -> str:
+    """Independent oracle for the schema's null host-selection fields and legacy snapshot."""
+    canonical = {
+        "fields": {**fields, "scoring_profile_id": None, "scoring_profile_version": None},
+        "evidence": evidence,
+        "scoring_profile": LEGACY_PROFILE,
+    }
+    serialized = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 def fixture(index: int) -> tuple[dict, dict, dict, str]:
     subjects = ("Mathematics", "Physics", "Biology", "History")
@@ -97,8 +114,7 @@ def fixture(index: int) -> tuple[dict, dict, dict, str]:
         }
         for item in evidence
     }
-    canonical = json.dumps({"fields": expected, "evidence": expected_evidence}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    expected_digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    expected_digest = expected_preview_digest(expected, expected_evidence)
     return request, expected, expected_evidence, expected_digest
 
 
@@ -454,7 +470,7 @@ def adversarial_probes(seed: int) -> int:
         }
         for item in correction["evidence"] if not (item["field"] == "correct" and not item["quote"].startswith("Correction"))
     }
-    corrected_digest = hashlib.sha256(json.dumps({"fields": expected_corrected, "evidence": expected_evidence}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    corrected_digest = expected_preview_digest(expected_corrected, expected_evidence)
     if corrected.get("status") != "ready" or corrected.get("fields") != expected_corrected or corrected.get("verified_evidence") != expected_evidence or corrected.get("preview_digest") != corrected_digest:
         raise AssertionError("explicit correction did not resolve the transcript to the independent corrected oracle")
     return len(probes) + len(transcript_cases) + 5

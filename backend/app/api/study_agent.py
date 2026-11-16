@@ -4,7 +4,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.config import DATA_DIR
 from app.models.schemas import Settings
@@ -27,6 +27,16 @@ class LocalStudyRequest(BaseModel):
     has_api_key: bool
     workflow: Literal["chat", "practice-entry"] = "chat"
     messages: list[str] = Field(default_factory=list, max_length=30)
+    scoring_profile_id: str | None = None
+    scoring_profile_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_profile_reference(self):
+        if (self.scoring_profile_id is None) != (self.scoring_profile_version is None):
+            raise ValueError("scoring profile ID and version must be provided together")
+        if self.scoring_profile_id is not None and not self.scoring_profile_id.strip():
+            raise ValueError("scoring profile ID is required")
+        return self
 
 
 def _validate_endpoint(base_url: str) -> None:
@@ -79,6 +89,8 @@ async def configured_study_agent(payload: LocalStudyRequest):
                     messages=payload.messages,
                     language=payload.language,
                     evidence_claims=prepared["evidence_claims"],
+                    scoring_profile_id=payload.scoring_profile_id,
+                    scoring_profile_version=payload.scoring_profile_version,
                 ),
                 StorageService(DATA_DIR),
             )

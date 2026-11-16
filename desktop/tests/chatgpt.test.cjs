@@ -219,7 +219,7 @@ test('practice-entry calls one strict evidence tool, verifies host transcript, a
   const deltas = []
   const result = await testApp.client.chat({
     requestId: 'request-practice-000001', message: messages.at(-1), model: 'model-a', language: 'tr',
-    workflow: 'practice-entry', messages,
+    workflow: 'practice-entry', messages, scoring_profile_id: 'profile_host-choice', scoring_profile_version: 3,
   }, (_id, delta) => deltas.push(delta))
   assert.equal(result.status, 'completed')
   assert.deepEqual(result.draft, testApp.getPracticeDraft())
@@ -254,6 +254,7 @@ test('practice-entry calls one strict evidence tool, verifies host transcript, a
   assert.equal(Object.hasOwn(followup, 'previous_response_id'), false)
   assert.deepEqual(testApp.getPracticeDraftRequests(), [{
     messages, language: 'tr', evidence_claims: [{ field: 'subject', quote: 'subject: Matematik' }],
+    scoring_profile_id: 'profile_host-choice', scoring_profile_version: 3,
   }])
   assert.deepEqual(deltas, [])
   assert.equal(testApp.calls.some(({ url }) => url === 'http://127.0.0.1:43210/questions/insights' || url === 'http://127.0.0.1:43210/practice/insights'), false)

@@ -41,6 +41,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -73,6 +76,9 @@ jobs:
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_exam_profiles.py --repeats 3
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_practice_profiles.py --repeats 3
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_clock_api.py

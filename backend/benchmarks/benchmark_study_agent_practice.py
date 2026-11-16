@@ -16,13 +16,19 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 from app.api import practice
-from app.models.schemas import PracticeSession, PracticeSessionCreate
+from app.models.schemas import ExamScoringProfile, PracticeSession, PracticeSessionCreate
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
 from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
 SEED = 20261115
 DATE = "2026-11-15"
+LEGACY_PROFILE = {
+    "profile_id": "legacy-yks", "version": 1, "display_name": "YKS (legacy)",
+    "country_label": "Türkiye", "scoring_rule": {
+        "correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1",
+    },
+}
 
 
 def entry(index: int):
@@ -40,6 +46,7 @@ def expected_row(fields, saved, expected_id=None):
     answered = fields["correct"] + fields["incorrect"]
     return {
         **fields, "id": expected_id or saved.id, "created_at": saved.created_at,
+        "scoring_profile": LEGACY_PROFILE,
         "net": fields["correct"] - fields["incorrect"] / 4,
         "accuracy": fields["correct"] / answered if answered else None,
     }
@@ -113,6 +120,10 @@ def independently_expected_record_id(approval_id, request):
         "proposal": request.proposal,
         "fields": request.fields.model_dump(),
         "evidence": request.evidence,
+        "scoring_profile_snapshot": (
+            request.scoring_profile_snapshot.model_dump()
+            if request.scoring_profile_snapshot is not None else LEGACY_PROFILE
+        ),
         "evidence_claims": [item.model_dump() for item in request.evidence_claims] if request.evidence_claims is not None else None,
         "preview_digest": request.preview_digest,
         "duplicate_choice": request.duplicate_choice,
@@ -159,12 +170,53 @@ def independently_expected_tool_evidence(messages, fields, claims):
     return expected
 
 
-def independently_expected_digest(fields, evidence):
+def independently_expected_digest(fields, evidence, profile=LEGACY_PROFILE, profile_id="legacy-yks", profile_version=1):
+    digest_fields = {
+        **fields, "scoring_profile_id": profile_id, "scoring_profile_version": profile_version,
+    }
     canonical = json.dumps(
-        {"fields": fields, "evidence": evidence},
+        {"fields": digest_fields, "evidence": evidence, "scoring_profile": profile},
         ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
+
+
+def assert_profile_version_digests(messages, fields, claims, storage):
+    profile_v1 = {
+        "profile_id": "benchmark_profile_digest", "version": 1,
+        "display_name": "Fixture profile v1", "country_label": "Synthetic fixture",
+        "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/2", "blank_points": "1/4"},
+    }
+    profile_v2 = {
+        "profile_id": "benchmark_profile_digest", "version": 2,
+        "display_name": "Fixture profile v2", "country_label": "Synthetic fixture",
+        "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/3", "blank_points": "1/5"},
+    }
+    for profile in (profile_v1, profile_v2):
+        storage.append_list("exam_profiles.json", ExamScoringProfile.model_validate(profile), ExamScoringProfile)
+
+    independent_evidence = independently_expected_tool_evidence(messages, fields, claims)
+    digests = []
+    for profile in (profile_v1, profile_v2):
+        draft = asyncio.run(practice.practice_agent_draft(
+            practice.AgentDraftRequest(
+                messages=messages, language="en", evidence_claims=claims,
+                scoring_profile_id=profile["profile_id"], scoring_profile_version=profile["version"],
+            ), storage,
+        ))
+        if draft["fields"] != fields or draft["evidence"] != independent_evidence:
+            raise AssertionError("host profile version changed provider-derived preview fields or evidence")
+        if draft["scoring_profile_snapshot"] != profile:
+            raise AssertionError("host-selected digest fixture resolved to a different full profile snapshot")
+        expected = independently_expected_digest(
+            fields, independent_evidence, profile, profile["profile_id"], profile["version"],
+        )
+        if draft["preview_digest"] != expected:
+            raise AssertionError(f"profile v{profile['version']} preview digest differs from literal oracle")
+        digests.append(draft["preview_digest"])
+    if digests[0] == digests[1]:
+        raise AssertionError("same fields/evidence did not produce isolated v1/v2 exact-preview digests")
+    return len(digests)
 
 
 def create_evidence_entry(messages, language, claims, fields, storage, duplicate_choice=None, approval_id=None):
@@ -201,6 +253,7 @@ def run_evidence_tool_protocol():
         storage = StorageService(data_dir)
         with patch.object(practice, "DATA_DIR", data_dir), forbid_provider_calls():
             messages_a, fields_a, claims_a = evidence_fixture(12)
+            profile_version_digests = assert_profile_version_digests(messages_a, fields_a, claims_a, storage)
             rejected = asyncio.run(practice.practice_agent_draft(
                 practice.AgentDraftRequest(
                     messages=messages_a, language="en",
@@ -342,6 +395,7 @@ def run_evidence_tool_protocol():
             return {
                 "records_checked": 4,
                 "verified_previews": 5,
+                "profile_version_digests_checked": profile_version_digests,
                 "fixed_evidence_claims": len(claims_a),
                 "rejected_evidence_writes": 0,
                 "unapproved_duplicate_writes": 0,

@@ -5,11 +5,16 @@ import api, { handleApiError } from '../services/api'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate, fmtPercent, localDateToday } from '../utils/formatters.js'
 import { useClock } from '../clock/ClockContext.jsx'
+import { completeFocusedPractice } from '../clock/completePractice.js'
 
 const emptyForm = () => ({
   date: localDateToday(), subject: '', topic: '', correct: 0, incorrect: 0, blank: 0,
-  duration_minutes: 0, duration_seconds: 0,
+  duration_minutes: 0, duration_seconds: 0, scoring_profile_id: 'legacy-yks', scoring_profile_version: 1,
 })
+const LEGACY_PROFILE = {
+  profile_id: 'legacy-yks', version: 1, display_name: 'YKS (legacy)', country_label: 'Türkiye',
+  scoring_rule: { correct_points: '1/1', wrong_penalty: '1/4', blank_points: '0/1' },
+}
 const fields = [
   ['correct', 'common.correct'], ['incorrect', 'common.incorrect'], ['blank', 'common.blank'],
   ['duration_minutes', 'common.minutes'], ['duration_seconds', 'common.secondsLabel'],
@@ -50,6 +55,8 @@ function asPracticeTimer(session) {
       date: session.date, subject: session.subject, topic: session.topic,
       correct: session.correct, incorrect: session.incorrect, blank: session.blank,
       completion_id: session.completion_id || null,
+      scoring_profile: session.scoring_profile || LEGACY_PROFILE,
+      completion_payload: session.completion_payload || null,
     },
   }
 }
@@ -63,6 +70,7 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   const { state: clockState, updateClock, loaded: clockLoaded, loading: clockLoading, savingError: clockError, reload } = useClock()
   const [sessions, setSessions] = useState([])
   const [summaries, setSummaries] = useState([])
+  const [profiles, setProfiles] = useState([LEGACY_PROFILE])
   const [draft, setDraft] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')
   const [error, setError] = useState('')
@@ -82,9 +90,10 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
 
   const load = useCallback(async () => {
     try {
-      const [records, insights] = await Promise.all([api.practice.list(), api.practice.insights()])
+      const [records, insights, availableProfiles] = await Promise.all([api.practice.list(), api.practice.insights(), api.examProfiles.list()])
       setSessions(records)
       setSummaries(insights)
+      setProfiles(availableProfiles)
       setError('')
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -108,6 +117,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       setActive({
         date: localDateToday(), subject: startTopic.subject, topic: startTopic.topic,
         correct: 0, incorrect: 0, blank: 0, elapsed_seconds: 0, running_since: Date.now(),
+        scoring_profile: profiles.find((item) => item.profile_id === draft.scoring_profile_id
+          && item.version === draft.scoring_profile_version) || LEGACY_PROFILE,
       })
     }
     onStartTopicConsumed?.()
@@ -140,6 +151,8 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       date: session.date, subject: session.subject, topic: session.topic,
       correct: session.correct, incorrect: session.incorrect, blank: session.blank,
       duration_minutes: session.duration_minutes, duration_seconds: session.duration_seconds,
+      scoring_profile_id: session.scoring_profile?.profile_id || 'legacy-yks',
+      scoring_profile_version: session.scoring_profile?.version || 1,
     })
   }
 
@@ -155,7 +168,9 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
 
   const set = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
 
-  const adjust = (key, delta) => setActive((current) => current && ({ ...current, [key]: Math.max(0, current[key] + delta) }))
+  const adjust = (key, delta) => setActive((current) => current && (current.completion_payload
+    ? current
+    : { ...current, [key]: Math.max(0, current[key] + delta) }))
 
   const finishFocus = async () => {
     if (active.correct + active.incorrect + active.blank === 0) {
@@ -164,24 +179,17 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
     }
     setSaving(true)
     setError('')
-    const seconds = elapsedSeconds(active)
     try {
-      const completionId = active.completion_id || crypto.randomUUID()
-      if (!active.completion_id) {
-        await updateClock((current) => ({
-          ...current,
-          active_timer: { ...current.active_timer, practice_draft: { ...current.active_timer.practice_draft, completion_id: completionId } },
-        }))
-      }
-      await api.practice.create({
-        date: active.date, subject: active.subject, topic: active.topic,
-        correct: active.correct, incorrect: active.incorrect, blank: active.blank,
-        duration_minutes: Math.floor(seconds / 60), duration_seconds: seconds % 60,
-      }, completionId)
-      await updateClock((current) => ({ ...current, active_timer: null }))
+      await completeFocusedPractice({
+        timer: currentTimer, now: Date.now(), updateClock, reloadClock: reload,
+        listPractice: api.practice.list, createPractice: api.practice.create,
+        clearClock: () => updateClock((current) => ({ ...current, active_timer: null })),
+      })
       await load()
     } catch (e) {
-      setError(handleApiError(e, t).detail)
+      setError(e?.code === 'practice.legacyCompletionMismatch'
+        ? t('study.legacyCompletionMismatch')
+        : handleApiError(e, t).detail)
     } finally {
       setSaving(false)
     }
@@ -211,15 +219,15 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
       {currentTimer && currentTimer.kind !== 'practice' && <p role="status" className="rounded-lg border border-canvas-line bg-canvas-panel p-3 text-sm text-canvas-muted">{t('clock.otherTimerActive')}</p>}
       {active && <section ref={activeRef} aria-label={t('study.focusedSession')} className="space-y-3 rounded-xl border border-canvas-accent/50 bg-canvas-panel p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p></div>
+          <div><h3 className="font-semibold text-canvas-text">{t('study.focusedPractice', { subject: active.subject, topic: active.topic })}</h3><p className="text-sm text-canvas-muted">{t('study.focusedPracticeIntro')}</p><p className="text-xs text-canvas-muted">{t('study.profileSnapshot', { profile: active.scoring_profile.display_name, version: active.scoring_profile.version })}</p></div>
           <output aria-label={t('study.elapsedTime')} className="font-mono text-2xl font-semibold tabular-nums text-canvas-text">{timeLabel(currentSeconds)}</output>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" disabled={!clockLoaded} aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" disabled={!clockLoaded} aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
+          {[["correct", t('common.correct')], ["incorrect", t('common.incorrect')], ["blank", t('common.blank')]].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-lg bg-canvas-base px-3 py-2"><span className="text-sm text-canvas-text">{label}: {new Intl.NumberFormat(locale).format(active[key])}</span><span className="flex gap-2"><button type="button" disabled={!clockLoaded || active.completion_payload} aria-label={t('study.decreaseResult', { label })} onClick={() => adjust(key, -1)} className={secondaryButton}>−</button><button type="button" disabled={!clockLoaded || active.completion_payload} aria-label={t('study.increaseResult', { label })} onClick={() => adjust(key, 1)} className={secondaryButton}>+</button></span></div>)}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {active.running_since ? <button type="button" disabled={!clockLoaded} onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" disabled={!clockLoaded} onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>}
-          <button type="button" disabled={!clockLoaded} onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
+          {!active.completion_payload && (active.running_since ? <button type="button" disabled={!clockLoaded} onClick={pauseFocus} className={secondaryButton}>{t('study.pause')}</button> : <button type="button" disabled={!clockLoaded} onClick={resumeFocus} className={secondaryButton}>{t('study.resume')}</button>)}
+          <button type="button" disabled={!clockLoaded || active.completion_payload} onClick={cancelFocus} className={secondaryButton}>{t('study.cancelSession')}</button>
           <button type="button" disabled={saving || !clockLoaded} onClick={finishFocus} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('common.saving') : t('study.finishAndSave')}</button>
         </div>
       </section>}
@@ -227,6 +235,10 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         <label className="text-xs text-canvas-muted">{t('common.date')}<input required type="date" value={draft.date} onChange={(e) => set('date', e.target.value)} className={inputClass} /></label>
         <label className="text-xs text-canvas-muted">{t('common.subject')}<input required value={draft.subject} onChange={(e) => set('subject', e.target.value)} placeholder={t('study.exampleMath')} className={inputClass} /></label>
         <label className="text-xs text-canvas-muted sm:col-span-2">{t('common.topic')}<input required value={draft.topic} onChange={(e) => set('topic', e.target.value)} placeholder={t('study.exampleFunctions')} className={inputClass} /></label>
+        <label className="text-xs text-canvas-muted sm:col-span-2">{t('study.scoringProfile')}<select aria-label={t('study.scoringProfile')} value={`${draft.scoring_profile_id}@${draft.scoring_profile_version}`} onChange={(event) => {
+          const [scoring_profile_id, version] = event.target.value.split('@')
+          setDraft((current) => ({ ...current, scoring_profile_id, scoring_profile_version: Number(version) }))
+        }} className={inputClass}>{profiles.map((item) => <option key={`${item.profile_id}@${item.version}`} value={`${item.profile_id}@${item.version}`}>{item.display_name} · v{item.version}</option>)}</select></label>
         {fields.map(([key, label]) => <label key={key} className="text-xs text-canvas-muted">{t(label)}<input required type="number" min="0" max={key === 'duration_seconds' ? 59 : undefined} value={draft[key]} onChange={(e) => set(key, Number(e.target.value))} className={inputClass} /></label>)}
         <div className="flex items-end justify-end gap-2 sm:col-span-4">
           {editingId && <button type="button" onClick={() => { setDraft(emptyForm()); setEditingId('') }} className={secondaryButton}>{t('common.cancel')}</button>}
@@ -238,14 +250,14 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
         const chartData = group.trend.map((item) => ({ ...item, accuracy_percent: item.accuracy == null ? null : item.accuracy * 100 }))
         const recent = group.trend.slice(-6).reverse()
         const older = group.trend.slice(0, -6).reverse()
-        return <article key={`${group.subject}-${group.topic}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+        return <article key={`${group.subject}-${group.topic}-${group.scoring_profile.profile_id}@${group.scoring_profile.version}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{t('study.savedSetCount', { count: new Intl.NumberFormat(locale).format(group.session_count) })}</p></div>
+            <div><h3 className="font-semibold text-canvas-text">{group.subject} · {group.topic}</h3><p className="text-xs text-canvas-muted">{group.scoring_profile.display_name} · v{group.scoring_profile.version} · {t('study.savedSetCount', { count: new Intl.NumberFormat(locale).format(group.session_count) })}</p></div>
             <div className="text-right text-sm text-canvas-text">{formatNumber(group.net, locale)} {t('study.totalNet')}<p className="text-xs text-canvas-muted">{group.accuracy == null ? t('study.noAnsweredQuestions') : t('study.answeredAccuracy', { accuracy: fmtPercent(group.accuracy * 100, locale) })}</p></div>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="net" t={t} locale={locale} />
-            <PracticeTrendChart subject={group.subject} topic={group.topic} data={chartData} metric="accuracy_percent" t={t} locale={locale} />
+            <PracticeTrendChart subject={group.subject} topic={group.topic} profile={group.scoring_profile} data={chartData} metric="net" t={t} locale={locale} />
+            <PracticeTrendChart subject={group.subject} topic={group.topic} profile={group.scoring_profile} data={chartData} metric="accuracy_percent" t={t} locale={locale} />
           </div>
           <SessionRows items={recent} sessions={sessions} topic={group.topic} locale={locale} t={t} onEdit={edit} onRemove={remove} />
           {older.length > 0 && <details className="mt-2 rounded-lg border border-canvas-line px-3 py-2">
@@ -258,12 +270,13 @@ export default function PracticeSessions({ startTopic, onStartTopicConsumed }) {
   )
 }
 
-function PracticeTrendChart({ subject, topic, data, metric, t, locale }) {
+function PracticeTrendChart({ subject, topic, profile, data, metric, t, locale }) {
   const accuracy = metric === 'accuracy_percent'
   const label = accuracy ? t('study.accuracy') : t('study.net')
-  return <section aria-label={t('study.metricChart', { subject, topic, metric: label.toLowerCase() })} className="min-w-0 rounded-lg bg-canvas-base p-2">
+  const profileLabel = `${profile.display_name} · v${profile.version}`
+  return <section aria-label={t('study.metricChart', { subject, topic, metric: label.toLowerCase(), profile: profileLabel })} className="min-w-0 rounded-lg bg-canvas-base p-2">
     <h4 className="mb-1 text-xs font-medium text-canvas-muted">{t('study.metricPerSet', { metric: label.toLowerCase() })}</h4>
-    <div role="img" aria-label={t('study.metricChange', { subject, topic, metric: label.toLowerCase() })} className="h-36 w-full">
+    <div role="img" aria-label={t('study.metricChange', { subject, topic, metric: label.toLowerCase(), profile: profileLabel })} className="h-36 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />

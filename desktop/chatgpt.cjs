@@ -485,7 +485,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return completion
   }
 
-  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [] }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
     if (!['chat', 'practice-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
     if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
@@ -533,7 +533,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         const verifiedResponse = await fetchImpl(`${backendUrl}/practice/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ messages, language, evidence_claims: argumentsValue.evidence }),
+          body: JSON.stringify({ messages, language, evidence_claims: argumentsValue.evidence, scoring_profile_id, scoring_profile_version }),
           signal: controller.signal,
         })
         const draft = await verifiedResponse.json().catch(() => ({}))

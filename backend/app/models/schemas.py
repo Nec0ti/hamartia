@@ -500,11 +500,15 @@ class PracticeSession(PracticeSessionData):
 
     id: str
     created_at: str = ""
+    # Old records remain immutable legacy snapshots when the field is absent.
+    scoring_profile: ExamScoringProfile = Field(default_factory=legacy_yks_profile)
 
     @computed_field
     @property
     def net(self) -> float:
-        return self.correct - self.incorrect / 4
+        from app.core.formulas import net_for_scoring_rule
+
+        return net_for_scoring_rule(self.correct, self.incorrect, self.blank, self.scoring_profile.scoring_rule)
 
     @computed_field
     @property
@@ -514,7 +518,32 @@ class PracticeSession(PracticeSessionData):
 
 
 class PracticeSessionCreate(PracticeSessionData):
-    pass
+    scoring_profile_id: str | None = None
+    scoring_profile_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_scoring_profile_reference(self):
+        if (self.scoring_profile_id is None) != (self.scoring_profile_version is None):
+            raise ValueError("scoring profile ID and version must be provided together")
+        if self.scoring_profile_id is not None and not self.scoring_profile_id.strip():
+            raise ValueError("scoring profile ID is required")
+        return self
+
+
+class PracticeDraftCompletion(PracticeSessionData):
+    """Immutable request and profile snapshot frozen before focused completion POST."""
+
+    scoring_profile_id: str = Field(min_length=1)
+    scoring_profile_version: int = Field(ge=1)
+    scoring_profile: ExamScoringProfile
+
+    @model_validator(mode="after")
+    def validate_profile_snapshot_reference(self):
+        if (self.scoring_profile_id, self.scoring_profile_version) != (
+            self.scoring_profile.profile_id, self.scoring_profile.version,
+        ):
+            raise ValueError("completion payload profile reference must match its snapshot")
+        return self
 
 
 class LearningEvidenceData(BaseModel):
@@ -652,6 +681,8 @@ class PracticeDraft(BaseModel):
     incorrect: int = Field(default=0, ge=0)
     blank: int = Field(default=0, ge=0)
     completion_id: str | None = Field(default=None, min_length=36, max_length=36)
+    scoring_profile: ExamScoringProfile = Field(default_factory=legacy_yks_profile)
+    completion_payload: PracticeDraftCompletion | None = None
 
     @field_validator("completion_id")
     @classmethod
@@ -682,6 +713,21 @@ class PracticeDraft(BaseModel):
             raise ValueError("subject and topic are required")
         return value
 
+    @model_validator(mode="after")
+    def validate_frozen_completion(self):
+        payload = self.completion_payload
+        if payload is None:
+            return self
+        if self.completion_id is None:
+            raise ValueError("a frozen completion payload requires an idempotency key")
+        if (self.date, self.subject, self.topic, self.correct, self.incorrect, self.blank) != (
+            payload.date, payload.subject, payload.topic, payload.correct, payload.incorrect, payload.blank,
+        ):
+            raise ValueError("a frozen completion payload must match its practice draft")
+        if payload.scoring_profile != self.scoring_profile:
+            raise ValueError("a frozen completion payload must preserve the selected profile snapshot")
+        return self
+
 
 class ClockLap(BaseModel):
     elapsed_ms: int = Field(ge=0, le=31_536_000_000)
@@ -709,6 +755,8 @@ class ActiveClockTimer(BaseModel):
     def validate_active_timer(self):
         if (self.kind == "practice") != (self.practice_draft is not None):
             raise ValueError("only practice timers carry a practice draft")
+        if self.practice_draft and self.practice_draft.completion_payload and self.status != "paused":
+            raise ValueError("a focused timer with a frozen completion payload must remain paused")
         if self.kind == "pomodoro":
             if (self.phase is None or self.duration_ms < 1_000 or self.work_duration_ms < 1_000
                     or self.break_duration_ms < 1_000):

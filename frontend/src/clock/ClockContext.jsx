@@ -85,10 +85,10 @@ export function ClockProvider({ children }) {
       setState(saved)
       loadedRef.current = true
       setLoaded(true)
-      return true
+      return saved
     } catch {
       setSavingError('clock.persistenceError')
-      return false
+      return null
     } finally {
       setLoading(false)
     }

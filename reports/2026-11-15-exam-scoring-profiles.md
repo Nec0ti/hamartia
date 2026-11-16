@@ -1,6 +1,6 @@
 # Versioned exam scoring profiles
 
-Status: implemented and locally verified on 2026-11-15. This first slice scopes custom scoring to exam records (TYT/AYT full mocks and branch exams). It does not generalize scoring across the whole app: focused `PracticeSession` records and their topic trends still use the legacy YKS quarter-penalty formula. Profile-aware practice sets, focused-timer completion/idempotency, editing, and backup remain open in [backlog.md](../backlog.md).
+Status: exam-record slice implemented and locally verified on 2026-11-15. PracticeSession support was added in a follow-up on 2026-11-16; see the [practice scoring profile report](2026-11-16-practice-scoring-profiles.md) for snapshots, timer completion, profile-partitioned trends, edits, agent approval binding, and backup coverage.
 
 ## Behavior
 
@@ -39,4 +39,4 @@ Boundary vectors also include the reviewed counterexample: correct=1, wrong=0, b
 
 ## Limits
 
-There is no built-in catalog of official non-YKS scoring profiles. The custom rule editor accepts nonnegative exact rationals and labels only; it does not validate a profile against an authority or decide the exam format/session structure. Question/practice trends are still distinct from exam profiles.
+There is no built-in catalog of official non-YKS scoring profiles. The custom rule editor accepts nonnegative exact rationals and user-entered labels only; it does not validate a profile against an authority or decide the exam format/session structure. Practice-session snapshots are now supported separately from exam sections and do not affect exam XP.

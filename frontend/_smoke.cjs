@@ -4,7 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
-const { withTimeout } = require('./smokeDeadline.cjs')
+const { createSmokeDeadline, isSettingsRequestUrl, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -12,12 +12,16 @@ async function waitForServer(child, url, name) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (child.exitCode !== null) throw new Error(`Server exited early (${child.exitCode})`)
     try {
-      const response = await fetch(url)
+      const response = await fetch(url, { signal: AbortSignal.timeout(1000) })
       if (response.ok) return
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
   throw new Error(`Timed out waiting for ${name}`)
+}
+
+function localFetch(url, init = {}) {
+  return fetch(url, { ...init, signal: init.signal || AbortSignal.timeout(10_000) })
 }
 
 async function main() {
@@ -45,7 +49,7 @@ async function main() {
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
-    const seedResponse = await fetch(`${apiUrl}/exams`, {
+    const seedResponse = await localFetch(`${apiUrl}/exams`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-11-14', exam_type: 'branch', subject: 'Matematik', duration_minutes: 30, correct: 30, incorrect: 4, blank: 2 }),
@@ -53,6 +57,7 @@ async function main() {
     if (!seedResponse.ok) throw new Error(`Locale fixture failed: ${await seedResponse.text()}`)
     const localeExam = await seedResponse.json()
     browser = await chromium.launch({
+      timeout: 30_000,
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
     })
@@ -81,19 +86,23 @@ async function main() {
     })
 
     smokePhase = 'initial page render and settings request'
-    smokeDeadline = setTimeout(() => {
-      process.stderr.write(`Browser smoke exceeded 8 minutes during ${smokePhase}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}\n`)
-      if (launcher.exitCode === null) launcher.kill('SIGTERM')
-      void browser.close().finally(() => process.exit(1))
-      setTimeout(() => process.exit(1), 5000).unref()
-    }, 8 * 60 * 1000)
+    smokeDeadline = createSmokeDeadline(8 * 60 * 1000,
+      () => ` during ${smokePhase}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
+      () => {
+        if (launcher.exitCode === null) launcher.kill('SIGTERM')
+        return browser.close()
+      },
+    )
 
     let releaseInitialSettingsGet
     let notifyInitialSettingsGet
+    const settingsRouteMatcher = (url) => isSettingsRequestUrl(url, apiUrl)
     const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
     const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
-    await page.route(`${apiUrl}/settings`, async (route) => {
+    let interceptedInitialSettingsGet = false
+    await page.route(settingsRouteMatcher, async (route) => {
       if (route.request().method() === 'GET') {
+        interceptedInitialSettingsGet = true
         notifyInitialSettingsGet()
         await initialSettingsGetGate
       }
@@ -118,7 +127,7 @@ async function main() {
       initialSettingsGetIntercepted,
       10_000,
       'Initial GET /settings was not intercepted',
-      () => `; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
+      () => `; route handler ran=${interceptedInitialSettingsGet}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
     )
     await page.getByRole('button', { name: 'Open settings' }).click()
     await page.getByRole('status').getByText('Loading saved settings…').waitFor()
@@ -128,7 +137,7 @@ async function main() {
     await page.getByLabel('API key').waitFor({ state: 'visible' })
     await page.waitForFunction(() => !document.querySelector('#settings-api-key')?.disabled)
     await page.getByRole('button', { name: 'Close settings' }).click()
-    await page.unroute(`${apiUrl}/settings`)
+    await page.unroute(settingsRouteMatcher)
     smokePhase = 'study, profile, and local API browser flow'
     await page.waitForLoadState('networkidle')
     await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
@@ -158,7 +167,7 @@ async function main() {
     await page.getByRole('img', { name: 'Net değişimi · Tüm dersler' }).waitFor()
     await page.getByRole('img', { name: 'Performans radarı: hız, odak, isabet ve dayanıklılık' }).waitFor()
     await page.getByText('14/11', { exact: true }).waitFor()
-    const deleteFixture = await fetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
+    const deleteFixture = await localFetch(`${apiUrl}/exams/${localeExam.id}`, { method: 'DELETE' })
     assert.equal(deleteFixture.ok, true, `Locale fixture cleanup failed: ${await deleteFixture.text()}`)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText('Henüz deneme kaydı yok.').waitFor()
@@ -234,7 +243,7 @@ async function main() {
     if (!focusResponse.ok()) throw new Error(`Focused practice save failed ${focusResponse.status()}: ${await focusResponse.text()}`)
     await page.waitForResponse((response) => new URL(response.url()).pathname === '/clock' && response.request().method() === 'PATCH' && response.status() === 503)
     assert.equal(await resumedSection.count(), 1, 'The focused draft must remain available after clock clear fails')
-    assert.equal((await (await fetch(`${apiUrl}/practice`)).json()).filter((item) => item.subject === 'Matematik' && item.topic === 'Fonksiyon').length, 2)
+    assert.equal((await (await localFetch(`${apiUrl}/practice`)).json()).filter((item) => item.subject === 'Matematik' && item.topic === 'Fonksiyon').length, 2)
     const [retryPracticeResponse] = await Promise.all([
       page.waitForResponse((response) => new URL(response.url()).pathname === '/practice' && response.request().method() === 'POST'),
       resumedSection.getByRole('button', { name: 'Bitir ve kaydet' }).click(),
@@ -300,7 +309,7 @@ async function main() {
     assert.equal((await wrongAttemptResponse.json()).review_attempts.at(-1).correct, false)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    assert.equal((await (await fetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
+    assert.equal((await (await localFetch(`${apiUrl}/questions/q1`)).json()).review_attempts.at(-1).correct, false)
     assert.equal(await page.getByRole('region', { name: 'Odaklı çalışma oturumu' }).count(), 0)
     await page.getByRole('button', { name: 'Yanlışlarım' }).click()
     await page.getByLabel('Ders').fill('Türkçe')
@@ -342,7 +351,7 @@ async function main() {
     assert.equal(persistedAttempt.attempt_day, localAttemptDay)
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
-    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
+    assert.equal((await (await localFetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).review_attempts.at(-1).correct, true)
     const captureAndPersistenceMs = Math.round(performance.now() - attempted)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: 'Ana Sayfa' }).click()
@@ -664,7 +673,7 @@ async function main() {
     await textCard.getByRole('button', { name: 'Kaydet' }).click()
     const updatedCard = page.locator('article').filter({ hasText: 'Güncellenmiş soru metni' })
     await updatedCard.getByRole('button', { name: /Soruyu sil Edebiyat/ }).waitFor()
-    assert.equal((await (await fetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
+    assert.equal((await (await localFetch(`${apiUrl}/questions/${createdQuestion.id}`)).json()).curriculum_reference.learning_outcome, 'Explain a made-up pattern')
     await page.getByLabel('Hatalarda ve program referanslarında ara').fill('Explain a made-up pattern')
     await updatedCard.waitFor()
     assert.equal(await page.locator('article[data-question-id]').count(), 1)
@@ -754,7 +763,7 @@ async function main() {
               const evidence_claims = payload.messages.flatMap((message) => [...message.matchAll(/(?:^|,\s*)(date|subject|topic|correct|incorrect|blank|duration_minutes|duration_seconds):\s*([^,]+)/g)]
                 .filter((match) => fields.includes(match[1]))
                 .map((match) => ({ field: match[1], quote: `${match[1]}: ${match[2].trim()}` })))
-              const response = await fetch(`${backendUrl}/practice/agent-draft`, {
+              const response = await localFetch(`${backendUrl}/practice/agent-draft`, {
                 method: 'POST', headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims,
                   scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version }),
@@ -823,7 +832,7 @@ async function main() {
       throw error
     }
     assert.equal(await page.evaluate(() => window.__rawProposalVisible), false)
-    const noPrematureRecord = await (await fetch(`${apiUrl}/practice`)).json()
+    const noPrematureRecord = await (await localFetch(`${apiUrl}/practice`)).json()
     assert.equal(noPrematureRecord.some((session) => session.subject === 'Mathematics' && session.topic === 'Functions'), false)
     await page.getByLabel('Describe the practice set you completed').fill('topic: Functions')
     await page.getByRole('checkbox').check()
@@ -834,7 +843,7 @@ async function main() {
     page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Approve this preview and save' }).click()
     await page.getByText('Practice set saved. You can start another entry.').waitFor()
-    assert.deepEqual((await (await fetch(`${apiUrl}/practice`)).json()).find((item) => item.date === '2026-11-15' && item.subject === 'Mathematics' && item.topic === 'Functions').scoring_profile,
+    assert.deepEqual((await (await localFetch(`${apiUrl}/practice`)).json()).find((item) => item.date === '2026-11-15' && item.subject === 'Mathematics' && item.topic === 'Functions').scoring_profile,
       { ...customProfile, scoring_rule: { correct_points: '1/1', wrong_penalty: '1/2', blank_points: '0/1' } })
     assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
       message: 'topic: Functions',
@@ -871,7 +880,7 @@ async function main() {
     await page.getByText(/en fazla 8 konu çalışma özeti/).waitFor()
     const missingLabelForm = new FormData()
     missingLabelForm.set('ocr_text', 'Synthetic unlabelled question')
-    const missingLabelResponse = await fetch(`${apiUrl}/questions`, { method: 'POST', body: missingLabelForm })
+    const missingLabelResponse = await localFetch(`${apiUrl}/questions`, { method: 'POST', body: missingLabelForm })
     assert.equal(missingLabelResponse.status, 201)
     const missingLabelQuestion = await missingLabelResponse.json()
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
@@ -896,7 +905,7 @@ async function main() {
     await page.getByRole('button', { name: 'Cosmos' }).click()
     await page.getByText('Ders belirtilmedi', { exact: true }).first().waitFor()
     await page.getByText('Konu belirtilmedi', { exact: true }).first().waitFor()
-    const missingLabelDelete = await fetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
+    const missingLabelDelete = await localFetch(`${apiUrl}/questions/${missingLabelQuestion.id}`, { method: 'DELETE' })
     assert.equal(missingLabelDelete.ok, true)
 
     // A legacy practice draft is removed only after the durable clock PATCH succeeds.
@@ -1018,7 +1027,7 @@ async function main() {
     const dueDeadline = Date.now() + 8_000
     let dueState
     while (Date.now() < dueDeadline) {
-      dueState = await (await fetch(`${apiUrl}/clock`)).json()
+      dueState = await (await localFetch(`${apiUrl}/clock`)).json()
       if (dueState.alarms.find((alarm) => alarm.id === dueAlarm.id)?.overdue_at_ms) break
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -1101,7 +1110,7 @@ async function main() {
     assert.deepEqual(Object.keys(savedEvidence).sort(), ['activity', 'created_at', 'date', 'id', 'observation', 'reference_url', 'subject', 'topic'])
     await evidenceRegion.getByRole('button', { name: 'Üç yeni mercek sorusu çözdüm yansımasını sil' }).click()
     await evidenceRegion.getByText('Henüz yansıma kaydedilmedi.').waitFor()
-    assert.deepEqual(await (await fetch(`${apiUrl}/learning-evidence`)).json(), [])
+    assert.deepEqual(await (await localFetch(`${apiUrl}/learning-evidence`)).json(), [])
     assert.equal((await page.context().request.delete(`${apiUrl}/questions/${evidenceSuggestionQuestion.id}`)).status(), 200)
     failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))
     const expectedClockErrors = consoleErrors.filter((item) => item.location.url !== `${apiUrl}/clock` || !item.text.includes('503 (Service Unavailable)'))
@@ -1150,16 +1159,23 @@ async function main() {
     console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, practice_trend_and_history_ms: practiceTrendAndHistoryMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, settings_key_management_ms: settingsKeyManagementMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
-    throw error
+    throw smokeDeadline?.error() || error
   } finally {
-    clearTimeout(smokeDeadline)
-    await browser?.close()
-    if (launcher.exitCode === null) {
-      launcher.kill('SIGTERM')
-      await new Promise((resolve) => launcher.once('exit', resolve))
+    smokeDeadline?.clear()
+    try {
+      await browser?.close().catch(() => {})
+    } finally {
+      if (launcher.exitCode === null) {
+        launcher.kill('SIGTERM')
+        try {
+          await withTimeout(new Promise((resolve) => launcher.once('exit', resolve)), 5000, 'Dev server shutdown')
+        } catch {
+          launcher.kill('SIGKILL')
+        }
+      }
+      await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
+      await fs.rm(dataDir, { recursive: true, force: true })
     }
-    await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
-    await fs.rm(dataDir, { recursive: true, force: true })
   }
 }
 

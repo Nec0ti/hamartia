@@ -220,3 +220,9 @@
 - Updated benchmark to v2: 13 pairs, 26 locale prompts, 65 points per locale / 130 total. Proposed 56/65, 117/130 combined, and perfect critical-task gates are provisional pending human pilot, not validated thresholds. Public prompts and key remain inspectable; this is not a sealed blind test.
 - Offline integrity checker passed: 26 rubrics, 156 evidence excerpts (152 rendered-page, two protocol), 818 local links/assets, three checker-only fixtures; `ai_included: false`, `network_access: false`. Human response scoring and screenshot evaluation remain **NOT RUN**.
 - Report: `reports/2026-11-16-docs-benchmark-hardening.md`; machine result: `reports/2026-11-16-docs-benchmark-hardening-results.json`.
+# 2026-11-16 social legal/privacy/hosting source review
+
+- Added an internal English readiness report based on current master `5b569c0723ca9f43b4dd5ae9a376d8001e161709`, mapping the implemented social dataflow and summarizing official KVKK, BTK/5651, Official Gazette, Google/Firebase, and Cloudflare sources accessed on 2026-11-16.
+- The report conditionally describes the under-15 restriction, age-token verification, and 15–17 differentiated-service requirements in the regulation published 2026-10-10, while flagging its stated 2026-01-01 effective date discrepancy and leaving provider classification/applicability to Turkish counsel.
+- No server or live provider configuration was inspected; no credentials, contact, deployment, implementation, or launch approval. Audience, host/data path, retention/deletion, legal classification, provider transfers, and all existing social launch gates remain unresolved.
+- Report: `reports/2026-11-16-social-legal-privacy-hosting-readiness.md`.

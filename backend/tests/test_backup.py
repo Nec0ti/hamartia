@@ -310,8 +310,8 @@ class BackupTests(unittest.TestCase):
             env=environment,
             capture_output=True,
             text=True,
-            check=True,
         )
+        self.assertEqual(result.returncode, 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
 
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
         self.assertIn("Yedek geri yüklendi.", result.stdout)

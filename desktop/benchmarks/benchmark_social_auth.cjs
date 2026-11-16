@@ -21,6 +21,7 @@ const PROFILE_REPEATS = 48
 const CONCURRENCY = 12
 const CONCURRENT_REPEATS = 8
 const UID = 'offline-benchmark-user'
+const AGREEMENT_VERSION = 'benchmark-v1'
 const GOOGLE_ID_TOKEN = 'google.header.signature'
 const FIREBASE_ID_TOKEN = 'firebase.header.signature'
 const profile = () => ({
@@ -201,15 +202,24 @@ async function main() {
       ipcMain: { handle: (channel, handler) => ipcHandlers.set(channel, handler) },
       auth: firebaseAuth,
       apiOrigin: api,
+      agreementVersion: AGREEMENT_VERSION,
       allowLoopbackHttp: true,
       getBackendUrl: () => 'http://127.0.0.1:4173/',
     })
     const event = { senderFrame: { url: 'http://127.0.0.1:4173/', parent: null } }
     const call = (name, ...args) => ipcHandlers.get(`hamartia:social:${name}`)(event, ...args)
 
-    assert.deepEqual(await call('sign-in'), { status: 'signedIn' })
+    await assert.rejects(call('sign-in'), /Invalid social request/)
+    await assert.rejects(call('sign-in', 'stale-benchmark-version'), /reviewed agreement/)
+    await assert.rejects(call('get-profile'), /Invalid social request/)
+    await assert.rejects(call('patch-profile', { nickname: 'must-not-run' }), /Invalid social request/)
+    assert.equal(authSignIns, 0, 'unaccepted agreement must not start OAuth or Firebase')
+    assert.equal(authRequests, 0, 'unaccepted agreement must not contact the local Auth Emulator')
+    assert.equal(profileGets + profilePatches, 0, 'unaccepted agreement must not access the profile service')
+
+    assert.deepEqual(await call('sign-in', AGREEMENT_VERSION), { status: 'signedIn' })
     assert.equal(await firebaseAuth.getIdToken(), FIREBASE_ID_TOKEN)
-    const initial = await call('get-profile')
+    const initial = await call('get-profile', AGREEMENT_VERSION)
     assert.deepEqual(initial, profile())
     assert.equal(JSON.stringify(initial).includes(UID), false)
     assert.equal(JSON.stringify(initial).includes('private-user@example.invalid'), false)
@@ -217,7 +227,7 @@ async function main() {
     const signInSamples = []
     for (let index = 0; index < REPEATS + 5; index += 1) {
       const started = performance.now()
-      assert.deepEqual(await call('sign-in'), { status: 'signedIn' })
+      assert.deepEqual(await call('sign-in', AGREEMENT_VERSION), { status: 'signedIn' })
       const elapsed = performance.now() - started
       if (index >= 5) signInSamples.push(elapsed)
     }
@@ -226,11 +236,11 @@ async function main() {
     for (let index = 0; index < PROFILE_REPEATS + 8; index += 1) {
       const expectedNickname = `profile-${index}`
       const started = performance.now()
-      const patched = await call('patch-profile', { nickname: expectedNickname, age: 17, nickname_public: false })
+      const patched = await call('patch-profile', { nickname: expectedNickname, age: 17, nickname_public: false }, AGREEMENT_VERSION)
       assert.equal(patched.nickname, expectedNickname)
       assert.equal(patched.age, 17)
       assert.equal(patched.nickname_public, false)
-      const fetched = await call('get-profile')
+      const fetched = await call('get-profile', AGREEMENT_VERSION)
       const elapsed = performance.now() - started
       assert.deepEqual(fetched, patched)
       assert.equal(JSON.stringify(fetched).includes(UID), false)
@@ -247,11 +257,11 @@ async function main() {
         concurrentNicknames.add(nickname)
         concurrentGoals.add(goal)
         const started = performance.now()
-        const patched = await call('patch-profile', { nickname, study_goals: goal })
+        const patched = await call('patch-profile', { nickname, study_goals: goal }, AGREEMENT_VERSION)
         assert.ok(concurrentNicknames.has(patched.nickname) || patched.nickname.startsWith('profile-'))
         assert.ok(concurrentGoals.has(patched.study_goals) || patched.study_goals === null)
         assert.ok(isPrivateProfile(patched))
-        const fetched = await call('get-profile')
+        const fetched = await call('get-profile', AGREEMENT_VERSION)
         concurrentSamples.push(performance.now() - started)
         assert.ok(concurrentNicknames.has(fetched.nickname) || fetched.nickname.startsWith('profile-'))
         assert.ok(concurrentGoals.has(fetched.study_goals) || fetched.study_goals === null)
@@ -259,7 +269,7 @@ async function main() {
       }
     }))
 
-    const finalProfile = await call('get-profile')
+    const finalProfile = await call('get-profile', AGREEMENT_VERSION)
     assert.deepEqual(finalProfile, profiles.get(UID))
     assert.ok(concurrentNicknames.has(finalProfile.nickname))
     assert.ok(concurrentGoals.has(finalProfile.study_goals))
@@ -271,7 +281,7 @@ async function main() {
     assert.equal(profilePatches, (PROFILE_REPEATS + 8) + (CONCURRENCY * CONCURRENT_REPEATS))
 
     await call('sign-out')
-    await assert.rejects(firebaseAuth.getIdToken(), /Sign in to access/)
+    assert.equal(await firebaseAuth.getIdToken(), null)
     const apps = sdk.getApps().filter((app) => app.name === 'hamartia-social')
     for (const app of apps) await sdk.deleteApp(app)
     assert.ok(attemptedConnections.length > 0)

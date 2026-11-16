@@ -2,7 +2,7 @@ export default {
   'social.open': { en: 'Social profile', tr: 'Sosyal profil' },
   'social.title': { en: 'Private social profile', tr: 'Özel sosyal profil' },
   'social.description': { en: 'Sign in to create and edit your private profile. Social account state stays in memory and is separate from local study data.', tr: 'Özel profilini oluşturmak ve düzenlemek için oturum aç. Sosyal hesap durumu bellekte kalır ve yerel çalışma verilerinden ayrıdır.' },
-  'social.notConfigured': { en: 'Sign-in is disabled until public Firebase settings, a desktop OAuth client ID, and a social API origin are configured for this build.', tr: 'Bu derleme için herkese açık Firebase ayarları, masaüstü OAuth istemci kimliği ve sosyal API adresi yapılandırılana kadar oturum açma kapalıdır.' },
+  'social.notConfigured': { en: 'Sign-in is disabled until this build has complete public Firebase settings, its OAuth client/API origin, and a legally reviewed agreement version.', tr: 'Bu derlemede herkese açık Firebase ayarları, OAuth istemcisi/API adresi ve hukuk incelemesinden geçmiş bir sözleşme sürümü tamamlanana kadar oturum açma kapalıdır.' },
   'social.signIn': { en: 'Continue with Google', tr: 'Google ile devam et' },
   'social.signingIn': { en: 'Opening your system browser…', tr: 'Sistem tarayıcısı açılıyor…' },
   'social.signOut': { en: 'Sign out of social profile', tr: 'Sosyal profilden çıkış yap' },

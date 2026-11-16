@@ -22,6 +22,8 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-15 Maarif-aware Study Agent and user-entered curriculum references](2026-11-15-maarif-aware-study-agent.md)
 - [2026-11-16 offline social-auth client benchmark](2026-11-16-social-auth-offline-benchmark.md)
 - [2026-11-16 private forum submission quota](2026-11-16-forum-submission-quota.md)
+- [2026-11-16 local development API origin guard](2026-11-16-dev-origin-guard.md)
+- [2026-11-16 backup restore crash recovery](2026-11-16-backup-restore-crash-recovery.md)
 - [2026-11-16 social sign-in and private profile UI prototype](2026-11-16-social-signin-onboarding.md)
 - [2026-11-16 text-only Study Agent missed-question capture](2026-11-16-study-agent-question-capture.md)
 - [2026-11-16 single-subject Study Agent branch-exam capture](2026-11-16-study-agent-branch-exam-capture.md)

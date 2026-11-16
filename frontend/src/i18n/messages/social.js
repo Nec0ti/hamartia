@@ -42,6 +42,7 @@ export default {
   'social.postBody': { en: 'Question or study note', tr: 'Soru veya çalışma notu' },
   'social.postSubmit': { en: 'Submit for moderation', tr: 'Moderasyon için gönder' },
   'social.postPending': { en: 'Submitted. Your post is pending moderator approval.', tr: 'Gönderildi. Gönderin moderatör onayı bekliyor.' },
+  'social.rateLimited': { en: 'You have reached the limit of 5 submissions per hour. Try again in about {{seconds}} seconds.', tr: 'Saatte 5 gönderi sınırına ulaştın. Yaklaşık {{seconds}} saniye sonra yeniden dene.' },
   'social.forumError': { en: 'The forum request could not be completed. Try again.', tr: 'Forum isteği tamamlanamadı. Yeniden dene.' },
   'social.noApprovedPosts': { en: 'There are no approved posts yet.', tr: 'Henüz onaylanmış gönderi yok.' },
   'social.moderationQueue': { en: 'Moderator queue', tr: 'Moderatör kuyruğu' },

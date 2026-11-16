@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Response
 from uuid import UUID
 
 from app.social.forum import ForumPost, ForumPostCreate, ForumPostSummary, ModerationDecision
+from app.social.database import ForumSubmissionRateLimit
 from app.social.profile import Profile, ProfilePatch
 from app.social.security import (
     InvalidFirebaseToken,
@@ -73,6 +74,12 @@ def create_router(project_id: str, verifier: Verifier, profile_repository=None, 
             raise HTTPException(status_code=503, detail="Forum storage unavailable")
         try:
             return profile_repository.create_forum_post(uid, body.title, body.body)
+        except ForumSubmissionRateLimit as exc:
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "forum_rate_limit_exceeded", "retry_after_seconds": exc.retry_after_seconds},
+                headers={"Retry-After": str(exc.retry_after_seconds), "Cache-Control": "no-store"},
+            ) from exc
         except Exception as exc:
             raise HTTPException(status_code=503, detail="Forum storage unavailable") from exc
 

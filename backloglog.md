@@ -1,5 +1,12 @@
 # Backlog log
 
+## 2026-11-16 — PRs #49–#50 and forum submission quota
+
+- PR #49 fixed the local development API origin guard so hostile-origin multipart writes are rejected before parsing; the focused check confirmed no hostile question/upload files were created.
+- PR #50 added journaled restore crash recovery with staged validation, retained snapshots, and startup/storage recovery after interrupted directory swaps.
+- Added a server-side five-submission rolling-hour cap per verified forum UID, concurrency-safe across API workers, with retry timing and bilingual client feedback. PostgreSQL 17.11 forum integration tests passed 8/8, frontend 69/69, Electron social IPC 9/9, production build passed, and the host-only synthetic forum benchmark recorded one structured 429 at 6.765 ms with zero Firebase/external calls ([report](reports/2026-11-16-forum-submission-quota.md)).
+- The social service and browser/Electron builds remain disabled by default. Legal/privacy, provider/API-host, network, security/lifecycle, and physical-host gates remain open. No provider credentials, real accounts, deployment, or local AI were used.
+
 ## 2026-11-16 — PRs #43–#47 and ARETE-043
 
 - PR #43 clarified that optional onboarding/profile data is included in ZIP backup guides and that exported ZIP backups are unencrypted.

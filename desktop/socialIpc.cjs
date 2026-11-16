@@ -133,6 +133,15 @@ function registerSocialIpc({ ipcMain, auth, getBackendUrl, apiOrigin, agreementV
     })
     if (response.status === 401) return { status: 'signedOut' }
     if (response.status === 403) return { status: 'forbidden' }
+    if (response.status === 429) {
+      try {
+        const data = await response.json()
+        const seconds = data?.detail?.retry_after_seconds
+        if (data?.detail?.code === 'forum_rate_limit_exceeded' && Number.isInteger(seconds) && seconds > 0) {
+          return { status: 'rateLimited', retryAfterSeconds: seconds }
+        }
+      } catch {}
+    }
     if (!response.ok) throw new Error('Social request failed.')
     try {
       return await response.json()

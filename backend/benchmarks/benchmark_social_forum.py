@@ -27,7 +27,12 @@ MODERATOR = "forum-bench-moderator"
 
 class BenchmarkVerifier:
     def __call__(self, token):
-        uid = {"author-token": "forum-bench-author", "reader-token": "forum-bench-reader", "moderator-token": MODERATOR}.get(token)
+        uid = (
+            f"forum-bench-author-{token.removeprefix('author-token-')}"
+            if token.startswith("author-token-") and token.removeprefix("author-token-").isdigit()
+            else {"reader-token": "forum-bench-reader", "moderator-token": MODERATOR,
+                  "rate-limit-token": "forum-bench-rate-limit-author"}.get(token)
+        )
         if uid is None:
             raise AssertionError("unexpected benchmark identity")
         return {"aud": PROJECT, "iss": f"https://securetoken.google.com/{PROJECT}", "sub": uid}
@@ -77,6 +82,8 @@ def main():
     moderation_ms = []
     read_ms = []
     concurrent_ms = []
+    rate_limited_ms = []
+    rate_limited_posts = []
     with patch.object(FirebaseTokenVerifier, "__call__", side_effect=AssertionError("Firebase forbidden")), \
             patch.object(socket.socket, "connect", guarded_connect(socket.socket.connect, allowed_port)), \
             patch.object(socket.socket, "connect_ex", guarded_connect(socket.socket.connect_ex, allowed_port)), \
@@ -86,7 +93,8 @@ def main():
                 title = f"Synthetic forum question {run_id}-{index:03d}"
                 body = f"Synthetic body {run_id}-{index:03d}"
                 started = time.perf_counter_ns()
-                response = client.post("/social/forum/posts", headers={"Authorization": "Bearer author-token"}, json={"title": title, "body": body})
+                author_token = f"author-token-{index // 5}"
+                response = client.post("/social/forum/posts", headers={"Authorization": f"Bearer {author_token}"}, json={"title": title, "body": body})
                 create_ms.append((time.perf_counter_ns() - started) / 1_000_000)
                 if response.status_code != 201 or response.json().get("status") != "pending":
                     raise AssertionError("submission oracle mismatch")
@@ -128,7 +136,8 @@ def main():
             concurrent_posts = []
             for index in range(CONCURRENT_ROWS):
                 title = f"Concurrent synthetic question {run_id}-{index:03d}"
-                response = client.post("/social/forum/posts", headers={"Authorization": "Bearer author-token"}, json={"title": title, "body": f"Concurrent synthetic body {index}"})
+                author_token = f"author-token-{100 + index // 5}"
+                response = client.post("/social/forum/posts", headers={"Authorization": f"Bearer {author_token}"}, json={"title": title, "body": f"Concurrent synthetic body {index}"})
                 if response.status_code != 201 or response.json().get("status") != "pending":
                     raise AssertionError("concurrent fixture submission oracle mismatch")
                 concurrent_posts.append((UUID(response.json()["post_id"]), title, f"Concurrent synthetic body {index}"))
@@ -156,6 +165,25 @@ def main():
             if response.status_code != 200 or actual != expected:
                 raise AssertionError("concurrent approval feed oracle mismatch")
 
+            for index in range(5):
+                response = client.post(
+                    "/social/forum/posts", headers={"Authorization": "Bearer rate-limit-token"},
+                    json={"title": f"Rate-limit fixture {run_id}-{index}", "body": "Synthetic"},
+                )
+                if response.status_code != 201:
+                    raise AssertionError("rate-limit allowance oracle mismatch")
+                rate_limited_posts.append(UUID(response.json()["post_id"]))
+            started = time.perf_counter_ns()
+            response = client.post(
+                "/social/forum/posts", headers={"Authorization": "Bearer rate-limit-token"},
+                json={"title": f"Rate-limit overflow {run_id}", "body": "Synthetic"},
+            )
+            rate_limited_ms.append((time.perf_counter_ns() - started) / 1_000_000)
+            detail = response.json().get("detail", {})
+            if (response.status_code != 429 or response.headers.get("retry-after") != str(detail.get("retry_after_seconds"))
+                    or detail.get("code") != "forum_rate_limit_exceeded"):
+                raise AssertionError("rate-limit response oracle mismatch")
+
             with psycopg.connect(database_url) as connection:
                 states = dict(connection.execute(
                     "SELECT status, count(*) FROM social_forum_posts WHERE post_id = ANY(%s) GROUP BY status",
@@ -165,7 +193,10 @@ def main():
                 raise AssertionError("stored decision state oracle mismatch")
         finally:
             with psycopg.connect(database_url) as connection:
-                connection.execute("DELETE FROM social_forum_posts WHERE post_id = ANY(%s)", ([post_id for post_id, _, _ in created],))
+                connection.execute(
+                    "DELETE FROM social_forum_posts WHERE post_id = ANY(%s)",
+                    ([post_id for post_id, _, _ in created] + rate_limited_posts,),
+                )
 
     if percentile([1, 2, 3, 4], 0.99) != 4:
         raise AssertionError("nearest-rank tail percentile self-check failed")
@@ -175,6 +206,8 @@ def main():
         "rows_submitted": ROWS,
         "concurrent_rows_submitted": CONCURRENT_ROWS,
         "concurrent_moderation_workers": 8,
+        "rate_limit_denials": len(rate_limited_ms),
+        "rate_limit_denial_ms": round(rate_limited_ms[0], 3),
         "concurrent_moderation_total_ms": round(concurrent_total_ms, 3),
         "approved_rows_checked_per_feed": ROWS // 2 + CONCURRENT_ROWS,
         "rejected_rows_checked_per_feed": ROWS // 2,

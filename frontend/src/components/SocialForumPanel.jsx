@@ -15,6 +15,7 @@ export default function SocialForumPanel() {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
+  const [retryAfter, setRetryAfter] = useState(null)
   const [submitted, setSubmitted] = useState(false)
 
   const refresh = async () => {
@@ -43,9 +44,14 @@ export default function SocialForumPanel() {
     event.preventDefault()
     setBusy(true)
     setError(false)
+    setRetryAfter(null)
     setSubmitted(false)
     try {
       const result = await socialClient.createForumPost({ title, body })
+      if (result.status === 'rateLimited') {
+        setRetryAfter(result.retryAfterSeconds)
+        return
+      }
       if (result.status !== 'signedIn' || payload(result)?.status !== 'pending') throw new Error('submit failed')
       setTitle('')
       setBody('')
@@ -88,6 +94,7 @@ export default function SocialForumPanel() {
         <button type="submit" disabled={busy} className="rounded-lg bg-canvas-text px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('social.postSubmit')}</button>
         {submitted && <p role="status" className="text-sm text-green-300">{t('social.postPending')}</p>}
       </form>
+      {retryAfter !== null && <p role="alert" className="text-sm text-red-300">{t('social.rateLimited', { seconds: retryAfter })}</p>}
       {error && <p role="alert" className="text-sm text-red-300">{t('social.forumError')}</p>}
       <div className="space-y-3">
         {posts.map((post) => <article key={post.post_id} className="rounded-lg border border-canvas-line p-3">

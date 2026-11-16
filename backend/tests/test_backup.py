@@ -310,11 +310,13 @@ class BackupTests(unittest.TestCase):
             env=environment,
             capture_output=True,
             text=True,
-            check=True,
+            encoding="utf-8",
         )
+        self.assertEqual(result.returncode, 0, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
 
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
         self.assertIn("Yedek geri yüklendi.", result.stdout)
+        self.assertIn("Bu bilgisayarın yerel AI API anahtarı korundu.", result.stdout)
 
     def test_desktop_restore_command_preserves_key_and_snapshot(self):
         target = self.root / "desktop-data"

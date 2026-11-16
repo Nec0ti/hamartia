@@ -13,6 +13,7 @@ from app.services.data_lock import DataDirectoryBusy
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Restore a Hamartia backup ZIP")
     parser.add_argument("archive", type=Path, help="Path to hamartia-backup.zip")
     args = parser.parse_args()

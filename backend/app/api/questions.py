@@ -64,7 +64,9 @@ def build_question_agent_draft(
     prior_claims: list[dict[str, str]], current_claims: list[dict[str, str]],
 ):
     """Resolve one provider turn against host state and issue the next signed state if incomplete."""
-    if any(item["field"] != expected_field or not is_unique_latest_turn_quote(messages, item["quote"])
+    if any(item["field"] != expected_field or not is_unique_latest_turn_quote(
+            messages, item["quote"], language, expected_field,
+    )
            for item in current_claims):
         raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
     prepared = prepare_question_capture(messages, language, [*prior_claims, *current_claims])

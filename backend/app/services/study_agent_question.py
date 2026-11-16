@@ -89,10 +89,13 @@ def _occurrences(message: str, quote: str) -> list[tuple[int, int]]:
     return found
 
 
-def is_unique_latest_turn_quote(messages: list[str], quote: str) -> bool:
-    """A provider hint must quote the whole newest student turn, uniquely across the transcript."""
-    return bool(messages and quote == messages[-1]
-                and sum(len(_occurrences(message, quote)) for message in messages) == 1)
+def is_unique_latest_turn_quote(messages: list[str], quote: str, language: str, field: str) -> bool:
+    """Bind provider hints to the newest whole turn; repeated optional skips are safe by field order."""
+    if not messages or quote != messages[-1]:
+        return False
+    if field in {"subject", "topic"} and _is_skip(quote, language):
+        return True
+    return sum(len(_occurrences(message, quote)) for message in messages) == 1
 
 
 _META_INTENT = re.compile(
@@ -223,13 +226,23 @@ def prepare_question_capture(messages: list[str], language: str, evidence_claims
         field = QUESTION_FIELDS[expected_index] if expected_index < len(QUESTION_FIELDS) else None
         occurrences = [(index, start, end) for index, message in enumerate(messages)
                        for start, end in _occurrences(message, claim.quote)]
-        if field is not None and claim.field == field and len(occurrences) > 1:
+        repeated_optional_skip = (
+            claim.field in {"subject", "topic"} and _is_skip(claim.quote, language)
+        )
+        if field is not None and claim.field == field and len(occurrences) > 1 and not repeated_optional_skip:
             ambiguous[field] = [claim.quote]
             rejected.append({"field": field, "reason": "quote_not_unique_in_student_messages"})
             break
-        if field is None or claim.field != field or len(occurrences) != 1:
+        if (field is None or claim.field != field
+                or (len(occurrences) != 1 and not repeated_optional_skip)):
             rejected.append({"field": claim.field, "reason": "field_order_or_quote_ambiguous"})
             continue
+        if repeated_optional_skip:
+            occurrences = [item for item in occurrences if item[0] > last_turn]
+            if not occurrences:
+                ambiguous[field] = [claim.quote]
+                rejected.append({"field": field, "reason": "quote_not_in_next_student_turn"})
+                break
         turn, start, end = occurrences[0]
         if turn <= last_turn or claim.quote != messages[turn]:
             ambiguous[field] = [claim.quote]

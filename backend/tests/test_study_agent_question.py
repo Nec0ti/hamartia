@@ -111,6 +111,15 @@ class StudyAgentQuestionTests(unittest.TestCase):
         self.assertEqual(ready["verified_evidence"]["question_text"]["quote"], QUESTION_TEXT)
         self.assertEqual(ready["verified_evidence"]["subject"]["skipped"], True)
 
+        repeated_skip = prepare_question_capture([QUESTION_TEXT, "atla", "atla"], "tr", [
+            self.claim("question_text", QUESTION_TEXT), self.claim("subject", "atla"),
+            self.claim("topic", "atla"),
+        ])
+        self.assertEqual(repeated_skip["status"], "ready")
+        self.assertEqual(repeated_skip["fields"], {"question_text": QUESTION_TEXT, "subject": "", "topic": ""})
+        self.assertTrue(repeated_skip["verified_evidence"]["subject"]["skipped"])
+        self.assertTrue(repeated_skip["verified_evidence"]["topic"]["skipped"])
+
     def test_noncontent_hypothetical_future_and_uncertain_turns_do_not_preview(self):
         for text in (
             "Maybe I will save this question later.",
@@ -159,6 +168,25 @@ class StudyAgentQuestionTests(unittest.TestCase):
         self.assertEqual(correct_turn.json()["status"], "ready")
         self.assertEqual(correct_turn.json()["fields"]["topic"], "Geometry")
         self.assertEqual(self.rows(), [])
+
+    def test_same_skip_response_can_fill_each_optional_field_in_its_expected_turn(self):
+        first = self.draft_request([QUESTION_TEXT], "question_text", [self.claim("question_text", QUESTION_TEXT)], language="tr")
+        self.assertEqual(first.status_code, 200, first.text)
+        second = self.draft_request(
+            [QUESTION_TEXT, "atla"], "subject", [self.claim("subject", "atla")],
+            first.json()["state_token"], language="tr",
+        )
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(second.json()["expected_field"], "topic")
+        third = self.draft_request(
+            [QUESTION_TEXT, "atla", "atla"], "topic", [self.claim("topic", "atla")],
+            second.json()["state_token"], language="tr",
+        )
+        self.assertEqual(third.status_code, 200, third.text)
+        self.assertEqual(third.json()["status"], "ready")
+        self.assertEqual(third.json()["fields"], {"question_text": QUESTION_TEXT, "subject": "", "topic": ""})
+        self.assertTrue(third.json()["verified_evidence"]["subject"]["skipped"])
+        self.assertTrue(third.json()["verified_evidence"]["topic"]["skipped"])
 
     def test_empty_prior_state_cannot_advance_from_a_quote_in_an_older_turn(self):
         first_text = "A triangle has sides 3, 4, and 5. Find its perimeter."

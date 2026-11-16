@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict')
+const path = require('node:path')
 const test = require('node:test')
 const { EMPTY_SOCIAL_CONFIG, loadSocialPublicConfig, validateSocialPublicConfig } = require('../socialConfig.cjs')
 
@@ -33,7 +34,7 @@ test('desktop config loader reads only the generated public resource and ignores
       return JSON.stringify({ ...CONFIG, client_secret: 'must be ignored' })
     },
   })
-  assert.deepEqual(files, [['/app/resources/social-public-config.json', 'utf8']])
+  assert.deepEqual(files, [[path.join('/app/resources', 'social-public-config.json'), 'utf8']])
   assert.deepEqual(loaded, CONFIG)
   assert.equal('client_secret' in loaded, false)
 })

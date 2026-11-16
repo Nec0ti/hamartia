@@ -1,6 +1,6 @@
 ---
 name: hamartia-workflow
-description: Change workflow for the Hamartia YKS tracking app, local AI boundary, and benchmark process.
+description: Change workflow for Hamartia's study tool across curricula, its current TYT/AYT full-mock support, local AI boundary, and benchmark process.
 ---
 
 # Hamartia workflow

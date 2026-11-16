@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A system for locally tracking practice exam results, missed questions, and error patterns while preparing for YKS, and showing students what to review. The inspiration is 3-4-5 All Star, which offers a single platform for courses, exams, question solving, and progress. Hamartia will develop its own interface, data, and content flows.
+A local-first study tool for learners across curricula: record exam and practice results, save missed questions, recognize recurring errors, and plan review. Hamartia grew from Turkish YKS-preparation workflows, but the product is intended to be useful beyond one country, curriculum, or exam system. Current built-in full-mock entry supports TYT/AYT; single-subject exams and topic practice are generic, and subject/topic labels plus curriculum references are free-form. Users can select or define versioned exact-rational scoring profiles; older and profile-omitting records retain the legacy YKS rule. User-entered profiles and curriculum references do not represent official alignment.
 
 ## Needs previously described by the user
 

@@ -1,5 +1,10 @@
 # Backlog log
 
+## 2026-11-16 — global study-tool positioning
+
+- Updated the internal purpose, workflow skill description, README, and bilingual purpose/scope documentation to describe Hamartia as useful across curricula while accurately identifying TYT/AYT full mocks as the current built-in full-mock formats. Generic single-subject exams, free-form curriculum references, custom exact-rational scoring profiles, and legacy YKS scoring are distinguished without claims of official alignment.
+- Regenerated the English and Turkish pages and ran the offline documentation integrity benchmark: 17 routes per locale, 818 local links/assets, 156 exact evidence excerpts, zero errors, no network, no AI. No application or provider behavior changed. See [report](reports/2026-11-16-global-study-positioning.md).
+
 ## 2026-11-16 — CLI Study Agent record workflows
 
 - Extended the bounded JSON-lines host interface from read-only PracticeSession preparation to draft and separately approved create commands for PracticeSession, LearningEvidence, text-only Question, branch Exam, and sectioned TYT/AYT Exam. Each command reuses the existing strict Pydantic request schema and create/draft handler; approvals include the exact preview digest and stable approval UUID, and PracticeSession's derived proposal is recomputed on the host. Caller-supplied parsed values, unknown fields, missing approval, incomplete drafts, and ambiguous evidence are rejected or return localized follow-up questions without writes.

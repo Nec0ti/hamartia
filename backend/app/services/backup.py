@@ -278,7 +278,10 @@ def create_backup(data_dir, destination):
     with tempfile.TemporaryDirectory(prefix="hamartia-backup-snapshot-") as temp_root:
         snapshot_dir = Path(temp_root)
         with data_mutation_guard(data_dir):
-            secure_data_tree(data_dir)
+            try:
+                secure_data_tree(data_dir)
+            except OSError as exc:
+                raise BackupError(str(exc)) from exc
             _capture_backup_snapshot(data_dir, snapshot_dir)
         return _write_backup_archive(snapshot_dir, destination)
 
@@ -408,7 +411,10 @@ def restore_backup(archive_path, data_dir):
             raise BackupError("Refusing to replace a symbolic-link data directory")
         if data_dir.exists() and not data_dir.is_dir():
             raise BackupError("Data directory path is not a directory")
-        secure_data_tree(data_dir)
+        try:
+            secure_data_tree(data_dir)
+        except OSError as exc:
+            raise BackupError(str(exc)) from exc
         with tempfile.TemporaryDirectory(prefix=f".{data_dir.name}.restore-", dir=data_dir.parent) as temp_root:
             staged = Path(temp_root) / "data"
             manifest = extract_backup(archive_path, staged)

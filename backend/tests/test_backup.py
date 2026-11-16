@@ -103,7 +103,9 @@ class BackupTests(unittest.TestCase):
             files = {name: archive.read(name) for name in archive.namelist() if name != "manifest.json"}
             manifest = json.loads(archive.read("manifest.json"))
         files.pop("learning_evidence.json")
+        files.pop("learning_evidence_agent_approvals.json")
         manifest["files"] = [item for item in manifest["files"] if item["path"] != "learning_evidence.json"]
+        manifest["files"] = [item for item in manifest["files"] if item["path"] != "learning_evidence_agent_approvals.json"]
         with zipfile.ZipFile(legacy, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for name, raw in files.items():
                 archive.writestr(name, raw)
@@ -111,6 +113,10 @@ class BackupTests(unittest.TestCase):
         legacy_restored = self.root / "legacy-evidence-restored"
         restore_backup(legacy, legacy_restored)
         self.assertEqual(StorageService(legacy_restored).load_list("learning_evidence.json", LearningEvidence), [])
+        self.assertEqual(
+            StorageService(legacy_restored).load_doc("learning_evidence_agent_approvals.json", LearningEvidenceDeletedApprovalLedger),
+            LearningEvidenceDeletedApprovalLedger(),
+        )
 
     def test_backup_snapshot_freezes_running_timers_at_snapshot_time(self):
         state = ClockState(active_timer=ActiveClockTimer(

@@ -14,12 +14,14 @@ from app.api import backup, clock, cosmos, exam_profiles, exams, learning_eviden
 from app.core.config import DATA_DIR
 from app.core.http_errors import safe_validation_error_handler
 from app.services.data_lock import DataDirectoryLock
+from app.services.backup import recover_restore
 from app.services.private_storage import secure_data_tree
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with DataDirectoryLock(DATA_DIR):
+        recover_restore(DATA_DIR)
         secure_data_tree(DATA_DIR)
         yield
 

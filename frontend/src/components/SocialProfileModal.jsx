@@ -3,6 +3,7 @@ import Modal from './Modal'
 import { useI18n } from '../i18n.jsx'
 import socialClient from '../social/socialClient.js'
 import { AVATAR_PRESETS, emptyProfileDraft, profileDraftFromServer, validateProfileDraft } from '../social/profileDraft.js'
+import SocialForumPanel from './SocialForumPanel.jsx'
 
 const TEXT_FIELDS = [
   ['nickname', 'nickname_public', 'social.nickname', 80],
@@ -196,6 +197,7 @@ export default function SocialProfileModal({ open, onClose }) {
           </button>
         </div>
       ) : (
+        <>
         <form onSubmit={save} className="space-y-4">
           {TEXT_FIELDS.slice(0, 1).map(([field, visibility, label, max]) => (
             <div key={field}>
@@ -239,6 +241,8 @@ export default function SocialProfileModal({ open, onClose }) {
             <button type="submit" disabled={busy} className="rounded-lg bg-canvas-text px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('common.save')}</button>
           </div>
         </form>
+        <SocialForumPanel />
+        </>
       )}
 
       {error && !signedIn && <p role="alert" className="mt-4 text-sm text-red-300">{t(error)}</p>}

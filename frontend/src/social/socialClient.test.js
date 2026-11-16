@@ -109,6 +109,43 @@ test('withdrawing agreement permits local sign-out while profile access remains 
   assert.equal(requests.length, 0)
 })
 
+test('forum requests use fixed private routes and the same agreement and in-memory identity gates', async () => {
+  const probe = fakeSdk()
+  const requests = []
+  const client = createSocialClient({
+    desktopBridge: null,
+    environment: ENVIRONMENT,
+    buildEnabled: true,
+    browserAgreementVersion: 'v1-reviewed-test',
+    loadSdk: async () => probe.sdk,
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options })
+      const data = options.method === 'POST'
+        ? { post_id: '00000000-0000-0000-0000-000000000001', status: 'pending' }
+        : []
+      return { ok: true, status: 200, json: async () => data }
+    },
+  })
+  assert.deepEqual(await client.listForumPosts(), { status: 'disabled' })
+  assert.deepEqual(await client.createForumPost({ title: 'Title', body: 'Body' }), { status: 'disabled' })
+  assert.equal(requests.length, 0)
+  client.setAgreementAccepted(true)
+  await client.signIn()
+  assert.deepEqual(await client.listForumPosts(), { status: 'signedIn', data: [] })
+  assert.deepEqual(await client.createForumPost({ title: 'Title', body: 'Body' }), {
+    status: 'signedIn', data: { post_id: '00000000-0000-0000-0000-000000000001', status: 'pending' },
+  })
+  assert.deepEqual(await client.getModerationQueue(), { status: 'signedIn', data: [] })
+  await client.moderateForumPost('00000000-0000-0000-0000-000000000001', 'approved')
+  assert.deepEqual(requests.map(({ url, options }) => [url, options.method, options.cache, options.redirect]), [
+    ['/social/forum/posts?limit=50', 'GET', 'no-store', 'error'],
+    ['/social/forum/posts', 'POST', 'no-store', 'error'],
+    ['/social/forum/moderation?limit=50', 'GET', 'no-store', 'error'],
+    ['/social/forum/posts/00000000-0000-0000-0000-000000000001/moderation', 'PATCH', 'no-store', 'error'],
+  ])
+  assert.ok(requests.every(({ options }) => options.headers.authorization === 'Bearer firebase-id-token'))
+})
+
 test('web emulator is connected before popup use and unsafe emulator origins fail closed', async () => {
   const probe = fakeSdk()
   const client = createSocialClient({

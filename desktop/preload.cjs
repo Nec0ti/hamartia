@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('hamartiaDesktop', Object.freeze({
     signIn: (agreementVersion) => ipcRenderer.invoke('hamartia:social:sign-in', agreementVersion),
     getProfile: (agreementVersion) => ipcRenderer.invoke('hamartia:social:get-profile', agreementVersion),
     patchProfile: (patch, agreementVersion) => ipcRenderer.invoke('hamartia:social:patch-profile', patch, agreementVersion),
+    listForumPosts: (agreementVersion) => ipcRenderer.invoke('hamartia:social:list-forum-posts', agreementVersion),
+    createForumPost: (post, agreementVersion) => ipcRenderer.invoke('hamartia:social:create-forum-post', post, agreementVersion),
+    getModerationQueue: (agreementVersion) => ipcRenderer.invoke('hamartia:social:get-moderation-queue', agreementVersion),
+    moderateForumPost: (postId, decision, agreementVersion) => ipcRenderer.invoke('hamartia:social:moderate-forum-post', postId, decision, agreementVersion),
     signOut: () => ipcRenderer.invoke('hamartia:social:sign-out'),
   }),
   chatgpt: Object.freeze({

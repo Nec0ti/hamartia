@@ -131,6 +131,34 @@ async def exam_agent_create(payload: AgentExamCreateRequest, storage: StorageSer
     if profile != payload.scoring_profile_snapshot:
         raise HTTPException(status_code=409, detail="The scoring profile changed. Review the exam preview again.")
     claims = [item.model_dump() for item in payload.evidence_claims]
+    approval_prefix = f"exam_agent_{payload.approval_id.hex}_"
+    fingerprint_body = {
+        "messages": payload.messages,
+        "language": payload.language,
+        "expected_exam_field": payload.expected_exam_field,
+        "evidence_claims": claims,
+        "fields": payload.fields.model_dump(),
+        "evidence": payload.evidence,
+        "scoring_profile_snapshot": profile.model_dump(),
+        "derived": payload.derived,
+        "preview_digest": payload.preview_digest,
+    }
+    fingerprint = hashlib.sha256(json.dumps(
+        fingerprint_body, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    record_id = f"{approval_prefix}{fingerprint}"
+    # An approval ID already consumed by a different body is a replay conflict,
+    # even if the altered preview itself no longer validates. Exact retries may
+    # return the row; both paths are rechecked again under the append lock below.
+    with data_mutation_guard(storage.data_dir):
+        ledger = storage.load_doc(AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger) or ExamDeletedApprovalLedger()
+        if payload.approval_id in ledger.approval_ids:
+            raise HTTPException(status_code=409, detail="This approved exam was deleted and cannot be recreated by replay.")
+        existing = next((item for item in storage.load_list("exams.json", Exam) if item.id.startswith(approval_prefix)), None)
+        if existing is not None:
+            if existing.id == record_id:
+                return existing
+            raise HTTPException(status_code=409, detail="This approval ID was already used for different exam data.")
     if not claims or len(claims) > len(EXAM_FIELDS):
         raise HTTPException(status_code=422, detail="Branch-exam evidence must contain at most seven verified field quotes.")
     if not claims or claims[-1]["message_index"] != len(payload.messages) - 1:
@@ -151,22 +179,6 @@ async def exam_agent_create(payload: AgentExamCreateRequest, storage: StorageSer
     if prepared["preview_digest"] != payload.preview_digest:
         raise HTTPException(status_code=409, detail="The exam preview changed. Review it again before saving.")
 
-    approval_prefix = f"exam_agent_{payload.approval_id.hex}_"
-    fingerprint_body = {
-        "messages": payload.messages,
-        "language": payload.language,
-        "expected_exam_field": payload.expected_exam_field,
-        "evidence_claims": claims,
-        "fields": payload.fields.model_dump(),
-        "evidence": payload.evidence,
-        "scoring_profile_snapshot": profile.model_dump(),
-        "derived": payload.derived,
-        "preview_digest": payload.preview_digest,
-    }
-    fingerprint = hashlib.sha256(json.dumps(
-        fingerprint_body, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
-    ).encode("utf-8")).hexdigest()
-    record_id = f"{approval_prefix}{fingerprint}"
     record_fields = payload.fields.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"})
     created_record = Exam(
         id=record_id,

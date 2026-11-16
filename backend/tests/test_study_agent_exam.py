@@ -219,7 +219,7 @@ class StudyAgentExamTests(unittest.TestCase):
         altered = dict(body)
         altered["fields"] = dict(body["fields"], correct=24)
         conflict = self.client.post("/exams/agent-create", json=altered)
-        self.assertEqual(conflict.status_code, 422, conflict.text)
+        self.assertEqual(conflict.status_code, 409, conflict.text)
         self.assertEqual(len(self.rows()), 1)
 
     def test_concurrent_same_approval_creates_one_row_and_delete_tombstone_blocks_replay(self):

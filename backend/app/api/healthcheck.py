@@ -20,6 +20,6 @@ async def ready():
     try:
         svc = StorageService(DATA_DIR)
         svc.load_list("exams.json", __import__("app.models.schemas", fromlist=["Exam"]).Exam)
-        return {"status": "ready", "data_dir": str(DATA_DIR)}
-    except Exception as exc:
-        return {"status": "not_ready", "error": str(exc)}
+        return {"status": "ready"}
+    except Exception:
+        return {"status": "not_ready", "error": "Data storage is unavailable."}

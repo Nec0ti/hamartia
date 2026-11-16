@@ -8,3 +8,7 @@
 - Before considering a feature complete, run the relevant checks and save the result under `reports/`.
 - Update API and UI contracts together; search for existing client calls before changing shared code.
 - Do not copy the names or content of external learning platforms; keep Hamartia's data and user flows original.
+- Keep repository source, internal docs, reports, PR descriptions, and workflow messages in English. Public GitHub Release notes must be detailed and bilingual (English and Turkish).
+- Every PR merged to `master` must fill the marked release summary in its body. Describe only changes supported by the PR and its verification: highlights, behavior and reason, how to use (or why no action applies), compatibility/migration, verification, and what was not run or remains limited. State explicitly when a PR is docs-only or internal-only; do not imply a user-facing feature or behavior change. The release workflow validates every field in both languages and will fail rather than invent missing details.
+- Release-summary fields support plain paragraphs and simple ordered/unordered lists. The publisher escapes Markdown and HTML in field content and PR titles, so headings, links, code formatting, tables, and raw HTML are shown as text; do not rely on embedded formatting.
+- Do not rewrite older `RELEASES.md` entries as part of unrelated work. Preserve the automatic ARETE release-after-merge workflow.

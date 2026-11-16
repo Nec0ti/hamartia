@@ -76,6 +76,7 @@
 - [x] Build Windows 10/11-targeted, Debian (`.deb`), and AppImage packages with app data scoped to each platform's per-user directory. CI package-install/launch/cleanup checks passed on Windows Server 2022 and Ubuntu 22.04; separate frozen-backend smokes verified persistence on those CI environments.
 - [ ] Manually verify install, launch, and synthetic-record persistence on separate physical consumer devices running Windows 10 and Windows 11 individually, plus a separate physical Debian desktop for `.deb` install and AppImage launch/persistence; CI runner results do not complete these checks ([manual run template](reports/2026-11-15-external-manual-verification-template.md)).
 - [x] Publish a GitHub Release after each merged PR with a bilingual release note and sequential themed code (`ARETE-001`, `ARETE-002`, ...). PR #5 produced ARETE-001 and PR #8 produced ARETE-004 automatically; later sequential allocations can be verified by subsequent merged PRs.
+- [x] Require detailed factual English/Turkish release summaries in every merged PR, covering highlights, behavior/reason, use, compatibility/migration, verification, and not-run checks/known limits; generate public notes from that PR content and state docs-only/internal-only changes truthfully ([report](reports/2026-11-16-detailed-bilingual-release-notes.md)).
 - [x] Keep source code, internal Markdown, PRs, and other GitHub prose in English; keep `RELEASES.md` bilingual.
 
 ## P5 — study agent

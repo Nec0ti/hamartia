@@ -7,10 +7,11 @@ from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock
 
-from app.api import learning_evidence
+from app.api import learning_evidence, study_agent
 from app.core.http_errors import safe_validation_error_handler
-from app.models.schemas import LearningEvidence
+from app.models.schemas import LearningEvidence, Settings
 from app.services.study_agent_learning_evidence import dispatch_provider_tool, prepare_learning_evidence
 from app.services.storage import StorageService
 
@@ -104,7 +105,10 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
     def test_negated_hypothetical_uncertain_and_noncompletion_activity_are_no_write(self):
         for activity in (
             "I might read chapter 2 tomorrow.",
+            "I completed nothing today.",
+            "If I had time, I completed a chapter.",
             "I did not complete chapter 2.",
+            "I read chapter 2.",
             "Maybe I completed the chapter?",
             "Yarın bölümü çalışacağım.",
             "Bölümü henüz tamamlamadım.",
@@ -124,6 +128,20 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
                 })
                 self.assertNotEqual(response.status_code, 201)
                 self.assertEqual(self.rows(), [])
+
+    def test_turkish_explicit_past_activity_is_accepted(self):
+        messages = ["Bugün sekiz soru çözdüm.", "Biyoloji", "Hücre bölünmesi", "2026-11-16", "Şemaları karşılaştırınca aşamaları ayırt etmek kolaylaştı."]
+        claims = [
+            {"field": "activity", "quote": messages[0]},
+            {"field": "subject", "quote": messages[1]},
+            {"field": "topic", "quote": messages[2]},
+            {"field": "date", "quote": messages[3]},
+            {"field": "observation", "quote": messages[4]},
+        ]
+        result = prepare_learning_evidence(messages, "tr", claims)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["fields"]["activity"], messages[0])
+        self.assertEqual(result["language"], "tr")
 
     def test_quote_must_be_unique_and_match_expected_turn(self):
         duplicated = [*MESSAGES, "Biology"]
@@ -155,6 +173,24 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         self.assertEqual(result["fields"]["reference_url"], "")
         self.assertTrue(result["rejected_claims"])
 
+        malformed_url_messages = [*MESSAGES]
+        malformed_url_messages[4] += " https://bad!.example/path"
+        malformed_url_claims = [*CLAIMS, {"field": "reference_url", "quote": "https://bad!.example/path"}]
+        result = prepare_learning_evidence(malformed_url_messages, "en", malformed_url_claims)
+        self.assertEqual(result["status"], "ambiguous")
+        self.assertIsNone(result["preview_digest"])
+        self.assertIn("reference_url", result["ambiguous"])
+
+        duplicate_url_claims = [*CLAIMS,
+            {"field": "reference_url", "quote": "https://example.org/notes"},
+            {"field": "reference_url", "quote": "https://example.org/notes"},
+        ]
+        url_messages = [*MESSAGES]
+        url_messages[4] += " https://example.org/notes"
+        result = prepare_learning_evidence(url_messages, "en", duplicate_url_claims)
+        self.assertEqual(result["status"], "ambiguous")
+        self.assertIsNone(result["preview_digest"])
+
     def test_preview_requires_exact_explicit_approval_and_recomputes(self):
         draft = self.draft()
         self.assertEqual(self.rows(), [])
@@ -179,7 +215,7 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         stale = dict(body)
         stale["fields"] = {**stale["fields"], "observation": "a changed approved value"}
         response = self.client.post("/learning-evidence/agent-create", json=stale)
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 409)
         self.assertEqual(len(self.rows()), 1)
 
     def test_same_approval_concurrently_creates_one_row_and_replays_same_id(self):
@@ -190,6 +226,56 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         self.assertTrue(all(response.status_code == 201 for response in responses), [response.text for response in responses])
         self.assertEqual(len(self.rows()), 1)
         self.assertEqual(len({response.json()["id"] for response in responses}), 1)
+
+    def test_configured_provider_entrypoint_uses_mock_tool_hints_and_never_writes(self):
+        self.storage.save_doc("settings.json", Settings(
+            litellm_base_url="https://provider.example/v1", model_name="mock-model", api_key="",
+        ))
+        app = FastAPI()
+        app.add_exception_handler(__import__("fastapi").exceptions.RequestValidationError, safe_validation_error_handler)
+        app.include_router(study_agent.router)
+        with patch.object(study_agent, "DATA_DIR", self.data_dir), \
+             patch.object(learning_evidence, "DATA_DIR", self.data_dir), \
+             patch.object(study_agent, "AIService") as service:
+            fake = service.return_value
+            fake.base_url = "https://provider.example/v1"
+            fake.study_learning_evidence_prepare = AsyncMock(return_value={"evidence_claims": CLAIMS})
+            with TestClient(app) as client:
+                response = client.post("/study-agent/local", json={
+                    "consent": True,
+                    "message": MESSAGES[-1],
+                    "context": "",
+                    "language": "en",
+                    "endpoint": "https://provider.example/v1",
+                    "model_name": "mock-model",
+                    "has_api_key": False,
+                    "workflow": "learning-evidence-entry",
+                    "expected_evidence_field": "activity",
+                    "messages": MESSAGES,
+                })
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "ready")
+                self.assertEqual(self.rows(), [])
+
+                fake.study_learning_evidence_prepare = AsyncMock(return_value={
+                    "evidence_claims": [{"field": "subject", "quote": "Biology"}],
+                })
+                invalid = client.post("/study-agent/local", json={
+                    "consent": True,
+                    "message": MESSAGES[-1],
+                    "context": "",
+                    "language": "en",
+                    "endpoint": "https://provider.example/v1",
+                    "model_name": "mock-model",
+                    "has_api_key": False,
+                    "workflow": "learning-evidence-entry",
+                    "expected_evidence_field": "activity",
+                    "messages": ["Biology"],
+                })
+                self.assertEqual(invalid.status_code, 200)
+                self.assertEqual(invalid.json()["status"], "incomplete")
+                self.assertEqual(self.rows(), [])
+            self.assertEqual(fake.study_learning_evidence_prepare.await_count, 1)
 
 
 if __name__ == "__main__":

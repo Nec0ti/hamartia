@@ -79,7 +79,7 @@ def _occurrences(message: str, quote: str) -> list[tuple[int, int]]:
 
 
 _EN_COMPLETION = re.compile(
-    r"(?i)\bI\s+(?:(?:have|had)\s+)?(?:completed|finished|solved|read|reviewed|studied|practiced|"
+    r"(?i)\bI\s+(?:(?:have|had)\s+)?(?:completed|finished|solved|reviewed|studied|practiced|"
     r"practised|wrote|worked|built|tested|summarized|summarised|explained|answered|attempted|"
     r"watched|listened|applied|prepared|revised)\b"
 )
@@ -89,9 +89,9 @@ _TR_COMPLETION = re.compile(
 )
 _UNCERTAIN_OR_NEGATED = re.compile(
     r"(?i)(?:\b(?:not|never|didn't|didn.t|don't|don.t|haven't|haven.t|hasn't|hasn.t|hadn't|hadn.t|"
-    r"won't|won.t|might|maybe|perhaps|possibly|probably|would|could|plan(?:ned)?\s+to|intend\s+to|"
+    r"won't|won.t|might|maybe|perhaps|possibly|probably|would|could|if|nothing|none|no\s+(?:work|activities|tasks|exercises)|plan(?:ned)?\s+to|intend\s+to|"
     r"not\s+yet|haven't\s+finished|haven.t\s+finished)\b|"
-    r"\b(?:değil|degil|yapmadım|yapmadim|çözmedim|cozmedim|okumadım|okumadim|çalışmadım|calismadim|"
+    r"\b(?:değil|degil|hiçbir|hicbir|yapmadım|yapmadim|çözmedim|cozmedim|okumadım|okumadim|çalışmadım|calismadim|"
     r"bitirmedim|tamamlamadım|tamamlamadim|henüz|henüz|belki|olabilir|düşünüyorum|dusunuyorum|"
     r"planlıyorum|planliyorum|yapacağım|yapacagim|çözeceğim|cozecegim)\b|[?？])"
 )
@@ -232,15 +232,21 @@ def prepare_learning_evidence(
         expected_index += 1
 
     # Optional URLs are accepted only from exact, unique user text and validated without fetching.
-    for claim in parsed_claims:
-        if claim.field != "reference_url" or "reference_url" in accepted:
-            continue
+    url_claims = [claim for claim in parsed_claims if claim.field == "reference_url"]
+    if len(url_claims) > 1:
+        ambiguous["reference_url"] = [claim.quote for claim in url_claims]
+        rejected.extend({"field": "reference_url", "reason": "multiple_optional_url_claims"} for _ in url_claims)
+    for claim in url_claims[:1]:
         occurrences = [
             (index, start, end)
             for index, message in enumerate(messages)
             for start, end in _occurrences(message, claim.quote)
         ]
-        if len(occurrences) != 1:
+        if not occurrences:
+            rejected.append({"field": "reference_url", "reason": "url_quote_not_in_student_messages"})
+            continue
+        if len(occurrences) > 1:
+            ambiguous["reference_url"] = [claim.quote]
             rejected.append({"field": "reference_url", "reason": "url_quote_not_unique_in_student_messages"})
             continue
         turn, start, end = occurrences[0]
@@ -260,8 +266,8 @@ def prepare_learning_evidence(
 
     missing = [field for field in REQUIRED_FIELDS if field not in accepted and field not in ambiguous]
     # Only the next expected required field is actionable; do not accept later-field hints out of sequence.
-    if missing:
-        expected = REQUIRED_FIELDS[expected_index] if expected_index < len(REQUIRED_FIELDS) else missing[0]
+    if missing or "reference_url" in ambiguous:
+        expected = (REQUIRED_FIELDS[expected_index] if expected_index < len(REQUIRED_FIELDS) else missing[0]) if missing else "reference_url"
         questions = _questions(language, expected)
         status = "ambiguous" if expected in ambiguous else "incomplete"
         fields = dict(accepted)
@@ -278,20 +284,24 @@ def prepare_learning_evidence(
             missing = []
             questions = _questions(language, field)
             fields = {key: value for key, value in fields.items() if key != field}
+            expected = field
             digest = None
         else:
             fields = payload.model_dump()
             questions = []
             status = "ready"
+            expected = None
             digest = _digest(messages, language, fields, verified)
 
     return {
         "status": status,
+        "language": language,
         "fields": fields,
         "verified_evidence": verified,
         "evidence_claims": [{"field": item.field, "quote": item.quote} for item in parsed_claims],
         "missing": missing,
         "ambiguous": ambiguous,
+        "expected_field": expected,
         "questions": questions,
         "preview_digest": digest,
         "rejected_claims": rejected,

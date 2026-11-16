@@ -64,7 +64,6 @@ async def list_evidence(storage: StorageService = Depends(get_storage)):
 @router.post("/agent-draft")
 async def learning_evidence_agent_draft(
     payload: AgentLearningEvidenceDraftRequest,
-    storage: StorageService = Depends(get_storage),
 ):
     prepared = prepare_learning_evidence(
         payload.messages, payload.language, [item.model_dump() for item in payload.evidence_claims],
@@ -80,13 +79,13 @@ async def learning_evidence_agent_create(
     prepared = prepare_learning_evidence(
         payload.messages, payload.language, [item.model_dump() for item in payload.evidence_claims],
     )
-    if prepared["status"] != "ready":
-        raise HTTPException(status_code=422, detail="The learning-evidence preview is incomplete or ambiguous.")
-    if (payload.fields.model_dump() != prepared["fields"]
-            or payload.evidence != prepared["verified_evidence"]):
-        raise HTTPException(status_code=422, detail="The approved preview does not match the verified student evidence.")
-    if payload.preview_digest != prepared["preview_digest"]:
-        raise HTTPException(status_code=409, detail="The learning-evidence preview changed. Review it again before saving.")
+    invalid_preview = prepared["status"] != "ready"
+    field_mismatch = (
+        not invalid_preview
+        and (payload.fields.model_dump() != prepared["fields"]
+             or payload.evidence != prepared["verified_evidence"])
+    )
+    digest_mismatch = not invalid_preview and not field_mismatch and payload.preview_digest != prepared["preview_digest"]
 
     approval_body = {
         "messages": payload.messages,
@@ -103,9 +102,10 @@ async def learning_evidence_agent_create(
     record_id = f"{approval_prefix}{fingerprint}"
     result: list[LearningEvidence] = []
     changed_replay = False
+    invalid_request = ""
 
     def append_or_replay(records):
-        nonlocal changed_replay
+        nonlocal changed_replay, invalid_request
         prior = [item for item in records if item.id.startswith(approval_prefix)]
         if prior:
             replay = next((item for item in prior if item.id == record_id), None)
@@ -115,6 +115,15 @@ async def learning_evidence_agent_create(
                 result.append(replay)
                 return True
             changed_replay = True
+            return False
+        if invalid_preview:
+            invalid_request = "The learning-evidence preview is incomplete or ambiguous."
+            return False
+        if field_mismatch:
+            invalid_request = "The approved preview does not match the verified student evidence."
+            return False
+        if digest_mismatch:
+            invalid_request = "The learning-evidence preview changed. Review it again before saving."
             return False
         created = LearningEvidence(
             id=record_id,
@@ -128,6 +137,8 @@ async def learning_evidence_agent_create(
     storage.update_list("learning_evidence.json", LearningEvidence, append_or_replay)
     if changed_replay:
         raise HTTPException(status_code=409, detail="This approval ID was already used for different learning evidence.")
+    if invalid_request:
+        raise HTTPException(status_code=409 if digest_mismatch else 422, detail=invalid_request)
     if not result:
         raise HTTPException(status_code=500, detail="Could not save the learning-evidence record.")
     return result[0]

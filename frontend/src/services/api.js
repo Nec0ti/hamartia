@@ -67,6 +67,8 @@ export const clock = {
 
 export const questions = {
   list: () => client.get('/questions').then((r) => r.data),
+  agentDraft: (payload) => client.post('/questions/agent-draft', payload).then((r) => r.data),
+  agentCreate: (payload) => client.post('/questions/agent-create', payload).then((r) => r.data),
   insights: (today) => client.get('/questions/insights', { params: today ? { today } : {} }).then((r) => r.data),
   get: (id) => client.get(`/questions/${id}`).then((r) => r.data),
   upload: (file, ocrText, subject, topic, examContext = {}, curriculumReference = {}) => {

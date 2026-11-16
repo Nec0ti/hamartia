@@ -853,6 +853,31 @@ async function main(smokeRun) {
               window.__learningEvidenceDraftResponse = draft
               return { status: 'completed', draft }
             }
+            if (payload.workflow === 'question-entry') {
+              const field = payload.expected_question_field
+              const quote = payload.messages.at(-1)
+              const evidence_claims = field && quote ? [{ field, quote }] : []
+              window.__questionCaptureProviderCalls = [...(window.__questionCaptureProviderCalls || []), {
+                field, quote, language: payload.language,
+              }]
+              const response = await fetch(`${backendUrl}/questions/agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  messages: payload.messages, language: payload.language,
+                  expected_question_field: field,
+                  state_token: payload.question_state_token || null,
+                  evidence_claims,
+                }),
+                signal: AbortSignal.timeout(10_000),
+              })
+              const responseBody = await response.text()
+              window.__questionCaptureDraftResponses = (window.__questionCaptureDraftResponses || 0) + 1
+              window.__questionCaptureDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
+              window.__questionCaptureDraftResponse = draft
+              return { status: 'completed', draft }
+            }
             window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
@@ -954,6 +979,40 @@ async function main(smokeRun) {
       ['activity', 'en'], ['activity', 'en'], ['subject', 'en'], ['topic', 'en'], ['date', 'en'], ['observation', 'en'],
     ])
 
+    await page.getByLabel('Study Agent mode').selectOption('question-entry')
+    const questionCreateRequests = () => appRequests.filter((request) => request.path === '/questions/agent-create' && request.method === 'POST')
+    async function submitQuestionMessage(text, expectedQuestion) {
+      const responsesBefore = await page.evaluate(() => window.__questionCaptureDraftResponses || 0)
+      await page.getByLabel('Paste the exact problem text as one message').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'Send to OpenAI' }).click()
+      await page.waitForFunction((previous) => (window.__questionCaptureDraftResponses || 0) > previous, responsesBefore)
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    const englishQuestionText = 'If a rectangle has width 4 cm and length 7 cm, what is its area?'
+    await submitQuestionMessage(englishQuestionText, 'Which subject is this question from? If you do not know, type “skip”.')
+    assert.equal(await page.getByRole('button', { name: 'Approve this preview and save' }).count(), 0)
+    assert.equal(questionCreateRequests().length, 0)
+    await submitQuestionMessage('Mathematics', 'Which topic is this question about? If you do not know, type “skip”.')
+    await submitQuestionMessage('skip', null)
+    await page.getByRole('heading', { name: 'Proposed missed-question record' }).waitFor()
+    await page.getByText(englishQuestionText, { exact: true }).last().waitFor()
+    assert.equal(await page.getByText('Not provided', { exact: true }).count(), 1)
+    assert.equal(questionCreateRequests().length, 0)
+    const englishQuestionPreview = await page.evaluate(() => window.__questionCaptureDraftResponse)
+    assert.deepEqual(englishQuestionPreview.fields, { question_text: englishQuestionText, subject: 'Mathematics', topic: '' })
+    assert.equal(englishQuestionPreview.verified_evidence.question_text.quote, englishQuestionText)
+    assert.equal(englishQuestionPreview.verified_evidence.subject.quote, 'Mathematics')
+    assert.equal(englishQuestionPreview.verified_evidence.topic.skipped, true)
+    await page.getByRole('button', { name: 'Cancel this draft' }).click()
+    await page.getByText('Draft cancelled. Nothing was saved.', { exact: true }).waitFor()
+    assert.equal(questionCreateRequests().length, 0)
+    assert.equal((await (await localFetch(`${apiUrl}/questions`)).json()).some((record) => record.ocr_text === englishQuestionText), false)
+    const englishQuestionCalls = await page.evaluate(() => window.__questionCaptureProviderCalls || [])
+    assert.deepEqual(englishQuestionCalls.map(({ field, language }) => [field, language]), [
+      ['question_text', 'en'], ['subject', 'en'], ['topic', 'en'],
+    ])
+
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Asistanı' }).click()
@@ -1003,6 +1062,65 @@ async function main(smokeRun) {
       }
     }
     assert.deepEqual(await (await localFetch(`${apiUrl}/learning-evidence`)).json(), [])
+
+    await page.getByLabel('Çalışma Asistanı modu').selectOption('question-entry')
+    async function submitQuestionMessageTr(text, expectedQuestion) {
+      const responsesBefore = await page.evaluate(() => window.__questionCaptureDraftResponses || 0)
+      await page.getByLabel('Sorunun tam metnini tek mesaj olarak yapıştır').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'OpenAI’a gönder' }).click()
+      await page.waitForFunction((previous) => (window.__questionCaptureDraftResponses || 0) > previous, responsesBefore)
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    const turkishQuestionText = 'Bir dikdörtgenin kısa kenarı 4 cm, uzun kenarı 7 cm ise alanı kaç santimetrekaredir?'
+    await submitQuestionMessageTr(turkishQuestionText, 'Bu soru hangi dersten? Bilmiyorsan “atla” yaz.')
+    await submitQuestionMessageTr('atla', 'Bu soru hangi konuyla ilgili? Bilmiyorsan “atla” yaz.')
+    await submitQuestionMessageTr('atla', null)
+    const turkishQuestionDraftHttp = await page.evaluate(() => window.__questionCaptureDraftHttp)
+    assert.equal(turkishQuestionDraftHttp?.status, 200, JSON.stringify(turkishQuestionDraftHttp))
+    const turkishQuestionDraftMeta = await page.evaluate(() => {
+      const body = window.__questionCaptureDraftResponse
+      return { status: body?.status, expected_field: body?.expected_field, missing_count: body?.missing?.length, has_preview_digest: Boolean(body?.preview_digest) }
+    })
+    assert.equal(turkishQuestionDraftMeta.status, 'ready', JSON.stringify(turkishQuestionDraftMeta))
+    await page.getByRole('heading', { name: 'Önerilen kaçırılan soru kaydı' }).waitFor()
+    await page.getByText(turkishQuestionText, { exact: true }).last().waitFor()
+    const turkishQuestionPreview = await page.evaluate(() => window.__questionCaptureDraftResponse)
+    assert.deepEqual(turkishQuestionPreview.fields, { question_text: turkishQuestionText, subject: '', topic: '' })
+    assert.equal(turkishQuestionPreview.verified_evidence.subject.skipped, true)
+    assert.equal(turkishQuestionPreview.verified_evidence.topic.skipped, true)
+    assert.equal(questionCreateRequests().length, 0)
+    const turkishQuestionCalls = await page.evaluate(() => window.__questionCaptureProviderCalls || [])
+    assert.deepEqual(turkishQuestionCalls.slice(-3).map(({ field, language }) => [field, language]), [
+      ['question_text', 'tr'], ['subject', 'tr'], ['topic', 'tr'],
+    ])
+    await page.getByRole('button', { name: 'Bu önizlemeyi onayla ve kaydet' }).click()
+    await page.getByText('Kaçırılan soru kaydedildi. Sorular sekmesinde bulabilirsin.', { exact: true }).waitFor()
+    assert.equal(questionCreateRequests().length, 1)
+    const approvedQuestionBody = questionCreateRequests()[0].body
+    assert.deepEqual(approvedQuestionBody.fields, turkishQuestionPreview.fields)
+    assert.deepEqual(approvedQuestionBody.evidence, turkishQuestionPreview.verified_evidence)
+    assert.equal(approvedQuestionBody.preview_digest, turkishQuestionPreview.preview_digest)
+    assert.equal(approvedQuestionBody.approval_id.length, 36)
+    let approvedAgentQuestion
+    try {
+      const records = await (await localFetch(`${apiUrl}/questions`)).json()
+      approvedAgentQuestion = records.find((record) => record.id.startsWith(`q_agent_${approvedQuestionBody.approval_id.replaceAll('-', '')}_`))
+      assert.ok(approvedAgentQuestion)
+      assert.equal(approvedAgentQuestion.ocr_text, turkishQuestionText)
+      assert.equal(approvedAgentQuestion.subject, '')
+      assert.equal(approvedAgentQuestion.topic, '')
+      assert.equal(approvedAgentQuestion.image_path, '')
+      assert.equal(approvedAgentQuestion.analysis, null)
+    } finally {
+      if (approvedAgentQuestion) {
+        assert.equal((await localFetch(`${apiUrl}/questions/${approvedAgentQuestion.id}`, { method: 'DELETE' })).status, 200)
+      }
+    }
+    assert.equal((await (await localFetch(`${apiUrl}/questions`)).json()).some((record) => record.ocr_text === turkishQuestionText), false)
+    const tombstoneText = await fs.readFile(path.join(dataDir, 'question_agent_approvals.json'), 'utf8')
+    assert(!tombstoneText.includes(turkishQuestionText))
+    assert(!tombstoneText.includes('Biyoloji'))
     assert.deepEqual(externalRequestsBlocked, [])
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
@@ -1289,11 +1407,18 @@ async function main(smokeRun) {
     assert.equal(approvedAgentRequest.body.evidence_claims.length, 8)
     assert.equal(approvedAgentRequest.body.approval_id.length, 36)
     assert.equal(approvedAgentRequest.body.preview_digest.length, 64)
+    assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/questions/agent-')).map((request) => request.path), [
+      '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-draft',
+      '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-create',
+    ])
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
-    const localLearningEvidenceRoutes = new Set(['/learning-evidence/agent-draft', '/learning-evidence/agent-create'])
+    const localAgentRoutes = new Set([
+      '/learning-evidence/agent-draft', '/learning-evidence/agent-create',
+      '/questions/agent-draft', '/questions/agent-create',
+    ])
     assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-')
-      && !localLearningEvidenceRoutes.has(request.path)
+      && !localAgentRoutes.has(request.path)
       && (request.path.includes('/agent') || request.path.endsWith('/analyze'))))
     assert.deepEqual(failedResponses, [])
     assert.deepEqual(pageErrors, [])

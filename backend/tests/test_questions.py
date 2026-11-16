@@ -860,6 +860,56 @@ class QuestionFlowTests(unittest.TestCase):
         saved_settings = self.storage.load_doc("settings.json", Settings)
         self.assertEqual(saved_settings.model_name, "new-model")
 
+    def test_manual_tag_change_during_provider_call_survives_analysis_save(self):
+        self.storage.save_list("questions.json", [Question(
+            id="q-tag-race", ocr_text="approved prompt", hamartia_tag="[Knowledge Gap]",
+        )])
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(question_api.router)
+        app.dependency_overrides[question_api.get_storage] = lambda: self.storage
+        provider_entered = threading.Event()
+        release_provider = threading.Event()
+
+        async def blocked_provider(_prompt):
+            provider_entered.set()
+            if not await asyncio.to_thread(release_provider.wait, 5):
+                raise TimeoutError("test did not release mocked provider")
+            return json.dumps({
+                "verdict": {
+                    "root_cause": "synthetic diagnosis",
+                    "difficulty": 1,
+                    "hamartia_tag": "[Distractor Trap]",
+                },
+            })
+
+        provider = AsyncMock(side_effect=blocked_provider)
+
+        with TestClient(app) as client, patch.object(question_api.AIService, "_completions", new=provider):
+            preview = client.post("/questions/q-tag-race/analysis-preview")
+            self.assertEqual(preview.status_code, 200)
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                pending_analysis = executor.submit(
+                    client.post,
+                    "/questions/q-tag-race/analyze",
+                    json={"consent_id": preview.json()["consent_id"]},
+                )
+                self.assertTrue(provider_entered.wait(5), "mock provider did not reach its blocking point")
+                changed_tag = client.patch("/questions/q-tag-race/tag", json={
+                    "hamartia_tag": "[Reading Slip]",
+                })
+                self.assertEqual(changed_tag.status_code, 200)
+                release_provider.set()
+                response = pending_analysis.result(timeout=10)
+
+            self.assertEqual(response.status_code, 200)
+            provider.assert_awaited_once()
+
+        [saved] = self.storage.load_list("questions.json", Question)
+        self.assertEqual(saved.hamartia_tag, "[Reading Slip]")
+        self.assertEqual(saved.analysis.verdict.hamartia_tag, "[Distractor Trap]")
+
     def test_oversized_question_patch_validation_does_not_echo_private_text(self):
         app = FastAPI()
         app.add_exception_handler(RequestValidationError, safe_validation_error_handler)

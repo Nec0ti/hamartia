@@ -388,6 +388,7 @@ async def analyze_question(
     if _analysis_fingerprint(question, current_ai, current_prompt) != snapshot.fingerprint:
         raise HTTPException(status_code=409, detail="Question or endpoint settings changed; review the request again")
 
+    tag_at_dispatch = question.hamartia_tag
     try:
         analysis = await snapshot.ai.analyze_question(snapshot.question, prompt=snapshot.prompt)
     except OpenAIError as exc:
@@ -431,7 +432,13 @@ async def analyze_question(
                     stale_during_provider = True
                     return False
                 item.analysis = analysis
-                item.hamartia_tag = analysis.verdict.hamartia_tag
+                # The mistake tag is not part of the provider payload. Preserve
+                # a user's edit made after preview or while the provider waited.
+                if (
+                    item.hamartia_tag == snapshot.question.hamartia_tag
+                    and item.hamartia_tag == tag_at_dispatch
+                ):
+                    item.hamartia_tag = analysis.verdict.hamartia_tag
                 updated.append(item)
                 return True
         return False

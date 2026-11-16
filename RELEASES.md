@@ -1291,3 +1291,61 @@ Python derleme ve doküman üretimi, 34 rotalı Playwright doküman smoke testi,
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 AI\/model\/sağlayıcı çağrısı yapılmadı\. İnsanlarla bilgi bulma testi ve kapsamlı ekran okuyucu\/WCAG incelemesi beklemede\. Harici dokümantasyon bağlantıları taranmadı\.
+
+## ARETE-067
+
+## English
+
+`ARETE-067` — [PR #71](https://github.com/Nec0ti/hamartia/pull/71): Add sectioned exam benchmark to backend CI
+
+### Highlights
+
+This change updates repository verification and README presentation\. Backend CI now runs the existing persisted sectioned\-exam benchmark\. The README mark is smaller and selects the existing black or white logo for light and dark themes\. No application behavior changed\.
+
+### Behavior and why
+
+The backend job now checks sectioned TYT\/AYT Study Agent host processing, persistence, retries, concurrency, and result oracles on every CI run\. All provider entry points are patched to fail immediately, so this benchmark does not run a provider or local model\. The README adjustment improves logo visibility across themes\.
+
+### How to use
+
+No user action applies\. CI runs the benchmark automatically; the README logo displays automatically according to the viewer's color scheme\.
+
+### Compatibility / migration
+
+No application data, API, dependency, or migration changes\. Existing README rendering and CI workflows remain compatible\.
+
+### Verification
+
+The benchmark command passed locally in 14\.17 seconds on Python 3\.14\.8 with zero provider tripwire calls\. \`git diff \-\-check\` passed\. A recent successful backend job took 119 seconds; the new command is within the existing 15\-minute job timeout\. See the report for workload timings and runner\-version limits\.
+
+### Not run / known limitations
+
+The new GitHub Actions step has not run yet; PR CI is pending\. The local timing is from Python 3\.14\.8, while CI uses Python 3\.12, and runner timings may vary\. No application test suite, provider call, or local model execution was run\.
+
+## Türkçe
+
+`ARETE-067` — [PR #71](https://github.com/Nec0ti/hamartia/pull/71): Add sectioned exam benchmark to backend CI
+
+### Öne çıkanlar
+
+Bu değişiklik depo doğrulamasını ve README sunumunu günceller\. Backend CI artık mevcut kalıcı bölüm sınavı benchmark'ını çalıştırıyor\. README işareti küçültüldü ve açık\/koyu temalarda mevcut siyah veya beyaz logoyu seçiyor\. Uygulama davranışı değişmedi\.
+
+### Davranış ve nedeni
+
+Backend işi artık her CI çalıştırmasında bölüm içeren TYT\/AYT Study Agent akışının host işlemlerini, kalıcı kaydı, tekrarları, eşzamanlılığı ve sonuç oracle kontrollerini denetliyor\. Tüm sağlayıcı giriş noktaları hemen hata verecek şekilde yamalandığından benchmark sağlayıcı veya yerel model çalıştırmıyor\. README düzenlemesi, logonun iki temada da görünürlüğünü artırıyor\.
+
+### Kullanım
+
+Kullanıcının yapması gereken bir işlem yoktur\. Benchmark CI tarafından otomatik çalıştırılır; README logosu görüntüleyicinin renk şemasına göre otomatik seçilir\.
+
+### Uyumluluk / geçiş
+
+Uygulama verisinde, API'de, bağımlılıklarda veya geçiş sürecinde değişiklik yoktur\. Mevcut README gösterimi ve CI iş akışlarıyla uyumludur\.
+
+### Doğrulama
+
+Benchmark komutu Python 3\.14\.8 üzerinde yerel olarak 14,17 saniyede geçti ve sıfır sağlayıcı tripwire çağrısı bildirdi\. \`git diff \-\-check\` geçti\. Yakın tarihli başarılı bir backend işi 119 saniye sürdü; yeni komut mevcut 15 dakikalık iş zaman aşımı sınırına sığıyor\. İş yükü süreleri ve Python sürümü farkları raporda yer alıyor\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Yeni GitHub Actions adımı henüz çalışmadı; PR CI sonucu bekleniyor\. Yerel süre Python 3\.14\.8 ile ölçüldü, CI ise Python 3\.12 kullanıyor; runner süreleri değişebilir\. Uygulama test paketi, sağlayıcı çağrısı veya yerel model çalıştırılmadı\.

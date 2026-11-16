@@ -1059,3 +1059,61 @@ Belge oluşturucu başarıyla çalıştı\. Çevrimdışı belge bütünlüğü 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Uygulama derlemesi, insanlarla kullanılabilirlik\/arama veya ekran görüntüsü değerlendirmesi, AI\/sağlayıcı çalıştırması ya da resmî sınav\/program uyumu incelemesi yapılmadı\. Kullanıcı profilleri ve program referansları doğrulanmaz; yerleşik tam deneme desteği şu an TYT\/AYT ile sınırlıdır\.
+
+## ARETE-063
+
+## English
+
+`ARETE-063` — [PR #67](https://github.com/Nec0ti/hamartia/pull/67): docs\: assess social prototype legal and hosting readiness
+
+### Highlights
+
+Added an internal source review of the legal, privacy, provider, and hosting questions for Hamartia’s private social prototype\. Linked it from the existing social launch gate without marking any gate complete\.
+
+### Behavior and why
+
+No user\-facing behavior changed\. The report records current data boundaries and decisions that remain open before sign\-in, real\-user data, or public launch\.
+
+### How to use
+
+No user action applies\. Review the report and obtain qualified Turkish legal\/privacy and hosting advice before considering the existing launch gates\.
+
+### Compatibility / migration
+
+Not applicable\: no application code, data format, or runtime behavior changed\.
+
+### Verification
+
+The offline documentation integrity checker passed for 17 rendered routes per locale and 818 local links\/assets with zero errors\. \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+No application tests, server\/config inspection, provider contact, credential use, live sign\-in, deployment, or legal implementation was performed\. The social launch gates remain open\. The child\-regulation classification and its publication\/effective\-date discrepancy require qualified counsel\.
+
+## Türkçe
+
+`ARETE-063` — [PR #67](https://github.com/Nec0ti/hamartia/pull/67): docs\: assess social prototype legal and hosting readiness
+
+### Öne çıkanlar
+
+Hamartia’nın özel sosyal prototipi için hukuk, gizlilik, sağlayıcı ve barındırma sorularını ele alan kurum içi bir kaynak incelemesi eklendi\. Rapor mevcut sosyal lansman kapısına bağlandı; hiçbir kapı tamamlandı olarak işaretlenmedi\.
+
+### Davranış ve nedeni
+
+Kullanıcıya yönelik davranış değişmedi\. Rapor, mevcut veri sınırlarını ve oturum açma, gerçek kullanıcı verisi veya herkese açık lansmandan önce karara bağlanması gereken konuları kaydediyor\.
+
+### Kullanım
+
+Kullanıcı için ek bir işlem gerekmiyor\. Mevcut lansman kapıları değerlendirilmeden önce raporu inceleyin ve yetkin Türkiye hukuk\/gizlilik ve barındırma danışmanlığı alın\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\: uygulama kodu, veri biçimi veya çalışma zamanı davranışı değişmedi\.
+
+### Doğrulama
+
+Çevrimdışı belge bütünlüğü denetimi, her dilde 17 oluşturulmuş rota ve 818 yerel bağlantı\/varlık için sıfır hatayla geçti\. \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Uygulama testleri, sunucu\/yapılandırma incelemesi, sağlayıcılarla iletişim, kimlik bilgisi kullanımı, canlı oturum açma, dağıtım veya hukuki uygulama yapılmadı\. Sosyal lansman kapıları açık kaldı\. Çocuk düzenlemesinin sınıflandırması ve yayımlanma\/yürürlük tarihi tutarsızlığı yetkin hukuk danışmanının incelemesini gerektiriyor\.

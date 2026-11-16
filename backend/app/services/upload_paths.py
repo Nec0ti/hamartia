@@ -2,6 +2,8 @@
 
 from pathlib import Path, PurePosixPath
 
+from app.services.private_storage import secure_directory
+
 
 class UnsafeUploadPath(ValueError):
     """Raised when an upload path crosses a symbolic link or data boundary."""
@@ -14,7 +16,7 @@ def resolve_upload_root(data_dir: Path, *, create: bool = False) -> Path:
     if upload_root.is_symlink():
         raise UnsafeUploadPath("Question uploads directory must not be a symbolic link")
     if create:
-        upload_root.mkdir(parents=True, exist_ok=True)
+        secure_directory(upload_root)
     resolved = upload_root.resolve()
     expected = data_root / "uploads"
     if resolved != expected:

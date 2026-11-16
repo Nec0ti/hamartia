@@ -13,6 +13,7 @@ from typing import Annotated, Literal
 from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
+import os
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -33,6 +34,7 @@ from app.models.schemas import (
 )
 from app.services.ai_service import AIService, QuestionAnalysisPayloadTooLarge
 from app.services.question_analysis_consent import question_analysis_consents
+from app.services.private_storage import open_private_file
 from app.services.storage import StorageError, StorageService, data_mutation_guard
 from app.services.study_agent_question import (
     QuestionCaptureFields,
@@ -238,7 +240,8 @@ async def upload_question(
                     path = resolve_upload_root(DATA_DIR, create=True) / safe_name
                 except UnsafeUploadPath as exc:
                     raise HTTPException(status_code=500, detail=str(exc)) from exc
-                with path.open("xb") as image_file:
+                descriptor = open_private_file(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+                with os.fdopen(descriptor, "wb") as image_file:
                     image_file.write(contents)
             storage.append_list("questions.json", question, Question)
         except OSError as exc:

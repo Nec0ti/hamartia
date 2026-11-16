@@ -28,6 +28,7 @@ from app.services.backup import (
 )
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService, data_mutation_lock
+from app import main
 from desktop_server import restore_backup_command
 
 
@@ -193,6 +194,47 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(read_json(target / "practice_sessions.json")[0]["id"], "practice1")
         self.assertTrue(Path(result["snapshot"]).is_dir())
         self.assertEqual([exam["id"] for exam in read_json(Path(result["snapshot"]) / "exams.json")], ["current-exam"])
+
+        if os.name == "posix":
+            for path in (target, target / "uploads", Path(result["snapshot"]), Path(result["snapshot"]) / "uploads"):
+                self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+            for path in (target / "settings.json", target / "onboarding.json", target / "uploads/q1.png",
+                         Path(result["snapshot"]) / "settings.json"):
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX mode bits only")
+    def test_owner_only_modes_ignore_umask_and_restrict_existing_data(self):
+        previous_umask = os.umask(0o022)
+        try:
+            data_dir = self.root / "loose-data"
+            data_dir.mkdir(mode=0o755)
+            uploads = data_dir / "uploads"
+            uploads.mkdir(mode=0o755)
+            (data_dir / "settings.json").write_text('{"api_key":"local-secret"}', encoding="utf-8")
+            (data_dir / "onboarding.json").write_text('{"profile":{"nickname":"student"}}', encoding="utf-8")
+            (uploads / "question.png").write_bytes(b"image")
+
+            async def start_app():
+                async with main.lifespan(main.app):
+                    pass
+
+            with patch.object(main, "DATA_DIR", data_dir):
+                asyncio.run(start_app())
+            storage = StorageService(data_dir)
+            storage.save_doc("settings.json", Settings(api_key="local-secret"))
+            destination = self.root / "private-backup.zip"
+            create_backup(data_dir, destination)
+            restored = self.root / "restored-data"
+            restore_backup(destination, restored)
+
+            for path in (data_dir, uploads, restored, restored / "uploads"):
+                self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+            for path in (data_dir / "settings.json", data_dir / "onboarding.json", uploads / "question.png",
+                         destination, restored / "settings.json", restored / "onboarding.json",
+                         restored / "uploads/question.png"):
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        finally:
+            os.umask(previous_umask)
 
     def test_restore_to_empty_directory_uses_blank_api_key_and_has_no_snapshot(self):
         target = self.root / "new-device"

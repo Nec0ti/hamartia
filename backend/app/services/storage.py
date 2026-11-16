@@ -19,6 +19,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, List, TypeVar
 
+from app.services.private_storage import open_private_file, secure_directory
+
 T = TypeVar("T", bound=object)
 # shortcut: locks are process-local, use SQLite before enabling multiple workers.
 _FILE_LOCKS: dict[str, threading.Lock] = {}
@@ -111,7 +113,7 @@ class StorageError(RuntimeError):
 class StorageService:
     def __init__(self, data_dir: Path):
         self.data_dir = Path(data_dir)
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        secure_directory(self.data_dir)
     # -- internal helpers ---------------------------------------------------
 
     def _path(self, filename: str) -> Path:
@@ -151,7 +153,8 @@ class StorageService:
         path = self._path(filename)
         tmp = path.with_suffix(".tmp")
         try:
-            with open(tmp, "w", encoding="utf-8") as fh:
+            descriptor = open_private_file(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as fh:
                 fh.write(payload)
                 fh.flush()
                 os.fsync(fh.fileno())

@@ -34,6 +34,7 @@ class ProfileModelTests(unittest.TestCase):
     def test_patch_rejects_mass_assignment_unknown_fields_and_invalid_values(self):
         for data in (
             {"uid": "attacker"},
+            {"email": "claimed@example.invalid"},
             {"gender": "not-collected"},
             {"birth_date": "2008-01-01"},
             {"avatar_preset": "https://example.invalid/avatar.png"},
@@ -186,6 +187,7 @@ class PostgresSocialProfileTests(unittest.TestCase):
     def test_unknown_and_invalid_profile_values_do_not_persist(self):
         for body in (
             {"uid": self.uid_b, "nickname": "owner injection"},
+            {"email": "claimed@example.invalid"},
             {"gender": "x"},
             {"birth_date": "2008-02-03"},
             {"avatar_preset": "https://example.invalid/a.png"},

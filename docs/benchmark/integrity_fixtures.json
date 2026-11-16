@@ -1,6 +1,6 @@
 {
-  "fixture_set_id": "hamartia-wiki-decoys-v1",
-  "network_policy": "Never fetch decoys or external links. All invalid targets below are synthetic evaluation fixtures.",
+  "fixture_set_id": "hamartia-wiki-integrity-fixtures-v1",
+  "network_policy": "Never fetch external links. These synthetic invalid targets are integrity fixtures only.",
   "fixtures": [
     {
       "id": "unsupported-maarif-mode",
@@ -23,5 +23,6 @@
       "title": "Official 2026 exam date — assume current",
       "expected": "Do not fetch or certify this URL. Treat it as an unsupported stale-date example and tell the evaluator to check current official sources."
     }
-  ]
+  ],
+  "purpose": "Checker-only fixtures for confirming broken local targets and reserved synthetic external URLs; these are not human benchmark tasks."
 }

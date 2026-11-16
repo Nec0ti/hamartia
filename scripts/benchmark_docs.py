@@ -24,10 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 TASKS_PATH = DOCS / "benchmark" / "tasks.json"
 KEY_PATH = DOCS / "benchmark" / "answer_key.json"
-DECOYS_PATH = DOCS / "benchmark" / "decoys.json"
+FIXTURES_PATH = DOCS / "benchmark" / "integrity_fixtures.json"
 PROTOCOL_PATH = DOCS / "benchmark" / "README.md"
 CHECKER_PATH = Path(__file__).resolve()
-DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-15-docs-benchmark-results.json"
+DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-16-docs-benchmark-hardening-results.json"
 LOCALES = ("en", "tr")
 EXPECTED_PAGE_COUNT = 17
 
@@ -147,7 +147,7 @@ def file_sha256(path: Path) -> str:
 
 def verify_hash_sensitivity(rendered_files: list[Path]) -> dict:
     """In-memory perturbations prove each tracked input affects its digest."""
-    task_files = [TASKS_PATH, KEY_PATH, DECOYS_PATH]
+    task_files = [TASKS_PATH, KEY_PATH, FIXTURES_PATH]
     task_entries = [(path.relative_to(ROOT).as_posix(), path.read_bytes()) for path in task_files]
     original_task_digest = digest_entries(task_entries)
     for index, (relative_path, content) in enumerate(task_entries):
@@ -394,16 +394,18 @@ def run_integrity() -> dict:
 
     tasks = read_json(TASKS_PATH)
     key = read_json(KEY_PATH)
-    decoys = read_json(DECOYS_PATH)
+    fixtures = read_json(FIXTURES_PATH)
     if tasks.get("task_set_id") != key.get("task_set_id"):
         errors.append("Task workbook and answer key task_set_id differ")
-    if tasks.get("version") != 1:
-        errors.append("Task set version must be explicitly versioned as 1")
+    if tasks.get("version") != 2:
+        errors.append("Task set version must be explicitly versioned as 2")
     scoring = key.get("scoring", {})
-    if (scoring.get("points_per_task"), scoring.get("points_per_locale"), scoring.get("points_total")) != (5, 50, 100):
-        errors.append("Rubric point totals must be five per task, 50 per locale, and 100 overall")
+    if (scoring.get("points_per_task"), scoring.get("points_per_locale"), scoring.get("points_total")) != (5, 65, 130):
+        errors.append("Rubric point totals must be five per task, 65 per locale, and 130 overall")
+    if scoring.get("threshold_status") != "provisional_pending_human_pilot":
+        errors.append("Human score thresholds must be marked provisional pending the pilot")
     if (scoring.get("minimum_total_percent"), scoring.get("minimum_each_locale_percent"), scoring.get("critical_tasks_require_full_credit")) != (90, 85, True):
-        errors.append("Human gates must remain 90% overall, 85% per locale, and full credit on critical tasks")
+        errors.append("Provisional human gates must remain 90% overall, 85% per locale, and full credit on critical tasks")
     task_entries = tasks.get("tasks", [])
     key_entries = key.get("tasks", [])
     task_pairs: dict[str, set[str]] = {}
@@ -419,10 +421,10 @@ def run_integrity() -> dict:
             ui_task_counts[task["locale"]] += 1
         if not task.get("prompt", "").strip():
             errors.append(f"Task {task.get('id')!r}/{task.get('locale')!r} has no prompt")
-    if len(task_pairs) != 10 or any(locales != set(LOCALES) for locales in task_pairs.values()):
-        errors.append("Task corpus must contain 10 EN/TR paired prompts")
-    if len(task_entries) != 20:
-        errors.append(f"Expected 20 task prompts, got {len(task_entries)}")
+    if len(task_pairs) != 13 or any(locales != set(LOCALES) for locales in task_pairs.values()):
+        errors.append("Task corpus must contain 13 EN/TR paired prompts")
+    if len(task_entries) != 26:
+        errors.append(f"Expected 26 task prompts, got {len(task_entries)}")
     if any(count != 1 for count in ui_task_counts.values()):
         errors.append("Each locale must have exactly one fixed-viewport screenshot task")
     key_pairs: dict[tuple[str, str], dict] = {}
@@ -478,8 +480,14 @@ def run_integrity() -> dict:
                 section_text = normalized(" ".join(target_parser.sections[anchor]))
                 if not quote or normalized(quote) not in section_text:
                     errors.append(f"Evidence excerpt not found in rendered target section: {target_locale}/{page}#{anchor}: {quote!r}")
-    if len(key_entries) != 20 or len(key_pairs) != 20:
-        errors.append("Answer key must contain 20 unique localized rubrics")
+    if len(key_entries) != 26 or len(key_pairs) != 26:
+        errors.append("Answer key must contain 26 unique localized rubrics")
+    for task in task_entries:
+        if task.get("type") == "multi_page_synthesis":
+            entry = key_pairs.get((task.get("id"), task.get("locale")), {})
+            citation_pages = {evidence.get("page") for criterion in entry.get("criteria", []) for evidence in criterion.get("evidence", []) if evidence.get("source", "rendered_page") == "rendered_page"}
+            if len(citation_pages) < 2:
+                errors.append(f"Multi-page task {task.get('id')}/{task.get('locale')} cites fewer than two wiki pages")
     if set(key_pairs) != task_localized_ids:
         errors.append("Answer-key entries do not exactly cover the localized task prompts")
     task_critical = {(task.get("id"), task.get("locale")) for task in task_entries if task.get("critical")}
@@ -489,22 +497,22 @@ def run_integrity() -> dict:
     for locale in LOCALES:
         locale_total = sum(sum(c.get("points", 0) for c in entry.get("criteria", [])) for entry in key_entries if entry.get("locale") == locale)
         if locale_total != key.get("scoring", {}).get("points_per_locale"):
-            errors.append(f"{locale} rubric total should be 50, got {locale_total}")
-    if sum(sum(c.get("points", 0) for c in entry.get("criteria", [])) for entry in key_entries) != key.get("scoring", {}).get("points_total"):
-        errors.append("Overall rubric score should total 100")
+            errors.append(f"{locale} rubric total should be 65, got {locale_total}")
+    overall_total = sum(sum(c.get("points", 0) for c in entry.get("criteria", [])) for entry in key_entries)
+    if overall_total != key.get("scoring", {}).get("points_total"):
+        errors.append(f"Overall rubric total should be {key.get('scoring', {}).get('points_total')}, got {overall_total}")
 
-    decoy_entries = decoys.get("fixtures", [])
-    all_prompts = "\n".join(task.get("prompt", "") for task in task_entries)
-    for decoy in decoy_entries:
-        target = decoy.get("target", "")
-        kind = decoy.get("kind")
+    fixture_entries = fixtures.get("fixtures", [])
+    human_prompts = "\n".join(task.get("prompt", "") for task in task_entries)
+    for fixture in fixture_entries:
+        target = fixture.get("target", "")
+        if target and target in human_prompts:
+            errors.append(f"Checker-only integrity fixture is exposed in a participant prompt: {target}")
+        kind = fixture.get("kind")
         if kind == "broken_local_route":
             rel_target = target.removeprefix("docs/")
             if (DOCS / rel_target).exists():
-                errors.append(f"Expected synthetic broken route exists: {target}")
-            prompt_route = target.removeprefix("docs/").removesuffix("index.html")
-            if prompt_route not in all_prompts:
-                errors.append(f"Broken-route decoy is not mentioned in task prompts: {target}")
+                errors.append(f"Expected checker-only broken route exists: {target}")
         elif kind == "broken_local_anchor":
             route, _, anchor = target.partition("#")
             rel_target = route.removeprefix("docs/")
@@ -513,28 +521,23 @@ def run_integrity() -> dict:
             if target_path.is_file():
                 parser.feed(target_path.read_text(encoding="utf-8"))
                 if anchor in parser.ids:
-                    errors.append(f"Expected synthetic broken anchor exists: {target}")
+                    errors.append(f"Expected checker-only broken anchor exists: {target}")
             else:
-                errors.append(f"Broken-anchor fixture route unexpectedly absent: {target}")
-            prompt_anchor = target.removeprefix("docs/").replace("/index.html#", "/#")
-            if prompt_anchor not in all_prompts:
-                errors.append(f"Broken-anchor decoy is not mentioned in task prompts: {target}")
+                errors.append(f"Checker-only broken-anchor fixture route unexpectedly absent: {target}")
         elif kind == "synthetic_external_stale_link":
             if urlsplit(target).hostname != "example.invalid":
-                errors.append(f"Stale external fixture must use reserved example.invalid host: {target}")
-            if target.removeprefix("https://") not in all_prompts:
-                errors.append(f"Stale-link decoy is not mentioned in task prompts: {target}")
+                errors.append(f"External integrity fixture must use reserved example.invalid host: {target}")
         else:
-            errors.append(f"Unknown decoy kind: {kind!r}")
+            errors.append(f"Unknown integrity-fixture kind: {kind!r}")
 
     if errors:
         raise ValueError("\n".join(errors))
     rendered_files = [path for path in DOCS.rglob("*") if path.is_file() and "benchmark" not in path.relative_to(DOCS).parts]
     hash_sensitivity = verify_hash_sensitivity(rendered_files)
     return {
-        "benchmark": "hamartia-bilingual-docs-integrity-v1",
+        "benchmark": "hamartia-bilingual-docs-integrity-v2",
         "task_set_id": tasks["task_set_id"],
-        "task_pack_sha256": files_digest([TASKS_PATH, KEY_PATH, DECOYS_PATH], ROOT),
+        "task_pack_sha256": files_digest([TASKS_PATH, KEY_PATH, FIXTURES_PATH], ROOT),
         "rendered_wiki_sha256": files_digest(rendered_files, ROOT),
         "protocol_sha256": file_sha256(PROTOCOL_PATH),
         "checker_sha256": file_sha256(CHECKER_PATH),
@@ -552,7 +555,8 @@ def run_integrity() -> dict:
         "exact_evidence_excerpts_checked": evidence_count,
         "rendered_section_excerpts_checked": rendered_evidence_count,
         "human_protocol_excerpts_checked": protocol_evidence_count,
-        "synthetic_decoys_checked": len(decoy_entries),
+        "link_integrity_fixtures_checked": len(fixture_entries),
+        "human_thresholds": "provisional_pending_human_pilot",
         "task_prompts": len(task_entries),
         "critical_task_pairs": sorted(critical_ids),
         "human_task_runs": "pending",
@@ -569,8 +573,8 @@ def make_booklet(locale: str, seed: int) -> dict:
     random.Random(seed).shuffle(retrieval_tasks)
     selected = retrieval_tasks + screenshot_tasks
     instructions = {
-        "en": "Use the Hamartia wiki only. Cite page IDs and section anchors. Do not open external decoys or use AI/provider tools.",
-        "tr": "Yalnızca Hamartia wiki'sini kullan. Sayfa kimliklerini ve bölüm bağlantılarını belirt. Sentetik dış bağlantıları açma; yapay zekâ veya sağlayıcı araçlarını kullanma.",
+        "en": "Use the Hamartia wiki only. Cite page IDs and section anchors. Do not open external links or use AI/provider tools.",
+        "tr": "Yalnızca Hamartia wiki'sini kullan. Sayfa kimliklerini ve bölüm bağlantılarını belirt. Dış bağlantıları açma; yapay zekâ veya sağlayıcı araçlarını kullanma.",
     }
     return {
         "task_set_id": tasks["task_set_id"],

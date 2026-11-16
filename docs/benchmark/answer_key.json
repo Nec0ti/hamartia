@@ -1,13 +1,14 @@
 {
-  "task_set_id": "hamartia-wiki-retrieval-v1",
+  "task_set_id": "hamartia-wiki-retrieval-v2",
   "scoring": {
     "points_per_task": 5,
-    "points_per_locale": 50,
-    "points_total": 100,
+    "points_per_locale": 65,
+    "points_total": 130,
     "minimum_total_percent": 90,
     "minimum_each_locale_percent": 85,
     "critical_tasks_require_full_credit": true,
-    "human_response_scoring_only": true
+    "human_response_scoring_only": true,
+    "threshold_status": "provisional_pending_human_pilot"
   },
   "tasks": [
     {
@@ -29,31 +30,19 @@
         },
         {
           "points": 1,
-          "claim": "A saved missed question can include labels and optional exam context such as number, order, or time.",
+          "claim": "A saved missed question can include text or an image, subject/topic labels, and optional exam number/order/time context.",
           "evidence": [
             {
               "locale": "en",
               "page": "study-workflows",
               "anchor": "mistakes",
-              "quote": "optionally record exam question number, solve order, or time spent."
+              "quote": "Save text, attach a supported image, add subject/topic labels, and optionally record exam question number, solve order, or time spent."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Study Plan groups due questions and offers focused practice.",
-          "evidence": [
-            {
-              "locale": "en",
-              "page": "study-workflows",
-              "anchor": "practice",
-              "quote": "Study Plan groups due questions by topic, shows available mistake tags and exam-order counts, and offers focused practice."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "A completed set records date, subject/topic, answer counts, and time.",
+          "claim": "Each completed practice set stores the selected scoring-profile snapshot, date, subject/topic, answer counts, and time.",
           "evidence": [
             {
               "locale": "en",
@@ -65,13 +54,31 @@
         },
         {
           "points": 1,
-          "claim": "Blank answers are excluded from the answered-accuracy denominator.",
+          "claim": "Blanks are excluded from the answered-accuracy denominator.",
           "evidence": [
             {
               "locale": "en",
               "page": "study-workflows",
               "anchor": "practice",
               "quote": "Accuracy uses correct + incorrect, so blanks are excluded"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Practice trends summarize completed sets and do not demonstrate mastery from one result.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Practice trends summarize completed sets."
+            },
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "demonstrate mastery from a single result."
             }
           ]
         }
@@ -96,31 +103,19 @@
         },
         {
           "points": 1,
-          "claim": "Yanlış kaydına isteğe bağlı soru numarası, çözüm sırası veya süre eklenebilir.",
+          "claim": "Yanlış soru kaydı metin veya görseli, ders/konu etiketlerini ve isteğe bağlı deneme no/sıra/süre bağlamını içerebilir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "study-workflows",
               "anchor": "mistakes",
-              "quote": "istersen soru numarası, çözüm sırası veya süreyi de kaydet."
+              "quote": "Metin kaydet, desteklenen bir görsel ekle, ders/konu etiketleri ekle; istersen soru numarası, çözüm sırası veya süreyi de kaydet."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Çalışma Planı vadeli soruları gruplar ve odaklı çalışma başlatır.",
-          "evidence": [
-            {
-              "locale": "tr",
-              "page": "study-workflows",
-              "anchor": "practice",
-              "quote": "Çalışma Planı vadesi gelen soruları konuya göre gruplar"
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Tamamlanan set tarih, ders/konu, doğru/yanlış/boş sayısı ve süreyi kaydeder.",
+          "claim": "Tamamlanan çalışma seti seçili puanlama profili anlık görüntüsünü, tarihi, ders/konuyu, yanıt sayılarını ve süreyi saklar.",
           "evidence": [
             {
               "locale": "tr",
@@ -139,6 +134,24 @@
               "page": "study-workflows",
               "anchor": "practice",
               "quote": "Doğruluk paydası doğru + yanlıştır; boşlar hariçtir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma eğilimleri tamamlanan setleri özetler ve tek sonuçtan ustalık göstermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Çalışma eğilimleri tamamlanmış setleri özetler."
+            },
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "tek sonuçtan ustalık göstermez."
             }
           ]
         }
@@ -321,25 +334,37 @@
         },
         {
           "points": 1,
-          "claim": "XP, level, streak and orbit position do not establish mastery or future performance.",
+          "claim": "A level is derived from cumulative XP and is app progression, not a grade or learning score.",
           "evidence": [
             {
               "locale": "en",
               "page": "cosmos-and-progression",
-              "anchor": "limits",
-              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
+              "anchor": "levels",
+              "quote": "A level is derived from cumulative XP"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "These displays are navigation cues, not a judgment about the student.",
+          "claim": "The streak comes from saved exam dates and is not a record of every study activity; these displays do not establish mastery.",
           "evidence": [
             {
               "locale": "en",
               "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "The displayed streak is derived from dates on saved exam records."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "it is not a record of every study activity"
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
               "anchor": "limits",
-              "quote": "Use these displays as navigation cues only"
+              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
             }
           ]
         }
@@ -388,25 +413,37 @@
         },
         {
           "points": 1,
-          "claim": "XP, seviye, seri ve yörünge ustalığı veya gelecekteki performansı kanıtlamaz.",
+          "claim": "Seviye toplam XP’den türetilir; uygulama ilerlemesidir, not veya öğrenme puanı değildir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "cosmos-and-progression",
-              "anchor": "limits",
-              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
+              "anchor": "levels",
+              "quote": "Seviye toplam XP'den türetilir"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Göstergeler yalnızca gezinme ipucudur ve öğrenci hakkında hüküm değildir.",
+          "claim": "Seri kaydedilen deneme tarihlerinden hesaplanır ve her çalışmanın kaydı değildir; bu göstergeler ustalığı kanıtlamaz.",
           "evidence": [
             {
               "locale": "tr",
               "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "Gösterilen seri, kaydedilmiş deneme tarihlerinden hesaplanır."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "her çalışma etkinliğinin kaydı değildir"
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
               "anchor": "limits",
-              "quote": "Bu görünümleri yalnızca gezinme ipucu olarak kullan"
+              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
             }
           ]
         }
@@ -649,8 +686,14 @@
         },
         {
           "points": 1,
-          "claim": "Due events are reconciled while the app is running, including another selected tab; overdue reminders stay visible.",
+          "claim": "Due events reconcile while another Hamartia tab is selected, and overdue reminders remain visible in Clock.",
           "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Due events are reconciled while the app is running, including when another Hamartia tab is selected."
+            },
             {
               "locale": "en",
               "page": "clock-and-reminders",
@@ -716,8 +759,14 @@
         },
         {
           "points": 1,
-          "claim": "Geciken hatırlatıcılar Saat'te görünür kalır.",
+          "claim": "Başka bir Hamartia sekmesi seçiliyken de vadeli olaylar denetlenir; geciken hatırlatıcılar Saat’te görünür kalır.",
           "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Vadeli olaylar uygulama açıkken, Hamartia'nın başka sekmesi seçiliyken de denetlenir."
+            },
             {
               "locale": "tr",
               "page": "clock-and-reminders",
@@ -1003,13 +1052,25 @@
       "criteria": [
         {
           "points": 1,
-          "claim": "The wiki denies official/verified Maarif alignment.",
+          "claim": "Maarif is a curriculum framework, not a national-exam name; Hamartia does not import MEB curriculum text or make verified alignment.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "maarif",
-              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
+              "quote": "Türkiye Yüzyılı Maarif Modeli is a curriculum framework and assessment approach, not a national-exam name. Hamartia does not import MEB curriculum text or make official/verified alignment."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Scoring profile names and rules are user configuration, not official rules or verified alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "These labels and rules are user configuration, not official exam or national rules and not verified alignment with an authority or Maarif."
             }
           ]
         },
@@ -1027,31 +1088,19 @@
         },
         {
           "points": 1,
-          "claim": "An old exam-date link is not certified current; check current official pages for later dates.",
+          "claim": "The wiki lists a 2026 YKS schedule and 2026 LGS guide in its official context references.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "adapt",
-              "quote": "Check current official pages for later dates."
+              "quote": "2026 YKS schedule · 2026 LGS guide (PDF)"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "The wiki says Hamartia does not import MEB curriculum text or make official/verified alignment, so the decoy’s verified-scoring promise is unsupported.",
-          "evidence": [
-            {
-              "locale": "en",
-              "page": "exam-formats-and-maarif",
-              "anchor": "maarif",
-              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Do not state an unverified current external date or treat the decoy route as an authoritative source.",
+          "claim": "The wiki does not certify a cited date as current; it directs readers to current official pages for later dates.",
           "evidence": [
             {
               "locale": "en",
@@ -1070,19 +1119,31 @@
       "criteria": [
         {
           "points": 1,
-          "claim": "Wiki resmî/doğrulanmış Maarif eşleştirmesi olmadığını söyler.",
+          "claim": "Maarif ulusal sınav adı değil, öğretim programı ve ölçme yaklaşımdır; Hamartia MEB metnini içe aktarıp doğrulanmış eşleştirme yapmaz.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "maarif",
-              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
+              "quote": "Türkiye Yüzyılı Maarif Modeli bir öğretim programı ve ölçme-değerlendirme yaklaşımıdır; ulusal sınav adı değildir. Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Kullanıcı girişi dış adresler alınmaz veya doğrulanmaz.",
+          "claim": "Puanlama profili adları ve kuralları kullanıcı yapılandırmasıdır; resmî kurallar veya doğrulanmış eşleştirme değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Bu etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav veya ulusal kural, yetkili kurum ya da Maarif ile doğrulanmış eşleştirme değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kullanıcının girdiği dış adresler alınmaz veya doğrulanmaz.",
           "evidence": [
             {
               "locale": "tr",
@@ -1094,31 +1155,19 @@
         },
         {
           "points": 1,
-          "claim": "Eski sınav tarihi güncel onaylı değildir; sonraki tarihler için güncel resmî sayfalar kontrol edilir.",
+          "claim": "Wiki resmî kaynak bağlamında 2026 YKS takvimi ve 2026 LGS kılavuzunu listeler.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "adapt",
-              "quote": "Sonraki tarihler için güncel resmî sayfalara bak."
+              "quote": "2026 YKS takvimi · 2026 LGS kılavuzu (PDF)"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Wiki, Hamartia’nın MEB program metnini içe aktarmadığını ve resmî/doğrulanmış eşleştirme yapmadığını söyler; decoyun doğrulanmış puanlama vaadi desteklenmez.",
-          "evidence": [
-            {
-              "locale": "tr",
-              "page": "exam-formats-and-maarif",
-              "anchor": "maarif",
-              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Dış tarihi güncel diye sunma ve decoy rotayı yetkili kaynak sayma.",
+          "claim": "Wiki bağlantıdaki tarihi güncel diye onaylamaz; sonraki tarihler için güncel resmî sayfalara bak der.",
           "evidence": [
             {
               "locale": "tr",
@@ -1319,13 +1368,31 @@
         },
         {
           "points": 1,
-          "claim": "Time, streak, XP and timer use are not evidence of improved learning.",
+          "claim": "Time in app is not learning evidence; XP is activity progression, streaks derive from saved exam dates rather than all study, and Cosmos says neither establishes mastery.",
           "evidence": [
             {
               "locale": "en",
               "page": "learning-evidence",
               "anchor": "what-it-does-not",
               "quote": "Time in the app, streaks, XP, and timer use are not evidence of improved learning."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "This is app progression, not a grade or learning score."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "it is not a record of every study activity"
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
             }
           ]
         }
@@ -1386,13 +1453,455 @@
         },
         {
           "points": 1,
-          "claim": "Uygulama süresi, seri, XP ve zamanlayıcı kullanımı öğrenme artışını kanıtlamaz.",
+          "claim": "Uygulamada geçirilen süre öğrenme kanıtı değildir; XP etkinlik ilerlemesidir, seri her çalışma değil kayıtlı deneme tarihlerini yansıtır ve Cosmos bunların ustalığı kanıtlamadığını söyler.",
           "evidence": [
             {
               "locale": "tr",
               "page": "learning-evidence",
               "anchor": "what-it-does-not",
               "quote": "Uygulamada geçirilen süre, seri, XP ve zamanlayıcı kullanımı öğrenmenin arttığına kanıt değildir."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "Bu, uygulama ilerlemesidir; not veya öğrenme puanı değildir."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "her çalışma etkinliğinin kaydı değildir"
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Custom profile names and country labels are user configuration, not official exam rules or verified alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "These labels and rules are user configuration, not official exam or national rules and not verified alignment with an authority or Maarif."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Editing a profile creates a new version; saved records keep their original rule snapshot.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Saved exams keep a snapshot of that rule, so editing a profile creates a new version without changing old results."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Completed practice sets store scoring-profile snapshots and trends are separated by profile/version.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Each completed practice set stores the selected versioned scoring-profile snapshot"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Exam XP uses a fixed raw-count activity formula, while practice sets grant no XP.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "XP remains based on the fixed raw-count activity formula and is not a score or measure of mastery."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Neither score nor XP establishes mastery.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Neither score nor XP is evidence of mastery."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Özel profil adları ve ülke etiketleri kullanıcı yapılandırmasıdır; resmî kural veya doğrulanmış eşleştirme değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Bu etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav veya ulusal kural, yetkili kurum ya da Maarif ile doğrulanmış eşleştirme değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Profili düzenlemek yeni sürüm oluşturur; kayıtlı sonuçlar eski kural anlık görüntüsünü korur.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Kaydedilen deneme bu kuralın anlık görüntüsünü saklar; profili düzenlemek eski sonuçları değiştirmeden yeni sürüm oluşturur."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Tamamlanan çalışma setleri puanlama profili anlık görüntüsünü saklar ve eğilimler profil/sürüme göre ayrılır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Tamamlanan her çalışma seti seçilen sürümlü puanlama profilinin anlık görüntüsünü"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Deneme XP’si sabit ham-sayı etkinlik formülüne dayanır; çalışma setleri XP kazandırmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "XP sabit ham-sayı etkinlik formülüne dayanır; puan veya ustalık ölçüsü değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Puan ve XP ustalık kanıtı değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Puan veya XP ustalık kanıtı değildir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "After the consent screen, Study guidance sends the typed prompt and bounded saved-study summary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Study-guidance requests send the typed prompt plus a bounded summary of saved study counts"
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Before each Study Agent request, Hamartia displays a consent screen."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Prepare a practice set sends only student messages from that conversation, without saved records or summary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "The Prepare a practice set mode is different: it sends only student messages from that practice-entry conversation, with no saved study records or summary."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Review with AI uses the configured OpenAI-compatible endpoint, which may be local or remote.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "analysis",
+              "quote": "configured OpenAI-compatible endpoint, which may be local or remote."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Question analysis shows the saved question/OCR text and filename fields and whether image bytes are included; only approval sends one request.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "saved question/OCR text and filename fields, whether image bytes are included"
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "analysis",
+              "quote": "Approving sends one request; cancel sends none."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A configured endpoint can be remote; names or compatibility do not prove local inference.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Local-looking model names and OpenAI compatibility do not prove where inference runs or who can access the service."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Onay ekranından sonra çalışma rehberliği yazılan istemi ve sınırlı kayıtlı çalışma özetini gönderir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Çalışma rehberliği istekleri yazdığın istemi ve kaydedilmiş çalışma sayıları"
+            },
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma seti hazırla yalnızca konuşmadaki öğrenci mesajlarını gönderir; kayıt veya özet göndermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Çalışma seti hazırla modu farklıdır: bu konuşmada yalnızca öğrenci mesajlarını, kayıtlı çalışma verisi veya özeti olmadan gönderir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yapay zekâ ile incele yerel veya uzak olabilen yapılandırılmış OpenAI uyumlu uç noktayı kullanır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "Soru analizi kullanıcı tarafından ayrı başlatılır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Soru analizi kayıtlı soru/OCR metni ve dosya adı alanlarını, görsel verisinin eklenip eklenmediğini gösterir; yalnızca onay tek istek gönderir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "kayıtlı soru/OCR metni ve dosya adı alanlarını, görsel verisinin eklenip eklenmediğini"
+            },
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "Yalnızca açık onay tek istek gönderir; vazgeçmek sağlayıcı isteği göndermez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yapılandırılmış uç nokta uzak olabilir; model adı ve uyumluluk çıkarımın yerini kanıtlamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Yerel görünen model adları ve OpenAI uyumluluğu, çıkarımın nerede çalıştığını veya hizmete kimin erişebildiğini kanıtlamaz."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "en",
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Backups include records and settings except secret key material.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "The archive includes study records, learning-evidence reflections, optional local onboarding and student-profile data, question images, settings except secret key material, and Clock state."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "The configured endpoint API key is stored unencrypted in local settings and excluded from backups.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "credentials",
+              "quote": "The configured endpoint API key is stored unencrypted in local settings, not returned by the Settings API and not included in backups."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Restore validates paths, sizes, checksums, schemas, and referenced uploads before replacement.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Current restore validates archive paths, sizes, checksums, data schemas, and referenced uploads before replacing data."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A failed validation should leave current data in place.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "A failed validation should leave current data in place."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A successful restore replaces, rather than merges, current records and first snapshots the existing folder.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Restore replaces current study data; Hamartia first saves a timestamped snapshot of the existing data folder."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "tr",
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Yedekler kayıtları ve gizli anahtar malzemesi hariç ayarları içerir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "Arşiv çalışma kayıtlarını, öğrenme kanıtı yansımalarını, isteğe bağlı yerel ilk kullanım ve öğrenci profili verilerini, soru görsellerini, gizli anahtar malzemesi hariç ayarları ve Saat durumunu içerir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Uç nokta API anahtarı yerel ayarlarda şifrelenmeden tutulur ve yedeğe eklenmez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "credentials",
+              "quote": "Yapılandırılmış uç noktanın API anahtarı yerel ayarlarda şifrelenmeden tutulur, Ayarlar API'sinden döndürülmez ve yedeklere eklenmez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Geri yükleme değiştirmeden önce yolları, boyutları, sağlama toplamlarını, şemaları ve yüklemeleri doğrular.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Güncel geri yükleme, veriyi değiştirmeden önce arşiv yollarını, boyutları, sağlama toplamlarını, veri şemalarını ve başvurulan yüklemeleri doğrular."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Başarılı geri yükleme mevcut kayıtları birleştirmez, değiştirir ve önce mevcut klasörün tarihli kopyasını alır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Geri yükleme mevcut çalışma verilerini değiştirir; Hamartia önce mevcut veri klasörünün tarihli bir kopyasını alır."
             }
           ]
         }

@@ -12,6 +12,7 @@ const { registerChatGPTIpc } = require('./chatgptIpc.cjs')
 const { createGoogleDesktopOAuth } = require('./googleDesktopOAuth.cjs')
 const { createSocialFirebaseAuth } = require('./socialFirebase.cjs')
 const { loadSocialPublicConfig } = require('./socialConfig.cjs')
+const { handleSocialDocumentWindowOpen } = require('./socialDocs.cjs')
 const { registerSocialIpc } = require('./socialIpc.cjs')
 const { probeSafeStorage } = require('./safeStorageSmoke.cjs')
 const { getWindowIconPath } = require('./windowIcon.cjs')
@@ -162,7 +163,7 @@ async function openWindow() {
     },
   })
 
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.setWindowOpenHandler((details) => handleSocialDocumentWindowOpen(details, shell))
   window.webContents.on('will-navigate', (event, url) => {
     if (new URL(url).origin !== backendUrl) event.preventDefault()
   })

@@ -65,14 +65,15 @@ function desktopSocialConfig(environment) {
   return { configured, firebase, googleOAuthClientId, socialApiOrigin, agreementVersion: configured ? agreementVersion : '' }
 }
 
-export function socialBuildConfiguration(environment) {
+export function socialBuildConfiguration(environment, developmentServer = false) {
   const firebaseConfigured = [
     'VITE_FIREBASE_API_KEY',
     'VITE_FIREBASE_AUTH_DOMAIN',
     'VITE_FIREBASE_PROJECT_ID',
     'VITE_FIREBASE_APP_ID',
   ].every((key) => Boolean(environment[key]?.trim()))
-  const browserEnabled = environment.VITE_SOCIAL_ENABLED === 'true'
+  const browserEnabled = developmentServer
+    && environment.VITE_SOCIAL_ENABLED === 'true'
     && firebaseConfigured
     && Boolean(environment.HAMARTIA_SOCIAL_API_TARGET)
     && environment.VITE_SOCIAL_AGREEMENT_REVIEWED === 'true'
@@ -106,7 +107,7 @@ function publicConfigAsset(config) {
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const socialConfig = socialBuildConfiguration(env)
+  const socialConfig = socialBuildConfiguration(env, command === 'serve')
 
   return {
     define: {

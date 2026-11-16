@@ -33,6 +33,7 @@
       "socialFirebase.cjs",
       "socialIpc.cjs",
       "socialConfig.cjs",
+      "socialDocs.cjs",
       "preload.cjs",
       "chatgpt.cjs",
       "safeStorageSmoke.cjs",

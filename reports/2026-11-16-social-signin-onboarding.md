@@ -8,6 +8,7 @@
 - In Electron, Google OAuth runs in the system browser with state, PKCE S256, and a one-use `127.0.0.1` callback. The main process exchanges the Google credential with Firebase using the installed Node SDK and explicit in-memory persistence. Tokens stay in main and are not returned to React, logged, or persisted.
 - Browser development uses Firebase popup and in-memory persistence, with an optional loopback Auth Emulator. Both flows use a fixed social API origin, the exact profile GET/PATCH routes, `redirect: 'error'`, and no-store caching. The Electron preload exposes only `signIn`, `getProfile`, `patchProfile`, and `signOut`; it rejects untrusted frame origins.
 - Vite generates `social-public-config.json` from public build settings and packages it as an Electron extra resource. Missing or invalid configuration fails closed. The current artifact contains empty values. No client secret or user credential is part of the generated file.
+- Browser social is enabled only by the Vite development server, where `/social` has an explicit same-origin dev proxy. Production browser builds stay disabled until a fixed HTTPS same-origin route is provided. Electron uses the separate packaged public config.
 - Social profile context remains excluded from Study Agent requests. The existing local study auth and API are unchanged.
 
 ## Agreement acknowledgement and release gates
@@ -24,10 +25,10 @@ Build variables are public identifiers/settings, not secrets:
 
 ## Verification
 
-- Frontend tests: **48/48 passed**; desktop tests: **61/61 passed**.
+- Frontend tests: **50/50 passed**; desktop tests: **63/63 passed**.
 - Production frontend build passed. It emitted the empty social config and strict production CSP; Vite reported the existing large-chunk warning.
-- Bilingual documentation integrity benchmark passed: 17 EN and 17 TR navigable pages, 818 local links/assets, no errors. The new versioned agreement pages are standalone `.html` routes and are linked from both privacy guides and the UI. Local Chromium-based docs smoke could not launch because `libglib-2.0.so.0` is absent; CI installs browser dependencies.
-- Offline social client benchmark passed on Linux x86_64, Node v26.12.1, Firebase JS SDK 13.3.0. It uses a local fake Auth endpoint, mock OAuth callback/token exchange, and an in-memory profile fixture—not live Google/Firebase or PostgreSQL. Before consent, missing/stale versions produced zero OAuth, Auth Emulator, and profile calls. Accepted-flow measurements: 30 sign-in samples p50/p95/p99 **7.423/10.961/15.867 ms**; 48 profile PATCH+GET samples **2.901/7.368/8.575 ms**; 96 concurrent round-trips across 12 workers **31.415/84.207/114.778 ms**. The network guard allowed 57 loopback connections and rejected all external destinations. The separate profile report covers PostgreSQL API measurements.
+- Bilingual documentation integrity benchmark passed: 17 core wiki routes per language, 818 local links/assets, no errors. Separate route/link tests prove the additional standalone EN/TR agreement pages, locale switches, privacy-guide links, stylesheets, assets, and UI targets resolve. Local Chromium-based docs smoke could not launch because `libglib-2.0.so.0` is absent; CI installs browser dependencies.
+- Offline social client benchmark passed on Linux x86_64, Node v26.12.1, Firebase JS SDK 13.3.0. It uses a local fake Auth endpoint, mock OAuth callback/token exchange, and an in-memory profile fixture—not live Google/Firebase or PostgreSQL. Before consent, missing/stale versions produced zero OAuth, Auth Emulator, and profile calls. Accepted-flow measurements: 30 sign-in samples p50/p95/p99 **15.837/55.944/70.116 ms**; 48 profile PATCH+GET samples **4.019/9.978/31.870 ms**; 96 concurrent round-trips across 12 workers **29.376/83.832/113.883 ms**. The network guard allowed 57 loopback connections and rejected all external destinations. The separate profile report covers PostgreSQL API measurements.
 - `git diff --check` passed. No live provider, external credential, public service, or local AI call was made.
 
 These are local harness timings, not production performance claims. Real Google latency, availability, provider restrictions, consent UI, network/API-host behavior, and desktop package usability remain unverified.

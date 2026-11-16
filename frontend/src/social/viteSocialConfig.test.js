@@ -24,7 +24,7 @@ const DESKTOP = {
   HAMARTIA_SOCIAL_AGREEMENT_VERSION: 'v1-reviewed-test',
 }
 
-test('browser and desktop social flags are independent and default disabled', () => {
+test('browser social is development-server-only and desktop flags remain independent', () => {
   assert.deepEqual(socialBuildConfiguration({}), {
     browserEnabled: false,
     desktopEnabled: false,
@@ -35,7 +35,8 @@ test('browser and desktop social flags are independent and default disabled', ()
       agreementVersion: '',
     },
   })
-  assert.equal(socialBuildConfiguration(BROWSER).browserEnabled, true)
+  assert.equal(socialBuildConfiguration(BROWSER).browserEnabled, false, 'production builds never enable the relative dev-proxy client')
+  assert.equal(socialBuildConfiguration(BROWSER, true).browserEnabled, true)
   assert.equal(socialBuildConfiguration(BROWSER).desktopEnabled, false)
   assert.equal(socialBuildConfiguration(DESKTOP).browserEnabled, false)
   assert.equal(socialBuildConfiguration(DESKTOP).desktopEnabled, true)
@@ -43,7 +44,8 @@ test('browser and desktop social flags are independent and default disabled', ()
   assert.equal(socialBuildConfiguration({ ...DESKTOP, HAMARTIA_SOCIAL_AGREEMENT_VERSION: '' }).desktopEnabled, false)
   assert.equal(socialBuildConfiguration({ ...BROWSER, VITE_SOCIAL_AGREEMENT_REVIEWED: 'false' }).browserEnabled, false)
   assert.equal(socialBuildConfiguration({ ...DESKTOP, HAMARTIA_SOCIAL_API_ORIGIN: 'http://social.example.test' }).desktopEnabled, false)
-  assert.equal(socialBuildConfiguration({ ...BROWSER, VITE_SOCIAL_ENABLED: 'false' }).browserEnabled, false)
+  assert.equal(socialBuildConfiguration({ ...BROWSER, VITE_SOCIAL_ENABLED: 'false' }, true).browserEnabled, false)
+  assert.equal(socialBuildConfiguration({ ...BROWSER, VITE_SOCIAL_AGREEMENT_REVIEWED: 'false' }, true).browserEnabled, false)
 })
 
 test('generated desktop config includes only public client settings and no client secret', () => {

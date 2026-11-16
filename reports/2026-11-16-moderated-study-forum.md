@@ -17,7 +17,7 @@ Migration `002_moderated_forum.sql` adds the forum table, status constraints, an
 
 ## Verification
 
-- Disposable PostgreSQL 17.11 UTF-8 on `127.0.0.1:55432`: full backend suite **202/202 passed**, including forum identity spoofing, role gates, self-moderation, approved-only reads, hidden rejected/pending content, bounded lists, concurrent decisions, existing profile owner isolation, and migration idempotence. Focused social auth/profile/forum tests **28/28 passed**.
+- Disposable PostgreSQL 17.11 UTF-8 on `127.0.0.1:55432`: full backend suite **203/203 passed**, including forum identity spoofing, entrypoint-wired moderator allowlist authorization, self-moderation, approved-only reads, hidden rejected/pending content, bounded lists, concurrent decisions, existing profile owner isolation, and migration idempotence. Focused social auth/profile/forum tests **29/29 passed**.
 - Frontend tests **59/59 passed**; Electron tests **64/64 passed**; Vite production build passed with the existing warning for a JavaScript chunk over 500 kB. CI now installs desktop test dependencies and runs those tests, and has a required PostgreSQL 17 service for backend tests and benchmarks.
 - The offline API benchmark used 64 synthetic submissions (32 approved, 32 rejected), 64 repeated approved-feed correctness reads, and 24 further submissions moderated concurrently by 8 workers. It checked pending-only submission responses, moderator identity omission, exact approved content, rejection exclusion, final database counts, and fixture deletion. Percentiles use nearest-rank `ceil(p*n)-1`.
 

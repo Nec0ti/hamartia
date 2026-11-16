@@ -1,6 +1,7 @@
 import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
@@ -35,6 +36,48 @@ class ForumModelTests(unittest.TestCase):
             with self.subTest(data=data):
                 with self.assertRaises(ValueError):
                     ModerationDecision.model_validate(data)
+
+
+class SocialModeratorConfigurationTests(unittest.TestCase):
+    def test_entrypoint_passes_server_uid_allowlist_to_moderation_routes(self):
+        from app import social_server
+
+        configured_uid = "moderator-from-server-config"
+        claims_by_token = {
+            "configured": {"aud": PROJECT, "iss": f"https://securetoken.google.com/{PROJECT}", "sub": configured_uid},
+            "unlisted": {"aud": PROJECT, "iss": f"https://securetoken.google.com/{PROJECT}", "sub": "not-configured", "role": "moderator"},
+        }
+        verifier = lambda token: claims_by_token[token]
+
+        class EmptyRepository:
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+            def list_pending_forum_posts(self, _limit, _exclude_author_uid):
+                return []
+
+        applications = []
+        with patch.dict(os.environ, {
+            "FIREBASE_PROJECT_ID": PROJECT,
+            "SOCIAL_DATABASE_URL": "postgresql://synthetic",
+            "SOCIAL_HOST": "127.0.0.1",
+            "SOCIAL_PORT": "8765",
+            "SOCIAL_MODERATOR_UIDS": f" {configured_uid}, second-moderator ",
+        }, clear=True), \
+                patch.object(social_server, "FirebaseTokenVerifier", return_value=verifier), \
+                patch.object(social_server, "migrate_social_database"), \
+                patch.object(social_server, "PostgresProfileRepository", return_value=EmptyRepository()), \
+                patch.object(social_server.uvicorn, "run", side_effect=lambda app, **_kwargs: applications.append(app)):
+            social_server.main()
+
+        with TestClient(applications[0]) as client:
+            configured = client.get("/social/forum/moderation", headers={"Authorization": "Bearer configured"})
+            unlisted = client.get("/social/forum/moderation", headers={"Authorization": "Bearer unlisted"})
+        self.assertEqual(configured.status_code, 200)
+        self.assertEqual(unlisted.status_code, 403)
 
 
 @unittest.skipUnless(TEST_DATABASE_URL, "requires a dedicated real PostgreSQL test database")

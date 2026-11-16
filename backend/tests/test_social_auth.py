@@ -87,13 +87,18 @@ class SocialAuthTests(unittest.TestCase):
                 response = self.client.get("/social/me", headers={"Authorization": f"Bearer {token}"})
                 self.assertEqual(response.status_code, 401)
 
-    def test_only_social_health_and_me_routes_are_mounted(self):
+    def test_only_private_social_profile_and_forum_routes_are_mounted(self):
         router = self.client.app.router.routes[0].original_router
         paths = {route.path for route in router.routes}
-        self.assertEqual(paths, {"/social/health", "/social/me", "/social/me/profile"})
+        self.assertEqual(paths, {
+            "/social/health", "/social/me", "/social/me/profile",
+            "/social/forum/posts", "/social/forum/moderation",
+            "/social/forum/posts/{post_id}/moderation",
+        })
         self.assertEqual(self.client.get("/social/health").json(), {"status": "ok"})
         self.assertEqual(self.client.get("/study-agent").status_code, 404)
         self.assertEqual(self.client.get("/social/profiles/someone").status_code, 404)
+        self.assertEqual(self.client.get("/social/forum/public").status_code, 404)
 
     def test_entrypoint_fails_closed_before_firebase_init_without_project_id(self):
         from app.social_server import main

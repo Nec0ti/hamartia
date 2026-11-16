@@ -1,5 +1,13 @@
 # Backlog log
 
+## 2026-11-16 — PRs #43–#47 and ARETE-043
+
+- PR #43 clarified that optional onboarding/profile data is included in ZIP backup guides and that exported ZIP backups are unencrypted.
+- PR #44 fixed Electron backend startup and restore-restart readiness by requiring the per-launch control token while preserving `/healthcheck/ready`. A later independent correction in PR #47 replaced the public readiness marker with a fresh-nonce HMAC-SHA256 proof, checked with timing-safe comparison; this is the final readiness proof.
+- PR #45 hardened POSIX owner-only permissions for existing and newly written private data, uploads, backups, restore staging, and snapshots. PR #46 separately rejected symlinked roots/directories/JSON reads, including `O_NOFOLLOW` protection. These changes do not complete the separate launch security review.
+- PRs #43–#47 are merged; merge checks and release workflows passed. PR #47 automatically published [ARETE-043](https://github.com/Nec0ti/hamartia/releases/tag/ARETE-043), with Windows EXE, Debian package, and Linux AppImage assets.
+- Legal/privacy approval, provider/API-host, Cloudflare/network, security/lifecycle review, and physical-host readiness remain open. Separate physical-device SIWC/package/endpoint checks and human docs retrieval/usability checks also remain open. No public launch or real hosting was performed.
+
 - 2026-11-15: Added a scoped P5 requirement for an explicitly invoked conversational Study Agent CLI that prepares allowlisted study-record drafts, shows field-level provenance, asks about required unknowns/ambiguities in the student's preferred language, and requires review/approval before writes. Acceptance criteria require corrections, conflict-safe no-overwrite behavior, deterministic AI-free validation tests, and zero writes for unresolved or unapproved proposals. This is a backlog item only; no CLI or provider flow was implemented.
 
 - 2026-11-15 review follow-up for PR #21: Added matching EN/TR Cosmos and progression documentation covering exam-derived XP, 500-XP levels, exam-date streaks, and up to nine due-topic orbits; explicitly states these are not mastery evidence. Linked from both workflow pages and navigation. Aligned English mistake tags to visible UI copy (Knowledge gap, Distractor trap, Misread the question, Time pressure) and Turkish labels to the current UI copy. Wiki now has 17 pages per locale / 34 generated routes; docs smoke passed all routes and checks Cosmos limits and exact EN/TR UI labels.

@@ -1001,3 +1001,61 @@ Kimlik doğrulamasız başarılı yanıtı ve HTTP 503 ve genel hata ayrıntıla
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Tüm backend testleri, paketlenmiş uygulama duman testi ve dinamik güvenlik testi çalıştırılmadı\. İnceleme kaynak koduna dayalıydı ve yerel masaüstü\/backend sınırlarıyla sınırlıydı\.
+
+## ARETE-062
+
+## English
+
+`ARETE-062` — [PR #66](https://github.com/Nec0ti/hamartia/pull/66): docs\: position Hamartia across curricula
+
+### Highlights
+
+This documentation\-only change describes Hamartia as a local\-first study tool intended for learners across curricula\. It distinguishes current TYT\/AYT full\-mock support from generic single\-subject exams, free\-form curriculum references, custom exact\-rational scoring profiles, and the legacy YKS rule\.
+
+### Behavior and why
+
+No user\-facing behavior or supported exam formats changed\. The README, internal purpose, workflow skill description, and English\/Turkish purpose\-and\-scope pages now explain the broader intended use without suggesting that YKS or the built\-in YKS rule is universal\.
+
+### How to use
+
+No action is needed\. The updated scope is described in the README and bilingual guide\.
+
+### Compatibility / migration
+
+Not applicable\: this is documentation\-only and changes no data, APIs, or application behavior\.
+
+### Verification
+
+The docs generator passed\. The offline docs integrity benchmark passed for 17 routes per locale and 818 local links\/assets, with 156 evidence excerpts, zero errors, no network access, and no AI\. \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+No application build, human retrieval\/usability or screenshot evaluation, AI\/provider execution, or official exam\/curriculum alignment review was run\. User\-entered profiles and curriculum references remain unverified; current built\-in full\-mock support remains TYT\/AYT\.
+
+## Türkçe
+
+`ARETE-062` — [PR #66](https://github.com/Nec0ti/hamartia/pull/66): docs\: position Hamartia across curricula
+
+### Öne çıkanlar
+
+Bu yalnızca belge değişikliği, Hamartia'yı farklı programlardaki öğrencilerin çalışma hatalarını ve örüntülerini fark etmesine yardımcı olmayı amaçlayan yerel öncelikli bir araç olarak anlatıyor\. Mevcut TYT\/AYT tam deneme desteğini genel tek ders denemelerinden, serbest biçimli program referanslarından, kullanıcı tanımlı kesin\-rasyonel puanlama profillerinden ve eski YKS kuralından ayırıyor\.
+
+### Davranış ve nedeni
+
+Kullanıcıya dönük davranış veya desteklenen sınav biçimleri değişmedi\. README, iç amaç notu, iş akışı becerisi açıklaması ve Türkçe\/İngilizce amaç\-kapsam sayfaları, YKS'nin veya yerleşik YKS kuralının evrensel olduğu izlenimini vermeden daha geniş kullanım amacını açıklıyor\.
+
+### Kullanım
+
+Bir işlem gerekmiyor\. Güncellenen kapsam README'de ve iki dilli kılavuzda açıklanıyor\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\: değişiklik yalnızca belgelerde; veri, API veya uygulama davranışı değişmiyor\.
+
+### Doğrulama
+
+Belge oluşturucu başarıyla çalıştı\. Çevrimdışı belge bütünlüğü kontrolü her dilde 17 sayfa ve 818 yerel bağlantı\/dosya için geçti; 156 kanıt alıntısında hata yok, ağ erişimi ve AI kullanılmadı\. \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Uygulama derlemesi, insanlarla kullanılabilirlik\/arama veya ekran görüntüsü değerlendirmesi, AI\/sağlayıcı çalıştırması ya da resmî sınav\/program uyumu incelemesi yapılmadı\. Kullanıcı profilleri ve program referansları doğrulanmaz; yerleşik tam deneme desteği şu an TYT\/AYT ile sınırlıdır\.

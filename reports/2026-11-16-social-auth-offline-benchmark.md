@@ -15,9 +15,9 @@ On Linux x86_64 with Node v26.12.1, the benchmark completed with:
 
 | Operation | Samples | p50 | p95 | p99 |
 | --- | ---: | ---: | ---: | ---: |
-| Google callback + Firebase credential exchange | 30 (after 5 warmups) | 4.864 ms | 9.525 ms | 12.921 ms |
-| Profile PATCH + GET through desktop IPC | 48 (after 8 warmups) | 1.988 ms | 6.016 ms | 8.147 ms |
-| Concurrent profile PATCH + GET through desktop IPC | 96 across 12 workers | 23.821 ms | 64.802 ms | 89.253 ms |
+| Google callback + Firebase credential exchange | 30 (after 5 warmups) | 7.423 ms | 10.961 ms | 15.867 ms |
+| Profile PATCH + GET through desktop IPC | 48 (after 8 warmups) | 2.901 ms | 7.368 ms | 8.575 ms |
+| Concurrent profile PATCH + GET through desktop IPC | 96 across 12 workers | 31.415 ms | 84.207 ms | 114.778 ms |
 
 The run made 36 mock browser callbacks and Firebase credential exchanges, 72 local fake Auth endpoint requests, 152 profile PATCHes, and 154 profile GETs. The network guard permitted 57 TCP connections to numeric `127.0.0.1` only; it rejected other TCP/fetch destinations, DNS names, TLS sockets, and UDP. Before the accepted path, missing and stale agreement versions were rejected and independent counters proved zero OAuth, Auth Emulator, and profile calls. The benchmark checks OAuth PKCE/state callback behavior, Firebase token exchange and lookup, sign-in/sign-out and token clearing, complete private-profile shape, rejected identity leakage, every timed response, and the final concurrent profile state.
 

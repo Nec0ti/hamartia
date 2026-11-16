@@ -1,0 +1,29 @@
+"""Opt-in entrypoint for the separate social-only prototype service."""
+
+import os
+
+import uvicorn
+
+from app.social.application import create_social_app
+from app.social.security import FirebaseTokenVerifier
+
+
+def main() -> None:
+    project_id = os.environ.get("FIREBASE_PROJECT_ID", "")
+    if not project_id or project_id.strip() != project_id:
+        raise SystemExit("FIREBASE_PROJECT_ID is required; social service was not started")
+    host = os.environ.get("SOCIAL_HOST", "127.0.0.1")
+    if host != "127.0.0.1" and host != "localhost" and host != "::1":
+        raise SystemExit("SOCIAL_HOST must be loopback for this prototype")
+    try:
+        port = int(os.environ.get("SOCIAL_PORT", "8765"))
+    except ValueError as exc:
+        raise SystemExit("SOCIAL_PORT must be an integer from 1 to 65535") from exc
+    if not 1 <= port <= 65535:
+        raise SystemExit("SOCIAL_PORT must be an integer from 1 to 65535")
+    verifier = FirebaseTokenVerifier(project_id)
+    uvicorn.run(create_social_app(project_id, verifier), host=host, port=port)
+
+
+if __name__ == "__main__":
+    main()

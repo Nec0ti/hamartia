@@ -524,14 +524,15 @@ class BackupTests(unittest.TestCase):
     def test_failed_directory_swap_rolls_back_previous_data(self):
         target = self.root / "rollback"
         make_data(target, "keep-me", "local-key")
-        rename = Path.rename
+        from app.services import backup as backup_service
+        move = backup_service._move_path
 
-        def fail_new_data(source, destination):
+        def fail_new_data(source, destination, replace=False):
             if source.name.startswith(".rollback.restore-stage-"):
                 raise OSError("simulated staging rename failure")
-            return rename(source, destination)
+            return move(source, destination, replace)
 
-        with patch.object(Path, "rename", fail_new_data):
+        with patch("app.services.backup._move_path", fail_new_data):
             with self.assertRaises(BackupError):
                 restore_backup(self.archive, target)
 
@@ -547,7 +548,8 @@ class BackupTests(unittest.TestCase):
             with self.subTest(boundary=boundary):
                 target = self.root / f"crash-{boundary}"
                 make_data(target, "keep-me", "local-key")
-                real_rename = Path.rename
+                from app.services import backup as backup_service
+                real_move = backup_service._move_path
                 real_unlink = Path.unlink
                 real_write_journal = _write_restore_journal
 
@@ -556,8 +558,8 @@ class BackupTests(unittest.TestCase):
                     if boundary == "journal":
                         raise SimulatedCrash()
 
-                def crash_after_rename(source, destination):
-                    result = real_rename(source, destination)
+                def crash_after_rename(source, destination, replace=False):
+                    result = real_move(source, destination, replace)
                     if boundary == "old_rename" and source == target:
                         raise SimulatedCrash()
                     if boundary == "new_rename" and destination == target and source.name.startswith(f".{target.name}.restore-stage-"):
@@ -571,7 +573,7 @@ class BackupTests(unittest.TestCase):
                     return result
 
                 with patch("app.services.backup._write_restore_journal", crash_after_journal), \
-                     patch.object(Path, "rename", crash_after_rename), \
+                     patch("app.services.backup._move_path", crash_after_rename), \
                      patch.object(Path, "unlink", crash_after_unlink):
                     with self.assertRaises(SimulatedCrash):
                         restore_backup(self.archive, target)
@@ -620,20 +622,71 @@ class BackupTests(unittest.TestCase):
 
         target = self.root / "journal-publish-crash"
         make_data(target, "keep-me", "local-key")
-        real_replace = os.replace
+        from app.services import backup as backup_service
+        real_move = backup_service._move_path
 
-        def crash_before_publish(source, destination):
+        def crash_before_publish(source, destination, replace=False):
             if destination == self.root / f".{target.name}.restore-journal.json":
                 raise SimulatedCrash()
-            return real_replace(source, destination)
+            return real_move(source, destination, replace)
 
-        with patch("app.services.backup.os.replace", crash_before_publish):
+        with patch("app.services.backup._move_path", crash_before_publish):
             with self.assertRaises(SimulatedCrash):
                 restore_backup(self.archive, target)
 
         StorageService(target)
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "keep-me")
         self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
+
+    @unittest.skipUnless(os.name == "nt", "Windows child-process termination coverage")
+    def test_windows_child_termination_recovers_at_each_journal_and_rename_boundary(self):
+        boundaries = ("journal_before", "journal", "old_rename", "new_rename", "journal_remove")
+        for boundary in boundaries:
+            with self.subTest(boundary=boundary):
+                target = self.root / f"windows-crash-{boundary}"
+                make_data(target, "keep-me", "local-key")
+                script = "\n".join((
+                    "import os",
+                    "from pathlib import Path",
+                    "from unittest.mock import patch",
+                    "from app.services import backup",
+                    f"target = Path({str(target)!r})",
+                    f"boundary = {boundary!r}",
+                    "move = backup._move_path",
+                    "unlink = Path.unlink",
+                    "write_journal = backup._write_restore_journal",
+                    "def interrupted_move(source, destination, replace=False):",
+                    "    if boundary == 'journal_before' and destination == backup._restore_journal_path(target):",
+                    "        os._exit(73)",
+                    "    result = move(source, destination, replace)",
+                    "    if boundary == 'old_rename' and source == target:",
+                    "        os._exit(73)",
+                    "    if boundary == 'new_rename' and destination == target and source.name.startswith(f'.{target.name}.restore-stage-'):",
+                    "        os._exit(73)",
+                    "    return result",
+                    "def interrupted_write(*args):",
+                    "    result = write_journal(*args)",
+                    "    if boundary == 'journal':",
+                    "        os._exit(73)",
+                    "    return result",
+                    "def interrupted_unlink(path, *args, **kwargs):",
+                    "    result = unlink(path, *args, **kwargs)",
+                    "    if boundary == 'journal_remove' and path.name == f'.{target.name}.restore-journal.json':",
+                    "        os._exit(73)",
+                    "    return result",
+                    "with patch('app.services.backup._move_path', interrupted_move), patch('app.services.backup._write_restore_journal', interrupted_write), patch.object(Path, 'unlink', interrupted_unlink):",
+                    f"    backup.restore_backup({str(self.archive)!r}, target)",
+                ))
+                env = os.environ.copy()
+                backend_root = str(Path(__file__).resolve().parents[1])
+                env["PYTHONPATH"] = backend_root + os.pathsep + env.get("PYTHONPATH", "")
+                child = subprocess.run([sys.executable, "-c", script], env=env, timeout=60)
+                self.assertEqual(child.returncode, 73)
+
+                recover_restore(target)
+                expected = "keep-me" if boundary == "journal_before" else "saved-exam"
+                self.assertEqual(read_json(target / "exams.json")[0]["id"], expected)
+                self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
 
 
 if __name__ == "__main__":

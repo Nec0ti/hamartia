@@ -130,10 +130,16 @@ class StorageService:
 
     def _read_raw(self, filename: str) -> str:
         path = self._path(filename)
-        if not path.exists():
-            return ""
         try:
-            content = path.read_text(encoding="utf-8").strip()
+            if path.is_symlink():
+                raise StorageError(f"Cannot read {filename}: symbolic links are not allowed in the data directory")
+            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            with os.fdopen(descriptor, "r", encoding="utf-8") as fh:
+                content = fh.read().strip()
+        except FileNotFoundError:
+            return ""
+        except StorageError:
+            raise
         except OSError as exc:
             raise StorageError(f"Cannot read {filename}: {exc}") from exc
         # Empty or whitespace-only file -> safe default.

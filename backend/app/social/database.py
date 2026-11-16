@@ -101,12 +101,13 @@ class PostgresProfileRepository:
                 (limit,),
             ).fetchall()
 
-    def list_pending_forum_posts(self, limit: int) -> list[dict]:
+    def list_pending_forum_posts(self, limit: int, exclude_author_uid: str) -> list[dict]:
         with self.pool.connection() as connection:
             return connection.execute(
                 "SELECT post_id, title, body, status, created_at FROM social_forum_posts "
-                "WHERE status = 'pending' ORDER BY created_at ASC, post_id ASC LIMIT %s",
-                (limit,),
+                "WHERE status = 'pending' AND author_uid <> %s "
+                "ORDER BY created_at ASC, post_id ASC LIMIT %s",
+                (exclude_author_uid, limit),
             ).fetchall()
 
     def moderate_forum_post(self, post_id: str | UUID, moderator_uid: str, decision: str) -> dict:

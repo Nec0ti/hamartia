@@ -110,6 +110,10 @@ class PostgresSocialForumTests(unittest.TestCase):
         own_rejection = self.moderate(pending["post_id"], "rejected", token="author-token")
         self.assertEqual(own_rejection.status_code, 403)
 
+        moderators_own_post = self.submit(token="moderator-token", title="Moderator's post", body="private-to-author")
+        self.assertNotIn(moderators_own_post["post_id"], [row["post_id"] for row in self.request("moderator-token", path="/social/forum/moderation").json()])
+        self.assertEqual(self.moderate(moderators_own_post["post_id"], token="moderator-token").status_code, 403)
+
         queue = self.request("moderator-token", path="/social/forum/moderation")
         self.assertEqual(queue.status_code, 200)
         self.assertEqual(queue.headers["cache-control"], "no-store")

@@ -104,7 +104,7 @@ def create_router(project_id: str, verifier: Verifier, profile_repository=None, 
         if profile_repository is None:
             raise HTTPException(status_code=503, detail="Forum storage unavailable")
         try:
-            return profile_repository.list_pending_forum_posts(limit)
+            return profile_repository.list_pending_forum_posts(limit, uid)
         except Exception as exc:
             raise HTTPException(status_code=503, detail="Forum storage unavailable") from exc
 

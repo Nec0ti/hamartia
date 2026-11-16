@@ -24,7 +24,7 @@ function FieldVisibility({ checked, onChange, label }) {
 }
 
 export default function SocialProfileModal({ open, onClose }) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [draft, setDraft] = useState(emptyProfileDraft)
   const [signedIn, setSignedIn] = useState(false)
   const [agreementAccepted, setAgreementAccepted] = useState(false)

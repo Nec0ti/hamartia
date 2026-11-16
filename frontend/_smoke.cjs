@@ -982,15 +982,27 @@ async function main(smokeRun) {
     assert.equal(createRequests().length, 1)
     const approvedBody = createRequests()[0].body
     const trPreview = await page.evaluate(() => window.__learningEvidenceDraftResponse)
-    assert.deepEqual(approvedBody.fields, {
-      date: '2026-11-16', subject: 'Biyoloji', topic: 'Hücre bölünmesi',
-      activity: 'Birinci konuyu çalıştım.', observation: 'Şemaları karşılaştırınca aşamalar belirginleşti.', reference_url: '',
-    })
-    assert.deepEqual(approvedBody.fields, trPreview.fields)
-    assert.deepEqual(approvedBody.evidence, trPreview.verified_evidence)
-    assert.equal(approvedBody.preview_digest, trPreview.preview_digest)
-    assert.equal(approvedBody.evidence.activity.quote, 'Birinci konuyu çalıştım.')
-    assert.equal((await (await localFetch(`${apiUrl}/learning-evidence`)).json()).length, 1)
+    let approvedLearningEvidence = []
+    try {
+      approvedLearningEvidence = await (await localFetch(`${apiUrl}/learning-evidence`)).json()
+      assert.equal(approvedLearningEvidence.length, 1)
+      assert.deepEqual(approvedBody.fields, {
+        date: '2026-11-16', subject: 'Biyoloji', topic: 'Hücre bölünmesi',
+        activity: 'Birinci konuyu çalıştım.', observation: 'Şemaları karşılaştırınca aşamalar belirginleşti.', reference_url: '',
+      })
+      assert.deepEqual(approvedBody.fields, trPreview.fields)
+      assert.deepEqual(approvedBody.evidence, trPreview.verified_evidence)
+      assert.equal(approvedBody.preview_digest, trPreview.preview_digest)
+      assert.equal(approvedBody.evidence.activity.quote, 'Birinci konuyu çalıştım.')
+    } finally {
+      const rowsToClean = approvedLearningEvidence.length
+        ? approvedLearningEvidence
+        : await (await localFetch(`${apiUrl}/learning-evidence`)).json()
+      for (const record of rowsToClean) {
+        assert.equal((await localFetch(`${apiUrl}/learning-evidence/${record.id}`, { method: 'DELETE' })).status, 200)
+      }
+    }
+    assert.deepEqual(await (await localFetch(`${apiUrl}/learning-evidence`)).json(), [])
     assert.deepEqual(externalRequestsBlocked, [])
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))

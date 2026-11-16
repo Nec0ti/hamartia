@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 from app.core.config import DATA_DIR
 from app.models.schemas import Settings
 from app.api.practice import AgentDraftRequest, practice_agent_draft
+from app.api.exams import build_exam_agent_draft
+from app.api.exam_profiles import resolve_profile
+from app.services.study_agent_exam import EXAM_FIELDS, resolve_exam_state_token
 from app.api.learning_evidence import build_learning_evidence_agent_draft
 from app.api.questions import build_question_agent_draft
 from app.services.ai_service import AIService
@@ -29,11 +32,15 @@ class LocalStudyRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
     model_name: str = Field(min_length=1, max_length=256)
     has_api_key: bool
-    workflow: Literal["chat", "practice-entry", "learning-evidence-entry", "question-entry"] = "chat"
+    workflow: Literal["chat", "practice-entry", "learning-evidence-entry", "question-entry", "exam-entry"] = "chat"
     expected_evidence_field: Literal["activity", "subject", "topic", "date", "observation"] = "activity"
     state_token: str | None = Field(default=None, max_length=24_000)
     expected_question_field: Literal["question_text", "subject", "topic"] = "question_text"
     question_state_token: str | None = Field(default=None, max_length=24_000)
+    expected_exam_field: Literal[
+        "date", "subject", "correct", "incorrect", "blank", "duration_minutes", "duration_seconds",
+    ] = "date"
+    exam_state_token: str | None = Field(default=None, max_length=24_000)
     messages: list[str] = Field(default_factory=list, max_length=30)
     scoring_profile_id: str | None = None
     scoring_profile_version: int | None = Field(default=None, ge=1)
@@ -143,6 +150,28 @@ async def configured_study_agent(payload: LocalStudyRequest):
             return build_question_agent_draft(
                 payload.messages, payload.language, expected,
                 prior_claims, prepared["current_evidence_claims"],
+            )
+        if payload.workflow == "exam-entry":
+            if not payload.messages or any(not item.strip() or len(item) > 4000 for item in payload.messages):
+                raise HTTPException(status_code=422, detail="Provide at least one student message of up to 4,000 characters.")
+            if payload.scoring_profile_id is None or payload.scoring_profile_version is None:
+                raise HTTPException(status_code=422, detail="Choose a scoring profile before starting exam capture.")
+            exam_storage = StorageService(DATA_DIR)
+            profile = resolve_profile(exam_storage, payload.scoring_profile_id, payload.scoring_profile_version)
+            try:
+                prior_claims = resolve_exam_state_token(
+                    payload.exam_state_token, payload.messages, payload.language,
+                    profile.profile_id, profile.version,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            expected = EXAM_FIELDS[len(prior_claims)] if len(prior_claims) < len(EXAM_FIELDS) else None
+            if expected != payload.expected_exam_field:
+                raise HTTPException(status_code=409, detail="The branch-exam conversation changed. Review the current question again.")
+            prepared = await ai.study_exam_prepare(payload.messages, payload.language, expected)
+            return build_exam_agent_draft(
+                payload.messages, payload.language, expected, prior_claims,
+                prepared["current_evidence_claims"], profile,
             )
         answer = await ai.study_chat(payload.message.strip(), payload.context, payload.language)
     except HTTPException:

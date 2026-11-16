@@ -1,6 +1,8 @@
 import tempfile
 import unittest
 import uuid
+import json
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -10,8 +12,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
 from app.api import exams
+from app.api import study_agent
 from app.core.http_errors import safe_validation_error_handler
-from app.models.schemas import Exam, ExamDeletedApprovalLedger, ExamScoringProfile, legacy_yks_profile
+from app.models.schemas import Exam, ExamDeletedApprovalLedger, ExamScoringProfile, Settings, legacy_yks_profile
 from app.services.backup import create_backup, restore_backup
 from app.services.storage import StorageService
 from app.services.study_agent_exam import (
@@ -22,6 +25,7 @@ from app.services.study_agent_exam import (
     provider_tool_parameters,
     resolve_exam_state_token,
 )
+from unittest.mock import AsyncMock
 
 
 class StudyAgentExamTests(unittest.TestCase):
@@ -256,6 +260,51 @@ class StudyAgentExamTests(unittest.TestCase):
         self.assertEqual(changed.status_code, 409, changed.text)
         self.assertEqual(self.rows(), [])
 
+    def test_composed_configured_provider_binds_latest_turn_and_host_selected_profile(self):
+        endpoint = "https://provider.example/v1"
+        self.storage.save_doc("settings.json", Settings(
+            litellm_base_url=endpoint, model_name="mock-model", api_key="",
+        ))
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(study_agent.router)
+        profile = self.profile()
+        with patch.object(study_agent, "DATA_DIR", self.data_dir), patch.object(study_agent, "AIService") as service:
+            fake = service.return_value
+            fake.base_url = endpoint
+            fake.study_exam_prepare = AsyncMock(return_value={
+                "current_evidence_claims": [{"field": "date", "quote": "2026-11-16"}],
+            })
+            with TestClient(app) as client:
+                first = client.post("/study-agent/local", json={
+                    "consent": True, "message": "2026-11-16", "context": "", "language": "en",
+                    "endpoint": endpoint, "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "exam-entry", "expected_exam_field": "date",
+                    "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,
+                    "messages": ["2026-11-16"],
+                })
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertEqual(first.json()["expected_field"], "subject")
+                self.assertEqual(first.json()["status"], "incomplete")
+                self.assertEqual(self.rows(), [])
+                fake.study_exam_prepare.assert_awaited_once_with(["2026-11-16"], "en", "date")
+
+                fake.study_exam_prepare = AsyncMock(return_value={
+                    "current_evidence_claims": [{"field": "subject", "quote": "2026-11-16"}],
+                })
+                stale = client.post("/study-agent/local", json={
+                    "consent": True, "message": "Biology", "context": "", "language": "en",
+                    "endpoint": endpoint, "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "exam-entry", "expected_exam_field": "subject",
+                    "exam_state_token": first.json()["state_token"],
+                    "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,
+                    "messages": ["2026-11-16", "Biology"],
+                })
+                self.assertEqual(stale.status_code, 200, stale.text)
+                self.assertEqual(stale.json()["status"], "ambiguous")
+                self.assertIsNone(stale.json()["preview_digest"])
+                self.assertEqual(self.rows(), [])
+
     def test_deleted_exam_ledger_survives_backup_and_legacy_backups_default_empty(self):
         response, messages, profile = self.complete_flow()
         self.assertEqual(response.status_code, 200, response.text)
@@ -269,6 +318,31 @@ class StudyAgentExamTests(unittest.TestCase):
         restore_backup(archive, restored)
         ledger = StorageService(restored).load_doc("exam_agent_approvals.json", ExamDeletedApprovalLedger)
         self.assertEqual(ledger.approval_ids, [uuid.UUID(body["approval_id"])])
+
+        # A pre-feature backup omits the optional approval ledger entirely.
+        legacy_archive = Path(self.temp.name) / "legacy-snapshot.zip"
+        with zipfile.ZipFile(archive) as source:
+            entries = {name: source.read(name) for name in source.namelist() if name != "manifest.json"}
+            manifest = json.loads(source.read("manifest.json"))
+        entries.pop("exam_agent_approvals.json")
+        manifest["files"] = [item for item in manifest["files"] if item["path"] != "exam_agent_approvals.json"]
+        with zipfile.ZipFile(legacy_archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
+            for name, raw in entries.items():
+                target.writestr(name, raw)
+            target.writestr("manifest.json", json.dumps(manifest).encode("utf-8"))
+        legacy_restored = Path(self.temp.name) / "legacy-restored"
+        restore_backup(legacy_archive, legacy_restored)
+        empty_ledger = StorageService(legacy_restored).load_doc("exam_agent_approvals.json", ExamDeletedApprovalLedger)
+        self.assertEqual(empty_ledger.approval_ids, [])
+
+    def test_agent_create_rejects_more_evidence_quotes_than_exam_fields(self):
+        response, messages, profile = self.complete_flow()
+        self.assertEqual(response.status_code, 200, response.text)
+        body = self.create_body(response.json(), messages, profile)
+        body["evidence_claims"] = body["evidence_claims"] + body["evidence_claims"][:2]
+        result = self.client.post("/exams/agent-create", json=body)
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertEqual(self.rows(), [])
 
 
 if __name__ == "__main__":

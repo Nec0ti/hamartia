@@ -70,7 +70,7 @@ class ExamVerifiedQuote(BaseModel):
 class AgentExamCreateRequest(AgentExamDraftRequest):
     fields: StrictExamCreate
     evidence: dict[str, dict]
-    evidence_claims: list[ExamVerifiedQuote] = Field(min_length=1, max_length=MAX_MESSAGES)
+    evidence_claims: list[ExamVerifiedQuote] = Field(min_length=1, max_length=len(EXAM_FIELDS))
     scoring_profile_snapshot: ExamScoringProfile
     derived: dict[str, int | float]
     preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -131,6 +131,8 @@ async def exam_agent_create(payload: AgentExamCreateRequest, storage: StorageSer
     if profile != payload.scoring_profile_snapshot:
         raise HTTPException(status_code=409, detail="The scoring profile changed. Review the exam preview again.")
     claims = [item.model_dump() for item in payload.evidence_claims]
+    if not claims or len(claims) > len(EXAM_FIELDS):
+        raise HTTPException(status_code=422, detail="Branch-exam evidence must contain at most seven verified field quotes.")
     if not claims or claims[-1]["message_index"] != len(payload.messages) - 1:
         raise HTTPException(status_code=422, detail="The final exam answer must match the newest student turn.")
     try:

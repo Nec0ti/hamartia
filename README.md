@@ -84,6 +84,13 @@ PYTHONPATH=backend python backend/benchmarks/benchmark_clock_api.py
 python3 scripts/benchmark_docs.py
 ```
 
+The desktop social-auth benchmark runs the Firebase JS SDK against a local fake Auth endpoint, simulates the Google browser callback, and exercises profile GET/PATCH through desktop IPC. It blocks all non-loopback networking; its report documents exact commands, results, and provider/database limits:
+
+```sh
+npm ci --ignore-scripts --prefix desktop
+npm run bench:social-auth --prefix desktop
+```
+
 `benchmark_docs.py` parses the checked-in rendered wiki with Python's standard library and makes no network requests. It validates the 17 EN/TR routes, locale attributes, matching navigation and active items, paired section anchors, local links/assets, and 20 rubric entries against exact excerpts in their cited rendered sections and the screenshot protocol. It writes `reports/2026-11-15-docs-benchmark-results.json`. External links are counted but not fetched. The output labels `ai_included: false`.
 
 The exam scoring profile implementation is documented in [`reports/2026-11-15-exam-scoring-profiles.md`](reports/2026-11-15-exam-scoring-profiles.md), with the PracticeSession, focused-timer, Study Agent host-selection, and backup extension in [`reports/2026-11-16-practice-scoring-profiles.md`](reports/2026-11-16-practice-scoring-profiles.md). The practice-summary scaling benchmark uses mixed profile-version fixtures and an independent rational-score/grouping oracle. The persisted API benchmark uses synthetic fixtures and mounts no provider routes.

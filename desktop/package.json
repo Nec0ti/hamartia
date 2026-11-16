@@ -13,6 +13,7 @@
     "build:ui": "npm --prefix ../frontend run build",
     "build:backend": "python ../backend/build_desktop.py",
     "test": "node --test",
+    "bench:social-auth": "node benchmarks/benchmark_social_auth.cjs",
     "start": "npm run build:ui && electron .",
     "pack:dir": "npm run build:ui && npm run build:backend && electron-builder --dir",
     "dist:win": "npm run build:ui && npm run build:backend && electron-builder --win nsis",

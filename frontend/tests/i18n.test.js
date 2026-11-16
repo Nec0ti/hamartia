@@ -61,3 +61,17 @@ test('Study Agent practice entry explains evidence, missing fields, and approval
   assert.equal(translate('agent.practiceSave', 'en'), 'Approve this preview and save')
   assert.equal(translate('agent.practiceSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
 })
+
+test('Study Agent missed-question capture explains exact text, optional skips, payload, and approval in both languages', () => {
+  assert.equal(translate('agent.workflowQuestion', 'en'), 'Capture a missed question')
+  assert.equal(translate('agent.workflowQuestion', 'tr'), 'Kaçırdığım soruyu kaydet')
+  assert.match(translate('agent.questionCapturePrompt', 'en'), /exact problem text as one message/)
+  assert.match(translate('agent.questionCapturePrompt', 'tr'), /tam metnini tek mesaj/)
+  assert.match(translate('agent.questionCaptureHint', 'en'), /type “skip”/)
+  assert.match(translate('agent.questionCaptureHint', 'tr'), /“atla” yaz/)
+  assert.match(translate('agent.questionCaptureHint', 'en'), /No image, URL, analysis, tag, or curriculum data/)
+  assert.match(translate('agent.questionCaptureConsent', 'en'), /only the student messages/)
+  assert.match(translate('agent.questionCaptureLocalConsent', 'tr', { endpoint: 'https://provider.example/v1', key: 'anahtar bilgisi' }), /yapılandırılmış uç noktaya gönderilir/)
+  assert.match(translate('agent.questionCaptureNoWrite', 'en'), /Only approval saves the record/)
+  assert.equal(translate('agent.questionCaptureSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
+})

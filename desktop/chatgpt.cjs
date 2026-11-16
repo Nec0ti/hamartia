@@ -19,6 +19,8 @@ const PRACTICE_FIELDS = ['date', 'subject', 'topic', 'correct', 'incorrect', 'bl
 const PRACTICE_TOOL_NAME = 'hamartia_practice_prepare'
 const LEARNING_EVIDENCE_FIELDS = ['date', 'subject', 'topic', 'activity', 'observation', 'reference_url']
 const LEARNING_EVIDENCE_TOOL_NAME = 'hamartia_learning_evidence_prepare'
+const QUESTION_FIELDS = ['question_text', 'subject', 'topic']
+const QUESTION_TOOL_NAME = 'hamartia_question_prepare'
 
 function practiceToolParameters() {
   return {
@@ -95,6 +97,43 @@ function validateLearningEvidenceToolArguments(value) {
       || !LEARNING_EVIDENCE_FIELDS.includes(item.field)
       || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > 3000) {
       throw new Error('ChatGPT returned invalid learning-evidence arguments.')
+    }
+  }
+  return value
+}
+
+function questionToolParameters() {
+  return {
+    type: 'object',
+    properties: {
+      evidence: {
+        type: 'array', maxItems: 1,
+        items: {
+          type: 'object',
+          properties: {
+            field: { type: 'string', enum: QUESTION_FIELDS },
+            quote: { type: 'string', minLength: 1, maxLength: MAX_MESSAGE_LENGTH },
+          },
+          required: ['field', 'quote'], additionalProperties: false,
+        },
+      },
+    },
+    required: ['evidence'], additionalProperties: false,
+  }
+}
+
+function validateQuestionToolArguments(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some((key) => key !== 'evidence')) {
+    throw new Error('ChatGPT returned unsupported question-capture evidence arguments.')
+  }
+  if (!Array.isArray(value.evidence) || value.evidence.length > 1) throw new Error('ChatGPT returned invalid question-capture evidence arguments.')
+  for (const item of value.evidence) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).some((key) => !['field', 'quote'].includes(key))
+      || Object.keys(item).length !== 2
+      || !QUESTION_FIELDS.includes(item.field)
+      || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > MAX_MESSAGE_LENGTH) {
+      throw new Error('ChatGPT returned invalid question-capture evidence arguments.')
     }
   }
   return value
@@ -527,19 +566,22 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return completion
   }
 
-  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null, expected_question_field = 'question_text', question_state_token = null }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
-    if (!['chat', 'practice-entry', 'learning-evidence-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
+    if (!['chat', 'practice-entry', 'learning-evidence-entry', 'question-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
     if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
     if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
     if (workflow === 'learning-evidence-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Learning evidence requires up to 30 student messages of at most 4,000 characters each.')
     if (workflow === 'learning-evidence-entry' && !['activity', 'subject', 'topic', 'date', 'observation'].includes(expected_evidence_field)) throw new Error('Unsupported expected learning-evidence field.')
     if (workflow === 'learning-evidence-entry' && state_token !== null && (typeof state_token !== 'string' || state_token.length > 24_000)) throw new Error('Learning-evidence conversation state is invalid or expired.')
+    if (workflow === 'question-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Question capture requires up to 30 student messages of at most 4,000 characters each.')
+    if (workflow === 'question-entry' && !QUESTION_FIELDS.includes(expected_question_field)) throw new Error('Unsupported expected question-capture field.')
+    if (workflow === 'question-entry' && question_state_token !== null && (typeof question_state_token !== 'string' || question_state_token.length > 24_000)) throw new Error('Question-capture conversation state is invalid or expired.')
     const controller = new AbortController()
     chats.set(requestId, controller)
     try {
       const { accessToken } = await validAccessToken()
-      const context = workflow === 'practice-entry' || workflow === 'learning-evidence-entry' ? '' : await studyContext(controller.signal)
+      const context = workflow === 'practice-entry' || workflow === 'learning-evidence-entry' || workflow === 'question-entry' ? '' : await studyContext(controller.signal)
       if (!(await models(controller.signal)).some((item) => item.slug === model)) throw new Error('Choose a model available to the signed-in ChatGPT account.')
       if (workflow === 'practice-entry') {
         const instructions = (
@@ -682,6 +724,73 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }, controller.signal, requestId, null, accessToken)
         if (Array.isArray(followup.output) && followup.output.some((item) => item?.type === 'function_call')) {
           throw new Error('ChatGPT attempted an additional learning-evidence tool call.')
+        }
+        return { status: 'completed', draft }
+      }
+      if (workflow === 'question-entry') {
+        const instructions = (
+          `Prepare a text-only missed-question draft in ${language === 'tr' ? 'Turkish' : 'English'}. Use the available ${QUESTION_TOOL_NAME} function exactly once. `
+          + `The host currently expects only ${expected_question_field}. Submit one exact quote that is the entire current student message for that field. `
+          + 'For question_text, ask the student to paste the exact problem text as one complete message, without summarizing. For subject/topic, quote only the explicit answer, or an explicit localized skip reply. '
+          + 'Do not send values, IDs, tags, analysis, curriculum metadata, images, URLs, or write instructions. Never guess or paraphrase. '
+          + 'After verification, ask only the localized host follow-up or briefly say that the exact preview is ready.'
+        )
+        const inputTranscript = { role: 'user', content: JSON.stringify({ student_messages: messages }) }
+        const additionalTools = [{
+          type: 'function',
+          name: QUESTION_TOOL_NAME,
+          description: 'Submit one exact current-turn quote for host verification and a read-only question preview.',
+          parameters: questionToolParameters(),
+          strict: true,
+        }]
+        const initial = await requestResponses({
+          model, instructions, input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
+            inputTranscript,
+          ],
+          store: false, stream: true,
+        }, controller.signal, requestId, null, accessToken)
+        const calls = Array.isArray(initial.output) ? initial.output.filter((item) => item?.type === 'function_call') : []
+        if (calls.length !== 1) throw new Error('ChatGPT did not return exactly one question-capture tool call.')
+        const call = calls[0]
+        if (call.name !== QUESTION_TOOL_NAME || typeof call.call_id !== 'string' || !call.call_id) throw new Error('ChatGPT returned an unsupported question-capture tool call.')
+        let argumentsValue
+        try {
+          argumentsValue = validateQuestionToolArguments(JSON.parse(call.arguments))
+        } catch (error) {
+          if (error instanceof SyntaxError) throw new Error('ChatGPT returned malformed question-capture evidence arguments.')
+          throw error
+        }
+        const backendUrl = getBackendUrl()
+        if (!backendUrl) throw new Error('Hamartia could not verify the question evidence. Nothing was saved.')
+        const verifiedResponse = await fetchImpl(`${backendUrl}/questions/agent-draft`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            messages, language, expected_question_field, state_token: question_state_token,
+            evidence_claims: argumentsValue.evidence,
+          }),
+          signal: controller.signal,
+        })
+        const draft = await verifiedResponse.json().catch(() => ({}))
+        if (!verifiedResponse.ok) throw new Error('Hamartia could not verify the question evidence. Nothing was saved.')
+        const safeToolResult = {
+          status: draft.status, fields: draft.fields, verified_evidence: draft.verified_evidence,
+          missing: draft.missing, ambiguous: draft.ambiguous, questions: draft.questions,
+          preview_digest: draft.preview_digest, write_allowed: false,
+        }
+        const followup = await requestResponses({
+          model, instructions,
+          input: [
+            { type: 'additional_tools', role: 'developer', tools: additionalTools },
+            inputTranscript,
+            ...initial.output,
+            { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(safeToolResult) },
+          ],
+          store: false, stream: true,
+        }, controller.signal, requestId, null, accessToken)
+        if (Array.isArray(followup.output) && followup.output.some((item) => item?.type === 'function_call')) {
+          throw new Error('ChatGPT attempted an additional question-capture tool call.')
         }
         return { status: 'completed', draft }
       }

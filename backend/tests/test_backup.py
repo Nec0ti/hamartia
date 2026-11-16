@@ -20,7 +20,7 @@ from starlette.datastructures import Headers
 from app.api import questions as question_api
 from app.models.schemas import (
     ActiveClockTimer, ClockAlarm, ClockState, CosmosData, Exam, LearningEvidence, PracticeSession,
-    LearningEvidenceDeletedApprovalLedger, PracticeDraft, Question, ReviewAttempt, Settings, UserStats,
+    LearningEvidenceDeletedApprovalLedger, PracticeDraft, Question, QuestionDeletedApprovalLedger, ReviewAttempt, Settings, UserStats,
 )
 from app.services.backup import (
     BackupError, JSON_MODELS, _freeze_clock_state_for_backup,
@@ -116,6 +116,36 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(
             StorageService(legacy_restored).load_doc("learning_evidence_agent_approvals.json", LearningEvidenceDeletedApprovalLedger),
             LearningEvidenceDeletedApprovalLedger(),
+        )
+
+    def test_question_agent_deleted_approval_ledger_round_trips_and_defaults_for_legacy_backup(self):
+        approval_id = UUID("09a75ba4-8912-4ff0-aab2-6a77c2bfe214")
+        StorageService(self.source).save_doc(
+            "question_agent_approvals.json", QuestionDeletedApprovalLedger(approval_ids=[approval_id]),
+        )
+        create_backup(self.source, self.archive)
+        restored = self.root / "question-agent-restored"
+        restore_backup(self.archive, restored)
+        self.assertEqual(
+            StorageService(restored).load_doc("question_agent_approvals.json", QuestionDeletedApprovalLedger),
+            QuestionDeletedApprovalLedger(approval_ids=[approval_id]),
+        )
+
+        legacy = self.root / "legacy-question-agent.zip"
+        with zipfile.ZipFile(self.archive) as archive:
+            files = {name: archive.read(name) for name in archive.namelist() if name != "manifest.json"}
+            manifest = json.loads(archive.read("manifest.json"))
+        files.pop("question_agent_approvals.json")
+        manifest["files"] = [item for item in manifest["files"] if item["path"] != "question_agent_approvals.json"]
+        with zipfile.ZipFile(legacy, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, raw in files.items():
+                archive.writestr(name, raw)
+            archive.writestr("manifest.json", json.dumps(manifest))
+        legacy_restored = self.root / "legacy-question-agent-restored"
+        restore_backup(legacy, legacy_restored)
+        self.assertEqual(
+            StorageService(legacy_restored).load_doc("question_agent_approvals.json", QuestionDeletedApprovalLedger),
+            QuestionDeletedApprovalLedger(),
         )
 
     def test_backup_snapshot_freezes_running_timers_at_snapshot_time(self):

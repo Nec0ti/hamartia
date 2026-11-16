@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Header, HTTPException
 
 from app.social.security import (
-    FirebaseVerifierUnavailable,
     InvalidFirebaseToken,
     Verifier,
     validate_identity,

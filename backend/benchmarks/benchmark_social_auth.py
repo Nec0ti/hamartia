@@ -25,7 +25,7 @@ class MockVerifier:
     def __call__(self, token):
         if token == "verified":
             return CLAIMS
-        if token in {"expired", "revoked", "signature-invalid"}:
+        if token in {"expired", "revoked", "disabled", "signature-invalid"}:
             from app.social.security import InvalidFirebaseToken
             raise InvalidFirebaseToken("mock invalid token")
         if token == "unavailable":
@@ -46,6 +46,7 @@ def main():
         "verified": (200, {"uid": "benchmark-user-001"}),
         "expired": (401, {"detail": "Invalid bearer token"}),
         "revoked": (401, {"detail": "Invalid bearer token"}),
+        "disabled": (401, {"detail": "Invalid bearer token"}),
         "signature-invalid": (401, {"detail": "Invalid bearer token"}),
         "unavailable": (503, {"detail": "Identity verification unavailable"}),
         "wrong-audience": (401, {"detail": "Invalid bearer token"}),

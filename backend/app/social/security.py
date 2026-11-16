@@ -25,7 +25,7 @@ class FirebaseTokenVerifier:
 
         try:
             return auth.verify_id_token(token, app=self.app, check_revoked=True)
-        except auth.InvalidIdTokenError as exc:
+        except (auth.InvalidIdTokenError, auth.UserDisabledError) as exc:
             raise InvalidFirebaseToken from exc
         except Exception as exc:
             raise FirebaseVerifierUnavailable from exc

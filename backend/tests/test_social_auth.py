@@ -36,6 +36,7 @@ class SocialAuthTests(unittest.TestCase):
             "valid": VALID,
             "expired": InvalidFirebaseToken("expired"),
             "revoked": InvalidFirebaseToken("revoked"),
+            "disabled": InvalidFirebaseToken("account disabled"),
             "outage": FirebaseVerifierUnavailable("provider unavailable"),
             "wrong-project": {**VALID, "aud": "another-project"},
             "wrong-issuer": {**VALID, "iss": "https://securetoken.google.com/another-project"},
@@ -73,6 +74,11 @@ class SocialAuthTests(unittest.TestCase):
         response = self.client.get("/social/me", headers={"Authorization": "Bearer outage"})
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json(), {"detail": "Identity verification unavailable"})
+
+    def test_disabled_account_token_returns_unauthorized(self):
+        response = self.client.get("/social/me", headers={"Authorization": "Bearer disabled"})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"detail": "Invalid bearer token"})
 
     def test_issuer_and_uid_constraints_are_enforced(self):
         for token in ("wrong-issuer", "empty-uid", "long-uid", "spaced-uid"):
@@ -118,7 +124,12 @@ class SocialAuthTests(unittest.TestCase):
         class InvalidIdTokenError(Exception):
             pass
 
-        auth = SimpleNamespace(verify_id_token=verify_id_token, InvalidIdTokenError=InvalidIdTokenError)
+        class UserDisabledError(Exception):
+            pass
+
+        auth = SimpleNamespace(verify_id_token=verify_id_token,
+                               InvalidIdTokenError=InvalidIdTokenError,
+                               UserDisabledError=UserDisabledError)
         firebase_admin = SimpleNamespace(initialize_app=initialize_app, auth=auth)
         with patch.dict("sys.modules", {"firebase_admin": firebase_admin,
                                          "firebase_admin.auth": auth}):
@@ -135,19 +146,30 @@ class SocialAuthTests(unittest.TestCase):
         class InvalidIdTokenError(Exception):
             pass
 
+        class UserDisabledError(Exception):
+            pass
+
         for sdk_error, application_error in (
             (InvalidIdTokenError("expired token"), InvalidFirebaseToken),
+            (UserDisabledError("disabled account"), InvalidFirebaseToken),
             (OSError("certificate service offline"), FirebaseVerifierUnavailable),
         ):
             with self.subTest(application_error=application_error.__name__):
                 verify = Mock(side_effect=sdk_error)
-                auth = SimpleNamespace(verify_id_token=verify, InvalidIdTokenError=InvalidIdTokenError)
+                auth = SimpleNamespace(verify_id_token=verify,
+                                       InvalidIdTokenError=InvalidIdTokenError,
+                                       UserDisabledError=UserDisabledError)
                 firebase_admin = SimpleNamespace(initialize_app=Mock(return_value=sdk_app), auth=auth)
                 with patch.dict("sys.modules", {"firebase_admin": firebase_admin,
                                                  "firebase_admin.auth": auth}):
                     verifier = FirebaseTokenVerifier(PROJECT)
                     with self.assertRaises(application_error):
                         verifier("sample-token")
+                    with TestClient(create_social_app(PROJECT, verifier)) as client:
+                        response = client.get("/social/me", headers={"Authorization": "Bearer sample-token"})
+                    expected_status = 401 if application_error is InvalidFirebaseToken else 503
+                    self.assertEqual(response.status_code, expected_status)
+                    self.assertNotIn(str(sdk_error), response.text)
 
 
 if __name__ == "__main__":

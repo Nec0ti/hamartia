@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import html
 import json
 import os
 import re
@@ -32,6 +33,26 @@ TURKISH_RELEASE_FIELDS = {
     "Verification": "Doğrulama",
     "Not run / known limitations": "Çalıştırılmayanlar / bilinen sınırlamalar",
 }
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+.!|>~\-/:])")
+
+
+def safe_release_text(value, allow_lists=False):
+    lines = []
+    for line in value.splitlines():
+        if not line.strip():
+            lines.append("")
+            continue
+        prefix = ""
+        if allow_lists:
+            bullet = re.match(r"^\s*[-*+]\s+(.*)$", line)
+            ordered = re.match(r"^\s*(\d+)\.\s+(.*)$", line)
+            if bullet:
+                prefix, line = "- ", bullet.group(1)
+            elif ordered:
+                prefix, line = f"{ordered.group(1)}. ", ordered.group(2)
+        escaped = MARKDOWN_SPECIAL.sub(r"\\\1", html.escape(line, quote=False))
+        lines.append(prefix + escaped)
+    return "\n".join(lines).strip()
 
 
 def next_arete_code(tags):
@@ -64,9 +85,10 @@ def parse_release_summary(body):
         if locale == "Türkçe":
             labels = {label: field for field, label in TURKISH_RELEASE_FIELDS.items()}
         fields = {}
-        matches = list(re.finditer(r"^### (.+)$", section, re.MULTILINE))
+        heading_pattern = r"^### (" + "|".join(map(re.escape, labels)) + r")\s*$"
+        matches = list(re.finditer(heading_pattern, section, re.MULTILINE))
         for index, match in enumerate(matches):
-            name = match.group(1).strip()
+            name = match.group(1)
             value = section[match.end():matches[index + 1].start() if index + 1 < len(matches) else len(section)]
             value = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL).strip()
             if name in labels:
@@ -83,12 +105,13 @@ def render_notes(code, pull_request):
     title = pull_request["title"]
     url = pull_request["html_url"]
     summary = parse_release_summary(pull_request.get("body", ""))
+    title = safe_release_text(re.sub(r"\s+", " ", title))
     notes = []
     for locale in ("English", "Türkçe"):
-        notes.extend((f"## {locale}", "", f"`{code}` — [PR #{number}: {title}]({url})", ""))
+        notes.extend((f"## {locale}", "", f"`{code}` — [PR #{number}]({url}): {title}", ""))
         for field in RELEASE_SUMMARY_FIELDS:
             label = TURKISH_RELEASE_FIELDS[field] if locale == "Türkçe" else field
-            notes.extend((f"### {label}", "", summary[locale][field], ""))
+            notes.extend((f"### {label}", "", safe_release_text(summary[locale][field], allow_lists=True), ""))
     return "\n".join(notes).rstrip() + "\n"
 
 

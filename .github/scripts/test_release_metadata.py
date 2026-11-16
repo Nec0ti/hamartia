@@ -95,6 +95,26 @@ class ReleaseMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "marked bilingual release summary"):
             module.parse_release_summary("")
 
+    def test_untrusted_title_and_summary_markdown_are_rendered_as_text(self):
+        hostile_summary = RELEASE_SUMMARY.replace(
+            "Repository release automation now requires a detailed summary.",
+            "Safe intro\n### Injected heading\n[x](https://evil.test) <script>alert(1)</script> | table\n- Safe bullet",
+        )
+        notes = module.render_notes("ARETE-001", {
+            "number": 42,
+            "title": "Release ](https://evil.test)\n## Injected heading",
+            "html_url": "https://github.com/Nec0ti/hamartia/pull/42",
+            "body": hostile_summary,
+        })
+        self.assertIn("[PR #42](https://github.com/Nec0ti/hamartia/pull/42)", notes)
+        self.assertIn(r"Release \]\(https\:\/\/evil\.test\) \#\# Injected heading", notes)
+        self.assertNotIn("](https://evil.test)", notes)
+        self.assertNotIn("https://evil.test", notes)
+        self.assertNotIn("\n### Injected heading", notes)
+        self.assertIn(r"\#\#\# Injected heading", notes)
+        self.assertIn("&lt;script&gt;alert\\(1\\)&lt;\\/script&gt; \\| table", notes)
+        self.assertIn("- Safe bullet", notes)
+
     def test_release_assets_detect_and_repair_missing_packages(self):
         with tempfile.TemporaryDirectory() as directory:
             artifact_paths = [Path(directory) / name for name in (

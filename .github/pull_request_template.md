@@ -10,6 +10,8 @@
 
 Write factual, user-facing release notes in both languages. Be specific about what changed and why. For documentation-only or internal-only changes, say that no user-facing behavior changed and describe the repository change without presenting it as a feature. Use an explicit “not applicable” statement with a reason when a section does not apply. Do not claim checks that were not run.
 
+Use plain paragraphs or simple ordered/unordered lists in these fields. The publisher safely renders other Markdown syntax and HTML as literal text.
+
 <!-- release-summary:start -->
 ## English
 

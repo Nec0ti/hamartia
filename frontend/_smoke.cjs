@@ -4,7 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
-const { createSmokeDeadline, isSettingsRequestUrl, withTimeout } = require('./smokeDeadline.cjs')
+const { isSettingsRequestUrl, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -24,7 +24,7 @@ function localFetch(url, init = {}) {
   return fetch(url, { ...init, signal: init.signal || AbortSignal.timeout(10_000) })
 }
 
-async function main() {
+async function main(smokeRun) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hamartia-browser-'))
   const baseUrl = 'http://127.0.0.1:5174'
   const uploads = path.join(dataDir, 'uploads')
@@ -44,8 +44,30 @@ async function main() {
   let serverErrors = ''
   launcher.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
   let browser
-  let smokeDeadline
-  let smokePhase = 'browser startup'
+  let cleanupPromise
+  const cleanupResources = async () => {
+    if (!cleanupPromise) {
+      cleanupPromise = (async () => {
+        if (browser) {
+          try {
+            await withTimeout(browser.close(), 5000, 'Chromium shutdown')
+          } catch {
+            if (typeof browser.process === 'function') browser.process()?.kill('SIGKILL')
+          }
+        }
+        if (launcher.exitCode === null) {
+          launcher.kill('SIGTERM')
+          try {
+            await withTimeout(new Promise((resolve) => launcher.once('exit', resolve)), 5000, 'Dev server shutdown')
+          } catch {
+            launcher.kill('SIGKILL')
+          }
+        }
+      })()
+    }
+    return cleanupPromise
+  }
+  smokeRun.cleanup = cleanupResources
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
@@ -61,11 +83,12 @@ async function main() {
       headless: true,
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
     })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+    const page = await withTimeout(browser.newPage({ viewport: { width: 1280, height: 900 } }), 30_000, 'Browser page creation')
     const pageErrors = []
     const consoleErrors = []
     const failedResponses = []
     const appRequests = []
+    const settingsRouteEvaluations = []
     let createdQuestion
     let linkedQuestion
     let practiceSession
@@ -81,22 +104,20 @@ async function main() {
       if (request.url().startsWith(apiUrl)) {
         const jsonBody = request.headers()['content-type']?.includes('application/json')
         const requestUrl = new URL(request.url())
-        appRequests.push({ path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
+        appRequests.push({ url: request.url(), origin: requestUrl.origin, path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
       }
     })
-
-    smokePhase = 'initial page render and settings request'
-    smokeDeadline = createSmokeDeadline(8 * 60 * 1000,
-      () => ` during ${smokePhase}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
-      () => {
-        if (launcher.exitCode === null) launcher.kill('SIGTERM')
-        return browser.close()
-      },
-    )
+    smokeRun.diagnostics = () => `; page URL=${page.url()}; page origin=${new URL(page.url()).origin}; expected API origin=${apiUrl}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; route matcher evaluations=${JSON.stringify(settingsRouteEvaluations.slice(-20))}; page errors=${JSON.stringify(pageErrors)}`
 
     let releaseInitialSettingsGet
     let notifyInitialSettingsGet
-    const settingsRouteMatcher = (url) => isSettingsRequestUrl(url, apiUrl)
+    const settingsRouteMatcher = (url) => {
+      const matched = isSettingsRequestUrl(url, apiUrl)
+      if (settingsRouteEvaluations.length < 40) {
+        settingsRouteEvaluations.push({ href: url.href || String(url), origin: url.origin || '', pathname: url.pathname || '', matched })
+      }
+      return matched
+    }
     const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
     const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
     let interceptedInitialSettingsGet = false
@@ -1159,27 +1180,16 @@ async function main() {
     console.log(JSON.stringify({ benchmark: 'study_plan_and_local_crud_browser_smoke', navigation_ms: navigationMs, practice_session_persistence_ms: practiceSessionPersistenceMs, focused_session_ms: focusedSessionMs, practice_trend_and_history_ms: practiceTrendAndHistoryMs, capture_and_review_persistence_ms: captureAndPersistenceMs, exam_crud_ms: examCrudMs, question_edit_delete_ms: questionManageMs, settings_key_management_ms: settingsKeyManagementMs, backup_download_ms: backupDownloadMs, ai_included: false }))
   } catch (error) {
     if (serverErrors) process.stderr.write(serverErrors)
-    throw smokeDeadline?.error() || error
+    throw error
   } finally {
-    smokeDeadline?.clear()
-    try {
-      await browser?.close().catch(() => {})
-    } finally {
-      if (launcher.exitCode === null) {
-        launcher.kill('SIGTERM')
-        try {
-          await withTimeout(new Promise((resolve) => launcher.once('exit', resolve)), 5000, 'Dev server shutdown')
-        } catch {
-          launcher.kill('SIGKILL')
-        }
-      }
-      await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
-      await fs.rm(dataDir, { recursive: true, force: true })
-    }
+    await cleanupResources()
+    await fs.rm(path.join(path.dirname(dataDir), `.${path.basename(dataDir)}.lock`), { force: true })
+    await fs.rm(dataDir, { recursive: true, force: true })
   }
 }
 
-main().catch((error) => {
+const smokeRun = { cleanup: async () => {}, diagnostics: () => '' }
+withDeadline(() => main(smokeRun), 8 * 60 * 1000, () => smokeRun.diagnostics(), (error) => smokeRun.cleanup(error)).catch((error) => {
   console.error(error)
   process.exitCode = 1
 })

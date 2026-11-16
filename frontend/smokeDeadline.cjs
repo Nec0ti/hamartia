@@ -17,16 +17,23 @@ function isSettingsRequestUrl(value, expectedOrigin) {
   }
 }
 
-function createSmokeDeadline(timeoutMs, describe, onExpire) {
-  let error = null
-  const timer = setTimeout(() => {
-    error = new Error(`Browser smoke exceeded ${timeoutMs}ms${describe()}`)
-    Promise.resolve().then(() => onExpire(error)).catch(() => {})
-  }, timeoutMs)
-  return {
-    error: () => error,
-    clear: () => clearTimeout(timer),
-  }
+function withDeadline(operation, timeoutMs, describe, cleanup) {
+  let timer
+  let timeoutError
+  let cleanupPromise = Promise.resolve()
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      timeoutError = new Error(`Browser smoke exceeded ${timeoutMs}ms${describe()}`)
+      cleanupPromise = withTimeout(Promise.resolve().then(() => cleanup(timeoutError)), 12_000, 'Browser smoke timeout cleanup')
+        .catch((cleanupError) => { timeoutError.cleanupError = cleanupError })
+      cleanupPromise.then(() => reject(timeoutError))
+    }, timeoutMs)
+  })
+  const work = Promise.resolve().then(operation).catch((error) => {
+    if (!timeoutError) throw error
+    return cleanupPromise.then(() => { throw timeoutError })
+  })
+  return Promise.race([work, deadline]).finally(() => clearTimeout(timer))
 }
 
-module.exports = { withTimeout, isSettingsRequestUrl, createSmokeDeadline }
+module.exports = { withTimeout, isSettingsRequestUrl, withDeadline }

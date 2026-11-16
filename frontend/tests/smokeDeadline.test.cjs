@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { createSmokeDeadline, isSettingsRequestUrl, withTimeout } = require('../smokeDeadline.cjs')
+const { isSettingsRequestUrl, withDeadline, withTimeout } = require('../smokeDeadline.cjs')
 
 test('smoke deadline preserves successful results and rejects a stalled operation with diagnostics', async () => {
   assert.equal(await withTimeout(Promise.resolve('ready'), 50, 'startup'), 'ready')
@@ -19,11 +19,14 @@ test('settings route matcher accepts same-origin slash and query variants but re
   assert.equal(isSettingsRequestUrl(`${origin}/other/settings`, origin), false)
 })
 
-test('smoke deadline invokes resource cleanup and exposes the rejection diagnostic', async () => {
+test('smoke deadline races a stalled operation, awaits cleanup, and rejects with diagnostics', async () => {
   let cleanupCalled = false
-  const deadline = createSmokeDeadline(5, () => '; phase: fixture', () => { cleanupCalled = true })
-  await new Promise((resolve) => setTimeout(resolve, 15))
+  await assert.rejects(
+    withDeadline(() => new Promise(() => {}), 5, () => '; phase: fixture', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      cleanupCalled = true
+    }),
+    /Browser smoke exceeded 5ms; phase: fixture/,
+  )
   assert.equal(cleanupCalled, true)
-  assert.match(deadline.error().message, /Browser smoke exceeded 5ms; phase: fixture/)
-  deadline.clear()
 })

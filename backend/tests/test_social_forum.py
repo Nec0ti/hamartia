@@ -209,6 +209,44 @@ class PostgresSocialForumTests(unittest.TestCase):
         retry = self.moderate(post["post_id"], "approved")
         self.assertEqual(retry.status_code, 409)
 
+    def test_submission_cap_boundary_and_rolling_window_expiry(self):
+        for index in range(5):
+            self.submit(title=f"Within limit {index}")
+        limited = self.request("author-token", "post", body={"title": "Sixth", "body": "Too soon"})
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited.headers["cache-control"], "no-store")
+        self.assertGreaterEqual(int(limited.headers["retry-after"]), 1)
+        self.assertEqual(limited.json()["detail"]["code"], "forum_rate_limit_exceeded")
+        self.assertEqual(limited.json()["detail"]["retry_after_seconds"], int(limited.headers["retry-after"]))
+
+        with self.psycopg.connect(TEST_DATABASE_URL) as connection:
+            connection.execute(
+                "UPDATE social_forum_posts SET created_at = clock_timestamp() - interval '1 hour 1 second' "
+                "WHERE post_id = ANY(%s)", (self.post_ids,)
+            )
+        self.submit(title="Window expired")
+
+    def test_concurrent_oversubmission_accepts_only_five_posts_per_uid(self):
+        def submit(index):
+            return self.request(
+                "author-token", "post", body={"title": f"Concurrent {index}", "body": "Synthetic"}
+            )
+
+        with ThreadPoolExecutor(max_workers=12) as executor:
+            responses = list(executor.map(submit, range(12)))
+        accepted = [response for response in responses if response.status_code == 201]
+        limited = [response for response in responses if response.status_code == 429]
+        self.assertEqual(len(accepted), 5)
+        self.assertEqual(len(limited), 7)
+        self.assertTrue(all(response.headers.get("retry-after") for response in limited))
+        self.post_ids.extend(UUID(response.json()["post_id"]) for response in accepted)
+        with self.psycopg.connect(TEST_DATABASE_URL) as connection:
+            count = connection.execute(
+                "SELECT count(*) FROM social_forum_posts WHERE author_uid = %s AND post_id = ANY(%s)",
+                (self.author, self.post_ids),
+            ).fetchone()[0]
+        self.assertEqual(count, 5)
+
     def test_limit_is_bounded_and_non_moderator_cannot_read_queue(self):
         self.assertEqual(self.request("other-token", path="/social/forum/posts?limit=0").status_code, 422)
         self.assertEqual(self.request("other-token", path="/social/forum/posts?limit=101").status_code, 422)

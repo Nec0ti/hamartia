@@ -157,6 +157,18 @@ test('social profile requests stop before fetch when the in-memory Firebase sess
   assert.equal(app.requests.length, 0)
 })
 
+test('social IPC preserves structured forum rate-limit timing', async () => {
+  const app = setup({ fetchImpl: async () => ({
+    ok: false,
+    status: 429,
+    json: async () => ({ detail: { code: 'forum_rate_limit_exceeded', retry_after_seconds: 91 } }),
+  }) })
+  assert.deepEqual(
+    await app.handlers.get('hamartia:social:create-forum-post')(app.event(), { title: 'Title', body: 'Body' }, AGREEMENT_VERSION),
+    { status: 'rateLimited', retryAfterSeconds: 91 },
+  )
+})
+
 test('social API redirects are blocked and cannot forward the Firebase ID token', async (context) => {
   let redirectedRequests = 0
   const target = http.createServer((_request, response) => {

@@ -12,6 +12,12 @@ PROFILE_COLUMNS = (
     "age_public", "school_grade_public", "school_class_public", "curriculum_public",
     "study_preferences_public", "study_goals_public", "avatar_preset_public",
 )
+FORUM_SUBMISSION_LIMIT = 5
+
+
+class ForumSubmissionRateLimit(Exception):
+    def __init__(self, retry_after_seconds: int):
+        self.retry_after_seconds = retry_after_seconds
 
 
 def migrate_social_database(database_url: str) -> None:
@@ -86,7 +92,23 @@ class PostgresProfileRepository:
             ).fetchone()
 
     def create_forum_post(self, author_uid: str, title: str, body: str) -> dict:
-        with self.pool.connection() as connection:
+        with self.pool.connection() as connection, connection.transaction():
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (author_uid,)
+            )
+            recent = connection.execute(
+                "SELECT count(*) AS submissions, min(created_at) AS oldest "
+                "FROM social_forum_posts WHERE author_uid = %s "
+                "AND created_at > clock_timestamp() - interval '1 hour'",
+                (author_uid,),
+            ).fetchone()
+            if recent["submissions"] >= FORUM_SUBMISSION_LIMIT:
+                retry_after = connection.execute(
+                    "SELECT greatest(1, ceil(extract(epoch FROM "
+                    "(%s::timestamptz + interval '1 hour' - clock_timestamp())))::integer) AS seconds",
+                    (recent["oldest"],),
+                ).fetchone()["seconds"]
+                raise ForumSubmissionRateLimit(retry_after)
             return connection.execute(
                 "INSERT INTO social_forum_posts (post_id, author_uid, title, body) "
                 "VALUES (%s, %s, %s, %s) RETURNING post_id, status",

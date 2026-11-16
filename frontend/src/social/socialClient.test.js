@@ -148,6 +148,27 @@ test('forum requests use fixed private routes and the same agreement and in-memo
   assert.equal(requests[3].options.headers['content-type'], 'application/json')
 })
 
+test('forum submission exposes structured retry timing for a 429 response', async () => {
+  const probe = fakeSdk()
+  const client = createSocialClient({
+    desktopBridge: null,
+    environment: ENVIRONMENT,
+    buildEnabled: true,
+    browserAgreementVersion: 'v1-reviewed-test',
+    loadSdk: async () => probe.sdk,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 429,
+      json: async () => ({ detail: { code: 'forum_rate_limit_exceeded', retry_after_seconds: 117 } }),
+    }),
+  })
+  client.setAgreementAccepted(true)
+  await client.signIn()
+  assert.deepEqual(await client.createForumPost({ title: 'Title', body: 'Body' }), {
+    status: 'rateLimited', retryAfterSeconds: 117,
+  })
+})
+
 test('web emulator is connected before popup use and unsafe emulator origins fail closed', async () => {
   const probe = fakeSdk()
   const client = createSocialClient({

@@ -74,6 +74,22 @@ class StudentProfileTests(unittest.TestCase):
         invalid_avatar = {**base, "profile": {**base["profile"], "avatar_preset": "remote-url"}}
         self.assertEqual(self.client.put("/student-profile", json=invalid_avatar).status_code, 422)
 
+    def test_avatar_unlocks_use_existing_level_boundaries_and_cannot_be_forged(self):
+        for preset, threshold in (("comet", 500), ("planet", 1000), ("galaxy", 2000)):
+            original = self.client.get("/student-profile").json()
+            original["profile"]["avatar_preset"] = preset
+            (self.data_dir / "user.json").write_text(json.dumps({"total_xp": threshold - 1}), encoding="utf-8")
+            self.assertEqual(self.client.put("/student-profile", json=original).status_code, 422)
+            (self.data_dir / "user.json").write_text(json.dumps({"total_xp": threshold}), encoding="utf-8")
+            saved = self.client.put("/student-profile", json=original)
+            self.assertEqual(saved.status_code, 200, saved.text)
+            self.assertEqual(saved.json()["profile"]["avatar_preset"], preset)
+
+        free = self.client.get("/student-profile").json()
+        free["profile"]["avatar_preset"] = "sunrise"
+        (self.data_dir / "user.json").write_text(json.dumps({"total_xp": 0}), encoding="utf-8")
+        self.assertEqual(self.client.put("/student-profile", json=free).status_code, 200)
+
     def test_malformed_saved_profile_fails_closed_without_overwrite(self):
         raw = '{"profile":'
         path = self.data_dir / "onboarding.json"
@@ -103,16 +119,33 @@ class StudentProfileTests(unittest.TestCase):
         self.assertEqual(self.client.get("/student-profile").json(), stored)
 
     def test_backup_round_trip_and_legacy_backup_default_empty(self):
-        value = StudentOnboarding(
-            survey_completed=True,
-            profile={"nickname": "Synthetic", "age_years": 17, "curriculum": "Custom", "avatar_preset": "book"},
-        )
-        (self.data_dir / "onboarding.json").write_text(value.model_dump_json(), encoding="utf-8")
-        archive = Path(self.temp.name) / "profile.zip"
-        backup.create_backup(self.data_dir, archive)
-        restored = Path(self.temp.name) / "restored"
-        backup.extract_backup(archive, restored)
-        self.assertEqual(json.loads((restored / "onboarding.json").read_text()), value.model_dump(mode="json"))
+        for preset in ("book", "comet", "planet", "galaxy"):
+            value = StudentOnboarding(
+                survey_completed=True,
+                profile={"nickname": "Synthetic", "age_years": 17, "curriculum": "Custom", "avatar_preset": preset},
+            )
+            (self.data_dir / "onboarding.json").write_text(value.model_dump_json(), encoding="utf-8")
+            archive = Path(self.temp.name) / f"profile-{preset}.zip"
+            backup.create_backup(self.data_dir, archive)
+            restored = Path(self.temp.name) / f"restored-{preset}"
+            backup.extract_backup(archive, restored)
+            self.assertEqual(json.loads((restored / "onboarding.json").read_text()), value.model_dump(mode="json"))
+
+        invalid_archive = Path(self.temp.name) / "unknown-avatar.zip"
+        with backup.zipfile.ZipFile(archive) as source, backup.zipfile.ZipFile(invalid_archive, "w") as target:
+            manifest = json.loads(source.read("manifest.json"))
+            for entry in manifest["files"]:
+                raw = source.read(entry["path"])
+                if entry["path"] == "onboarding.json":
+                    value = json.loads(raw)
+                    value["profile"]["avatar_preset"] = "remote-avatar"
+                    raw = json.dumps(value, ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+                    entry["size"] = len(raw)
+                    entry["sha256"] = hashlib.sha256(raw).hexdigest()
+                target.writestr(entry["path"], raw)
+            target.writestr("manifest.json", json.dumps(manifest))
+        with self.assertRaises(backup.BackupError):
+            backup.extract_backup(invalid_archive, Path(self.temp.name) / "invalid-restored")
 
         legacy_path = Path(self.temp.name) / "legacy-v1.zip"
         with backup.zipfile.ZipFile(archive) as current, backup.zipfile.ZipFile(legacy_path, "w") as old:

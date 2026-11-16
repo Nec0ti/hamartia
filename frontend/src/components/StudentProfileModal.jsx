@@ -10,6 +10,7 @@ const empty = { nickname: null, age_years: null, grade_year: null, curriculum: n
 export default function StudentProfileModal({ open, initial, onClose, onSaved, onRestartOnboarding }) {
   const { t } = useI18n()
   const [profile, setProfile] = useState(empty)
+  const [totalXp, setTotalXp] = useState(0)
   const [saving, setSaving] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [error, setError] = useState('')
@@ -17,6 +18,7 @@ export default function StudentProfileModal({ open, initial, onClose, onSaved, o
   useEffect(() => {
     if (open) {
       setProfile({ ...empty, ...(initial?.profile || {}) })
+      api.user.get().then((stats) => setTotalXp(stats.total_xp ?? 0)).catch(() => setTotalXp(0))
       setConfirmReset(false)
       setError('')
       setSaved(false)
@@ -58,7 +60,7 @@ export default function StudentProfileModal({ open, initial, onClose, onSaved, o
     <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{saving ? t('settings.saving') : t('profile.save')}</button>
   </>}>
     <div className="space-y-4">
-      <StudentProfileFields profile={profile} onChange={(field, value) => { setSaved(false); setProfile((current) => ({ ...current, [field]: value })) }} />
+      <StudentProfileFields profile={profile} totalXp={totalXp} onChange={(field, value) => { setSaved(false); setProfile((current) => ({ ...current, [field]: value })) }} />
       {saved && <p role="status" className="text-sm text-canvas-muted">{t('profile.saved')}</p>}
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     </div>

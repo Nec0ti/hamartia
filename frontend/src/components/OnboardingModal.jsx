@@ -3,6 +3,7 @@ import Modal from './Modal.jsx'
 import StudentProfileFields from './StudentProfileFields.jsx'
 import { useI18n } from '../i18n.jsx'
 import { validateStudentProfile } from '../studentProfile/profile.js'
+import api from '../services/api'
 
 const TOUR_KEYS = ['dashboard', 'review', 'clock', 'privacy']
 const empty = { nickname: null, age_years: null, grade_year: null, curriculum: null, study_preferences: null, study_goals: null, avatar_preset: null }
@@ -12,12 +13,14 @@ export default function OnboardingModal({ stage, onboarding, onLanguage, onSave,
   const [tourIndex, setTourIndex] = useState(0)
   const [profile, setProfile] = useState({ ...empty, ...(onboarding?.profile || {}) })
   const [busy, setBusy] = useState(false)
+  const [totalXp, setTotalXp] = useState(0)
   const busyRef = useRef(false)
   busyRef.current = busy
   const [error, setError] = useState('')
   useEffect(() => {
     if (stage === 'tutorial') setTourIndex(0)
     if (stage === 'survey') setProfile({ ...empty, ...(onboarding?.profile || {}) })
+    if (stage === 'survey') api.user.get().then((stats) => setTotalXp(stats.total_xp ?? 0)).catch(() => setTotalXp(0))
     setError('')
   }, [stage, onboarding])
   const update = async (data) => {
@@ -57,7 +60,7 @@ export default function OnboardingModal({ stage, onboarding, onLanguage, onSave,
     }} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base">{busy ? t('settings.saving') : t('onboarding.finish')}</button>
   </>}>
     <div className="space-y-4"><p className="text-sm leading-relaxed text-canvas-muted">{t('onboarding.surveyDescription')}</p>
-      <StudentProfileFields profile={profile} onChange={(field, value) => { setError(''); setProfile((current) => ({ ...current, [field]: value })) }} />
+      <StudentProfileFields profile={profile} totalXp={totalXp} onChange={(field, value) => { setError(''); setProfile((current) => ({ ...current, [field]: value })) }} />
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     </div>
   </Modal>

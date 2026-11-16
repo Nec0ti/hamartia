@@ -135,7 +135,7 @@ class StudentProfile(BaseModel):
     curriculum: str | None = Field(default=None, max_length=120)
     study_preferences: str | None = Field(default=None, max_length=2000)
     study_goals: str | None = Field(default=None, max_length=2000)
-    avatar_preset: Literal["sunrise", "moon", "leaf", "star", "book", "mountain", "wave", "lantern"] | None = None
+    avatar_preset: Literal["sunrise", "moon", "leaf", "star", "book", "mountain", "wave", "lantern", "comet", "planet", "galaxy"] | None = None
 
 
 class StudentOnboarding(BaseModel):

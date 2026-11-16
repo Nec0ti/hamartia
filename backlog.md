@@ -11,6 +11,7 @@
 ## P1 — student workflow
 
 - [x] Add skippable/reopenable English-default first-run language choice and localized walkthrough, followed by an optional editable student profile survey with age in years only, free-form grade/curriculum/preferences/goals, and built-in avatar. Keep profile local-only, reject stale edits, support confirmed reset, and preserve legacy/current backup behavior ([report](reports/2026-11-16-local-onboarding-profile.md)).
+- [x] Keep the eight existing local avatar presets free and add three built-in cosmetics at existing levels 2/3/5 (500/1,000/2,000 XP), with bilingual accessible locked states, strict server-side gates, and legacy/current backup coverage; never spend XP or send student profile/XP to social or AI requests ([report](reports/2026-11-16-xp-avatar-unlocks.md)).
 - [x] Enter practice exams, preserve history, save missed-question images locally, and label them.
 - [x] Connect the home page and My Mistakes tab to real flows.
 - [x] Derive deterministic study priorities from subject/topic error patterns.

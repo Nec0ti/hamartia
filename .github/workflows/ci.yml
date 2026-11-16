@@ -39,6 +39,23 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      HAMARTIA_SOCIAL_TEST_DATABASE_URL: postgresql://hamartia_test:hamartia_test_password@127.0.0.1:5432/hamartia_social_test
+      HAMARTIA_SOCIAL_BENCHMARK_DATABASE_URL: postgresql://hamartia_test:hamartia_test_password@127.0.0.1:5432/hamartia_social_test
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hamartia_social_test
+          POSTGRES_USER: hamartia_test
+          POSTGRES_PASSWORD: hamartia_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hamartia_test -d hamartia_social_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -48,10 +65,14 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt
+      - run: python -m pip install -r backend/requirements-social.txt
       - run: python -m unittest discover -s backend/tests -v
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_study_agent_cli.py --repeats 3
+        env:
+          PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_social_profiles.py
         env:
           PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_storage.py

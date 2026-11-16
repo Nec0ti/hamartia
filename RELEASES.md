@@ -603,3 +603,17 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-042` sürümü, [#46 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/46) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-043
+
+## English
+
+`ARETE-043` includes the changes merged in [PR #47: Fix Electron backend readiness proof](https://github.com/Nec0ti/hamartia/pull/47).
+
+This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
+
+## Türkçe
+
+`ARETE-043` sürümü, [#47 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/47) içerir.
+
+Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.

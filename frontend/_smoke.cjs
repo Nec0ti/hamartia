@@ -993,6 +993,7 @@ async function main(smokeRun) {
     assert.equal((await (await localFetch(`${apiUrl}/learning-evidence`)).json()).length, 1)
     assert.deepEqual(externalRequestsBlocked, [])
 
+    await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()
     await page.getByText('student@example.test').waitFor()

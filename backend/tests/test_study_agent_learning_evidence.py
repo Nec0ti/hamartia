@@ -436,6 +436,23 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
                     multi_turn_messages, "en", "topic", [CLAIMS[0], {"field": "subject", "quote": "Biology"}],
                 )
 
+                stale_token = issue_learning_evidence_state_token(second_messages, "en", {
+                    "activity": {"quote": MESSAGES[0]}, "subject": {"quote": "Biology"},
+                })
+                fake.study_learning_evidence_prepare = AsyncMock(return_value={
+                    "evidence_claims": [{"field": "topic", "quote": "Biology"}],
+                })
+                stale_prior_quote = client.post("/study-agent/local", json={
+                    "consent": True, "message": "Cell division", "context": "", "language": "en",
+                    "endpoint": "https://provider.example/v1", "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "learning-evidence-entry", "expected_evidence_field": "topic",
+                    "state_token": stale_token, "messages": multi_turn_messages,
+                })
+                self.assertEqual(stale_prior_quote.status_code, 422)
+                self.assertIn("current host-expected student turn", stale_prior_quote.json()["detail"])
+                self.assertEqual(fake.study_learning_evidence_prepare.await_count, 1)
+                self.assertEqual(self.rows(), [])
+
                 calls_before = fake.study_learning_evidence_prepare.await_count
                 raw_prior_spoof = client.post("/study-agent/local", json={
                     "consent": True, "message": "Cell division", "context": "", "language": "en",

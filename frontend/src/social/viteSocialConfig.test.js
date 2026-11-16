@@ -78,11 +78,14 @@ test('production CSP stays strict and dev CSP allows only its validated API orig
   assert.match(development, /connect-src[^;]*http:\/\/127\.0\.0\.1:8000/)
   const defaultDevelopment = contentSecurityPolicy(true).transformIndexHtml()[0].attrs.content
   assert.match(defaultDevelopment, /connect-src[^;]*http:\/\/localhost:8000/)
+  assert.match(defaultDevelopment, /img-src[^;]*http:\/\/localhost:8000/)
   const httpsDevelopment = contentSecurityPolicy(true, 'https://api.example.test').transformIndexHtml()[0].attrs.content
   assert.match(httpsDevelopment, /connect-src[^;]*https:\/\/api\.example\.test/)
+  assert.match(httpsDevelopment, /img-src[^;]*https:\/\/api\.example\.test/)
   assert.doesNotMatch(httpsDevelopment, /https:\/\/unrelated\.example\.test/)
   const httpsProduction = contentSecurityPolicy(false, 'https://api.example.test').transformIndexHtml()[0].attrs.content
   assert.doesNotMatch(httpsProduction, /https:\/\/api\.example\.test/)
+  assert.doesNotMatch(httpsProduction, /img-src[^;]*https:\/\/api\.example\.test/)
   assert.doesNotMatch(httpsProduction, /localhost:8000/)
   assert.doesNotMatch(production.attrs.content, /127\.0\.0\.1:8000/)
   assert.equal(developmentApiOrigin(), 'http://localhost:8000')

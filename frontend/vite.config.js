@@ -41,7 +41,7 @@ export function contentSecurityPolicy(development, apiBase) {
         "default-src 'self'",
         development ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
+        `img-src 'self' data: blob:${devApi}`,
         "font-src 'self' data:",
         `connect-src 'self' ${FIREBASE_AUTH_HOSTS}${devApi}${development ? ' http://127.0.0.1:9099 http://localhost:9099 ws://127.0.0.1:5173 ws://localhost:5173' : ''}`,
         `frame-src 'self' https://*.firebaseapp.com https://*.web.app https://accounts.google.com${development ? ' http://127.0.0.1:9099 http://localhost:9099' : ''}`,

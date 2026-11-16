@@ -355,9 +355,47 @@ test('learning-evidence uses only expected-field quote hints and returns host pr
   assert.equal(initial.input[0].tools[0].name, 'hamartia_learning_evidence_prepare')
   assert.deepEqual(initial.input[0].tools[0].parameters.properties.evidence.items.properties.field.enum,
     ['date', 'subject', 'topic', 'activity', 'observation', 'reference_url'])
-  assert.deepEqual(testApp.getLearningEvidenceDraftRequests(), [{ messages, language: 'en', evidence_claims: claims }])
+  assert.deepEqual(testApp.getLearningEvidenceDraftRequests(), [{
+    messages, language: 'en', expected_evidence_field: 'activity', state_token: null, evidence_claims: claims,
+  }])
   assert.deepEqual(followup.input.slice(2, 4), [reasoningItem, call])
   assert.equal(JSON.parse(followup.input[4].output).write_allowed, false)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/learning-evidence/agent-create')), false)
+})
+
+test('learning-evidence carries only opaque signed state into the next host preview', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['I worked on chapter 2.', 'Biology', 'Cell division']
+  const stateToken = 'opaque-host-signed-state-token'
+  const newClaim = { field: 'topic', quote: messages[2] }
+  const draft = {
+    status: 'incomplete', language: 'en', fields: { activity: messages[0], subject: messages[1], topic: messages[2] },
+    verified_evidence: {
+      activity: { value: messages[0], message_index: 0, quote: messages[0], start: 0, end: messages[0].length },
+      subject: { value: messages[1], message_index: 1, quote: messages[1], start: 0, end: messages[1].length },
+      topic: { value: messages[2], message_index: 2, quote: messages[2], start: 0, end: messages[2].length },
+    },
+    evidence_claims: [newClaim], missing: ['date', 'observation'], ambiguous: {},
+    questions: ['What date did you complete it? Reply with an explicit YYYY-MM-DD date.'],
+    expected_field: 'date', preview_digest: null, write_allowed: false,
+  }
+  const call = { type: 'function_call', id: 'fc_learning_next', call_id: 'call_learning_next', name: 'hamartia_learning_evidence_prepare', arguments: JSON.stringify({ evidence: [newClaim] }), status: 'completed' }
+  testApp.setLearningEvidenceDraft(draft)
+  testApp.setResponseStreams([
+    [{ type: 'response.completed', response: { id: 'learning-next-1', output: [{ type: 'reasoning', id: 'rs-next', summary: [] }, call] } }],
+    [{ type: 'response.completed', response: { id: 'learning-next-2', output: [{ type: 'message', role: 'assistant', content: [] }] } }],
+  ])
+  const result = await testApp.client.chat({
+    requestId: 'request-learning-next-0001', message: messages[2], model: 'model-a', language: 'en',
+    workflow: 'learning-evidence-entry', messages, expected_evidence_field: 'topic', state_token: stateToken,
+  })
+  assert.equal(result.status, 'completed')
+  assert.equal(result.draft.expected_field, 'date')
+  assert.deepEqual(testApp.getLearningEvidenceDraftRequests(), [{
+    messages, language: 'en', expected_evidence_field: 'topic', state_token: stateToken, evidence_claims: [newClaim],
+  }])
   assert.equal(testApp.calls.some(({ url }) => url.endsWith('/learning-evidence/agent-create')), false)
 })
 

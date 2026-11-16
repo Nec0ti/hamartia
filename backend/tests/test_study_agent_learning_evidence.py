@@ -1,4 +1,5 @@
 import tempfile
+import time
 import unittest
 import uuid
 import json
@@ -13,7 +14,14 @@ from unittest.mock import AsyncMock
 from app.api import learning_evidence, study_agent
 from app.core.http_errors import safe_validation_error_handler
 from app.models.schemas import LearningEvidence, Settings
-from app.services.study_agent_learning_evidence import dispatch_provider_tool, prepare_learning_evidence
+import app.services.study_agent_learning_evidence as evidence_service
+from app.services.study_agent_learning_evidence import (
+    LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS,
+    dispatch_provider_tool,
+    issue_learning_evidence_state_token,
+    prepare_learning_evidence,
+    resolve_learning_evidence_state_token,
+)
 from app.services.storage import StorageService
 
 
@@ -90,6 +98,70 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
             dispatch_provider_tool({"evidence": [{"field": "subject", "quote": "Biology", "value": "Chemistry"}]}, messages=MESSAGES, language="en")
         with self.assertRaises(ValueError):
             dispatch_provider_tool({"evidence": [{"field": "record_id", "quote": "x"}]}, messages=MESSAGES, language="en")
+
+    def test_signed_state_token_tamper_expiry_prefix_replay_and_next_turn_binding(self):
+        prefix = MESSAGES[:2]
+        verified = {
+            "activity": {"quote": MESSAGES[0]},
+            "subject": {"quote": MESSAGES[1]},
+        }
+        next_messages = [*prefix, "Cell division"]
+        token = issue_learning_evidence_state_token(prefix, "en", verified)
+        self.assertEqual(resolve_learning_evidence_state_token(token, next_messages, "en"), [
+            {"field": "activity", "quote": MESSAGES[0]},
+            {"field": "subject", "quote": "Biology"},
+        ])
+        with self.assertRaisesRegex(ValueError, "invalid or expired"):
+            resolve_learning_evidence_state_token(token, next_messages, "en")
+
+        token_body, token_signature = token.split(".", 1)
+        tampered_body = ("A" if token_body[0] != "A" else "B") + token_body[1:]
+        tampered = f"{tampered_body}.{token_signature}"
+        with self.assertRaisesRegex(ValueError, "invalid or expired"):
+            resolve_learning_evidence_state_token(tampered, next_messages, "en")
+
+        prefix_token = issue_learning_evidence_state_token(prefix, "en", verified)
+        wrong_prefix = ["I completed a different activity.", *prefix[1:], "Cell division"]
+        with self.assertRaisesRegex(ValueError, "invalid or expired"):
+            resolve_learning_evidence_state_token(prefix_token, wrong_prefix, "en")
+
+        wrong_turn_token = issue_learning_evidence_state_token(prefix, "en", verified)
+        with self.assertRaisesRegex(ValueError, "invalid or expired"):
+            resolve_learning_evidence_state_token(wrong_turn_token, [*prefix, "Cell division", "2026-11-16"], "en")
+
+        expiry_token = issue_learning_evidence_state_token(prefix, "en", verified)
+        expired_at = time.time() + LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS + 1
+        with patch.object(evidence_service.time, "time", return_value=expired_at):
+            with self.assertRaisesRegex(ValueError, "invalid or expired"):
+                resolve_learning_evidence_state_token(expiry_token, next_messages, "en")
+
+    def test_agent_draft_requires_host_token_for_continuation_and_current_turn_quote(self):
+        prefix = [MESSAGES[0], "Biology"]
+        token = issue_learning_evidence_state_token(prefix, "en", {
+            "activity": {"quote": MESSAGES[0]}, "subject": {"quote": "Biology"},
+        })
+        response = self.client.post("/learning-evidence/agent-draft", json={
+            "messages": [*prefix, "Cell division"], "language": "en",
+            "expected_evidence_field": "topic", "state_token": token,
+            "evidence_claims": [{"field": "topic", "quote": "Biology"}],
+        })
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(self.rows(), [])
+
+        next_token = issue_learning_evidence_state_token(prefix, "en", {
+            "activity": {"quote": MESSAGES[0]}, "subject": {"quote": "Biology"},
+        })
+        accepted = self.client.post("/learning-evidence/agent-draft", json={
+            "messages": [*prefix, "Cell division"], "language": "en",
+            "expected_evidence_field": "topic", "state_token": next_token,
+            "evidence_claims": [{"field": "topic", "quote": "Cell division"}],
+        })
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertEqual(accepted.json()["expected_field"], "date")
+        self.assertEqual(accepted.json()["fields"]["topic"], "Cell division")
+
+        with self.assertRaisesRegex(ValueError, "invalid or expired"):
+            resolve_learning_evidence_state_token(next_token, [*prefix, "Cell division"], "en")
 
     def test_follow_up_state_is_host_ordered_and_does_not_skip_missing_fields(self):
         body = self.draft_body(["Biology"], [{"field": "subject", "quote": "Biology"}], "tr")
@@ -284,11 +356,14 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
              patch.object(study_agent, "AIService") as service:
             fake = service.return_value
             fake.base_url = "https://provider.example/v1"
-            fake.study_learning_evidence_prepare = AsyncMock(return_value={"evidence_claims": CLAIMS})
             with TestClient(app) as client:
-                response = client.post("/study-agent/local", json={
+                first_messages = [MESSAGES[0]]
+                fake.study_learning_evidence_prepare = AsyncMock(return_value={
+                    "evidence_claims": [CLAIMS[0]],
+                })
+                first = client.post("/study-agent/local", json={
                     "consent": True,
-                    "message": MESSAGES[-1],
+                    "message": MESSAGES[0],
                     "context": "",
                     "language": "en",
                     "endpoint": "https://provider.example/v1",
@@ -296,29 +371,73 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
                     "has_api_key": False,
                     "workflow": "learning-evidence-entry",
                     "expected_evidence_field": "activity",
-                    "messages": MESSAGES,
+                    "messages": first_messages,
                 })
-                self.assertEqual(response.status_code, 200, response.text)
-                self.assertEqual(response.json()["status"], "ready")
-                self.assertEqual(self.rows(), [])
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertEqual(first.json()["status"], "incomplete")
+                first_token = first.json()["state_token"]
 
                 fake.study_learning_evidence_prepare = AsyncMock(return_value={
                     "evidence_claims": [{"field": "subject", "quote": "Biology"}],
                 })
-                invalid = client.post("/study-agent/local", json={
+                second_messages = [*first_messages, "Biology"]
+                second = client.post("/study-agent/local", json={
                     "consent": True,
-                    "message": MESSAGES[-1],
+                    "message": "Biology",
                     "context": "",
                     "language": "en",
                     "endpoint": "https://provider.example/v1",
                     "model_name": "mock-model",
                     "has_api_key": False,
                     "workflow": "learning-evidence-entry",
-                    "expected_evidence_field": "activity",
-                    "messages": ["Biology"],
+                    "expected_evidence_field": "subject",
+                    "state_token": first_token,
+                    "messages": second_messages,
                 })
-                self.assertEqual(invalid.status_code, 200)
-                self.assertEqual(invalid.json()["status"], "incomplete")
+                self.assertEqual(second.status_code, 200, second.text)
+                self.assertEqual(second.json()["status"], "incomplete")
+                second_token = second.json()["state_token"]
+
+                multi_turn_messages = [*second_messages, "Cell division"]
+                fake.study_learning_evidence_prepare = AsyncMock(return_value={
+                    "evidence_claims": [{"field": "topic", "quote": "Cell division"}],
+                })
+                next_turn = client.post("/study-agent/local", json={
+                    "consent": True, "message": "Cell division", "context": "", "language": "en",
+                    "endpoint": "https://provider.example/v1", "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "learning-evidence-entry", "expected_evidence_field": "topic",
+                    "state_token": second_token, "messages": multi_turn_messages,
+                })
+                self.assertEqual(next_turn.status_code, 200, next_turn.text)
+                self.assertEqual(next_turn.json()["status"], "incomplete")
+                self.assertEqual(next_turn.json()["expected_field"], "date")
+                self.assertEqual(next_turn.json()["fields"], {
+                    "activity": MESSAGES[0], "subject": "Biology", "topic": "Cell division",
+                })
+                fake.study_learning_evidence_prepare.assert_awaited_once_with(
+                    multi_turn_messages, "en", "topic", [CLAIMS[0], {"field": "subject", "quote": "Biology"}],
+                )
+
+                calls_before = fake.study_learning_evidence_prepare.await_count
+                raw_prior_spoof = client.post("/study-agent/local", json={
+                    "consent": True, "message": "Cell division", "context": "", "language": "en",
+                    "endpoint": "https://provider.example/v1", "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "learning-evidence-entry", "expected_evidence_field": "subject",
+                    "prior_evidence_claims": [{"field": "subject", "quote": "Biology"}],
+                    "messages": multi_turn_messages,
+                })
+                self.assertEqual(raw_prior_spoof.status_code, 422)
+                self.assertEqual(fake.study_learning_evidence_prepare.await_count, calls_before)
+
+                unrelated_turn_quote = client.post("/study-agent/local", json={
+                    "consent": True, "message": "Cell division", "context": "", "language": "en",
+                    "endpoint": "https://provider.example/v1", "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "learning-evidence-entry", "expected_evidence_field": "topic",
+                    "state_token": second_token,
+                    "messages": multi_turn_messages,
+                })
+                self.assertEqual(unrelated_turn_quote.status_code, 409)
+                self.assertEqual(fake.study_learning_evidence_prepare.await_count, calls_before)
                 self.assertEqual(self.rows(), [])
             self.assertEqual(fake.study_learning_evidence_prepare.await_count, 1)
 

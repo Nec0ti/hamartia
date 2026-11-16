@@ -69,6 +69,27 @@ class StudyLearningEvidenceToolTests(unittest.TestCase):
         self.assertFalse(hasattr(service, "storage"))
         self.assertNotIn("write", json.loads(responses[0].choices[0].message.tool_calls[0].function.arguments))
 
+    def test_configured_tool_uses_prior_host_verified_quotes_for_next_expected_turn(self):
+        messages = [MESSAGES[0], "Biology", "Cell division"]
+        prior = [CLAIMS[0], {"field": "subject", "quote": "Biology"}]
+        current = {"field": "topic", "quote": "Cell division"}
+        responses = [
+            choice(SimpleNamespace(content=None, tool_calls=[tool_call(json.dumps({"evidence": [current]}))])),
+            choice(SimpleNamespace(content="What date did you complete it?", tool_calls=None)),
+        ]
+        service, create = self.service(responses)
+        prepared = asyncio.run(service.study_learning_evidence_prepare(messages, "en", "topic", prior))
+        self.assertEqual(prepared["status"], "incomplete")
+        self.assertEqual(prepared["fields"], {
+            "activity": MESSAGES[0], "subject": "Biology", "topic": "Cell division",
+        })
+        self.assertEqual(prepared["expected_field"], "date")
+        self.assertEqual(prepared["evidence_claims"], [current])
+        followup = create.create.await_args_list[1].kwargs["messages"]
+        tool_output = json.loads(followup[-1]["content"])
+        self.assertEqual(tool_output["fields"], prepared["fields"])
+        self.assertEqual(tool_output["questions"], prepared["questions"])
+
     def test_invalid_provider_hints_stay_read_only_and_malformed_calls_fail_closed(self):
         out_of_order = [{"field": "subject", "quote": "Biology"}]
         service, create = self.service([

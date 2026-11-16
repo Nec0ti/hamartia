@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
+import binascii
 import re
+import secrets
+import threading
+import time
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from collections.abc import Mapping
 from typing import Any, Literal
 
@@ -19,6 +25,10 @@ FIELDS = (*REQUIRED_FIELDS, *OPTIONAL_FIELDS)
 FIELD_LIMITS = {"date": 10, "subject": 120, "topic": 160, "activity": 500, "observation": 3000, "reference_url": 2048}
 MAX_MESSAGES = 30
 MAX_MESSAGE_LENGTH = 4000
+LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS = 3600
+_LEARNING_EVIDENCE_STATE_SECRET = secrets.token_bytes(32)
+_LEARNING_EVIDENCE_STATE_USED: dict[str, int] = {}
+_LEARNING_EVIDENCE_STATE_LOCK = threading.Lock()
 
 
 class LearningEvidenceQuote(BaseModel):
@@ -156,6 +166,83 @@ def _digest(messages: list[str], language: str, fields: dict, evidence: dict) ->
         "evidence": evidence,
     }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _transcript_digest(messages: list[str], language: str) -> str:
+    encoded = json.dumps({"messages": messages, "language": language}, ensure_ascii=False, sort_keys=True,
+                         separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def issue_learning_evidence_state_token(messages: list[str], language: str, verified_evidence: dict) -> str:
+    """Sign the verified prefix state without retaining transcript content on the server."""
+    payload = {
+        "v": 1,
+        "issued_at": int(time.time()),
+        "nonce": secrets.token_urlsafe(12),
+        "message_count": len(messages),
+        "transcript_digest": _transcript_digest(messages, language),
+        "language": language,
+        "claims": [
+            {"field": field, "quote": evidence["quote"]}
+            for field, evidence in verified_evidence.items()
+        ],
+    }
+    body = urlsafe_b64encode(json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                                        separators=(",", ":")).encode("utf-8")).rstrip(b"=")
+    signature = hmac.new(_LEARNING_EVIDENCE_STATE_SECRET, body, hashlib.sha256).digest()
+    return f"{body.decode('ascii')}.{urlsafe_b64encode(signature).rstrip(b'=').decode('ascii')}"
+
+
+def resolve_learning_evidence_state_token(
+    token: str | None, messages: list[str], language: str,
+) -> list[dict[str, str]]:
+    """Return only host-issued prior claims for one exact appended student turn."""
+    if token is None:
+        if len(messages) != 1:
+            raise ValueError("A host-issued learning-evidence state token is required to continue this conversation.")
+        return []
+    if not isinstance(token, str) or len(token) > 24_000 or token.count(".") != 1:
+        raise ValueError("Learning-evidence conversation state is invalid or expired.")
+    body_text, signature_text = token.split(".", 1)
+    try:
+        body = body_text.encode("ascii")
+        signature = urlsafe_b64decode(signature_text + "=" * (-len(signature_text) % 4))
+        expected_signature = hmac.new(_LEARNING_EVIDENCE_STATE_SECRET, body, hashlib.sha256).digest()
+        if not hmac.compare_digest(signature, expected_signature):
+            raise ValueError
+        payload = json.loads(urlsafe_b64decode(body_text + "=" * (-len(body_text) % 4)))
+        issued_at = payload["issued_at"]
+        message_count = payload["message_count"]
+        if (
+            payload["v"] != 1
+            or not isinstance(issued_at, int)
+            or not 0 <= time.time() - issued_at <= LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS
+            or not isinstance(message_count, int)
+            or message_count < 1
+            or len(messages) != message_count + 1
+            or payload["language"] != language
+            or payload["transcript_digest"] != _transcript_digest(messages[:message_count], language)
+        ):
+            raise ValueError
+        claims = [LearningEvidenceQuote.model_validate(item).model_dump() for item in payload["claims"]]
+        if len(claims) > 12:
+            raise ValueError
+        token_key = hashlib.sha256(token.encode("ascii")).hexdigest()
+        now = int(time.time())
+        with _LEARNING_EVIDENCE_STATE_LOCK:
+            expired = [key for key, timestamp in _LEARNING_EVIDENCE_STATE_USED.items()
+                       if now - timestamp > LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS]
+            for key in expired:
+                _LEARNING_EVIDENCE_STATE_USED.pop(key, None)
+            if token_key in _LEARNING_EVIDENCE_STATE_USED:
+                raise ValueError
+            if len(_LEARNING_EVIDENCE_STATE_USED) >= 4096:
+                raise ValueError
+            _LEARNING_EVIDENCE_STATE_USED[token_key] = now
+        return claims
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error) as exc:
+        raise ValueError("Learning-evidence conversation state is invalid or expired.") from exc
 
 
 def prepare_learning_evidence(

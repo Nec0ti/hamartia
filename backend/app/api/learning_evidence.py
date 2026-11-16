@@ -17,7 +17,9 @@ from app.services.study_agent_learning_evidence import (
     LearningEvidenceQuote,
     MAX_MESSAGE_LENGTH,
     MAX_MESSAGES,
+    issue_learning_evidence_state_token,
     prepare_learning_evidence,
+    resolve_learning_evidence_state_token,
 )
 
 router = APIRouter(prefix="/learning-evidence", tags=["learning-evidence"])
@@ -29,6 +31,8 @@ class AgentLearningEvidenceDraftRequest(BaseModel):
 
     messages: list[str] = Field(min_length=1, max_length=MAX_MESSAGES)
     language: Literal["en", "tr"]
+    expected_evidence_field: Literal["activity", "subject", "topic", "date", "observation"] | None = None
+    state_token: str | None = Field(default=None, max_length=24_000)
     evidence_claims: list[LearningEvidenceQuote] = Field(max_length=12)
 
     @field_validator("messages")
@@ -57,6 +61,15 @@ def get_storage():
         raise HTTPException(status_code=500, detail=f"Storage unavailable: {exc}") from exc
 
 
+def _occurrences(message: str, quote: str) -> list[tuple[int, int]]:
+    found = []
+    start = message.find(quote)
+    while start >= 0:
+        found.append((start, start + len(quote)))
+        start = message.find(quote, start + 1)
+    return found
+
+
 @router.get("", response_model=list[LearningEvidence])
 async def list_evidence(storage: StorageService = Depends(get_storage)):
     return storage.load_list("learning_evidence.json", LearningEvidence)
@@ -66,9 +79,48 @@ async def list_evidence(storage: StorageService = Depends(get_storage)):
 async def learning_evidence_agent_draft(
     payload: AgentLearningEvidenceDraftRequest,
 ):
-    prepared = prepare_learning_evidence(
-        payload.messages, payload.language, [item.model_dump() for item in payload.evidence_claims],
-    )
+    interactive = payload.expected_evidence_field is not None or payload.state_token is not None
+    if payload.state_token is not None and payload.expected_evidence_field is None:
+        raise HTTPException(status_code=409, detail="The learning-evidence conversation state is invalid or expired.")
+    try:
+        prior_claims = resolve_learning_evidence_state_token(
+            payload.state_token, payload.messages, payload.language,
+        ) if interactive else []
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    prior = prepare_learning_evidence(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
+    expected = prior["expected_field"] if prior else "activity"
+    if payload.expected_evidence_field is not None:
+        if expected != payload.expected_evidence_field:
+            raise HTTPException(status_code=409, detail="The learning-evidence conversation changed. Review the current question again.")
+        for claim in payload.evidence_claims:
+            occurrences = _occurrences(payload.messages[-1], claim.quote)
+            if claim.field != expected or len(occurrences) != 1:
+                raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
+    combined = [*prior_claims, *[item.model_dump() for item in payload.evidence_claims]]
+    prepared = prepare_learning_evidence(payload.messages, payload.language, combined)
+    if interactive and prepared["status"] != "ready":
+        verified = prepared["verified_evidence"]
+        prepared["state_token"] = issue_learning_evidence_state_token(
+            payload.messages, payload.language, verified,
+        )
+    return prepared
+
+
+def build_learning_evidence_agent_draft(
+    messages: list[str], language: str, expected_evidence_field: str,
+    prior_claims: list[dict[str, str]], current_claims: list[dict[str, str]],
+):
+    """Build the host preview after a composed provider route has verified state once."""
+    if messages:
+        for claim in current_claims:
+            if claim["field"] != expected_evidence_field or len(_occurrences(messages[-1], claim["quote"])) != 1:
+                raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
+    prepared = prepare_learning_evidence(messages, language, [*prior_claims, *current_claims])
+    if prepared["status"] != "ready":
+        prepared["state_token"] = issue_learning_evidence_state_token(
+            messages, language, prepared["verified_evidence"],
+        )
     return prepared
 
 

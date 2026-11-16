@@ -839,7 +839,11 @@ async function main(smokeRun) {
               }]
               const response = await fetch(`${backendUrl}/learning-evidence/agent-draft`, {
                 method: 'POST', headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ messages: payload.messages, language: payload.language, evidence_claims }),
+                body: JSON.stringify({
+                  messages: payload.messages, language: payload.language,
+                  expected_evidence_field: field,
+                  state_token: payload.state_token || null, evidence_claims,
+                }),
                 signal: AbortSignal.timeout(10_000),
               })
               const responseBody = await response.text()

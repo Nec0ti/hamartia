@@ -527,13 +527,14 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return completion
   }
 
-  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity' }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
     if (!['chat', 'practice-entry', 'learning-evidence-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
     if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
     if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
     if (workflow === 'learning-evidence-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Learning evidence requires up to 30 student messages of at most 4,000 characters each.')
     if (workflow === 'learning-evidence-entry' && !['activity', 'subject', 'topic', 'date', 'observation'].includes(expected_evidence_field)) throw new Error('Unsupported expected learning-evidence field.')
+    if (workflow === 'learning-evidence-entry' && state_token !== null && (typeof state_token !== 'string' || state_token.length > 24_000)) throw new Error('Learning-evidence conversation state is invalid or expired.')
     const controller = new AbortController()
     chats.set(requestId, controller)
     try {
@@ -648,7 +649,11 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         const verifiedResponse = await fetchImpl(`${backendUrl}/learning-evidence/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ messages, language, evidence_claims: argumentsValue.evidence }),
+          body: JSON.stringify({
+            messages, language, expected_evidence_field,
+            state_token,
+            evidence_claims: argumentsValue.evidence,
+          }),
           signal: controller.signal,
         })
         const draft = await verifiedResponse.json().catch(() => ({}))

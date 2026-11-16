@@ -20,6 +20,7 @@ from app.services.storage import StorageService
 from app.services.study_agent_cli import PROVIDER_TOOL_NAME, dispatch_provider_tool, provider_tool_parameters
 from app.services.study_agent_learning_evidence import (
     PROVIDER_TOOL_NAME as LEARNING_EVIDENCE_TOOL_NAME,
+    ProviderToolArguments as LearningEvidenceToolArguments,
     dispatch_provider_tool as dispatch_learning_evidence_tool,
     provider_tool_parameters as learning_evidence_tool_parameters,
 )
@@ -210,6 +211,7 @@ class AIService:
 
     async def study_learning_evidence_prepare(
         self, messages: list[str], language: str, expected_field: str = "activity",
+        prior_evidence_claims: list[dict] | None = None,
     ) -> dict:
         """Run an evidence-only tool cycle for one user-reported completed activity."""
         client = await self._ensure_async()
@@ -252,7 +254,12 @@ class AIService:
             arguments = json.loads(call.function.arguments)
         except (TypeError, json.JSONDecodeError) as exc:
             raise ValueError("The configured endpoint returned malformed learning-evidence arguments.") from exc
-        prepared = dispatch_learning_evidence_tool(arguments, messages=messages, language=language)
+        tool_arguments = LearningEvidenceToolArguments.model_validate(arguments)
+        current_claims = [item.model_dump() for item in tool_arguments.evidence]
+        prepared = dispatch_learning_evidence_tool(
+            {"evidence": [*(prior_evidence_claims or []), *current_claims]},
+            messages=messages, language=language,
+        )
         tool_result = {
             key: prepared[key]
             for key in ("status", "fields", "verified_evidence", "missing", "ambiguous", "questions", "preview_digest", "write_allowed")
@@ -277,6 +284,7 @@ class AIService:
         final_message = followup.choices[0].message
         if final_message.tool_calls:
             raise ValueError("The configured endpoint attempted an additional learning-evidence tool call.")
+        prepared["evidence_claims"] = current_claims
         return prepared
 
     def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:

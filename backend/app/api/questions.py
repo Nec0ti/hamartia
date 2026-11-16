@@ -5,9 +5,12 @@ mistake-tagging. The AI pipeline lives in `services/ai_service`.
 """
 
 from datetime import date, datetime
+import hashlib
+import ipaddress
 import json
 from typing import Annotated
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
@@ -17,8 +20,9 @@ from openai import OpenAIError
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt
-from app.services.ai_service import AIService, get_ai
+from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt, Settings
+from app.services.ai_service import AIService
+from app.services.question_analysis_consent import question_analysis_consents
 from app.services.storage import StorageError, StorageService, data_mutation_guard
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
@@ -202,20 +206,129 @@ async def get_question_image(question_id: str, storage: StorageService = Depends
     return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})
 
 
+class AnalysisConsentApproval(BaseModel):
+    consent_id: str
+
+
+def _analysis_fingerprint(question: Question, ai: AIService, prompt: list) -> str:
+    canonical = json.dumps(
+        {
+            "question_id": question.id,
+            "created_at": question.created_at,
+            "base_url": ai.base_url,
+            "model_name": ai.model_name,
+            "api_key": ai.api_key,
+            "prompt": prompt,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _host_class_and_scheme(base_url: str) -> tuple[str, str]:
+    parsed = urlsplit(base_url)
+    hostname = parsed.hostname
+    if parsed.scheme not in ("http", "https") or not hostname:
+        raise HTTPException(status_code=422, detail="Configured endpoint URL is invalid")
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+        raise HTTPException(status_code=422, detail="Endpoint URLs with embedded credentials or query data cannot be reviewed safely")
+    local = hostname.casefold() == "localhost" or hostname.casefold().endswith(".localhost")
+    if not local:
+        try:
+            local = ipaddress.ip_address(hostname).is_loopback
+        except ValueError:
+            local = False
+    return ("local" if local else "remote", parsed.scheme)
+
+
+def _analysis_disclosure(question: Question, settings: Settings, ai: AIService, prompt: list) -> dict:
+    host_class, scheme = _host_class_and_scheme(settings.litellm_base_url)
+    raw_key = settings.api_key
+    if not raw_key:
+        key_setting = "blank"
+    elif raw_key.casefold() == "sk-placeholder":
+        key_setting = "placeholder"
+    else:
+        key_setting = "configured_secret"
+    sent_key = "placeholder" if ai.api_key.casefold() == "sk-placeholder" else "configured_secret"
+    user_content = prompt[1]["content"]
+    text_item = user_content[0]
+    image_included = any(item.get("type") == "image_url" for item in user_content)
+    return {
+        "endpoint_class": host_class,
+        "scheme": scheme,
+        "model": settings.model_name,
+        "payload": {
+            "analysis_instructions_included": True,
+            "ocr_text_included": True,
+            "ocr_text_has_content": bool(question.ocr_text),
+            "image_filename_included": "Image filename:" in text_item["text"],
+            "saved_image_included": image_included,
+        },
+        "auth_setting_category": key_setting,
+        "auth_value_category": sent_key,
+    }
+
+
+@router.post("/{question_id}/analysis-preview")
+async def preview_question_analysis(
+    question_id: str,
+    storage: StorageService = Depends(get_storage),
+):
+    """Prepare a local-only, short-lived exact-request consent summary."""
+    questions = storage.load_list("questions.json", Question)
+    question = next((item for item in questions if item.id == question_id), None)
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+    settings = storage.load_doc("settings.json", Settings) or Settings()
+    ai = AIService(
+        base_url=settings.litellm_base_url,
+        model_name=settings.model_name,
+        api_key=settings.api_key,
+        max_retries=0,
+    )
+    prompt = ai._build_prompt(question, data_dir=DATA_DIR)
+    disclosure = _analysis_disclosure(question, settings, ai, prompt)
+    snapshot = question_analysis_consents.issue(
+        question=question,
+        ai=ai,
+        prompt=prompt,
+        fingerprint=_analysis_fingerprint(question, ai, prompt),
+    )
+    return {"consent_id": snapshot.consent_id, **disclosure}
+
+
 @router.post("/{question_id}/analyze", response_model=Question)
 async def analyze_question(
     question_id: str,
+    approval: AnalysisConsentApproval,
     storage: StorageService = Depends(get_storage),
-    ai: AIService = Depends(get_ai),
 ):
-    """Run the Council of Minds and attach the five-counselor verdict."""
+    """Consume explicit one-use approval and run the frozen request snapshot."""
+    snapshot = question_analysis_consents.consume(approval.consent_id, question_id)
+    if snapshot is None:
+        raise HTTPException(status_code=409, detail="Consent expired or already used; review the request again")
+
     questions = storage.load_list("questions.json", Question)
     question = next((item for item in questions if item.id == question_id), None)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    settings = storage.load_doc("settings.json", Settings) or Settings()
+    current_ai = AIService(
+        base_url=settings.litellm_base_url,
+        model_name=settings.model_name,
+        api_key=settings.api_key,
+        max_retries=0,
+    )
+    current_prompt = current_ai._build_prompt(question, data_dir=DATA_DIR)
+    if _analysis_fingerprint(question, current_ai, current_prompt) != snapshot.fingerprint:
+        raise HTTPException(status_code=409, detail="Question or endpoint settings changed; review the request again")
+
     try:
-        analysis = await ai.analyze_question(question)
+        analysis = await snapshot.ai.analyze_question(snapshot.question, prompt=snapshot.prompt)
     except OpenAIError as exc:
         raise HTTPException(
             status_code=502,

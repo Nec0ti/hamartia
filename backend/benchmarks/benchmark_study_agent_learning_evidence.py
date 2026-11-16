@@ -1,4 +1,4 @@
-"""Benchmark only the deterministic host learning-evidence preview/create flow."""
+"""Benchmark deterministic host learning-evidence preview/create and signed state flow."""
 
 import argparse
 import asyncio
@@ -19,7 +19,11 @@ from app.api import learning_evidence
 from app.models.schemas import LearningEvidence
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
-from app.services.study_agent_learning_evidence import prepare_learning_evidence
+from app.services.study_agent_learning_evidence import (
+    issue_learning_evidence_state_token,
+    prepare_learning_evidence,
+    resolve_learning_evidence_state_token,
+)
 from benchmark_common import assert_oracle, emit, probe_oracle_self_check
 
 SEED = 20261116
@@ -119,9 +123,41 @@ def preview_and_create(index, storage):
     return record, expected_record, body
 
 
+def signed_state_transition(index):
+    prefix = [f"I completed reading chapter {index + 1}.", "Synthetic biology"]
+    prior_claims = [
+        {"field": "activity", "quote": prefix[0]},
+        {"field": "subject", "quote": prefix[1]},
+    ]
+    prior = prepare_learning_evidence(prefix, "en", prior_claims)
+    if prior["expected_field"] != "topic" or prior["rejected_claims"]:
+        raise AssertionError("host prior state did not select the next expected field")
+    token = issue_learning_evidence_state_token(prefix, "en", prior["verified_evidence"])
+    messages = [*prefix, f"Synthetic topic {index + 1}"]
+    resolved = resolve_learning_evidence_state_token(token, messages, "en")
+    if resolved != prior_claims:
+        raise AssertionError("signed state did not recover exactly the host-verified prior claims")
+    prepared = prepare_learning_evidence(messages, "en", [*resolved, {
+        "field": "topic", "quote": messages[-1],
+    }])
+    if prepared["expected_field"] != "date" or prepared["rejected_claims"]:
+        raise AssertionError("appended current turn did not advance exactly one expected field")
+    try:
+        resolve_learning_evidence_state_token(token, messages, "en")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("signed state token replay was accepted")
+
+
 def run_trial(count):
     with tempfile.TemporaryDirectory(prefix="hamartia-learning-evidence-bench-") as directory, provider_tripwires():
         storage = StorageService(Path(directory))
+        state_started = time.perf_counter()
+        state_transitions = 100
+        for index in range(state_transitions):
+            signed_state_transition(index)
+        state_elapsed = time.perf_counter() - state_started
         seen_ids = set()
         expected_rows = []
         started = time.perf_counter()
@@ -223,6 +259,9 @@ def run_trial(count):
 
         return {
             "records": count,
+            "signed_state_transitions": state_transitions,
+            "signed_state_transition_seconds": round(state_elapsed, 6),
+            "signed_state_transitions_per_second": round(state_transitions / state_elapsed, 2) if state_elapsed else None,
             "seconds": round(elapsed, 6),
             "records_per_second": round(count / elapsed, 2) if elapsed else None,
             "persisted_bytes": (Path(directory) / "learning_evidence.json").stat().st_size,
@@ -234,7 +273,7 @@ def run_trial(count):
             "invalid_or_hypothetical_writes": 0,
             "provider_tripwire_calls": 0,
             "oracle_self_checks": [oracle_probe],
-            "correctness": "every full row, exact source quote offset, explicit URL policy, preview digest, approval ID fingerprint, and no-write case matches independent oracles",
+            "correctness": "full rows, exact quote offsets, URL policy, preview digest, approval fingerprint, signed-prefix transitions, one-use replay rejection, and no-write cases match independent oracles",
         }
 
 
@@ -249,6 +288,9 @@ def main(repeats=5, json_output=None):
         result = dict(trials[-1])
         result["full_preview_and_approved_create_p50_seconds"] = round(durations[len(durations) // 2], 6)
         result["full_preview_and_approved_create_p95_seconds"] = round(durations[-1], 6)
+        state_durations = sorted(item["signed_state_transition_seconds"] for item in trials)
+        result["signed_state_transition_p50_seconds"] = round(state_durations[len(state_durations) // 2], 6)
+        result["signed_state_transition_p95_seconds"] = round(state_durations[-1], 6)
         result["warmup_trials_excluded"] = 1
         runs.append(result)
     emit({

@@ -624,6 +624,7 @@ class StudyAgentCliTests(unittest.TestCase):
             invalid = [
                 {"command": "study.practice.draft", **base, "unexpected": True},
                 {"command": "study.practice.draft", **base, "proposal": {"correct": 12}},
+                {"command": "study.practice.draft", **base, "approved": True},
                 {"command": "study.practice.approve", **base, "approved": False},
             ]
             for request in invalid:

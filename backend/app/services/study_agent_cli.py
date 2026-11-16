@@ -687,7 +687,8 @@ async def dispatch_record_command(envelope: Mapping[str, Any]) -> dict[str, Any]
     if "proposal" in envelope:
         raise ValueError("Caller-supplied values are not accepted; submit evidence quotes only.")
     payload_type, handler = routes[command]
-    payload = payload_type.model_validate({key: value for key, value in envelope.items() if key not in {"command", "approved"}})
+    excluded = {"command", "approved"} if is_approval else {"command"}
+    payload = payload_type.model_validate({key: value for key, value in envelope.items() if key not in excluded})
     try:
         storage = StorageService(DATA_DIR)
         if command == "study.practice.approve":

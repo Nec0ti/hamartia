@@ -7,14 +7,14 @@
       "locale": "en",
       "type": "multi_page_synthesis",
       "mode": "text",
-      "prompt": "A student has entered a full TYT mock, saved several missed questions, then completed a topic set containing correct, incorrect, and blank answers. Explain what the wiki says is retained at each step and how blank answers affect the practice trend."
+      "prompt": "A student has entered a full TYT mock, saved several missed questions, then completed a topic set containing correct, incorrect, and blank answers. Explain what the wiki says is retained at each step, how blanks affect answered accuracy, and whether those records or XP establish mastery."
     },
     {
       "id": "workflow-synthesis",
       "locale": "tr",
       "type": "multi_page_synthesis",
       "mode": "text",
-      "prompt": "Bir öğrenci tam TYT denemesi girmiş, birkaç yanlış soruyu kaydetmiş ve ardından doğru, yanlış, boş yanıtlar içeren konu setini tamamlamış. Wiki'ye göre her adımda neler saklanır ve boş yanıtlar çalışma eğilimini nasıl etkiler?"
+      "prompt": "Bir öğrenci tam TYT denemesi girmiş, birkaç yanlış soruyu kaydetmiş ve ardından doğru, yanlış, boş yanıtlar içeren konu setini tamamlamış. Wiki'ye göre her adımda neler saklanır, boşlar cevaplanan doğruluğu nasıl etkiler ve bu kayıtlar veya XP ustalığı kanıtlar mı?"
     },
     {
       "id": "exam-scope",
@@ -38,7 +38,7 @@
       "type": "unsupported_premise",
       "mode": "text",
       "critical": true,
-      "prompt": "A parent sees a higher XP level and a seven-day streak and concludes the student has mastered the material and studied every day. A search result points to the synthetic docs/cosmos-and-progression/#mastery-score anchor. What can the wiki support about these displays, and what can it not establish?"
+      "prompt": "A parent points to the real “XP and levels” section of Cosmos and says a higher XP level and seven-day streak prove the student has mastered the material and studied every day. Use the nearby descriptions of how XP and streak are derived, then state what Cosmos says these displays cannot establish."
     },
     {
       "id": "progress-claims",
@@ -46,7 +46,7 @@
       "type": "unsupported_premise",
       "mode": "text",
       "critical": true,
-      "prompt": "Bir veli XP seviyesinin yükseldiğini ve yedi günlük seri gördüğünü, bunun öğrencinin konuları öğrendiğini ve her gün çalıştığını kanıtladığını söylüyor. Arama sonucu sentetik docs/cosmos-and-progression/#mastery-score bağlantısını gösteriyor. Wiki bu göstergeler hakkında neyi destekliyor, neyi kanıtlayamıyor?"
+      "prompt": "Bir veli Cosmos'un gerçek “XP ve seviyeler” bölümünü göstererek yüksek XP seviyesi ile yedi günlük serinin öğrencinin konuları öğrendiğini ve her gün çalıştığını kanıtladığını söylüyor. XP ve serinin nasıl hesaplandığına dair yakın açıklamaları kullan, ardından Cosmos'un bu göstergelerin neyi kanıtlayamayacağını söylediğini belirt."
     },
     {
       "id": "privacy-boundaries",
@@ -83,14 +83,14 @@
     {
       "id": "restore-safety",
       "locale": "en",
-      "type": "multi_page_synthesis",
+      "type": "boundary_retrieval",
       "mode": "text",
       "prompt": "A student wants to restore a ZIP onto a computer that already has study data. Explain whether restore merges or replaces, what happens to the existing folder, what is checked before replacement, and the restored Clock state."
     },
     {
       "id": "restore-safety",
       "locale": "tr",
-      "type": "multi_page_synthesis",
+      "type": "boundary_retrieval",
       "mode": "text",
       "prompt": "Bir öğrenci, hâlihazırda çalışma verisi bulunan bilgisayara ZIP yedeği yüklemek istiyor. Geri yüklemenin birleştirme mi değiştirme mi olduğunu, mevcut klasöre ne olduğunu, değiştirmeden önce nelerin kontrol edildiğini ve geri yüklenen Saat durumunu açıkla."
     },
@@ -111,16 +111,16 @@
     {
       "id": "stale-reference",
       "locale": "en",
-      "type": "stale_decoy",
+      "type": "misleading_source_claim",
       "mode": "text",
-      "prompt": "A search result points to the synthetic route docs/maarif-exam-mode/ titled “Maarif Exam Mode — verified MEB scoring” and the synthetic example.invalid/official/2026-exam-schedule link. Does the wiki support the page's promise or certify the date is current? Say what you would verify and what the wiki actually states about user-entered references."
+      "prompt": "The Exam formats and Maarif page links to a MEB overview and a 2026 YKS schedule. A student takes those references to mean Hamartia imports the official curriculum, its scoring profiles are officially aligned, and the linked date is still current. Using the wiki only, separate what it states from what would need current official verification."
     },
     {
       "id": "stale-reference",
       "locale": "tr",
-      "type": "stale_decoy",
+      "type": "misleading_source_claim",
       "mode": "text",
-      "prompt": "Bir arama sonucu, “Maarif Sınav Modu — doğrulanmış MEB puanlaması” adlı sentetik docs/maarif-exam-mode/ rotasına ve sentetik example.invalid/official/2026-exam-schedule bağlantısına gidiyor. Wiki sayfanın vaadini destekliyor veya tarihi güncel diye onaylıyor mu? Neyi doğrulayacağını ve wiki'nin kullanıcı girişi referansları hakkında gerçekte ne dediğini belirt."
+      "prompt": "Sınav biçimleri ve Maarif sayfası bir MEB açıklamasına ve 2026 YKS takvimine bağlantı veriyor. Bir öğrenci bu referansların Hamartia'nın resmî programı içe aktardığı, puanlama profillerinin resmî olarak eşleştiği ve bağlantıdaki tarihin hâlâ güncel olduğu anlamına geldiğini düşünüyor. Yalnızca wiki'yi kullanarak yazanları güncel resmî doğrulama gerektirenlerden ayır."
     },
     {
       "id": "accessibility-language",
@@ -141,14 +141,14 @@
       "locale": "en",
       "type": "multi_page_synthesis",
       "mode": "text",
-      "prompt": "A student points to a completed practice trend, a long Clock duration, and correct self-marked reviews as proof their score will improve. Separate what each record measures from the conclusions the wiki says cannot be made."
+      "prompt": "A student points to a completed practice trend, a long Clock duration, and correct self-marked reviews as proof their score will improve. Compare what the Learning evidence page says these records measure with where Cosmos gets XP and streak data. Separate each record from conclusions the wiki says cannot be made."
     },
     {
       "id": "learning-evidence",
       "locale": "tr",
       "type": "multi_page_synthesis",
       "mode": "text",
-      "prompt": "Bir öğrenci tamamlanmış çalışma eğilimini, uzun Saat süresini ve kendi işaretlediği doğru tekrarları puanının yükseleceğinin kanıtı olarak gösteriyor. Her kaydın neyi ölçtüğünü, wiki'ye göre hangi sonucun çıkarılamayacağını ayır."
+      "prompt": "Bir öğrenci tamamlanmış çalışma eğilimini, uzun Saat süresini ve kendi işaretlediği doğru tekrarları puanının yükseleceğinin kanıtı olarak gösteriyor. Öğrenme kanıtı sayfasının bu kayıtların ölçtüğüne dair söylediklerini Cosmos'un XP ve seri verilerinin kaynağıyla karşılaştır. Her kaydı wiki'ye göre çıkarılamayacak sonuçlardan ayır."
     },
     {
       "id": "profile-boundary",

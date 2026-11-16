@@ -7,7 +7,8 @@
     "minimum_total_percent": 90,
     "minimum_each_locale_percent": 85,
     "critical_tasks_require_full_credit": true,
-    "human_response_scoring_only": true
+    "human_response_scoring_only": true,
+    "threshold_status": "provisional_pending_human_pilot"
   },
   "tasks": [
     {
@@ -29,31 +30,19 @@
         },
         {
           "points": 1,
-          "claim": "A saved missed question can include labels and optional exam context such as number, order, or time.",
+          "claim": "A saved missed question can include text or an image, subject/topic labels, and optional exam number/order/time context.",
           "evidence": [
             {
               "locale": "en",
               "page": "study-workflows",
               "anchor": "mistakes",
-              "quote": "optionally record exam question number, solve order, or time spent."
+              "quote": "Save text, attach a supported image, add subject/topic labels, and optionally record exam question number, solve order, or time spent."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Study Plan groups due questions and offers focused practice.",
-          "evidence": [
-            {
-              "locale": "en",
-              "page": "study-workflows",
-              "anchor": "practice",
-              "quote": "Study Plan groups due questions by topic, shows available mistake tags and exam-order counts, and offers focused practice."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "A completed set records date, subject/topic, answer counts, and time.",
+          "claim": "Each completed practice set stores the selected scoring-profile snapshot, date, subject/topic, answer counts, and time.",
           "evidence": [
             {
               "locale": "en",
@@ -65,13 +54,31 @@
         },
         {
           "points": 1,
-          "claim": "Blank answers are excluded from the answered-accuracy denominator.",
+          "claim": "Blanks are excluded from the answered-accuracy denominator.",
           "evidence": [
             {
               "locale": "en",
               "page": "study-workflows",
               "anchor": "practice",
               "quote": "Accuracy uses correct + incorrect, so blanks are excluded"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Practice trends summarize completed sets and do not demonstrate mastery from one result.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Practice trends summarize completed sets."
+            },
+            {
+              "locale": "en",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "demonstrate mastery from a single result."
             }
           ]
         }
@@ -96,31 +103,19 @@
         },
         {
           "points": 1,
-          "claim": "Yanlış kaydına isteğe bağlı soru numarası, çözüm sırası veya süre eklenebilir.",
+          "claim": "Yanlış soru kaydı metin veya görseli, ders/konu etiketlerini ve isteğe bağlı deneme no/sıra/süre bağlamını içerebilir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "study-workflows",
               "anchor": "mistakes",
-              "quote": "istersen soru numarası, çözüm sırası veya süreyi de kaydet."
+              "quote": "Metin kaydet, desteklenen bir görsel ekle, ders/konu etiketleri ekle; istersen soru numarası, çözüm sırası veya süreyi de kaydet."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Çalışma Planı vadeli soruları gruplar ve odaklı çalışma başlatır.",
-          "evidence": [
-            {
-              "locale": "tr",
-              "page": "study-workflows",
-              "anchor": "practice",
-              "quote": "Çalışma Planı vadesi gelen soruları konuya göre gruplar"
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Tamamlanan set tarih, ders/konu, doğru/yanlış/boş sayısı ve süreyi kaydeder.",
+          "claim": "Tamamlanan çalışma seti seçili puanlama profili anlık görüntüsünü, tarihi, ders/konuyu, yanıt sayılarını ve süreyi saklar.",
           "evidence": [
             {
               "locale": "tr",
@@ -139,6 +134,24 @@
               "page": "study-workflows",
               "anchor": "practice",
               "quote": "Doğruluk paydası doğru + yanlıştır; boşlar hariçtir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma eğilimleri tamamlanan setleri özetler ve tek sonuçtan ustalık göstermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-shows",
+              "quote": "Çalışma eğilimleri tamamlanmış setleri özetler."
+            },
+            {
+              "locale": "tr",
+              "page": "learning-evidence",
+              "anchor": "what-it-does-not",
+              "quote": "tek sonuçtan ustalık göstermez."
             }
           ]
         }
@@ -321,25 +334,37 @@
         },
         {
           "points": 1,
-          "claim": "XP, level, streak and orbit position do not establish mastery or future performance.",
+          "claim": "A level is derived from cumulative XP and is app progression, not a grade or learning score.",
           "evidence": [
             {
               "locale": "en",
               "page": "cosmos-and-progression",
-              "anchor": "limits",
-              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
+              "anchor": "levels",
+              "quote": "A level is derived from cumulative XP"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "These displays are navigation cues, not a judgment about the student.",
+          "claim": "The streak comes from saved exam dates and is not a record of every study activity; these displays do not establish mastery.",
           "evidence": [
             {
               "locale": "en",
               "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "The displayed streak is derived from dates on saved exam records."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "it is not a record of every study activity"
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
               "anchor": "limits",
-              "quote": "Use these displays as navigation cues only"
+              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
             }
           ]
         }
@@ -388,25 +413,37 @@
         },
         {
           "points": 1,
-          "claim": "XP, seviye, seri ve yörünge ustalığı veya gelecekteki performansı kanıtlamaz.",
+          "claim": "Seviye toplam XP’den türetilir; uygulama ilerlemesidir, not veya öğrenme puanı değildir.",
           "evidence": [
             {
               "locale": "tr",
               "page": "cosmos-and-progression",
-              "anchor": "limits",
-              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
+              "anchor": "levels",
+              "quote": "Seviye toplam XP'den türetilir"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Göstergeler yalnızca gezinme ipucudur ve öğrenci hakkında hüküm değildir.",
+          "claim": "Seri kaydedilen deneme tarihlerinden hesaplanır ve her çalışmanın kaydı değildir; bu göstergeler ustalığı kanıtlamaz.",
           "evidence": [
             {
               "locale": "tr",
               "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "Gösterilen seri, kaydedilmiş deneme tarihlerinden hesaplanır."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "her çalışma etkinliğinin kaydı değildir"
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
               "anchor": "limits",
-              "quote": "Bu görünümleri yalnızca gezinme ipucu olarak kullan"
+              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
             }
           ]
         }
@@ -1003,13 +1040,25 @@
       "criteria": [
         {
           "points": 1,
-          "claim": "The wiki denies official/verified Maarif alignment.",
+          "claim": "Maarif is a curriculum framework, not a national-exam name; Hamartia does not import MEB curriculum text or make verified alignment.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "maarif",
-              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
+              "quote": "Türkiye Yüzyılı Maarif Modeli is a curriculum framework and assessment approach, not a national-exam name. Hamartia does not import MEB curriculum text or make official/verified alignment."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Scoring profile names and rules are user configuration, not official rules or verified alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "These labels and rules are user configuration, not official exam or national rules and not verified alignment with an authority or Maarif."
             }
           ]
         },
@@ -1027,31 +1076,19 @@
         },
         {
           "points": 1,
-          "claim": "An old exam-date link is not certified current; check current official pages for later dates.",
+          "claim": "The wiki lists a 2026 YKS schedule and 2026 LGS guide in its official context references.",
           "evidence": [
             {
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "adapt",
-              "quote": "Check current official pages for later dates."
+              "quote": "2026 YKS schedule · 2026 LGS guide (PDF)"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "The wiki says Hamartia does not import MEB curriculum text or make official/verified alignment, so the decoy’s verified-scoring promise is unsupported.",
-          "evidence": [
-            {
-              "locale": "en",
-              "page": "exam-formats-and-maarif",
-              "anchor": "maarif",
-              "quote": "Hamartia does not import MEB curriculum text or make official/verified alignment."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Do not state an unverified current external date or treat the decoy route as an authoritative source.",
+          "claim": "The wiki does not certify a cited date as current; it directs readers to current official pages for later dates.",
           "evidence": [
             {
               "locale": "en",
@@ -1070,19 +1107,31 @@
       "criteria": [
         {
           "points": 1,
-          "claim": "Wiki resmî/doğrulanmış Maarif eşleştirmesi olmadığını söyler.",
+          "claim": "Maarif ulusal sınav adı değil, öğretim programı ve ölçme yaklaşımdır; Hamartia MEB metnini içe aktarıp doğrulanmış eşleştirme yapmaz.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "maarif",
-              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
+              "quote": "Türkiye Yüzyılı Maarif Modeli bir öğretim programı ve ölçme-değerlendirme yaklaşımıdır; ulusal sınav adı değildir. Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Kullanıcı girişi dış adresler alınmaz veya doğrulanmaz.",
+          "claim": "Puanlama profili adları ve kuralları kullanıcı yapılandırmasıdır; resmî kurallar veya doğrulanmış eşleştirme değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Bu etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav veya ulusal kural, yetkili kurum ya da Maarif ile doğrulanmış eşleştirme değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Kullanıcının girdiği dış adresler alınmaz veya doğrulanmaz.",
           "evidence": [
             {
               "locale": "tr",
@@ -1094,31 +1143,19 @@
         },
         {
           "points": 1,
-          "claim": "Eski sınav tarihi güncel onaylı değildir; sonraki tarihler için güncel resmî sayfalar kontrol edilir.",
+          "claim": "Wiki resmî kaynak bağlamında 2026 YKS takvimi ve 2026 LGS kılavuzunu listeler.",
           "evidence": [
             {
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "adapt",
-              "quote": "Sonraki tarihler için güncel resmî sayfalara bak."
+              "quote": "2026 YKS takvimi · 2026 LGS kılavuzu (PDF)"
             }
           ]
         },
         {
           "points": 1,
-          "claim": "Wiki, Hamartia’nın MEB program metnini içe aktarmadığını ve resmî/doğrulanmış eşleştirme yapmadığını söyler; decoyun doğrulanmış puanlama vaadi desteklenmez.",
-          "evidence": [
-            {
-              "locale": "tr",
-              "page": "exam-formats-and-maarif",
-              "anchor": "maarif",
-              "quote": "Hamartia MEB program metnini içe aktarmaz ve resmî/doğrulanmış eşleştirme yapmaz."
-            }
-          ]
-        },
-        {
-          "points": 1,
-          "claim": "Dış tarihi güncel diye sunma ve decoy rotayı yetkili kaynak sayma.",
+          "claim": "Wiki bağlantıdaki tarihi güncel diye onaylamaz; sonraki tarihler için güncel resmî sayfalara bak der.",
           "evidence": [
             {
               "locale": "tr",
@@ -1319,13 +1356,31 @@
         },
         {
           "points": 1,
-          "claim": "Time, streak, XP and timer use are not evidence of improved learning.",
+          "claim": "Time in app is not learning evidence; XP is activity progression, streaks derive from saved exam dates rather than all study, and Cosmos says neither establishes mastery.",
           "evidence": [
             {
               "locale": "en",
               "page": "learning-evidence",
               "anchor": "what-it-does-not",
               "quote": "Time in the app, streaks, XP, and timer use are not evidence of improved learning."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "This is app progression, not a grade or learning score."
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "it is not a record of every study activity"
+            },
+            {
+              "locale": "en",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, level, streak, and orbit position do not establish knowledge, mastery, effort, or future exam performance."
             }
           ]
         }
@@ -1386,13 +1441,31 @@
         },
         {
           "points": 1,
-          "claim": "Uygulama süresi, seri, XP ve zamanlayıcı kullanımı öğrenme artışını kanıtlamaz.",
+          "claim": "Uygulamada geçirilen süre öğrenme kanıtı değildir; XP etkinlik ilerlemesidir, seri her çalışma değil kayıtlı deneme tarihlerini yansıtır ve Cosmos bunların ustalığı kanıtlamadığını söyler.",
           "evidence": [
             {
               "locale": "tr",
               "page": "learning-evidence",
               "anchor": "what-it-does-not",
               "quote": "Uygulamada geçirilen süre, seri, XP ve zamanlayıcı kullanımı öğrenmenin arttığına kanıt değildir."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "levels",
+              "quote": "Bu, uygulama ilerlemesidir; not veya öğrenme puanı değildir."
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "streak",
+              "quote": "her çalışma etkinliğinin kaydı değildir"
+            },
+            {
+              "locale": "tr",
+              "page": "cosmos-and-progression",
+              "anchor": "limits",
+              "quote": "XP, seviye, seri ve yörünge konumu bilgiyi, ustalığı, çabayı veya gelecekteki sınav performansını kanıtlamaz."
             }
           ]
         }

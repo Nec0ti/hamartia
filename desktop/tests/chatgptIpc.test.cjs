@@ -91,6 +91,27 @@ test('ChatGPT IPC forwards the host-selected field hint and opaque signed learni
   await pending
 })
 
+test('ChatGPT IPC forwards the host-selected exam field, profile, and opaque signed state', async () => {
+  const testApp = setup()
+  const messages = ['2026-11-16']
+  const examStateToken = 'opaque-exam-state-token'
+  const pending = testApp.handlers.get('hamartia:chatgpt:chat')(testApp.event(), {
+    requestId: 'request-exam-0123456789', consent: true, message: messages[0], model: 'model-a', language: 'tr',
+    workflow: 'exam-entry', messages, expected_exam_field: 'date', exam_state_token: examStateToken,
+    scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7,
+  })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(testApp.calls.payload.workflow, 'exam-entry')
+  assert.equal(testApp.calls.payload.language, 'tr')
+  assert.equal(testApp.calls.payload.expected_exam_field, 'date')
+  assert.equal(testApp.calls.payload.exam_state_token, examStateToken)
+  assert.equal(testApp.calls.payload.scoring_profile_id, 'profile_host-choice')
+  assert.equal(testApp.calls.payload.scoring_profile_version, 7)
+  assert.deepEqual(testApp.calls.payload.messages, messages)
+  testApp.finishChat()
+  await pending
+})
+
 test('only the webContents that started a ChatGPT request can cancel it or receive deltas', async () => {
   const testApp = setup()
   const event = testApp.event({ senderId: 7 })

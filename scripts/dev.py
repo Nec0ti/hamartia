@@ -69,7 +69,7 @@ def main():
     processes = []
     try:
         processes.append(subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", "8000"],
+            [sys.executable, "-m", "uvicorn", "app.dev:application", "--app-dir", "backend", "--host", "127.0.0.1", "--port", "8000"],
             cwd=ROOT,
             start_new_session=os.name == "posix",
         ))

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import sys
 import tempfile
 import unittest
@@ -193,24 +195,25 @@ class DesktopServerTests(unittest.TestCase):
         self.assertEqual(stopped, [True])
         client.close()
 
-    def test_desktop_readiness_requires_control_token(self):
+    def test_desktop_readiness_proves_nonce_without_receiving_control_token(self):
         app = FastAPI()
         configure_frontend(app)
         client = TestClient(app)
+        nonce = "a" * 64
         with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "correct-token"}, clear=True):
             missing = client.get("/desktop/ready")
-            wrong = client.get(
-                "/desktop/ready",
-                headers={"X-Hamartia-Control-Token": "wrong-token"},
-            )
             accepted = client.get(
                 "/desktop/ready",
-                headers={"X-Hamartia-Control-Token": "correct-token"},
+                headers={"X-Hamartia-Control-Nonce": nonce},
             )
-        self.assertEqual(missing.status_code, 403)
-        self.assertEqual(wrong.status_code, 403)
+            malformed = client.get("/desktop/ready", headers={"X-Hamartia-Control-Nonce": "bad"})
+        self.assertEqual(missing.status_code, 400)
         self.assertEqual(accepted.status_code, 204)
-        self.assertEqual(accepted.headers.get("X-Hamartia-Control-Token-Verified"), "true")
+        self.assertEqual(
+            accepted.headers.get("X-Hamartia-Control-Proof"),
+            hmac.new(b"correct-token", nonce.encode("ascii"), hashlib.sha256).hexdigest(),
+        )
+        self.assertEqual(malformed.status_code, 400)
         client.close()
 
     def test_frontend_directory_uses_override_or_pyinstaller_bundle(self):

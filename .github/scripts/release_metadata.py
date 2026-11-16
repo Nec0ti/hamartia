@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import html
 import json
 import os
 import re
@@ -14,6 +15,44 @@ from pathlib import Path
 
 TAG_PATTERN = re.compile(r"^ARETE-(\d+)$")
 REQUIRED_ASSET_SUFFIXES = {".exe", ".deb", ".appimage"}
+RELEASE_SUMMARY_START = "<!-- release-summary:start -->"
+RELEASE_SUMMARY_END = "<!-- release-summary:end -->"
+RELEASE_SUMMARY_FIELDS = (
+    "Highlights",
+    "Behavior and why",
+    "How to use",
+    "Compatibility / migration",
+    "Verification",
+    "Not run / known limitations",
+)
+TURKISH_RELEASE_FIELDS = {
+    "Highlights": "Öne çıkanlar",
+    "Behavior and why": "Davranış ve nedeni",
+    "How to use": "Kullanım",
+    "Compatibility / migration": "Uyumluluk / geçiş",
+    "Verification": "Doğrulama",
+    "Not run / known limitations": "Çalıştırılmayanlar / bilinen sınırlamalar",
+}
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+.!|>~\-/:])")
+
+
+def safe_release_text(value, allow_lists=False):
+    lines = []
+    for line in value.splitlines():
+        if not line.strip():
+            lines.append("")
+            continue
+        prefix = ""
+        if allow_lists:
+            bullet = re.match(r"^\s*[-*+]\s+(.*)$", line)
+            ordered = re.match(r"^\s*(\d+)\.\s+(.*)$", line)
+            if bullet:
+                prefix, line = "- ", bullet.group(1)
+            elif ordered:
+                prefix, line = f"{ordered.group(1)}. ", ordered.group(2)
+        escaped = MARKDOWN_SPECIAL.sub(r"\\\1", html.escape(line, quote=False))
+        lines.append(prefix + escaped)
+    return "\n".join(lines).strip()
 
 
 def next_arete_code(tags):
@@ -28,22 +67,52 @@ def find_merged_pull_request(pulls):
     return max(merged, key=lambda pull: pull["number"], default=None)
 
 
+def parse_release_summary(body):
+    if body.count(RELEASE_SUMMARY_START) != 1 or body.count(RELEASE_SUMMARY_END) != 1:
+        raise ValueError("Pull request body must contain one marked bilingual release summary")
+    summary = body.split(RELEASE_SUMMARY_START, 1)[1].split(RELEASE_SUMMARY_END, 1)[0]
+    locales = {}
+    for locale, next_locale in (("English", "Türkçe"), ("Türkçe", None)):
+        marker = f"## {locale}"
+        if marker not in summary:
+            raise ValueError(f"Release summary is missing the {locale} section")
+        section = summary.split(marker, 1)[1]
+        if next_locale:
+            if f"## {next_locale}" not in section:
+                raise ValueError(f"Release summary is missing the {next_locale} section")
+            section = section.split(f"## {next_locale}", 1)[0]
+        labels = {field: field for field in RELEASE_SUMMARY_FIELDS}
+        if locale == "Türkçe":
+            labels = {label: field for field, label in TURKISH_RELEASE_FIELDS.items()}
+        fields = {}
+        heading_pattern = r"^### (" + "|".join(map(re.escape, labels)) + r")\s*$"
+        matches = list(re.finditer(heading_pattern, section, re.MULTILINE))
+        for index, match in enumerate(matches):
+            name = match.group(1)
+            value = section[match.end():matches[index + 1].start() if index + 1 < len(matches) else len(section)]
+            value = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL).strip()
+            if name in labels:
+                fields[labels[name]] = value
+        missing = [name for name in RELEASE_SUMMARY_FIELDS if not fields.get(name)]
+        if missing:
+            raise ValueError(f"{locale} release summary has empty or missing fields: {', '.join(missing)}")
+        locales[locale] = fields
+    return locales
+
+
 def render_notes(code, pull_request):
     number = pull_request["number"]
     title = pull_request["title"]
     url = pull_request["html_url"]
-    return f"""## English
-
-`{code}` includes the changes merged in [PR #{number}: {title}]({url}).
-
-This release contains the Windows installer, Debian package, and AppImage built from that merge. Study data stays in the current user's application data directory.
-
-## Türkçe
-
-`{code}` sürümü, [#{number} numaralı PR'da birleştirilen Hamartia güncellemesini]({url}) içerir.
-
-Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
-"""
+    summary = parse_release_summary(pull_request.get("body", ""))
+    title = safe_release_text(re.sub(r"\s+", " ", title))
+    notes = []
+    for locale in ("English", "Türkçe"):
+        notes.extend((f"## {locale}", "", f"`{code}` — [PR #{number}]({url}): {title}", ""))
+        for field in RELEASE_SUMMARY_FIELDS:
+            label = TURKISH_RELEASE_FIELDS[field] if locale == "Türkçe" else field
+            notes.extend((f"### {label}", "", safe_release_text(summary[locale][field], allow_lists=True), ""))
+    return "\n".join(notes).rstrip() + "\n"
 
 
 def append_release_content(content, code, notes):

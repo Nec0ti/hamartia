@@ -112,6 +112,24 @@ test('ChatGPT IPC forwards the host-selected exam field, profile, and opaque sig
   await pending
 })
 
+test('ChatGPT IPC forwards the sectioned-exam host field and separate opaque state', async () => {
+  const testApp = setup()
+  const messages = ['TYT']
+  const stateToken = 'opaque-sectioned-state-token'
+  const pending = testApp.handlers.get('hamartia:chatgpt:chat')(testApp.event(), {
+    requestId: 'request-sectioned-0123456789', consent: true, message: 'TYT', model: 'model-a', language: 'en',
+    workflow: 'sectioned-exam-entry', messages, expected_sectioned_exam_field: 'exam_type', sectioned_exam_state_token: stateToken,
+    scoring_profile_id: 'host-profile', scoring_profile_version: 3,
+  })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(testApp.calls.payload.workflow, 'sectioned-exam-entry')
+  assert.equal(testApp.calls.payload.expected_sectioned_exam_field, 'exam_type')
+  assert.equal(testApp.calls.payload.sectioned_exam_state_token, stateToken)
+  assert.deepEqual(testApp.calls.payload.messages, messages)
+  testApp.finishChat()
+  await pending
+})
+
 test('only the webContents that started a ChatGPT request can cancel it or receive deltas', async () => {
   const testApp = setup()
   const event = testApp.event({ senderId: 7 })

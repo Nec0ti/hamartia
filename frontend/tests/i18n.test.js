@@ -89,3 +89,13 @@ test('Study Agent branch-exam capture describes explicit fields, host scoring, a
   assert.match(translate('agent.examCaptureNoWrite', 'tr'), /yalnızca onayın kaydeder/)
   assert.equal(translate('agent.examCaptureSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
 })
+
+test('Study Agent sectioned-exam capture describes consent, explicit roster, six-section limit, host profile, and approval', () => {
+  for (const language of ['en', 'tr']) {
+    assert.ok(translate('agent.workflowSectionedExam', language))
+    assert.ok(translate('agent.sectionedExamHint', language).includes(language === 'en' ? '6' : '6'))
+    assert.ok(translate('agent.sectionedExamConsent', language).includes(language === 'en' ? 'profile' : 'profili'))
+    assert.ok(translate('agent.sectionedExamLocalConsent', language).includes('{{endpoint}}'))
+    assert.ok(translate('agent.sectionedExamNoWrite', language).includes(language === 'en' ? 'Hamartia' : 'Hamartia'))
+  }
+})

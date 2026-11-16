@@ -23,6 +23,7 @@ const QUESTION_FIELDS = ['question_text', 'subject', 'topic']
 const QUESTION_TOOL_NAME = 'hamartia_question_prepare'
 const EXAM_FIELDS = ['date', 'subject', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds']
 const EXAM_TOOL_NAME = 'hamartia_exam_prepare'
+const SECTIONED_EXAM_TOOL_NAME = 'hamartia_sectioned_exam_prepare'
 
 function practiceToolParameters() {
   return {
@@ -174,6 +175,25 @@ function validateExamToolArguments(value) {
       || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > MAX_MESSAGE_LENGTH) {
       throw new Error('ChatGPT returned invalid exam evidence arguments.')
     }
+  }
+  return value
+}
+
+function sectionedExamToolParameters() {
+  return { type: 'object', properties: { evidence: { type: 'array', maxItems: 1, items: {
+    type: 'object', properties: { field: { type: 'string', maxLength: 64 }, quote: { type: 'string', minLength: 1, maxLength: MAX_MESSAGE_LENGTH } },
+    required: ['field', 'quote'], additionalProperties: false,
+  } } }, required: ['evidence'], additionalProperties: false }
+}
+
+function validateSectionedExamToolArguments(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some((key) => key !== 'evidence')
+    || !Array.isArray(value.evidence) || value.evidence.length > 1) throw new Error('ChatGPT returned invalid sectioned exam evidence arguments.')
+  for (const item of value.evidence) {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length !== 2
+      || Object.keys(item).some((key) => !['field', 'quote'].includes(key))
+      || typeof item.field !== 'string' || !/^(exam_type|date|duration_minutes|duration_seconds|section_count|section_[1-6]_(subject|correct|incorrect|blank))$/.test(item.field)
+      || typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > MAX_MESSAGE_LENGTH) throw new Error('ChatGPT returned invalid sectioned exam evidence arguments.')
   }
   return value
 }
@@ -605,9 +625,9 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     return completion
   }
 
-  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null, expected_question_field = 'question_text', question_state_token = null, expected_exam_field = 'date', exam_state_token = null }, onDelta) {
+  async function chat({ requestId, message, model, language, workflow = 'chat', messages = [], scoring_profile_id, scoring_profile_version, expected_evidence_field = 'activity', state_token = null, expected_question_field = 'question_text', question_state_token = null, expected_exam_field = 'date', exam_state_token = null, expected_sectioned_exam_field = 'exam_type', sectioned_exam_state_token = null }, onDelta) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) throw new Error('Enter a question under 4,000 characters.')
-    if (!['chat', 'practice-entry', 'learning-evidence-entry', 'question-entry', 'exam-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
+    if (!['chat', 'practice-entry', 'learning-evidence-entry', 'question-entry', 'exam-entry', 'sectioned-exam-entry'].includes(workflow)) throw new Error('Unsupported Study Agent workflow.')
     if (!['en', 'tr'].includes(language)) throw new Error('Choose English or Turkish before sending.')
     if (workflow === 'practice-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Practice entry requires up to 30 student messages of at most 4,000 characters each.')
     if (workflow === 'learning-evidence-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Learning evidence requires up to 30 student messages of at most 4,000 characters each.')
@@ -620,11 +640,15 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
     if (workflow === 'exam-entry' && !EXAM_FIELDS.includes(expected_exam_field)) throw new Error('Unsupported expected exam field.')
     if (workflow === 'exam-entry' && (typeof scoring_profile_id !== 'string' || !scoring_profile_id.trim() || !Number.isInteger(scoring_profile_version) || scoring_profile_version < 1)) throw new Error('Choose a scoring profile before exam capture.')
     if (workflow === 'exam-entry' && exam_state_token !== null && (typeof exam_state_token !== 'string' || exam_state_token.length > 24_000)) throw new Error('Exam-capture conversation state is invalid or expired.')
+    if (workflow === 'sectioned-exam-entry' && (!Array.isArray(messages) || messages.length < 1 || messages.length > 30 || messages.some((item) => typeof item !== 'string' || !item.trim() || item.length > MAX_MESSAGE_LENGTH))) throw new Error('Sectioned exam capture requires up to 30 student messages of at most 4,000 characters each.')
+    if (workflow === 'sectioned-exam-entry' && (typeof expected_sectioned_exam_field !== 'string' || !/^(exam_type|date|duration_minutes|duration_seconds|section_count|section_[1-6]_(subject|correct|incorrect|blank))$/.test(expected_sectioned_exam_field))) throw new Error('Unsupported expected sectioned exam field.')
+    if (workflow === 'sectioned-exam-entry' && (typeof scoring_profile_id !== 'string' || !scoring_profile_id.trim() || !Number.isInteger(scoring_profile_version) || scoring_profile_version < 1)) throw new Error('Choose a scoring profile before sectioned exam capture.')
+    if (workflow === 'sectioned-exam-entry' && sectioned_exam_state_token !== null && (typeof sectioned_exam_state_token !== 'string' || sectioned_exam_state_token.length > 24_000)) throw new Error('Sectioned exam conversation state is invalid or expired.')
     const controller = new AbortController()
     chats.set(requestId, controller)
     try {
       const { accessToken } = await validAccessToken()
-      const context = workflow === 'practice-entry' || workflow === 'learning-evidence-entry' || workflow === 'question-entry' || workflow === 'exam-entry' ? '' : await studyContext(controller.signal)
+      const context = workflow === 'practice-entry' || workflow === 'learning-evidence-entry' || workflow === 'question-entry' || workflow === 'exam-entry' || workflow === 'sectioned-exam-entry' ? '' : await studyContext(controller.signal)
       if (!(await models(controller.signal)).some((item) => item.slug === model)) throw new Error('Choose a model available to the signed-in ChatGPT account.')
       if (workflow === 'practice-entry') {
         const instructions = (
@@ -880,6 +904,35 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         })
         const draft = await verifiedResponse.json().catch(() => ({}))
         if (!verifiedResponse.ok) throw new Error('Hamartia could not verify the exam evidence. Nothing was saved.')
+        return { status: 'completed', draft }
+      }
+      if (workflow === 'sectioned-exam-entry') {
+        const instructions = (
+          `Prepare a sectioned TYT/AYT exam draft in ${language === 'tr' ? 'Turkish' : 'English'}. Use ${SECTIONED_EXAM_TOOL_NAME} exactly once. `
+          + `The host expects only ${expected_sectioned_exam_field}. Return one exact quote equal to the entire newest student answer, or an empty evidence list if unclear. `
+          + 'Do not send parsed values, exam type choices, profile, calculations, record IDs, or write instructions. Never infer or use earlier turns.'
+        )
+        const inputTranscript = { role: 'user', content: JSON.stringify({ student_messages: messages }) }
+        const additionalTools = [{ type: 'function', name: SECTIONED_EXAM_TOOL_NAME,
+          description: 'Submit one exact current-turn quote for local verification and a read-only sectioned exam preview.',
+          parameters: sectionedExamToolParameters(), strict: true }]
+        const initial = await requestResponses({ model, instructions, input: [{ type: 'additional_tools', role: 'developer', tools: additionalTools }, inputTranscript], store: false, stream: true }, controller.signal, requestId, null, accessToken)
+        const calls = Array.isArray(initial.output) ? initial.output.filter((item) => item?.type === 'function_call') : []
+        if (calls.length !== 1) throw new Error('ChatGPT did not return exactly one sectioned exam evidence tool call.')
+        const call = calls[0]
+        if (call.name !== SECTIONED_EXAM_TOOL_NAME || typeof call.call_id !== 'string' || !call.call_id) throw new Error('ChatGPT returned an unsupported sectioned exam tool call.')
+        let argumentsValue
+        try { argumentsValue = validateSectionedExamToolArguments(JSON.parse(call.arguments)) } catch (error) {
+          if (error instanceof SyntaxError) throw new Error('ChatGPT returned malformed sectioned exam evidence arguments.')
+          throw error
+        }
+        const backendUrl = getBackendUrl()
+        if (!backendUrl) throw new Error('Hamartia could not verify the sectioned exam evidence. Nothing was saved.')
+        const verifiedResponse = await fetchImpl(`${backendUrl}/exams/sectioned-agent-draft`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ messages, language, expected_exam_field: expected_sectioned_exam_field, state_token: sectioned_exam_state_token,
+            scoring_profile_id, scoring_profile_version, evidence_claims: argumentsValue.evidence }), signal: controller.signal })
+        const draft = await verifiedResponse.json().catch(() => ({}))
+        if (!verifiedResponse.ok) throw new Error('Hamartia could not verify the sectioned exam evidence. Nothing was saved.')
         return { status: 'completed', draft }
       }
       const instructions = `You are Hamartia's study assistant. Answer in ${language === 'tr' ? 'Turkish' : 'English'}. Use only the student message and supplied study summary; do not claim to have seen specific question text, images, or conversations. Identify mistake patterns only when the summary supports them; say when evidence is insufficient. Curriculum references are user-entered and unverified, not official alignment. If one is present, relate it cautiously and label it as user-provided. Suggest a concrete next learning activity and a separate evidence-of-learning task with observable success criteria. Use short, localized sections for supported pattern, next activity, evidence task, and criteria. Do not infer mastery from one response, equate learning evidence with exam net/XP, or claim the evidence task has been completed. Without a reference, do not invent a curriculum mapping. Be clear and concise.`

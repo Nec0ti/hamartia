@@ -12,7 +12,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from app.core.config import DATA_DIR
 from app.models.schemas import Exam, ExamCreate, ExamDeletedApprovalLedger, ExamScoringProfile
@@ -27,9 +27,15 @@ from app.services.study_agent_exam import (
     prepare_exam_capture,
     resolve_exam_state_token,
 )
+from app.services.study_agent_sectioned_exam import (
+    MAX_SECTIONS, STATIC_FIELDS as SECTIONED_STATIC_FIELDS, SectionedExamQuote,
+    issue_state_token as issue_sectioned_state_token, prepare_capture as prepare_sectioned_capture,
+    resolve_state_token as resolve_sectioned_state_token,
+)
 
 router = APIRouter(prefix="/exams", tags=["exams"])
 AGENT_APPROVALS_FILE = "exam_agent_approvals.json"
+SECTIONED_AGENT_APPROVALS_FILE = "sectioned_exam_agent_approvals.json"
 
 
 class AgentExamDraftRequest(BaseModel):
@@ -55,6 +61,24 @@ class AgentExamDraftRequest(BaseModel):
 
 class StrictExamCreate(ExamCreate):
     model_config = {"extra": "forbid"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_supplied_section_total_mismatch(cls, value):
+        if isinstance(value, dict) and value.get("sections"):
+            sections = value["sections"]
+            try:
+                expected = {
+                    "subject": f"{str(value.get('exam_type', '')).upper()} Geneli",
+                    "correct": sum(item.get("correct", 0) for item in sections),
+                    "incorrect": sum(item.get("incorrect", 0) for item in sections),
+                    "blank": sum(item.get("blank", 0) for item in sections),
+                }
+            except (AttributeError, TypeError):
+                return value
+            if any(value.get(field) != expected_value for field, expected_value in expected.items()):
+                raise ValueError("Sectioned exam totals must match the explicit sections.")
+        return value
 
 
 class ExamVerifiedQuote(BaseModel):
@@ -83,6 +107,100 @@ def get_storage():
         return StorageService(DATA_DIR)
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail=f"Storage unavailable: {exc}")
+
+
+class SectionedExamDraftRequest(AgentExamDraftRequest):
+    expected_exam_field: str = Field(min_length=1, max_length=64)
+    state_token: str | None = Field(default=None, max_length=24_000)
+    evidence_claims: list[SectionedExamQuote] = Field(max_length=1)
+
+
+class SectionedExamVerifiedQuote(SectionedExamQuote):
+    message_index: int = Field(ge=0, le=MAX_MESSAGES - 1)
+
+
+class SectionedExamCreateRequest(SectionedExamDraftRequest):
+    fields: StrictExamCreate
+    evidence: dict[str, dict]
+    evidence_claims: list[SectionedExamVerifiedQuote] = Field(min_length=1, max_length=len(SECTIONED_STATIC_FIELDS) + MAX_SECTIONS * 4)
+    scoring_profile_snapshot: ExamScoringProfile
+    derived: dict[str, int | float]
+    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approval_id: UUID
+
+
+def build_sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, profile: ExamScoringProfile, prior_claims: list[dict] | None = None) -> dict:
+    try:
+        claims = resolve_sectioned_state_token(payload.state_token, payload.messages, payload.language, profile) if prior_claims is None else prior_claims
+        expected = prepare_sectioned_capture(payload.messages, payload.language, claims, [], profile)["expected_field"]
+        if expected != payload.expected_exam_field:
+            raise HTTPException(status_code=409, detail="The sectioned exam conversation changed. Review the current question again.")
+        prepared = prepare_sectioned_capture(payload.messages, payload.language, claims, [item.model_dump() for item in payload.evidence_claims], profile)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(status_code=409 if payload.state_token else 422, detail="The sectioned exam answer could not be verified.") from exc
+    prepared["state_token"] = issue_sectioned_state_token(payload.messages, payload.language, prepared["evidence_claims"], profile) if prepared["status"] != "ready" else None
+    return prepared
+
+
+@router.post("/sectioned-agent-draft")
+async def sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, storage: StorageService = Depends(get_storage)):
+    profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
+    return build_sectioned_exam_agent_draft(payload, profile)
+
+
+@router.post("/sectioned-agent-create", status_code=201, response_model=Exam)
+async def sectioned_exam_agent_create(payload: SectionedExamCreateRequest, storage: StorageService = Depends(get_storage)):
+    profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
+    if profile != payload.scoring_profile_snapshot:
+        raise HTTPException(status_code=409, detail="The scoring profile changed. Review the exam preview again.")
+    claims = [item.model_dump() for item in payload.evidence_claims]
+    prefix = f"sectioned_exam_agent_{payload.approval_id.hex}_"
+    fingerprint_body = {"messages": payload.messages, "language": payload.language, "expected_exam_field": payload.expected_exam_field,
+        "evidence_claims": claims, "fields": payload.fields.model_dump(), "evidence": payload.evidence,
+        "scoring_profile_snapshot": profile.model_dump(), "derived": payload.derived, "preview_digest": payload.preview_digest}
+    fingerprint = hashlib.sha256(json.dumps(fingerprint_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    record_id = prefix + fingerprint
+    result: list[Exam] = []
+    conflict = ""
+    with data_mutation_guard(storage.data_dir):
+        ledger = storage.load_doc(SECTIONED_AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger) or ExamDeletedApprovalLedger()
+        if payload.approval_id in ledger.approval_ids:
+            raise HTTPException(status_code=409, detail="This approved exam was deleted and cannot be recreated by replay.")
+        existing = next((item for item in storage.load_list("exams.json", Exam) if item.id.startswith(prefix)), None)
+        if existing is not None:
+            if existing.id == record_id:
+                return existing
+            raise HTTPException(status_code=409, detail="This approval ID was already used for different exam data.")
+        if claims[-1]["message_index"] != len(payload.messages) - 1:
+            raise HTTPException(status_code=422, detail="The final exam answer must match the newest student turn.")
+        if payload.expected_exam_field != claims[-1]["field"]:
+            raise HTTPException(status_code=422, detail="The approved exam field does not match the final verified quote.")
+        try:
+            prepared = prepare_sectioned_capture(payload.messages, payload.language, claims[:-1], [{"field": claims[-1]["field"], "quote": claims[-1]["quote"]}], profile)
+        except (ValueError, ValidationError) as exc:
+            raise HTTPException(status_code=422, detail="The approved sectioned exam preview no longer matches its evidence.") from exc
+        if (prepared["status"] != "ready" or prepared["fields"] != payload.fields.model_dump()
+                or prepared["verified_evidence"] != payload.evidence or prepared["evidence_claims"] != claims
+                or prepared["derived"] != payload.derived):
+            raise HTTPException(status_code=422, detail="The approved exam preview does not match verified student evidence.")
+        if prepared["preview_digest"] != payload.preview_digest:
+            raise HTTPException(status_code=409, detail="The exam preview changed. Review it again before saving.")
+        record_fields = payload.fields.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"})
+        created = Exam(id=record_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"), scoring_profile=profile, **record_fields)
+        def append_or_replay(exams):
+            nonlocal conflict
+            existing_row = next((item for item in exams if item.id.startswith(prefix)), None)
+            if existing_row:
+                if existing_row.id == record_id and existing_row.model_dump(exclude={"created_at"}) == created.model_dump(exclude={"created_at"}): result.append(existing_row)
+                else: conflict = "This approval ID was already used for different exam data."
+                return False
+            exams.append(created); result.append(created); return True
+        storage.update_list("exams.json", Exam, append_or_replay)
+    if conflict:
+        raise HTTPException(status_code=409, detail=conflict)
+    if not result:
+        raise HTTPException(status_code=500, detail="Could not save the sectioned exam record.")
+    return result[0]
 
 
 def build_exam_agent_draft(
@@ -277,13 +395,14 @@ async def delete_exam(exam_id: str, storage: StorageService = Depends(get_storag
         target = next((exam for exam in exams if exam.id == exam_id), None)
         if target is None:
             raise HTTPException(status_code=404, detail="Exam not found")
-        match = re.match(r"^exam_agent_([0-9a-f]{32})_[0-9a-f]{64}$", target.id)
+        match = re.match(r"^(?:exam_agent|sectioned_exam_agent)_([0-9a-f]{32})_[0-9a-f]{64}$", target.id)
         if match:
             approval_id = UUID(hex=match.group(1))
-            ledger = storage.load_doc(AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger) or ExamDeletedApprovalLedger()
+            ledger_name = SECTIONED_AGENT_APPROVALS_FILE if target.id.startswith("sectioned_exam_agent_") else AGENT_APPROVALS_FILE
+            ledger = storage.load_doc(ledger_name, ExamDeletedApprovalLedger) or ExamDeletedApprovalLedger()
             if approval_id not in ledger.approval_ids:
                 ledger.approval_ids.append(approval_id)
-                storage.save_doc(AGENT_APPROVALS_FILE, ledger)
+                storage.save_doc(ledger_name, ledger)
 
         def remove_target(current):
             if target not in current:

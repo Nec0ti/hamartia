@@ -90,11 +90,24 @@ async function main() {
             : ['OpenAI uyumlu sunucu (yerel veya uzak)', 'uzaktaki bir sunucuyu', 'http://localhost:11434/v1/', 'qwen3:8b', 'http://localhost:1234/v1', 'yapılandırılan veya son kullanılan port', '/v1/models', 'uzak işletmeci']) {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing local/remote endpoint setup clarity: ${phrase}`)
           }
+          for (const phrase of lang === 'en'
+            ? ['sectioned TYT/AYT exam', 'section count', '1–6 explicitly named sections', 'profile is selected on this device before provider dispatch', 'transcript and signed continuation state are not persisted']
+            : ['Bölümlü TYT/AYT denemesi', 'bölüm sayısını', '1–6 bölümle', 'puanlama profili sağlayıcıya gönderilmeden önce bu cihazda seçilir', 'konuşma ve imzalı devam durumu saklanmaz']) {
+            assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing sectioned-exam flow contract: ${phrase}`)
+          }
           for (const href of [
             'https://docs.ollama.com/api/openai-compatibility', 'https://ollama.com/library/qwen3',
             'https://lmstudio.ai/docs/developer/openai-compat', 'https://lmstudio.ai/docs/developer/openai-compat/models',
             'https://lmstudio.ai/docs/cli/serve/server-start',
           ]) assert.equal(await page.locator(`a[href="${href}"]`).count(), 1, `${route} missing official provider source ${href}`)
+        }
+        if (route.includes('privacy-and-consent/')) {
+          const article = await page.locator('main article').innerText()
+          for (const phrase of lang === 'en'
+            ? ['Sectioned TYT/AYT exam capture', 'student transcript', 'profile ID, rules, and snapshot stay host-side', 'not conversational facts', 'not persisted']
+            : ['Bölümlü TYT/AYT denemesi kaydı', 'öğrenci konuşmasını', 'kimlik, kurallar ve anlık görüntü ana bilgisayarda kalır', 'konuşma bilgisi sayılmaz', 'saklanmaz']) {
+            assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing sectioned-exam privacy boundary: ${phrase}`)
+          }
         }
 
         const languageLink = page.locator('.header-actions .language-link')

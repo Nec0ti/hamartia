@@ -905,6 +905,26 @@ async function main(smokeRun) {
               window.__examCaptureDraftResponse = draft
               return { status: 'completed', draft }
             }
+            if (payload.workflow === 'sectioned-exam-entry') {
+              const field = payload.expected_sectioned_exam_field
+              const quote = payload.messages.at(-1)
+              const evidence_claims = field && quote ? [{ field, quote }] : []
+              window.__sectionedExamProviderCalls = [...(window.__sectionedExamProviderCalls || []), { field, quote, language: payload.language }]
+              const response = await fetch(`${backendUrl}/exams/sectioned-agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ messages: payload.messages, language: payload.language,
+                  expected_exam_field: field, state_token: payload.sectioned_exam_state_token || null,
+                  scoring_profile_id: payload.scoring_profile_id, scoring_profile_version: payload.scoring_profile_version,
+                  evidence_claims }), signal: AbortSignal.timeout(10_000),
+              })
+              const responseBody = await response.text()
+              window.__sectionedExamDraftResponses = (window.__sectionedExamDraftResponses || 0) + 1
+              window.__sectionedExamDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
+              window.__sectionedExamDraftResponse = draft
+              return { status: 'completed', draft }
+            }
             window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
@@ -983,7 +1003,9 @@ async function main(smokeRun) {
       await page.getByLabel('What activity have you already completed?').fill(text)
       await page.getByRole('checkbox').check()
       await page.getByRole('button', { name: 'Send to OpenAI' }).click()
-      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor().catch(async (error) => {
+        throw new Error(`${error.message}; expected=${expectedQuestion}; draft=${JSON.stringify(await page.evaluate(() => ({ response: window.__sectionedExamDraftResponse, http: window.__sectionedExamDraftHttp, answer: document.body.innerText.slice(-600) })))}`)
+      })
     }
     await submitEvidenceMessage('Maybe I completed chapter 2?', 'What activity have you already completed? State it as your own completed action.')
     assert.equal(await page.getByRole('button', { name: 'Approve this preview and save' }).count(), 0)
@@ -1083,6 +1105,53 @@ async function main(smokeRun) {
       ['date', 'en'], ['subject', 'en'], ['correct', 'en'], ['incorrect', 'en'], ['blank', 'en'], ['duration_minutes', 'en'], ['duration_seconds', 'en'],
     ])
     assert(englishExamCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
+
+    await page.getByLabel('Study Agent mode').selectOption('sectioned-exam-entry')
+    await page.getByText(/one TYT or AYT exam with 1–6 sections/).waitFor()
+    await page.getByLabel('Scoring profile', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    async function submitSectionedMessage(text, expectedQuestion = null) {
+      const before = await page.evaluate(() => window.__sectionedExamDraftResponses || 0)
+      await page.locator('textarea').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'Send to OpenAI' }).click()
+      await page.waitForFunction((previous) => (window.__sectionedExamDraftResponses || 0) > previous, before)
+      if (expectedQuestion) {
+        try { await page.getByText(expectedQuestion, { exact: true }).waitFor() } catch (error) {
+          throw new Error(`${error.message}; expected=${expectedQuestion}; draft=${JSON.stringify(await page.evaluate(() => ({ response: window.__sectionedExamDraftResponse, http: window.__sectionedExamDraftHttp, answer: document.body.innerText.slice(-600) })))}`)
+        }
+      }
+    }
+    const englishSectionedAnswers = ['TYT', '2026-11-16', '90', '0', '1', 'Mathematics', '10', '2', '3']
+    const englishSectionedQuestions = [
+      'Reply with one clear value for date (YYYY-MM-DD).',
+      'Reply with one clear value for whole minutes.',
+      'Reply with one clear value for additional seconds.',
+      'Reply with one clear value for section count (1-6).',
+      'Reply with one clear value for section 1 subject.',
+      'Reply with one clear value for section 1 correct.',
+      'Reply with one clear value for section 1 incorrect.',
+      'Reply with one clear value for section 1 blank.',
+      null,
+    ]
+    for (let index = 0; index < englishSectionedAnswers.length; index += 1) {
+      await submitSectionedMessage(englishSectionedAnswers[index], englishSectionedQuestions[index])
+    }
+    await page.getByRole('heading', { name: 'Proposed sectioned TYT/AYT exam' }).waitFor()
+    const englishSectionedPreview = await page.evaluate(() => window.__sectionedExamDraftResponse)
+    assert.equal(englishSectionedPreview.status, 'ready')
+    assert.equal(englishSectionedPreview.fields.exam_type, 'tyt')
+    assert.deepEqual(englishSectionedPreview.fields.sections, [{ subject: 'Mathematics', correct: 10, incorrect: 2, blank: 3 }])
+    const sectionedCreateRequests = () => appRequests.filter((request) => request.path === '/exams/sectioned-agent-create' && request.method === 'POST')
+    assert.equal(sectionedCreateRequests().length, 0)
+    await page.getByRole('button', { name: 'Cancel this draft' }).click()
+    await page.getByText('Draft cancelled. Nothing was saved.', { exact: true }).waitFor()
+    assert.equal(sectionedCreateRequests().length, 0)
+    assert.equal((await (await localFetch(`${apiUrl}/exams`)).json()).some((row) => row.exam_type === 'tyt' && row.sections?.length), false)
+    const englishSectionedCalls = await page.evaluate(() => window.__sectionedExamProviderCalls || [])
+    assert.deepEqual(englishSectionedCalls.map(({ field, language }) => [field, language]), [
+      ...['exam_type', 'date', 'duration_minutes', 'duration_seconds', 'section_count', 'section_1_subject', 'section_1_correct', 'section_1_incorrect', 'section_1_blank'].map((field) => [field, 'en']),
+    ])
+    assert(englishSectionedCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
     await page.reload({ waitUntil: 'networkidle' })
@@ -1252,6 +1321,76 @@ async function main(smokeRun) {
       ...['date', 'subject', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds'].map((field) => [field, 'tr']),
     ])
     assert(allExamMockCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
+
+    await page.getByLabel('Çalışma Asistanı modu').selectOption('sectioned-exam-entry')
+    await page.getByText(/1–6 bölümden oluşan tek bir TYT veya AYT denemesi/).waitFor()
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    async function submitSectionedMessageTr(text, expectedQuestion = null) {
+      const before = await page.evaluate(() => window.__sectionedExamDraftResponses || 0)
+      await page.locator('textarea').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'OpenAI’a gönder' }).click()
+      await page.waitForFunction((previous) => (window.__sectionedExamDraftResponses || 0) > previous, before)
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    const turkishSectionedAnswers = ['AYT', '2026-11-16', '70', '15', '1', 'Matematik', '30', '5', '2']
+    const turkishSectionedQuestions = [
+      'tarih (YYYY-MM-DD) için tek ve açık bir değer yaz.',
+      'tam dakika için tek ve açık bir değer yaz.',
+      'ek saniye için tek ve açık bir değer yaz.',
+      'bölüm sayısı (1-6) için tek ve açık bir değer yaz.',
+      '1. bölüm dersi için tek ve açık bir değer yaz.',
+      '1. bölüm doğru sayısı için tek ve açık bir değer yaz.',
+      '1. bölüm yanlış sayısı için tek ve açık bir değer yaz.',
+      '1. bölüm boş sayısı için tek ve açık bir değer yaz.',
+      null,
+    ]
+    for (let index = 0; index < turkishSectionedAnswers.length; index += 1) {
+      await submitSectionedMessageTr(turkishSectionedAnswers[index], turkishSectionedQuestions[index])
+    }
+    await page.getByRole('heading', { name: 'Önerilen bölümlü TYT/AYT denemesi' }).waitFor()
+    const turkishSectionedPreview = await page.evaluate(() => window.__sectionedExamDraftResponse)
+    assert.equal(turkishSectionedPreview.status, 'ready')
+    assert.deepEqual(turkishSectionedPreview.fields.sections, [{ subject: 'Matematik', correct: 30, incorrect: 5, blank: 2 }])
+    const [approvedSectionedResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams/sectioned-agent-create' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Bu önizlemeyi onayla ve kaydet' }).click(),
+    ])
+    assert.equal(approvedSectionedResponse.status(), 201, await approvedSectionedResponse.text())
+    await page.getByText('Bölümlü deneme kaydedildi. Sınavlar sekmesinde bulabilirsin.', { exact: true }).waitFor()
+    assert.equal(sectionedCreateRequests().length, 1)
+    const approvedSectionedBody = sectionedCreateRequests()[0].body
+    assert.deepEqual(approvedSectionedBody.fields, turkishSectionedPreview.fields)
+    assert.deepEqual(approvedSectionedBody.evidence, turkishSectionedPreview.verified_evidence)
+    assert.deepEqual(approvedSectionedBody.derived, turkishSectionedPreview.derived)
+    assert.equal(approvedSectionedBody.approval_id.length, 36)
+    let approvedSectionedRow
+    try {
+      const records = await (await localFetch(`${apiUrl}/exams`)).json()
+      approvedSectionedRow = records.find((record) => record.id.startsWith(`sectioned_exam_agent_${approvedSectionedBody.approval_id.replaceAll('-', '')}_`))
+      assert.ok(approvedSectionedRow)
+      assert.deepEqual({
+        exam_type: approvedSectionedRow.exam_type, date: approvedSectionedRow.date, subject: approvedSectionedRow.subject,
+        correct: approvedSectionedRow.correct, incorrect: approvedSectionedRow.incorrect, blank: approvedSectionedRow.blank,
+        duration_minutes: approvedSectionedRow.duration_minutes, duration_seconds: approvedSectionedRow.duration_seconds,
+        sections: approvedSectionedRow.sections, scoring_profile: approvedSectionedRow.scoring_profile,
+        net: approvedSectionedRow.net, xp: approvedSectionedRow.xp,
+      }, {
+        exam_type: 'ayt', date: '2026-11-16', subject: 'AYT Geneli', correct: 30, incorrect: 5, blank: 2,
+        duration_minutes: 70, duration_seconds: 15, sections: turkishSectionedPreview.fields.sections,
+        scoring_profile: turkishSectionedPreview.scoring_profile_snapshot,
+        net: turkishSectionedPreview.derived.net, xp: turkishSectionedPreview.derived.xp,
+      })
+    } finally {
+      if (approvedSectionedRow) assert.equal((await localFetch(`${apiUrl}/exams/${approvedSectionedRow.id}`, { method: 'DELETE' })).status, 200)
+    }
+    const sectionedLedger = await fs.readFile(path.join(dataDir, 'sectioned_exam_agent_approvals.json'), 'utf8')
+    assert(!sectionedLedger.includes('Matematik'))
+    const allSectionedCalls = await page.evaluate(() => window.__sectionedExamProviderCalls || [])
+    assert.deepEqual(allSectionedCalls.map(({ field, language }) => [field, language]), [
+      ...['exam_type', 'date', 'duration_minutes', 'duration_seconds', 'section_count', 'section_1_subject', 'section_1_correct', 'section_1_incorrect', 'section_1_blank'].map((field) => [field, 'tr']),
+    ])
+    assert(allSectionedCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
     assert.deepEqual(externalRequestsBlocked, [])
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
@@ -1545,6 +1684,9 @@ async function main(smokeRun) {
     assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/exams/agent-')).map((request) => request.path), [
       ...Array(14).fill('/exams/agent-draft'), '/exams/agent-create',
     ])
+    assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/exams/sectioned-agent-')).map((request) => request.path), [
+      ...Array(18).fill('/exams/sectioned-agent-draft'), '/exams/sectioned-agent-create',
+    ])
     const approvedExamRequest = appRequests.find((request) => request.path === '/exams/agent-create')
     assert.equal(approvedExamRequest.body.evidence_claims.length, 7)
     assert.equal(approvedExamRequest.body.approval_id.length, 36)
@@ -1555,6 +1697,7 @@ async function main(smokeRun) {
       '/learning-evidence/agent-draft', '/learning-evidence/agent-create',
       '/questions/agent-draft', '/questions/agent-create',
       '/exams/agent-draft', '/exams/agent-create',
+      '/exams/sectioned-agent-draft', '/exams/sectioned-agent-create',
     ])
     assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-')
       && !localAgentRoutes.has(request.path)

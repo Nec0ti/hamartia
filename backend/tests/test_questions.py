@@ -6,13 +6,15 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from fastapi import HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.testclient import TestClient
 from openai import OpenAIError
 from pydantic import ValidationError
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
-from app.models.schemas import CouncilAnalysis, CurriculumReference, Exam, Question, Settings
+from app.models.schemas import MAX_QUESTION_TEXT_BYTES, CouncilAnalysis, CurriculumReference, Exam, Question, Settings, SettingsUpdate
+from app.services.ai_service import MAX_QUESTION_IMAGE_BYTES
 from app.services.question_analysis_consent import QuestionAnalysisConsentRegistry
 from app.services.storage import StorageService
 
@@ -199,6 +201,26 @@ class QuestionFlowTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as error:
             asyncio.run(question_api.upload_question(None, "  ", "Matematik", "", self.storage))
         self.assertEqual(error.exception.status_code, 422)
+
+    def test_question_text_creation_and_edit_inputs_are_bounded_by_utf8_bytes(self):
+        oversized = "é" * (MAX_QUESTION_TEXT_BYTES // 2 + 1)
+        with self.assertRaises(HTTPException) as upload_error:
+            asyncio.run(question_api.upload_question(None, oversized, "Matematik", "", self.storage))
+        self.assertEqual(upload_error.exception.status_code, 413)
+        self.assertEqual(self.storage.load_list("questions.json", Question), [])
+        with self.assertRaises(ValidationError):
+            question_api.QuestionUpdate(subject="Math", topic="", ocr_text=oversized)
+        with self.assertRaises(ValidationError):
+            SettingsUpdate(api_key="k" * 4097)
+
+    def test_oversized_legacy_settings_are_rejected_before_prompt_construction(self):
+        self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])
+        self.storage.save_doc("settings.json", Settings(api_key="k" * 4097))
+        with patch.object(question_api.AIService, "_build_prompt", autospec=True) as build_prompt:
+            with self.assertRaises(HTTPException) as invalid:
+                asyncio.run(question_api.preview_question_analysis("q1", self.storage))
+        self.assertEqual(invalid.exception.status_code, 413)
+        build_prompt.assert_not_called()
 
     def test_upload_rejects_symlinked_upload_root_without_writing_outside_data(self):
         outside = self.root.parent / f"{self.root.name}-outside"
@@ -552,6 +574,9 @@ class QuestionFlowTests(unittest.TestCase):
             question_api.question_analysis_consents._snapshots[preview["consent_id"]].ai.max_retries,
             0,
         )
+        snapshot_question = question_api.question_analysis_consents._snapshots[preview["consent_id"]].question
+        self.assertEqual((snapshot_question.id, snapshot_question.created_at), ("q1", ""))
+        self.assertEqual(snapshot_question.ocr_text, "")
         analyze.assert_not_called()
 
     def test_analysis_preview_reports_all_auth_states_without_disclosing_values(self):
@@ -599,6 +624,52 @@ class QuestionFlowTests(unittest.TestCase):
                     asyncio.run(question_api.preview_question_analysis("q1", self.storage))
                 self.assertEqual(invalid.exception.status_code, 422)
 
+    def test_oversized_legacy_text_is_rejected_before_prompt_or_provider_use(self):
+        oversized = "é" * (MAX_QUESTION_TEXT_BYTES // 2 + 1)
+        self.storage.save_list("questions.json", [Question(id="legacy-large", ocr_text=oversized)])
+        with patch.object(question_api.AIService, "_build_prompt", autospec=True) as build_prompt, \
+             patch.object(question_api.AIService, "_completions", new_callable=AsyncMock) as provider:
+            with self.assertRaises(HTTPException) as invalid:
+                asyncio.run(question_api.preview_question_analysis("legacy-large", self.storage))
+
+        self.assertEqual(invalid.exception.status_code, 413)
+        self.assertEqual(invalid.exception.detail, "analysis_payload_too_large")
+        build_prompt.assert_not_called()
+        provider.assert_not_awaited()
+
+    def test_oversized_saved_image_is_rejected_with_bounded_read(self):
+        self.uploads.mkdir()
+        image_path = self.uploads / "q.png"
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\n")
+        with image_path.open("ab") as image_file:
+            image_file.truncate(MAX_QUESTION_IMAGE_BYTES + 1)
+        self.storage.save_list("questions.json", [Question(
+            id="large-image", image_name="q.png", image_path="uploads/q.png", ocr_text="synthetic",
+        )])
+        with self.assertRaises(HTTPException) as invalid:
+            asyncio.run(question_api.preview_question_analysis("large-image", self.storage))
+        self.assertEqual(invalid.exception.status_code, 413)
+        self.assertEqual(invalid.exception.detail, "analysis_payload_too_large")
+
+    def test_preview_busy_is_429_and_preview_slot_releases_after_failure(self):
+        registry = question_api.question_analysis_consents
+        self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])
+        self.assertTrue(registry.begin_preview())
+        self.assertTrue(registry.begin_preview())
+        with patch.object(question_api.AIService, "_build_prompt", autospec=True) as build_prompt:
+            with self.assertRaises(HTTPException) as busy:
+                asyncio.run(question_api.preview_question_analysis("q1", self.storage))
+        self.assertEqual(busy.exception.status_code, 429)
+        build_prompt.assert_not_called()
+        registry.end_preview()
+        registry.end_preview()
+
+        with patch.object(question_api.AIService, "_build_prompt", side_effect=RuntimeError("synthetic")):
+            with self.assertRaises(RuntimeError):
+                asyncio.run(question_api.preview_question_analysis("q1", self.storage))
+        self.assertTrue(registry.begin_preview())
+        registry.end_preview()
+
     def test_approved_analysis_uses_snapshot_once_and_replay_sends_nothing(self):
         self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])
         provider = AsyncMock(return_value=json.dumps({
@@ -620,6 +691,33 @@ class QuestionFlowTests(unittest.TestCase):
 
         self.assertEqual(saved.analysis.verdict.root_cause, "synthetic")
         self.assertEqual(replay.exception.status_code, 409)
+
+    def test_http_preview_cancel_and_approval_routes_keep_provider_behind_approval(self):
+        self.storage.save_list("questions.json", [Question(id="q-http", ocr_text="synthetic")])
+        app = FastAPI()
+        app.include_router(question_api.router)
+        app.dependency_overrides[question_api.get_storage] = lambda: self.storage
+        provider = AsyncMock(return_value=json.dumps({
+            "verdict": {"root_cause": "synthetic", "difficulty": 1},
+        }))
+
+        with TestClient(app) as client, patch.object(question_api.AIService, "_completions", new=provider):
+            preview = client.post("/questions/q-http/analysis-preview")
+            self.assertEqual(preview.status_code, 200)
+            self.assertEqual(preview.json()["endpoint_authority"], "localhost:4000")
+            provider.assert_not_awaited()
+
+            cancelled = client.delete(f"/questions/q-http/analysis-preview/{preview.json()['consent_id']}")
+            self.assertEqual(cancelled.status_code, 204)
+            self.assertEqual(client.post("/questions/q-http/analyze", json={
+                "consent_id": preview.json()["consent_id"],
+            }).status_code, 409)
+            provider.assert_not_awaited()
+
+            approved = client.post("/questions/q-http/analysis-preview")
+            result = client.post("/questions/q-http/analyze", json={"consent_id": approved.json()["consent_id"]})
+            self.assertEqual(result.status_code, 200)
+            provider.assert_awaited_once()
 
     def test_question_or_endpoint_change_invalidates_pending_consent(self):
         self.storage.save_list("questions.json", [Question(id="q1", ocr_text="before")])
@@ -683,6 +781,14 @@ class QuestionFlowTests(unittest.TestCase):
 
         self.assertEqual(cancelled.status_code, 204)
         self.assertNotIn(preview["consent_id"], question_api.question_analysis_consents._snapshots)
+        provider = AsyncMock()
+        with patch.object(question_api.AIService, "_completions", new=provider):
+            with self.assertRaises(HTTPException) as replay:
+                asyncio.run(question_api.analyze_question(
+                    "q1", question_api.AnalysisConsentApproval(consent_id=preview["consent_id"]), self.storage,
+                ))
+        self.assertEqual(replay.exception.status_code, 409)
+        provider.assert_not_awaited()
 
     def test_provider_failure_consumes_approval_without_retry(self):
         self.storage.save_list("questions.json", [Question(id="q1", ocr_text="question")])

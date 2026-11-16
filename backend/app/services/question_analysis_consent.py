@@ -58,13 +58,22 @@ class QuestionAnalysisConsentRegistry:
     ) -> QuestionAnalysisSnapshot:
         now = time.monotonic()
         consent_id = uuid4().hex
-        size_bytes = len(json.dumps(prompt, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        retained_request = {
+            "question_id": question.id,
+            "created_at": question.created_at,
+            "base_url": ai.base_url,
+            "model_name": ai.model_name,
+            "api_key": ai.api_key,
+            "prompt": prompt,
+        }
+        size_bytes = len(json.dumps(retained_request, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
         if size_bytes > MAX_PENDING_CONSENT_BYTES:
             raise ValueError("Question analysis preview exceeds the safe memory limit")
         snapshot = QuestionAnalysisSnapshot(
             consent_id=consent_id,
             question_id=question.id,
-            question=question.model_copy(deep=True),
+            # The provider call needs only the question ID/timestamp after its prompt is frozen.
+            question=Question(id=question.id, created_at=question.created_at),
             ai=ai,
             prompt=prompt,
             fingerprint=fingerprint,

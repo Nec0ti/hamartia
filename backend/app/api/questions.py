@@ -14,14 +14,22 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 from fastapi.responses import FileResponse
 from openai import OpenAIError
 
 from app.core.config import DATA_DIR, HAMARTIA_TAGS
 from app.core.study_plan import topic_priorities
-from app.models.schemas import CurriculumReference, Exam, Question, ReviewAttempt, Settings
-from app.services.ai_service import AIService
+from app.models.schemas import (
+    MAX_QUESTION_TEXT_BYTES,
+    CurriculumReference,
+    Exam,
+    Question,
+    ReviewAttempt,
+    Settings,
+    require_utf8_byte_limit,
+)
+from app.services.ai_service import AIService, QuestionAnalysisPayloadTooLarge
 from app.services.question_analysis_consent import question_analysis_consents
 from app.services.storage import StorageError, StorageService, data_mutation_guard
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
@@ -62,6 +70,10 @@ async def upload_question(
         raise HTTPException(status_code=422, detail="Exam details are required for question order metadata")
     if len(curriculum_reference_json) > 4096:
         raise HTTPException(status_code=422, detail="Curriculum reference is too large")
+    try:
+        require_utf8_byte_limit(ocr_text or "", MAX_QUESTION_TEXT_BYTES, "ocr_text")
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
     try:
         reference_data = json.loads(curriculum_reference_json)
         if not isinstance(reference_data, dict):
@@ -293,13 +305,27 @@ async def preview_question_analysis(
         if question is None:
             raise HTTPException(status_code=404, detail="Question not found")
         settings = storage.load_doc("settings.json", Settings) or Settings()
+        try:
+            require_utf8_byte_limit(question.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+            require_utf8_byte_limit(question.id, 512, "question_id")
+            require_utf8_byte_limit(question.created_at, 128, "created_at")
+            require_utf8_byte_limit(question.image_name, 1024, "image_name")
+            require_utf8_byte_limit(question.image_path, 2048, "image_path")
+            require_utf8_byte_limit(settings.litellm_base_url, 4096, "litellm_base_url")
+            require_utf8_byte_limit(settings.model_name, 1024, "model_name")
+            require_utf8_byte_limit(settings.api_key, 4096, "api_key")
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
         ai = AIService(
             base_url=settings.litellm_base_url,
             model_name=settings.model_name,
             api_key=settings.api_key,
             max_retries=0,
         )
-        prompt = ai._build_prompt(question, data_dir=DATA_DIR)
+        try:
+            prompt = ai._build_prompt(question, data_dir=DATA_DIR)
+        except QuestionAnalysisPayloadTooLarge as exc:
+            raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
         disclosure = _analysis_disclosure(question, settings, ai, prompt)
         try:
             snapshot = question_analysis_consents.issue(
@@ -345,7 +371,20 @@ async def analyze_question(
         api_key=settings.api_key,
         max_retries=0,
     )
-    current_prompt = current_ai._build_prompt(question, data_dir=DATA_DIR)
+    try:
+        require_utf8_byte_limit(question.ocr_text, MAX_QUESTION_TEXT_BYTES, "ocr_text")
+        require_utf8_byte_limit(question.id, 512, "question_id")
+        require_utf8_byte_limit(question.created_at, 128, "created_at")
+        require_utf8_byte_limit(question.image_name, 1024, "image_name")
+        require_utf8_byte_limit(question.image_path, 2048, "image_path")
+        require_utf8_byte_limit(settings.litellm_base_url, 4096, "litellm_base_url")
+        require_utf8_byte_limit(settings.model_name, 1024, "model_name")
+        require_utf8_byte_limit(settings.api_key, 4096, "api_key")
+        current_prompt = current_ai._build_prompt(question, data_dir=DATA_DIR)
+    except QuestionAnalysisPayloadTooLarge as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail="analysis_payload_too_large") from exc
     if _analysis_fingerprint(question, current_ai, current_prompt) != snapshot.fingerprint:
         raise HTTPException(status_code=409, detail="Question or endpoint settings changed; review the request again")
 
@@ -391,6 +430,11 @@ class QuestionUpdate(BaseModel):
     ocr_text: str
     # Omitted/null preserves the saved reference; send {} to clear it.
     curriculum_reference: CurriculumReference | None = None
+
+    @field_validator("ocr_text")
+    @classmethod
+    def bound_ocr_text(cls, value: str) -> str:
+        return require_utf8_byte_limit(value, MAX_QUESTION_TEXT_BYTES, "ocr_text")
 
 
 @router.patch("/{question_id}", response_model=Question)

@@ -22,6 +22,11 @@ from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
 IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+MAX_QUESTION_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+class QuestionAnalysisPayloadTooLarge(ValueError):
+    """A legacy or changed saved image exceeds the safe analysis input limit."""
 
 # System prompt distilled from HAMARTIA.md. Injected at runtime so the harness
 # stays the single source of truth for the council's behavior.
@@ -213,7 +218,11 @@ class AIService:
             image_path = None
         mime_type = IMAGE_MIME_TYPES.get(Path(question.image_name).suffix.lower())
         if mime_type and image_path and image_path.is_file():
-            encoded = b64encode(image_path.read_bytes()).decode("ascii")
+            with image_path.open("rb") as image_file:
+                image_bytes = image_file.read(MAX_QUESTION_IMAGE_BYTES + 1)
+            if len(image_bytes) > MAX_QUESTION_IMAGE_BYTES:
+                raise QuestionAnalysisPayloadTooLarge("Saved question image exceeds the analysis limit")
+            encoded = b64encode(image_bytes).decode("ascii")
             content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}})
         return [
             {"role": "system", "content": SYSTEM_PROMPT},

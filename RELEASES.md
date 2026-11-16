@@ -1117,3 +1117,61 @@ Uygulanamaz\: uygulama kodu, veri biçimi veya çalışma zamanı davranışı d
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Uygulama testleri, sunucu\/yapılandırma incelemesi, sağlayıcılarla iletişim, kimlik bilgisi kullanımı, canlı oturum açma, dağıtım veya hukuki uygulama yapılmadı\. Sosyal lansman kapıları açık kaldı\. Çocuk düzenlemesinin sınıflandırması ve yayımlanma\/yürürlük tarihi tutarsızlığı yetkin hukuk danışmanının incelemesini gerektiriyor\.
+
+## ARETE-064
+
+## English
+
+`ARETE-064` — [PR #68](https://github.com/Nec0ti/hamartia/pull/68): feat\: remove remote social prototype
+
+### Highlights
+
+Hamartia no longer includes remote sign\-in, remote profiles, or a study forum\. The local student profile, XP levels, avatar cosmetics, and Study Agent remain\.
+
+### Behavior and why
+
+The app no longer offers Google\/Firebase sign\-in, remote profile editing, forum posts, or moderation\. This removes the canceled remote social prototype and its separate service\. Student profiles and progression remain on the device\. Study Agent uses ChatGPT by default or a configured OpenAI\-compatible endpoint; requests to external providers still require the user's per\-request approval\.
+
+### How to use
+
+Use onboarding or Settings to create and edit the local student profile\. XP levels and avatar cosmetics continue to unlock as before\. Open Study Agent to use ChatGPT or configure an OpenAI\-compatible endpoint, including a local endpoint; review and approve each request before it is sent\.
+
+### Compatibility / migration
+
+No local profile, progression, or backup format changes\. No migration is needed for local data\. App support for the separate remote service has been removed; any data that may exist on an independently hosted service was not accessed or changed\.
+
+### Verification
+
+Frontend tests passed 54\/54, desktop tests 56\/56, and backend tests 288 passed with one Windows\-only test skipped \(289 run\)\. The local profile benchmark passed with \`ai\_included\: false\`, 25 row oracles, 24 competing updates, backup\/reset checks, and zero provider\/network calls\. Offline docs integrity passed for 17 routes per language, 816 local links\/assets, and 156 evidence excerpts\. GitHub CI passed frontend, backend, browser smokes, and Windows backup recovery; Linux and Windows package builds passed\. The production build and release metadata checks passed\.
+
+### Not run / known limitations
+
+Local Chromium browser smokes could not launch because \`libglib\-2\.0\.so\.0\` is unavailable; the browser smokes passed in PR CI\. No real provider\/model call, AI benchmark, deployment, or remote server access was performed\.
+
+## Türkçe
+
+`ARETE-064` — [PR #68](https://github.com/Nec0ti/hamartia/pull/68): feat\: remove remote social prototype
+
+### Öne çıkanlar
+
+Hamartia artık uzaktan oturum açma, uzaktaki profiller veya çalışma forumu içermiyor\. Yerel öğrenci profili, XP seviyeleri, avatar kozmetikleri ve Çalışma Asistanı korunuyor\.
+
+### Davranış ve nedeni
+
+Uygulama Google\/Firebase ile oturum açmayı, uzaktaki profili düzenlemeyi, forum gönderilerini ve moderasyonu sunmuyor\. Böylece iptal edilen uzaktaki sosyal prototip ve ayrı hizmeti kaldırılıyor\. Öğrenci profili ve ilerleme cihazda kalıyor\. Çalışma Asistanı varsayılan olarak ChatGPT'yi veya yapılandırılmış OpenAI uyumlu bir uç noktayı kullanıyor; harici sağlayıcıya giden her istek için kullanıcı onayı gerekiyor\.
+
+### Kullanım
+
+Yerel öğrenci profilini oluşturmak ve düzenlemek için başlangıç akışını veya Ayarlar'ı kullan\. XP seviyeleri ve avatar kozmetikleri önceki gibi açılmaya devam ediyor\. ChatGPT'yi kullanmak veya yerel bir uç nokta dahil OpenAI uyumlu bir uç nokta yapılandırmak için Çalışma Asistanı'nı aç; gönderimden önce her isteği inceleyip onayla\.
+
+### Uyumluluk / geçiş
+
+Yerel profil, ilerleme veya yedekleme biçiminde değişiklik yok\. Yerel veriler için geçiş gerekmiyor\. Ayrı uzaktaki hizmet desteği kaldırıldı; bağımsız olarak barındırılan bir hizmette bulunabilecek verilere erişilmedi veya bu veriler değiştirilmedi\.
+
+### Doğrulama
+
+Ön yüz testleri 54\/54, masaüstü testleri 56\/56 geçti\. Arka uçta 289 test çalıştı; 288'i geçti ve Windows'a özel bir test atlandı\. Yerel profil karşılaştırması \`ai\_included\: false\` ile geçti; 25 tam satır karşılaştırması, 24 eşzamanlı güncelleme, yedekleme\/sıfırlama kontrolleri ve sıfır sağlayıcı\/ağ çağrısı doğrulandı\. Çevrimdışı belge bütünlüğü 17 dil rotasında, 816 yerel bağlantı\/varlık ve 156 kanıt alıntısıyla hatasız geçti\. GitHub ön yüz, arka uç, tarayıcı ve Windows yedekleme CI kontrolleri ile Linux\/Windows paket derlemeleri geçti\. Üretim derlemesi ve sürüm üstverisi kontrolleri de geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Yerel Chromium, bulunmayan \`libglib\-2\.0\.so\.0\` nedeniyle tarayıcı kontrollerini başlatamadı; bu kontroller PR CI'da geçti\. Gerçek sağlayıcı\/model çağrısı, AI karşılaştırması, dağıtım veya uzaktaki sunucuya erişim yapılmadı\.

@@ -6,7 +6,6 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
 
 
-AVATAR_PRESETS = ("sunrise", "moon", "leaf", "star", "book", "mountain", "wave", "lantern")
 AvatarPreset = Literal["sunrise", "moon", "leaf", "star", "book", "mountain", "wave", "lantern"]
 ShortText = Annotated[StrictStr, Field(max_length=80)]
 MediumText = Annotated[StrictStr, Field(max_length=120)]

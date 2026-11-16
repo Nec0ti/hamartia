@@ -2,6 +2,7 @@
 
 import json
 import ipaddress
+import math
 import os
 import resource
 import socket
@@ -112,7 +113,9 @@ def guarded_connect(original, postgres_port):
 
 def percentile(values, percent):
     ordered = sorted(values)
-    return round(ordered[min(len(ordered) - 1, int((len(ordered) - 1) * percent))], 3)
+    # Nearest-rank keeps p95/p99 at the actual upper tail, including small samples.
+    index = max(0, min(len(ordered) - 1, math.ceil(percent * len(ordered)) - 1))
+    return round(ordered[index], 3)
 
 
 def main():
@@ -223,6 +226,7 @@ def main():
         summary = {
             "postgresql": True,
             "postgresql_server_version": server_version,
+            "percentile_method": "nearest-rank ceil(p*n)-1",
             "seeded_rows": SEED_COUNT,
             "oracle_rows_checked": SEED_COUNT,
             "repeats_per_timed_row": REPEATS,

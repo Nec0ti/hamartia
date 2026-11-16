@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from benchmarks.benchmark_social_profiles import percentile
 from app.social.application import create_social_app
 from app.social.database import PostgresProfileRepository, migrate_social_database
 from app.social.profile import Profile, ProfilePatch, public_profile_projection
@@ -16,6 +17,12 @@ TEST_DATABASE_URL = os.environ.get("HAMARTIA_SOCIAL_TEST_DATABASE_URL")
 
 
 class ProfileModelTests(unittest.TestCase):
+    def test_benchmark_percentiles_use_nearest_rank_at_small_sample_sizes(self):
+        samples = list(range(1, 25))
+        self.assertEqual(percentile(samples, 0.50), 12)
+        self.assertEqual(percentile(samples, 0.95), 23)
+        self.assertEqual(percentile(samples, 0.99), 24)
+
     def test_private_defaults_and_allowlisted_projection(self):
         profile = Profile(
             nickname="Visible name", nickname_public=True,

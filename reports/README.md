@@ -1,6 +1,6 @@
 # Hamartia reports
 
-Add each review, test, or benchmark report here as a dated Markdown file. Include the commands, scope, results, and limitations. Local AI runs and model performance must not be included in these measurements.
+Add each review, test, or benchmark report here as a dated Markdown file. Include the commands, scope, results, and limitations. Local AI runs and model performance must not be included in these measurements. Social prototype reports are historical only: the feature set was canceled and removed in [the cancellation report](2026-11-16-social-prototype-canceled.md).
 
 - [2026-11-15 bilingual user documentation wiki](2026-11-15-bilingual-wiki-docs.md)
 - [2026-11-15 user-entered learning-evidence records](2026-11-15-learning-evidence-record.md)
@@ -20,15 +20,25 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-15 GitHub Pages URL diagnosis and AI handoff guide](2026-11-15-pages-url-and-ai-handoff.md)
 - [2026-11-15 backup snapshot and upload boundaries](2026-11-15-backup-snapshot-and-upload-boundaries.md)
 - [2026-11-15 Maarif-aware Study Agent and user-entered curriculum references](2026-11-15-maarif-aware-study-agent.md)
-- [2026-11-16 offline social-auth client benchmark](2026-11-16-social-auth-offline-benchmark.md)
-- [2026-11-16 private forum submission quota](2026-11-16-forum-submission-quota.md)
 - [2026-11-16 local development API origin guard](2026-11-16-dev-origin-guard.md)
 - [2026-11-16 backup restore crash recovery and Windows CI correction](2026-11-16-backup-restore-crash-recovery.md)
 - [2026-11-16 tracker reconciliation for PRs 55–57 and ARETE-051–053](2026-11-16-tracker-reconciliation-pr55-57.md)
-- [2026-11-16 social sign-in and private profile UI prototype](2026-11-16-social-signin-onboarding.md)
-- [2026-11-16 social legal, privacy, and hosting readiness source review](2026-11-16-social-legal-privacy-hosting-readiness.md)
 - [2026-11-16 text-only Study Agent missed-question capture](2026-11-16-study-agent-question-capture.md)
 - [2026-11-16 single-subject Study Agent branch-exam capture](2026-11-16-study-agent-branch-exam-capture.md)
+
+
+## Historical — canceled remote social prototype
+
+These reports record the removed prototype and are retained as dated history. They are not current product documentation or outstanding launch requirements.
+
+- [2026-11-16 cancellation and preserved local profile/gamification verification](2026-11-16-social-prototype-canceled.md)
+- [2026-11-16 isolated social-auth service](2026-11-16-social-auth-slice.md)
+- [2026-11-16 private PostgreSQL profile and hosting plan](2026-11-16-social-profile-and-hosting-plan.md)
+- [2026-11-16 social sign-in/profile UI prototype](2026-11-16-social-signin-onboarding.md)
+- [2026-11-16 moderated study forum](2026-11-16-moderated-study-forum.md)
+- [2026-11-16 forum submission quota](2026-11-16-forum-submission-quota.md)
+- [2026-11-16 social-auth offline benchmark](2026-11-16-social-auth-offline-benchmark.md)
+- [2026-11-16 social legal/privacy/hosting readiness review](2026-11-16-social-legal-privacy-hosting-readiness.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)

@@ -7,14 +7,11 @@ import {
   Settings,
   MessageCircle,
   Clock3,
-  UserRound,
 } from 'lucide-react'
 import api from '../services/api'
 import { handleApiError } from '../services/api'
 import { levelForXp, xpProgress, xpToNextLevel } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
-import SocialProfileModal from './SocialProfileModal.jsx'
-import socialClient from '../social/socialClient.js'
 
 const TABS = [
   { id: 'dashboard', label: 'navigation.dashboard', icon: LayoutDashboard },
@@ -33,7 +30,6 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
   const { t, locale } = useI18n()
   const [profile, setProfile] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [socialOpen, setSocialOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -133,16 +129,6 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
 
           <button
             type="button"
-            onClick={() => setSocialOpen(true)}
-            className="relative rounded-lg border border-canvas-line bg-canvas-base p-2 text-canvas-muted transition hover:bg-canvas-raise hover:text-canvas-text"
-            aria-label={t('social.open')}
-            title={socialClient.isEnabled() ? t('social.open') : t('social.notConfigured')}
-          >
-            <UserRound size={18} />
-          </button>
-
-          <button
-            type="button"
             onClick={() => {
               setSettingsOpen(true)
               onOpenSettings?.()
@@ -161,7 +147,6 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }) {
         </div>
       )}
     </header>
-    <SocialProfileModal open={socialOpen} onClose={() => setSocialOpen(false)} />
     </>
   )
 }

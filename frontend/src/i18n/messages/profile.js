@@ -10,7 +10,7 @@ export default {
   'onboarding.tour.clock.title': { en: 'Use the Clock if it helps', tr: 'İstersen Saati kullan' },
   'onboarding.tour.clock.body': { en: 'The Clock has optional timers and reminders. It does not create streak pressure, and reminders may not fire while Hamartia is closed.', tr: 'Saat bölümünde isteğe bağlı sayaçlar ve hatırlatmalar bulunur. Seri baskısı oluşturmaz; Hamartia kapalıyken hatırlatmalar çalışmayabilir.' },
   'onboarding.tour.privacy.title': { en: 'Your profile stays on this device', tr: 'Profilin bu cihazda kalır' },
-  'onboarding.tour.privacy.body': { en: 'Your student profile is saved locally and is not sent to social services or AI providers. You choose separately before any Study Agent request.', tr: 'Öğrenci profilin yerel olarak kaydedilir; sosyal hizmetlere veya yapay zekâ sağlayıcılarına gönderilmez. Study Agent istekleri için ayrıca seçim yaparsın.' },
+  'onboarding.tour.privacy.body': { en: 'Your student profile is saved locally and stays out of Study Agent and question-analysis requests. You choose separately before any Study Agent request.', tr: 'Öğrenci profilin yerel olarak kaydedilir ve Study Agent ile soru analizi isteklerine eklenmez. Her Study Agent isteğinden önce ayrıca seçim yaparsın.' },
   'onboarding.next': { en: 'Next', tr: 'İleri' },
   'onboarding.back': { en: 'Back', tr: 'Geri' },
   'onboarding.skipTour': { en: 'Skip tour', tr: 'Tanıtımı atla' },

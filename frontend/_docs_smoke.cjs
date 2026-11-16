@@ -109,8 +109,8 @@ async function main() {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing sectioned-exam privacy boundary: ${phrase}`)
           }
           for (const phrase of lang === 'en'
-            ? ['Student profile', 'age in whole years', 'not sent to social services', 'included in Study Agent or question-analysis', 'official alignment']
-            : ['Öğrenci profili', 'tam yıl olarak yaş', 'sosyal hizmetlere gönderilmez', 'Çalışma Asistanı', 'resmî uyum']) {
+            ? ['Student profile', 'age in whole years', 'stay out of Study Agent and question-analysis', 'official alignment']
+            : ['Öğrenci profili', 'tam yıl olarak yaş', 'Çalışma Asistanı veya soru analizi isteklerine dahil edilmez', 'resmî uyum']) {
             assert.equal(article.toLowerCase().includes(phrase.toLowerCase()), true, `${route} missing local-profile privacy boundary: ${phrase}`)
           }
         }

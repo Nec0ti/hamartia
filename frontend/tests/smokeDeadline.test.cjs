@@ -38,15 +38,15 @@ test('practice smoke failure diagnostics omit payloads, response bodies, and que
     liveText: ['private answer'],
     pageErrors: ['private exception'],
     consoleErrors: [{ text: 'Content Security Policy blocked https://api.example.test?secret=private' }],
-    failedResponses: [{ url: 'https://api.example.test/social?token=private', status: 503 }],
-    appRequests: [{ method: 'POST', origin: 'https://api.example.test', path: '/social?token=private', query: { token: 'private' }, body: { api_key: 'private' } }],
+    failedResponses: [{ url: 'https://api.example.test/private?token=private', status: 503 }],
+    appRequests: [{ method: 'POST', origin: 'https://api.example.test', path: '/private?token=private', query: { token: 'private' }, body: { api_key: 'private' } }],
   })
   assert.deepEqual(projected, {
     language: 'en', workflow: 'practice-entry', draftHttpStatus: 200,
     missingFieldCount: 1, clarificationCount: 1, liveTextCount: 1, pageErrorCount: 1,
     cspConsoleError: true,
-    failedResponses: [{ origin: 'https://api.example.test', path: '/social', status: 503 }],
-    requests: [{ method: 'POST', origin: 'https://api.example.test', path: '/social' }],
+    failedResponses: [{ origin: 'https://api.example.test', path: '/private', status: 503 }],
+    requests: [{ method: 'POST', origin: 'https://api.example.test', path: '/private' }],
   })
   const rendered = JSON.stringify(projected)
   for (const privateValue of ['private synthetic prompt', 'private response body', 'private clarification', 'private answer', 'private exception', 'api_key', 'token=private']) {

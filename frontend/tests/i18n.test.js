@@ -47,6 +47,10 @@ test('question analysis action and consent explain its configured endpoint and p
   assert.match(translate('questions.aiConsentSavedImage', 'tr'), /görselinin verisi/)
   assert.match(translate('questions.aiConsentAuthValueConfigured', 'en'), /value is hidden/)
   assert.match(translate('questions.aiConsentAuthValueConfigured', 'tr'), /değeri gösterilmez/)
+  assert.match(translate('error.analysisPayloadTooLarge', 'en'), /Shorten the text or use a smaller image/)
+  assert.match(translate('error.analysisPayloadTooLarge', 'tr'), /Metni kısalt veya daha küçük görsel/)
+  assert.match(translate('questions.textByteLimit', 'en'), /64 KiB of UTF-8/)
+  assert.match(translate('questions.textByteLimit', 'tr'), /UTF-8 olarak 64 KiB/)
 })
 
 test('Study Agent practice entry explains evidence, missing fields, and approval in both languages', () => {

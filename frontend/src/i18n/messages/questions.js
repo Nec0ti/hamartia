@@ -11,6 +11,7 @@ export default {
   'questions.imageLabel': { en: 'Question image (optional; PNG, JPEG, or WebP, up to 10 MB)', tr: 'Soru görseli (isteğe bağlı; PNG, JPEG veya WebP, en fazla 10 MB)' },
   'questions.textLabel': { en: 'Question text or your notes (required without an image)', tr: 'Soru metni veya kendi notun (görsel yoksa zorunlu)' },
   'questions.textPlaceholder': { en: 'Write the question and where you got stuck.', tr: 'Soruyu ve nerede takıldığını yaz.' },
+  'questions.textByteLimit': { en: 'Question text is limited to 64 KiB of UTF-8 data.', tr: 'Soru metni UTF-8 olarak 64 KiB ile sınırlıdır.' },
   'questions.curriculumReference': { en: 'Optional curriculum reference', tr: 'İsteğe bağlı program referansı' },
   'questions.curriculumReferenceHelp': { en: 'Enter your own short note or paraphrase; Hamartia does not import curriculum text. Hamartia does not automatically fetch or verify the source URL; you can open it yourself.', tr: 'Kendi kısa notunu veya başka sözcüklerle anlatımını yaz; Hamartia program metni içe aktarmaz. Hamartia kaynak adresini otomatik olarak alıp doğrulamaz; istersen bağlantıyı kendin açabilirsin.' },
   'questions.curriculumFramework': { en: 'Framework', tr: 'Program çerçevesi' },

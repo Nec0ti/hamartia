@@ -45,6 +45,7 @@ export default function QuestionsTab({ initialExam = null }) {
   const upload = async (event) => {
     event.preventDefault()
     if (!file && !ocrText.trim()) return setError(t('questions.requireTextOrImage'))
+    if (utf8ByteLength(ocrText) > 64 * 1024) return setError(t('error.analysisPayloadTooLarge'))
     setBusy(true)
     setError('')
     try {
@@ -127,6 +128,7 @@ export default function QuestionsTab({ initialExam = null }) {
 
   const edit = async (event) => {
     event.preventDefault()
+    if (utf8ByteLength(editing.ocr_text) > 64 * 1024) return setError(t('error.analysisPayloadTooLarge'))
     try {
       const { id, ...payload } = editing
       await api.questions.update(id, payload)
@@ -190,7 +192,8 @@ export default function QuestionsTab({ initialExam = null }) {
         </label>
         <label className="text-sm text-canvas-muted sm:col-span-2">
           {t('questions.textLabel')}
-          <textarea value={ocrText} onChange={(e) => setOcrText(e.target.value)} rows={3} className={inputClass} placeholder={t('questions.textPlaceholder')} />
+          <textarea maxLength={65536} value={ocrText} onChange={(e) => setOcrText(e.target.value)} rows={3} className={inputClass} placeholder={t('questions.textPlaceholder')} />
+          <span className="mt-1 block text-xs">{t('questions.textByteLimit')}</span>
         </label>
         <CurriculumReferenceFields value={curriculumReference} onChange={setCurriculumReference} t={t} />
         <div className="flex items-center justify-between gap-3 sm:col-span-2">
@@ -227,7 +230,7 @@ export default function QuestionsTab({ initialExam = null }) {
                 <form onSubmit={edit} className="grid gap-3 sm:grid-cols-2">
                   <label className="text-xs text-canvas-muted">{t('common.subject')}<input aria-label={t('questions.editSubject')} value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className={inputClass} /></label>
                   <label className="text-xs text-canvas-muted">{t('common.topic')}<input aria-label={t('questions.editTopic')} value={editing.topic} onChange={(e) => setEditing({ ...editing, topic: e.target.value })} className={inputClass} /></label>
-                  <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.questionText')}<textarea aria-label={t('questions.editQuestionText')} value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /></label>
+                  <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.questionText')}<textarea maxLength={65536} aria-label={t('questions.editQuestionText')} value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /><span className="mt-1 block">{t('questions.textByteLimit')}</span></label>
                   <CurriculumReferenceFields value={editing.curriculum_reference || { ...EMPTY_CURRICULUM_REFERENCE }} onChange={(reference) => setEditing({ ...editing, curriculum_reference: reference })} t={t} />
                   <div className="flex gap-2 sm:col-span-2">
                     <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-canvas-base"><Save size={14} /> {t('common.save')}</button>
@@ -306,6 +309,10 @@ export default function QuestionsTab({ initialExam = null }) {
 }
 
 const inputClass = 'mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text outline-none focus:border-canvas-accent'
+
+function utf8ByteLength(value) {
+  return new TextEncoder().encode(value || '').length
+}
 
 function hasCurriculumReference(reference = {}) {
   return Object.values(reference).some((value) => String(value || '').trim())

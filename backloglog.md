@@ -1,5 +1,10 @@
 # Backlog log
 
+## 2026-11-17 — README logo visibility
+
+- Reduced the root README inline mark to 20 px and used the transparent black/white brand SVGs for light/dark GitHub themes.
+- GitHub GFM preserved the themed picture; Chromium loaded and visually displayed the matching SVG in both themes. No application tests were run; this is README-only. See `reports/2026-11-17-readme-logo-visibility.md`.
+
 ## 2026-11-16 — canceled remote social prototype
 
 - Removed Google/Firebase sign-in, remote profiles and forum, the separate API/PostgreSQL service and migrations, moderator/quota code, agreement drafts, dependencies, CI, and social-only tests/benchmarks. Direct messages were never implemented.
@@ -245,3 +250,9 @@
 - Reworked the generated docs chrome and shared CSS into a dark, responsive manual with stacked release/version and manual-navigation bars, grouped persistent desktop sidebar, right-side section rail, blue active/link states, and dark tables. Kept the 17 EN/TR page bodies and section anchors unchanged.
 - Replaced the oversized standalone README mark with a compact inline title mark. GitHub's supported color-scheme `<picture>` selects a white transparent SVG in dark mode; the default image is the existing high-contrast tile favicon.
 - The 390 px category groups wrap into a two-column grid so the active third group stays visible; the Install route has a viewport-intersection assertion. Python compilation, docs generation, 34-route Playwright smoke, offline docs integrity benchmark, 1440 px/390 px screenshots, light/dark README mark previews, and `git diff --check` passed. Human retrieval/usability and full screen-reader audit remain open; no AI or provider call was made. See [report](reports/2026-11-17-dark-docs-theme.md).
+
+## 2026-11-17 sectioned exam benchmark CI coverage
+
+- Added the existing persisted sectioned-exam Study Agent benchmark to the backend CI job with three repeats. It remains host-only, asserts full persisted-row oracles, and fail-fast patches provider entry points.
+- The exact workflow command passed locally in 14.17 seconds on Python 3.14.8; zero provider tripwire calls were reported. A recent successful backend job took 119 seconds and the job timeout is 15 minutes, so the measured addition fits the current budget. CI uses Python 3.12; actual runner timing can vary.
+- The new workflow step still requires a passing PR CI run. No provider, local model, or external service was used. See [report](reports/2026-11-17-sectioned-exam-benchmark-ci.md).

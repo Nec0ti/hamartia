@@ -101,6 +101,9 @@ jobs:
       - run: python backend/benchmarks/benchmark_study_agent_exam.py --repeats 3
         env:
           PYTHONPATH: backend
+      - run: python backend/benchmarks/benchmark_study_agent_sectioned_exam.py --repeats 3
+        env:
+          PYTHONPATH: backend
       - run: python backend/benchmarks/benchmark_mixed_workloads.py
         env:
           PYTHONPATH: backend

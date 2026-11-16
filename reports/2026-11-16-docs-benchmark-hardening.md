@@ -12,7 +12,7 @@ The public task workbook and key remain fixed and inspectable. Withholding the k
 
 Command: `python3 scripts/benchmark_docs.py`
 
-The offline checker passed with no errors. It checked 26 paired locale prompts/rubrics, 156 exact evidence excerpts (152 rendered-page and two protocol), 818 local links/assets, three checker-only integrity fixtures, six correctly cross-page synthesis pairs in both locales, and input-hash sensitivity. The task set is 13 pairs / 65 points per locale / 130 total. The proposed gates are 56/65 per tester, 117/130 combined EN/TR cohort means, and full credit on each of six critical task pairs. They are provisional hypotheses, not validated thresholds; human pilot results must be used to review them.
+The offline checker passed with no errors. It checked 26 paired locale prompts/rubrics, 156 exact evidence excerpts (154 rendered-page and two protocol), 818 local links/assets, three checker-only integrity fixtures, six correctly cross-page synthesis pairs in both locales, and input-hash sensitivity. The task set is 13 pairs / 65 points per locale / 130 total. The proposed gates are 56/65 per tester, 117/130 combined EN/TR cohort means, and full credit on each of six critical task pairs. They are provisional hypotheses, not validated thresholds; human pilot results must be used to review them.
 
 The generated result is [`2026-11-16-docs-benchmark-hardening-results.json`](2026-11-16-docs-benchmark-hardening-results.json). It records `ai_included: false`, `network_access: false`, and `human_thresholds: provisional_pending_human_pilot`. No local AI, model endpoint, provider or external link was called.
 

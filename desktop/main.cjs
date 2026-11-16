@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 const { backendInvocation } = require('./backendInvocation.cjs')
+const { isDesktopBackendReady } = require('./backendReadiness.cjs')
 const { restoreWithRestart } = require('./restoreFlow.cjs')
 const { gracefulStop } = require('./shutdownFlow.cjs')
 const { createChatGPT } = require('./chatgpt.cjs')
@@ -126,7 +127,13 @@ async function waitUntilReady(child, url) {
     if (child.exitCode !== null) throw new Error(`Backend exited with code ${child.exitCode}`)
     try {
       const response = await fetch(`${url}/healthcheck/ready`, { signal: AbortSignal.timeout(1000) })
-      if (response.ok) return
+      if (response.ok) {
+        const desktopReady = await fetch(`${url}/desktop/ready`, {
+          headers: { 'X-Hamartia-Control-Token': CONTROL_TOKEN },
+          signal: AbortSignal.timeout(1000),
+        })
+        if (isDesktopBackendReady(desktopReady)) return
+      }
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 200))
   }

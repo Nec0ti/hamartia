@@ -193,6 +193,26 @@ class DesktopServerTests(unittest.TestCase):
         self.assertEqual(stopped, [True])
         client.close()
 
+    def test_desktop_readiness_requires_control_token(self):
+        app = FastAPI()
+        configure_frontend(app)
+        client = TestClient(app)
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "correct-token"}, clear=True):
+            missing = client.get("/desktop/ready")
+            wrong = client.get(
+                "/desktop/ready",
+                headers={"X-Hamartia-Control-Token": "wrong-token"},
+            )
+            accepted = client.get(
+                "/desktop/ready",
+                headers={"X-Hamartia-Control-Token": "correct-token"},
+            )
+        self.assertEqual(missing.status_code, 403)
+        self.assertEqual(wrong.status_code, 403)
+        self.assertEqual(accepted.status_code, 204)
+        self.assertEqual(accepted.headers.get("X-Hamartia-Control-Token-Verified"), "true")
+        client.close()
+
     def test_frontend_directory_uses_override_or_pyinstaller_bundle(self):
         with patch.dict("os.environ", {}, clear=True), patch.object(sys, "frozen", False, create=True):
             self.assertIsNone(frontend_directory())

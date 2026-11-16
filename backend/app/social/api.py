@@ -1,6 +1,6 @@
 """Private identity and owner-scoped profile routes for the social prototype."""
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 
 from app.social.profile import Profile, ProfilePatch
 from app.social.security import (
@@ -36,11 +36,13 @@ def create_router(project_id: str, verifier: Verifier, profile_repository=None) 
         return {"status": "ok"}
 
     @router.get("/me")
-    def me(authorization: str | None = Header(default=None)):
+    def me(response: Response, authorization: str | None = Header(default=None)):
+        response.headers["Cache-Control"] = "no-store"
         return {"uid": _verified_uid(authorization, project_id, verifier)}
 
     @router.get("/me/profile", response_model=Profile)
-    def get_profile(authorization: str | None = Header(default=None)):
+    def get_profile(response: Response, authorization: str | None = Header(default=None)):
+        response.headers["Cache-Control"] = "no-store"
         uid = _verified_uid(authorization, project_id, verifier)
         if profile_repository is None:
             raise HTTPException(status_code=503, detail="Profile storage unavailable")
@@ -50,7 +52,8 @@ def create_router(project_id: str, verifier: Verifier, profile_repository=None) 
             raise HTTPException(status_code=503, detail="Profile storage unavailable") from exc
 
     @router.patch("/me/profile", response_model=Profile)
-    def patch_profile(body: ProfilePatch, authorization: str | None = Header(default=None)):
+    def patch_profile(body: ProfilePatch, response: Response, authorization: str | None = Header(default=None)):
+        response.headers["Cache-Control"] = "no-store"
         uid = _verified_uid(authorization, project_id, verifier)
         if profile_repository is None:
             raise HTTPException(status_code=503, detail="Profile storage unavailable")

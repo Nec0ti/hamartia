@@ -118,6 +118,7 @@ class PostgresSocialProfileTests(unittest.TestCase):
 
     def test_get_defaults_and_two_users_are_owner_scoped(self):
         defaults = self.request("token-a").json()
+        self.assertEqual(self.request("token-a").headers["cache-control"], "no-store")
         self.assertEqual(defaults["nickname"], None)
         self.assertEqual(defaults["age"], None)
         self.assertFalse(any(key.endswith("_public") and value for key, value in defaults.items()))
@@ -173,7 +174,7 @@ class PostgresSocialProfileTests(unittest.TestCase):
         for key, expected in cases:
             self.assertEqual(complete[key], expected)
 
-    def test_invalid_verifier_and_database_errors_are_generic(self):
+    def test_invalid_verifier_failures_are_generic(self):
         invalid = self.request("invalid-token")
         outage = self.request("verifier-outage")
         self.assertEqual((invalid.status_code, invalid.json()), (401, {"detail": "Invalid bearer token"}))

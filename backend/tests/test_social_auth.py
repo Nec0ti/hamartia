@@ -50,6 +50,7 @@ class SocialAuthTests(unittest.TestCase):
         response = self.client.get("/social/me", headers={"Authorization": "Bearer valid"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"uid": "synthetic-user-123"})
+        self.assertEqual(response.headers["cache-control"], "no-store")
 
     def test_bearer_scheme_is_case_insensitive(self):
         for scheme in ("bearer", "BEARER", "bEaReR"):

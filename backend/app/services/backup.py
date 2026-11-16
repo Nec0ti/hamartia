@@ -407,6 +407,24 @@ def _sync_directory(path):
             os.close(descriptor)
 
 
+def _move_path(source, destination, replace=False):
+    """Move within the data directory's volume, requesting write-through on Windows."""
+    source, destination = Path(source), Path(destination)
+    if os.name == "nt":
+        import ctypes
+
+        flags = 0x8 | (0x1 if replace else 0)  # MOVEFILE_WRITE_THROUGH | optional MOVEFILE_REPLACE_EXISTING
+        move_file = ctypes.WinDLL("kernel32", use_last_error=True).MoveFileExW
+        move_file.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+        move_file.restype = ctypes.c_int
+        if not move_file(str(source), str(destination), flags):
+            raise ctypes.WinError(ctypes.get_last_error())
+    elif replace:
+        os.replace(source, destination)
+    else:
+        source.rename(destination)
+
+
 def _sync_tree(path):
     for current, directories, files in os.walk(path, topdown=False):
         for name in files:
@@ -428,7 +446,7 @@ def _write_restore_journal(path, data_dir, staged, snapshot):
         output.write(payload)
         output.flush()
         os.fsync(output.fileno())
-    os.replace(temporary, path)
+    _move_path(temporary, path, replace=True)
     _sync_directory(path.parent)
 
 
@@ -456,17 +474,17 @@ def recover_restore(data_dir):
         if staged.exists() and data_dir.exists():
             if not snapshot or snapshot.exists():
                 raise BackupError("Restore recovery would overwrite an unexpected data directory")
-            data_dir.rename(snapshot)
+            _move_path(data_dir, snapshot)
             _sync_directory(data_dir.parent)
-            staged.rename(data_dir)
+            _move_path(staged, data_dir)
             _sync_directory(data_dir.parent)
         elif staged.exists():
-            staged.rename(data_dir)
+            _move_path(staged, data_dir)
             _sync_directory(data_dir.parent)
         elif data_dir.exists():
             pass  # The staged directory was installed and the restore committed.
         elif snapshot and snapshot.exists():
-            snapshot.rename(data_dir)
+            _move_path(snapshot, data_dir)
             _sync_directory(data_dir.parent)
         else:
             raise BackupError("Restore recovery found no usable data directory")
@@ -487,10 +505,10 @@ def _rollback_restore(data_dir):
     snapshot_name = record.get("snapshot", "")
     snapshot = Path(data_dir).with_name(snapshot_name) if snapshot_name else None
     if Path(data_dir).exists() and not staged.exists():
-        Path(data_dir).rename(staged)
+        _move_path(data_dir, staged)
         _sync_directory(Path(data_dir).parent)
     if not Path(data_dir).exists() and snapshot and snapshot.exists():
-        snapshot.rename(data_dir)
+        _move_path(snapshot, data_dir)
         _sync_directory(Path(data_dir).parent)
     if staged.exists():
         shutil.rmtree(staged)
@@ -531,9 +549,9 @@ def restore_backup(archive_path, data_dir):
             _sync_tree(staged)
             _write_restore_journal(_restore_journal_path(data_dir), data_dir, staged, snapshot)
             if snapshot:
-                data_dir.rename(snapshot)
+                _move_path(data_dir, snapshot)
                 _sync_directory(data_dir.parent)
-            staged.rename(data_dir)
+            _move_path(staged, data_dir)
             _sync_directory(data_dir.parent)
             _restore_journal_path(data_dir).unlink()
             _sync_directory(data_dir.parent)

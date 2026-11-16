@@ -885,3 +885,61 @@ Sürüm metadata testleri 6\/6 geçti\. İki dilde alanların oluşturulması, i
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Paket derlemeleri ve uçtan uca GitHub Actions yayımlaması yerelde çalıştırılmadı; normal CI birleştirme sonrasında paketleri oluşturacak\. Birleştirilmiş PR'da eksik bir iki dilli özet varsa yayımlama kasıtlı olarak başarısız olur; bu nedenle yazarlar PR'ı birleştirmeden önce şablonu doldurmalı\.
+
+## ARETE-060
+
+## English
+
+`ARETE-060` — [PR #64](https://github.com/Nec0ti/hamartia/pull/64): Complete local Study Agent CLI workflows
+
+### Highlights
+
+Added bounded JSON\-lines Study Agent host commands for five existing record types\: topic practice sets, learning evidence, text\-only missed questions, branch exams, and sectioned TYT\/AYT exams\.
+
+### Behavior and why
+
+Each draft returns host\-verified fields, evidence, a preview digest, and follow\-up questions in the selected language without writing\. A separate approval command revalidates the exact preview and then uses the existing create handler\. This lets a local caller support more study entry workflows while keeping record values grounded in the student's own transcript\.
+
+### How to use
+
+From a source checkout, run \`PYTHONPATH=backend python \-m app\.hamartia\_cli \-\-jsonl\`\. Send a \`study\.&lt;workflow&gt;\.draft\` command with the full transcript, locale, and exact evidence quotes\. Show the returned questions and complete preview to the student\. Only after explicit approval, send a matching \`study\.&lt;workflow&gt;\.approve\` command with the preview digest, approval UUID, and \`approved\: true\`\. The old read\-only \`study\.practice\.prepare\` command remains available\.
+
+### Compatibility / migration
+
+No stored data format or API route changed, and existing desktop flows remain unchanged\. The JSON\-lines CLI uses the existing \`HAMARTIA\_DATA\_DIR\` setting\. The desktop package does not currently expose this Python entrypoint as a separate terminal command\.
+
+### Verification
+
+The focused CLI suite passed 22\/22; the full backend suite passed 317 tests with 12 PostgreSQL integration tests skipped because no test database was configured\. The persisted five\-workflow benchmark passed three warm repeats with \`ai\_included\: false\`, zero provider calls by fail\-fast tripwire, and zero socket\-connect attempts\. The existing read\-only parser benchmark passed 175 adversarial probes per workload; \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+No ChatGPT or configured\-endpoint provider, local model, browser, physical device, or social service was used\. The CLI is a host protocol\: the caller must display questions and previews and collect user approval; it does not provide its own terminal confirmation UI or provider transport\. Same\-OS\-user processes remain within the existing local trust boundary\.
+
+## Türkçe
+
+`ARETE-060` — [PR #64](https://github.com/Nec0ti/hamartia/pull/64): Complete local Study Agent CLI workflows
+
+### Öne çıkanlar
+
+Beş mevcut kayıt türü için sınırlı JSON Lines Study Agent ana bilgisayar komutları eklendi\: konu çalışma setleri, öğrenme kanıtı, yalnızca metin içeren yanlış soru kayıtları, tek ders denemeleri ve bölümlü TYT\/AYT denemeleri\.
+
+### Davranış ve nedeni
+
+Her taslak, kullanıcı seçtiği dilde eksik veya belirsiz alan sorularını, doğrulanmış alanları, kanıtları ve önizleme özetini döndürür; kayıt yazmaz\. Ayrı bir onay komutu aynı önizlemeyi yeniden doğrular ve mevcut kayıt oluşturma işleyicisini çağırır\. Böylece yerel bir istemci daha fazla çalışma giriş akışını desteklerken kayıt değerleri öğrencinin kendi metnine dayanır\.
+
+### Kullanım
+
+Kaynak kod deposunda \`PYTHONPATH=backend python \-m app\.hamartia\_cli \-\-jsonl\` komutunu çalıştırın\. Tam konuşma metni, dil ve birebir kanıt alıntılarıyla \`study\.&lt;workflow&gt;\.draft\` komutu gönderin\. Dönen soruları ve eksiksiz önizlemeyi öğrenciye gösterin\. Yalnızca açık onaydan sonra önizleme özeti, onay UUID'si ve \`approved\: true\` ile aynı \`study\.&lt;workflow&gt;\.approve\` komutunu gönderin\. Eski salt\-okunur \`study\.practice\.prepare\` komutu kullanılmaya devam edebilir\.
+
+### Uyumluluk / geçiş
+
+Kayıt biçimi veya API rotası değişmedi; mevcut masaüstü akışları aynı kaldı\. JSON Lines CLI, mevcut \`HAMARTIA\_DATA\_DIR\` ayarını kullanır\. Masaüstü paketi bu Python giriş noktasını ayrı bir terminal komutu olarak sunmuyor\.
+
+### Doğrulama
+
+CLI odaklı testler 22\/22 geçti\. Tam backend testi, test veritabanı olmadığı için atlanan 12 PostgreSQL entegrasyon testiyle birlikte 317 testten geçti\. Beş akışlı kalıcı yazma karşılaştırması üç ısınma sonrası tekrarda geçti; \`ai\_included\: false\`, hata üreten sağlayıcı çağrı koruması 0 çağrı ve soket bağlantı koruması 0 deneme gösterdi\. Salt\-okunur ayrıştırıcı karşılaştırması her iş yükünde 175 olumsuz örnekle geçti; \`git diff \-\-check\` başarılı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+ChatGPT veya yapılandırılmış uç nokta sağlayıcısı, yerel model, tarayıcı, fiziksel cihaz ya da sosyal servis kullanılmadı\. CLI bir ana bilgisayar protokolüdür\: istemci soruları ve önizlemeleri göstermeli, kullanıcı onayını almalıdır; kendi terminal onay ekranı veya sağlayıcı bağlantısı yoktur\. Aynı işletim sistemi kullanıcısındaki süreçler mevcut yerel güven sınırındadır\.

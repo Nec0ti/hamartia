@@ -123,9 +123,8 @@ Excluded from benchmarks: model loading/running, prompt quality, AI response qua
 - The separate social service now has private PostgreSQL-backed profile GET/PATCH. UID ownership is derived from verified Firebase claims, no UID/email/claims are returned, each profile field is private by default, and a tested public projection is not mounted. No login UI, study-data sync, AI context, forum, DM, tunnel, or deployment is included. Details and the source-backed launch-gate map are in [the social profile report](reports/2026-11-16-social-profile-and-hosting-plan.md).
 - Local verification against temporary loopback PostgreSQL 17.11: focused social tests 21/21, full backend 195/195, and the seeded PostgreSQL API benchmark passed (64 rows; 64 full-row oracles; 384 GET + 384 PATCH timed calls; 12 workers/288 concurrent calls; pool and RSS recorded; zero Firebase/external network calls). GitHub CI uses a PostgreSQL 17 service; hosted verification is pending.
 
-## Open decisions
+## Resolved decisions (2026-11-16)
 
-- How should full TYT/AYT practice exams and branch exams be distinguished in exam entry?
-- Should users enter topic/subtopic labels, or should they remain free text initially?
-- Which missed-question entry methods should launch first: photo, text, or manual error label?
-- What should the initial launch method be for local desktop and mobile use?
+- Exam entry distinguishes TYT/AYT and branch exams; full mocks retain their subject sections ([full-mock results](reports/2026-11-14-full-mock-results.md), [exam scoring profiles](reports/2026-11-15-exam-scoring-profiles.md)).
+- Subject/topic labels remain free text in this scope; users may capture missed questions by text and optionally include an image ([README](README.md), [full-mock results](reports/2026-11-14-full-mock-results.md)).
+- The local launch path is the desktop app and packaged Windows, Debian, and AppImage builds ([launcher report](reports/2026-11-14-local-launcher.md), [desktop delivery plan](reports/2026-11-14-desktop-delivery-plan.md)). Separate physical Windows 10/11 and Debian install/persistence checks remain open under P4.

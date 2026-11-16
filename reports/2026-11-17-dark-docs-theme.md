@@ -11,7 +11,8 @@ Changed the shared static docs template and CSS to use stacked dark header bars,
 - `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) NODE_PATH=/home/necoti/hamartia-clock/frontend/node_modules npm --prefix frontend run test:docs'` — passed all 34 routes, reciprocal language links, section parity, internal links, 390 px overflow, and keyboard skip link.
 - `python3 scripts/benchmark_docs.py --output /tmp/hamartia-docs-theme-benchmark.json` — passed offline integrity checks: 17 routes per locale, 34 active nav items, 1,060 local links/assets, 156 exact evidence excerpts, and zero errors. No network or AI was used.
 - `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) node /tmp/hamartia-docs-theme-preview.cjs'` — captured and visually inspected full-page 1440 px and 390 px docs screenshots, plus the README mark in Chromium with both light and dark color schemes. The preview server served the repo root so the relative asset paths match the README.
-- `gh api /markdown --input /tmp/hamartia-readme-markdown.json` — GitHub's GFM renderer retained the `<picture>`, dark-mode `<source>`, and visible fallback `<img>` in the README title.
+- `gh api /markdown --input /tmp/hamartia-readme-markdown.json` — GitHub's GFM renderer returned a `<themed-picture>` containing the `<picture>`, dark-mode `<source>`, and visible fallback `<img>`. Chromium rendered that exact returned HTML with a repository-root base in both schemes; `naturalWidth` and `currentSrc` confirmed the fallback tile in light mode and white SVG in dark mode, with zero failed requests.
+- `curl` against both raw branch asset URLs returned HTTP 200; the uploaded dark SVG SHA-256 matched the local file.
 - `git diff --check` — passed.
 
 ## Limits

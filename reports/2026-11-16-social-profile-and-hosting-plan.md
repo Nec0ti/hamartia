@@ -2,7 +2,7 @@
 
 **Status:** dated planning note accompanying a private profile-storage prototype. It is not legal advice, a compliance assessment, or launch approval. No public hosting, tunnel, sign-in UI, forum, or study-data sync is included. No legal or operational gate below is cleared.
 
-This concise update carries forward relevant parts of the design report on `codex/home-server-social-design`; that report remains on its branch. It is dated 2026-11-16 because the source memo predates later operator facts and the current 5651 text has since changed. Re-check primary sources and obtain qualified advice before any public launch.
+This concise planning note records the current implementation boundary and rechecks relevant primary sources as of 2026-11-16. Re-check primary sources and obtain qualified advice before any public launch.
 
 ## Confirmed project boundaries
 
@@ -12,7 +12,7 @@ This concise update carries forward relevant parts of the design report on `code
 - The profile has a nickname, integer age, grade, class, user-entered curriculum/preferences/goals, and a built-in avatar preset. There is no gender or date-of-birth field. Each field has an independent visibility switch that defaults off; the allowlisted public projection is not mounted over HTTP.
 - Social profile data is not added to Study Agent payloads. No password is collected, stored, or sent.
 
-The planning memo records these operator-provided host facts: Ubuntu Server, 4 GB RAM, one 450 GB HDD, CGNAT, and an expectation to use Cloudflare Tunnel. They are not a current host inspection or readiness result. Capacity, disk health, backup location, restore performance, and availability are unverified.
+The eventual host's operating system, capacity, storage health, network path, ISP limits, backup destination, restore performance, and availability have not been independently inspected. Whether Cloudflare Tunnel or another relay is selected/configured also remains unverified.
 
 ## Implemented profile slice
 
@@ -22,8 +22,8 @@ The separate service is opt-in and requires both `FIREBASE_PROJECT_ID` and `SOCI
 
 ## Local verification snapshot
 
-- Focused auth/profile/model/PostgreSQL integration tests passed: 22/22 against a temporary loopback PostgreSQL 17.11 cluster. They include two synthetic UIDs, default-private fields, strict age/text/avatar validation, unknown-field/UID/email rejection, generic verifier/database errors, concurrent partial creates, nearest-rank percentile self-checks, and a route table without any public profile endpoint.
-- Full backend unittest suite passed: 196/196 using that temporary PostgreSQL test database. Existing Python 3.14/httpx deprecation and temporary-file resource warnings appeared; no failures.
+- Focused auth/profile/model/PostgreSQL integration tests passed: 23/23 against a temporary loopback PostgreSQL 17.11 cluster. They include two synthetic UIDs, default-private fields, strict age/text/avatar validation, unknown-field/UID/email rejection, verifier failures that prove storage is untouched, generic verifier/database errors, concurrent partial creates, nearest-rank percentile self-checks, and a route table without any public profile endpoint.
+- Full backend unittest suite passed: 197/197 using that temporary PostgreSQL test database. Existing Python 3.14/httpx deprecation and temporary-file resource warnings appeared; no failures.
 - PostgreSQL API benchmark passed on PostgreSQL 17.11 with 64 seeded synthetic rows, 64 independent full-profile oracles, 384 timed GETs, 384 timed PATCHes, and 12 concurrent workers issuing 288 calls. Percentiles use nearest-rank `ceil(p*n)-1`; a 24-value self-check verifies p99 selects the maximum. GET latency was p50 3.975 ms / p95 7.928 ms / p99 8.770 ms; PATCH p50 7.434 ms / p95 10.575 ms / p99 12.002 ms; concurrent-call p50 49.323 ms / p95 70.881 ms / p99 78.579 ms. The pool opened 9 of 12 allowed connections and reported no waiters; benchmark-process peak RSS was 1,313,748 KiB for this run (process-wide TestClient harness peak, not an isolated server measurement). These are local TestClient + loopback-PostgreSQL measurements, not service performance claims.
 - Firebase verifier tripwire and loopback-only socket guard passed: zero Firebase calls and zero external network calls. The benchmark refuses non-PostgreSQL or non-loopback database URLs and never substitutes SQLite or a fake repository.
 - Backend CI requires a dedicated PostgreSQL 17 service for the integration tests and benchmark, so the database-backed checks cannot silently fall back to SQLite or mocks.
@@ -44,7 +44,7 @@ Google/Firebase identity and any eventual reverse proxy are separate processors 
 
 Cloudflare documents Tunnel as an outbound-only connection that does not require a public IP, with traffic to the origin flowing through Cloudflare’s network. Its current HTTP privacy documentation describes TLS termination and request inspection at Cloudflare’s edge, with request/response processing in memory. If Tunnel is selected, Cloudflare is part of the data-processing path; tunnel encryption does not prevent edge processing of plaintext. Decide whether that is acceptable, document it accurately, bypass caching on every authenticated route, and verify actual cache behavior before any deployment. These are design gates, not claims that a tunnel exists or is configured.
 
-The existing desktop API must not be rebound to a LAN/public interface or have its JSON data directory exposed. PostgreSQL must remain private to the service network. Before any public host, test HTTPS and authenticated-route cache behavior, minimize/redact logs, use a least-privilege database role, encrypt backups, and prove a restore from a physically separate failure domain. The single reported HDD does not establish redundancy or backup safety.
+The existing desktop API must not be rebound to a LAN/public interface or have its JSON data directory exposed. PostgreSQL must remain private to the service network. Before any public host, test HTTPS and authenticated-route cache behavior, minimize/redact logs, use a least-privilege database role, encrypt backups, and prove a restore from a physically separate failure domain. A single storage device does not establish redundancy or backup safety.
 
 ## Legal and launch gates — all open
 

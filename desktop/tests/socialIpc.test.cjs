@@ -108,6 +108,9 @@ test('unaccepted or mismatched agreement versions block sign-in and profile call
   }
   assert.deepEqual(app.authCalls, { signIn: 0, signOut: 0, getIdToken: 0 })
   assert.equal(app.requests.length, 0)
+  assert.deepEqual(await app.handlers.get('hamartia:social:sign-out')(app.event()), { status: 'signedOut' })
+  assert.deepEqual(app.authCalls, { signIn: 0, signOut: 1, getIdToken: 0 })
+  assert.equal(app.requests.length, 0)
   assert.deepEqual(await signIn(app.event(), AGREEMENT_VERSION), { status: 'signedIn' })
   assert.equal(app.authCalls.signIn, 1)
 })

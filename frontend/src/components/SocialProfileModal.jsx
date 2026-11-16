@@ -137,8 +137,17 @@ export default function SocialProfileModal({ open, onClose }) {
     }
   }
 
+  const closeModal = () => {
+    if (signedIn) socialClient.signOut().catch(() => {})
+    socialClient.clearAgreementAcceptance()
+    setAgreementAccepted(false)
+    setSignedIn(false)
+    setDraft(emptyProfileDraft())
+    onClose()
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title={t('social.title')}>
+    <Modal open={open} onClose={closeModal} title={t('social.title')}>
       <p className="mb-4 text-sm text-canvas-muted">{t('social.description')}</p>
       <p className="mb-4 rounded-lg border border-canvas-line bg-canvas-base p-3 text-xs text-canvas-muted">{t('social.publicNotice')}</p>
       <div className="mb-4 space-y-2 text-sm">
@@ -156,6 +165,7 @@ export default function SocialProfileModal({ open, onClose }) {
               socialClient.setAgreementAccepted(accepted)
               setAgreementAccepted(accepted)
               if (!accepted) {
+                if (signedIn) socialClient.signOut().catch(() => {})
                 setSignedIn(false)
                 setDraft(emptyProfileDraft())
               }

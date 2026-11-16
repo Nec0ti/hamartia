@@ -129,8 +129,8 @@ export function createSocialClient({
   }
 
   async function signOut() {
-    if (!enabled || !hasAcceptedAgreement()) return { status: 'signedOut' }
     if (desktopBridge) return desktopBridge.signOut()
+    if (!firebaseConfig) return { status: 'signedOut' }
     const { sdk, auth } = await getBrowserClient()
     await sdk.signOut(auth)
     return { status: 'signedOut' }

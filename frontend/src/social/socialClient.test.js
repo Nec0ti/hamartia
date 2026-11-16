@@ -59,7 +59,6 @@ test('web sign-in uses Firebase popup with in-memory persistence and keeps ident
   assert.deepEqual(await client.getProfile(), { status: 'disabled' })
   assert.deepEqual(await client.signIn(), { status: 'disabled' })
   assert.deepEqual(await client.patchProfile({ nickname: 'Aylin' }), { status: 'disabled' })
-  assert.deepEqual(await client.signOut(), { status: 'signedOut' })
   assert.equal(probe.calls.length, 0)
   assert.equal(requests.length, 0)
   client.setAgreementAccepted(true)
@@ -87,6 +86,27 @@ test('web sign-in uses Firebase popup with in-memory persistence and keeps ident
   assert.deepEqual(JSON.parse(requests[1].options.body), patch)
   assert.deepEqual(await client.signOut(), { status: 'signedOut' })
   assert.equal(probe.auth.currentUser, null)
+})
+
+test('withdrawing agreement permits local sign-out while profile access remains gated', async () => {
+  const probe = fakeSdk()
+  const requests = []
+  const client = createSocialClient({
+    desktopBridge: null,
+    environment: ENVIRONMENT,
+    buildEnabled: true,
+    browserAgreementVersion: 'v1-reviewed-test',
+    loadSdk: async () => probe.sdk,
+    fetchImpl: async (...args) => { requests.push(args); return { ok: true, status: 200, json: async () => ({}) } },
+  })
+  client.setAgreementAccepted(true)
+  await client.signIn()
+  client.clearAgreementAcceptance()
+  assert.deepEqual(await client.getProfile(), { status: 'disabled' })
+  assert.deepEqual(await client.patchProfile({ nickname: 'Aylin' }), { status: 'disabled' })
+  assert.deepEqual(await client.signOut(), { status: 'signedOut' })
+  assert.equal(probe.auth.currentUser, null)
+  assert.equal(requests.length, 0)
 })
 
 test('web emulator is connected before popup use and unsafe emulator origins fail closed', async () => {
@@ -121,8 +141,11 @@ test('Electron client uses only the four fixed preload methods and never sends a
   assert.deepEqual(await client.signIn(), { status: 'disabled' })
   assert.deepEqual(await client.getProfile(), { status: 'disabled' })
   assert.deepEqual(await client.patchProfile({ nickname: 'Aylin' }), { status: 'disabled' })
-  assert.deepEqual(await client.signOut(), { status: 'signedOut' })
   assert.equal(calls.length, 0)
+  assert.deepEqual(await client.signOut(), { status: 'signedOut' })
+  assert.equal(calls.length, 1)
+  assert.deepEqual(calls[0], ['signOut'])
+  calls.length = 0
   client.setAgreementAccepted(true)
   assert.deepEqual(await client.signIn(), { status: 'signedIn' })
   assert.deepEqual(await client.getProfile(), { status: 'signedIn', profile: { nickname: 'Aylin' } })

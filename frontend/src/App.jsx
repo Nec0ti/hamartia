@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
 import QuestionsTab from './tabs/QuestionsTab.jsx'
@@ -30,6 +30,8 @@ function AppContent() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [studentProfileOpen, setStudentProfileOpen] = useState(false)
   const [onboarding, setOnboarding] = useState(null)
+  const onboardingRef = useRef(onboarding)
+  onboardingRef.current = onboarding
   const [onboardingStage, setOnboardingStage] = useState(null)
   const [settings, setSettings] = useState(null)
   const [settingsLoading, setSettingsLoading] = useState(true)
@@ -68,6 +70,12 @@ function AppContent() {
     setOnboardingStage(saved.survey_completed ? null : saved.tutorial_completed || saved.tutorial_skipped ? 'survey' : 'tutorial')
     return saved
   }, [])
+
+  const dismissOnboarding = useCallback(() => {
+    const current = onboardingRef.current
+    if (current) saveOnboarding({ ...current, tutorial_skipped: !current.tutorial_completed, survey_completed: true }).catch(() => {})
+    setOnboardingStage(null)
+  }, [saveOnboarding])
 
   const saveSettings = useCallback(async (draft) => {
     setSettingsError(null)
@@ -130,10 +138,7 @@ function AppContent() {
         onboarding={onboarding}
         onLanguage={() => {}}
         onSave={saveOnboarding}
-        onDismiss={() => {
-          if (onboarding) saveOnboarding({ ...onboarding, tutorial_skipped: !onboarding.tutorial_completed, survey_completed: true }).catch(() => {})
-          setOnboardingStage(null)
-        }}
+        onDismiss={dismissOnboarding}
       />
     </div>
   )

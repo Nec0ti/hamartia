@@ -51,12 +51,17 @@ class StudentProfileTests(unittest.TestCase):
         }
         saved = self.client.put("/student-profile", json=profile)
         self.assertEqual(saved.status_code, 200, saved.text)
-        self.assertEqual(self.client.get("/student-profile").json(), profile)
-        self.assertEqual(json.loads((self.data_dir / "onboarding.json").read_text()), profile)
+        expected = {**profile, "revision": 1}
+        self.assertEqual(saved.json(), expected)
+        self.assertEqual(self.client.get("/student-profile").json(), expected)
+        self.assertEqual(json.loads((self.data_dir / "onboarding.json").read_text()), expected)
         profile["profile"]["nickname"] = "Updated nickname"
-        self.assertEqual(self.client.put("/student-profile", json=profile).json(), profile)
-        self.assertEqual(self.client.delete("/student-profile").json(), empty)
-        self.assertEqual(self.client.get("/student-profile").json(), empty)
+        profile["revision"] = expected["revision"]
+        edited = {**profile, "revision": 2}
+        self.assertEqual(self.client.put("/student-profile", json=profile).json(), edited)
+        reset = {**empty, "revision": 3}
+        self.assertEqual(self.client.delete("/student-profile").json(), reset)
+        self.assertEqual(self.client.get("/student-profile").json(), reset)
 
     def test_validation_rejects_birth_date_gender_unknown_fields_and_bad_values(self):
         base = StudentOnboarding().model_dump(mode="json")
@@ -69,16 +74,30 @@ class StudentProfileTests(unittest.TestCase):
         invalid_avatar = {**base, "profile": {**base["profile"], "avatar_preset": "remote-url"}}
         self.assertEqual(self.client.put("/student-profile", json=invalid_avatar).status_code, 422)
 
-    def test_competing_full_document_updates_do_not_produce_malformed_json(self):
+    def test_malformed_saved_profile_fails_closed_without_overwrite(self):
+        raw = '{"profile":'
+        path = self.data_dir / "onboarding.json"
+        path.write_text(raw, encoding="utf-8")
+        with TestClient(make_app(), raise_server_exceptions=False) as client:
+            self.assertEqual(client.get("/student-profile").status_code, 500)
+        self.assertEqual(path.read_text(encoding="utf-8"), raw)
+
+    def test_stale_write_fails_and_competing_full_document_updates_keep_one_exact_row(self):
+        original = self.client.get("/student-profile").json()
+        first = {**original, "survey_completed": True, "profile": {"nickname": "First writer", "age_years": 16}}
+        accepted = self.client.put("/student-profile", json=first)
+        self.assertEqual(accepted.status_code, 200)
+        stale = {**original, "survey_completed": True, "profile": {"nickname": "Stale writer", "age_years": 17}}
+        self.assertEqual(self.client.put("/student-profile", json=stale).status_code, 409)
+        self.assertEqual(self.client.get("/student-profile").json(), accepted.json())
         profiles = [
-            {"survey_completed": True, "profile": {"nickname": f"student-{i}", "age_years": 16}}
+            {"revision": accepted.json()["revision"], "survey_completed": True, "profile": {"nickname": f"student-{i}", "age_years": 16}}
             for i in range(16)
         ]
-        def save(value):
-            response = self.client.put("/student-profile", json=value)
-            self.assertEqual(response.status_code, 200)
         with ThreadPoolExecutor(max_workers=8) as pool:
-            list(pool.map(save, profiles))
+            responses = list(pool.map(lambda value: self.client.put("/student-profile", json=value), profiles))
+        self.assertEqual(sum(response.status_code == 200 for response in responses), 1)
+        self.assertEqual(sum(response.status_code == 409 for response in responses), len(profiles) - 1)
         stored = json.loads((self.data_dir / "onboarding.json").read_text())
         self.assertIn(stored["profile"]["nickname"], {row["profile"]["nickname"] for row in profiles})
         self.assertEqual(self.client.get("/student-profile").json(), stored)

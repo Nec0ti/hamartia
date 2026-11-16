@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Modal from './Modal.jsx'
 import StudentProfileFields from './StudentProfileFields.jsx'
 import { useI18n } from '../i18n.jsx'
@@ -12,19 +12,21 @@ export default function OnboardingModal({ stage, onboarding, onLanguage, onSave,
   const [tourIndex, setTourIndex] = useState(0)
   const [profile, setProfile] = useState({ ...empty, ...(onboarding?.profile || {}) })
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  busyRef.current = busy
   const [error, setError] = useState('')
   useEffect(() => {
     if (stage === 'tutorial') setTourIndex(0)
     if (stage === 'survey') setProfile({ ...empty, ...(onboarding?.profile || {}) })
     setError('')
   }, [stage, onboarding])
-  if (!stage) return null
   const update = async (data) => {
     setBusy(true)
     setError('')
     try { await onSave(data) } catch { setError(t('profile.error')) } finally { setBusy(false) }
   }
-  const close = () => { if (!busy) onDismiss() }
+  const close = useCallback(() => { if (!busyRef.current) onDismiss() }, [onDismiss])
+  if (!stage) return null
 
   if (stage === 'language') return <Modal open onClose={close} title={t('onboarding.languageTitle')} footer={<button type="button" disabled={busy} onClick={() => { onLanguage(language); update({ ...onboarding, tutorial_completed: false, tutorial_skipped: false, survey_completed: false }) }} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base">{t('onboarding.next')}</button>}>
     <div className="space-y-4"><p className="text-sm text-canvas-muted">{t('onboarding.languageDescription')}</p>
@@ -40,7 +42,7 @@ export default function OnboardingModal({ stage, onboarding, onLanguage, onSave,
       <span className="mr-auto self-center text-xs text-canvas-muted">{t('onboarding.stepCount', { current: tourIndex + 1, total: TOUR_KEYS.length })}</span>
       {tourIndex > 0 && <button type="button" onClick={() => setTourIndex((current) => current - 1)} className="rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted">{t('onboarding.back')}</button>}
       <button type="button" disabled={busy} onClick={() => update({ ...onboarding, tutorial_completed: false, tutorial_skipped: true })} className="rounded-lg px-3 py-2 text-sm text-canvas-muted underline">{t('onboarding.skipTour')}</button>
-      <button type="button" disabled={busy} onClick={() => tourIndex + 1 < TOUR_KEYS.length ? setTourIndex((current) => current + 1) : update({ ...onboarding, tutorial_completed: true, tutorial_skipped: false })} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base">{tourIndex + 1 < TOUR_KEYS.length ? t('onboarding.next') : (onboarding?.survey_completed ? t('settings.cancel') : t('onboarding.continueSurvey'))}</button>
+      <button type="button" autoFocus disabled={busy} onClick={() => tourIndex + 1 < TOUR_KEYS.length ? setTourIndex((current) => current + 1) : update({ ...onboarding, tutorial_completed: true, tutorial_skipped: false })} className="rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base">{tourIndex + 1 < TOUR_KEYS.length ? t('onboarding.next') : (onboarding?.survey_completed ? t('settings.cancel') : t('onboarding.continueSurvey'))}</button>
     </>}>
       <section aria-live="polite" className="min-h-32 space-y-3 py-2"><h3 className="text-xl font-semibold text-canvas-text">{t(`onboarding.tour.${step}.title`)}</h3><p className="text-sm leading-relaxed text-canvas-muted">{t(`onboarding.tour.${step}.body`)}</p></section>
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}

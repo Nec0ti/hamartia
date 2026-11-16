@@ -143,6 +143,7 @@ class StudentOnboarding(BaseModel):
 
     model_config = {"extra": "forbid"}
 
+    revision: StrictInt = Field(default=0, ge=0)
     tutorial_completed: bool = False
     tutorial_skipped: bool = False
     survey_completed: bool = False

@@ -54,7 +54,11 @@ test('social API origin accepts fixed HTTPS or numeric loopback development orig
 test('social IPC exposes only sign-in, profile GET/PATCH, and sign-out calls to a trusted top-level frame', async () => {
   const app = setup()
   assert.deepEqual([...app.handlers.keys()].sort(), [
+    'hamartia:social:create-forum-post',
+    'hamartia:social:get-moderation-queue',
     'hamartia:social:get-profile',
+    'hamartia:social:list-forum-posts',
+    'hamartia:social:moderate-forum-post',
     'hamartia:social:patch-profile',
     'hamartia:social:sign-in',
     'hamartia:social:sign-out',
@@ -121,6 +125,30 @@ test('unconfigured or invalid API origins fail closed without requesting Firebas
   const unsafe = setup({ apiOrigin: 'http://social.example.test' })
   await assert.rejects(unsafe.handlers.get('hamartia:social:get-profile')(unsafe.event(), AGREEMENT_VERSION), /not configured/)
   assert.equal(absent.authCalls.getIdToken + unsafe.authCalls.getIdToken, 0)
+})
+
+test('forum IPC validates user content and decisions, then uses fixed protected API routes', async () => {
+  const app = setup()
+  const call = (name, ...args) => app.handlers.get(`hamartia:social:${name}`)(app.event(), ...args)
+  assert.deepEqual(await call('list-forum-posts', AGREEMENT_VERSION), PROFILE)
+  assert.deepEqual(await call('create-forum-post', { title: 'Question', body: 'Study note' }, AGREEMENT_VERSION), PROFILE)
+  assert.deepEqual(await call('get-moderation-queue', AGREEMENT_VERSION), PROFILE)
+  assert.deepEqual(await call('moderate-forum-post', '00000000-0000-0000-0000-000000000001', { decision: 'approved' }, AGREEMENT_VERSION), PROFILE)
+  assert.deepEqual(app.requests.map(({ url, options }) => [url, options.method]), [
+    ['https://social.example.test/social/forum/posts?limit=50', 'GET'],
+    ['https://social.example.test/social/forum/posts', 'POST'],
+    ['https://social.example.test/social/forum/moderation?limit=50', 'GET'],
+    ['https://social.example.test/social/forum/posts/00000000-0000-0000-0000-000000000001/moderation', 'PATCH'],
+  ])
+  assert.deepEqual(JSON.parse(app.requests[1].options.body), { title: 'Question', body: 'Study note' })
+  for (const invalid of [
+    { title: 'Title', body: 'Body', uid: 'attacker' },
+    { title: ' ', body: 'Body' },
+    { title: 'x'.repeat(121), body: 'Body' },
+    { title: 'Title', body: 'x'.repeat(5001) },
+  ]) await assert.rejects(call('create-forum-post', invalid, AGREEMENT_VERSION), /Invalid forum post/)
+  await assert.rejects(call('moderate-forum-post', 'not-a-uuid', { decision: 'approved' }, AGREEMENT_VERSION), /Invalid moderation request/)
+  await assert.rejects(call('moderate-forum-post', '00000000-0000-0000-0000-000000000001', { decision: 'pending' }, AGREEMENT_VERSION), /Invalid moderation request/)
 })
 
 test('social profile requests stop before fetch when the in-memory Firebase session is signed out', async () => {

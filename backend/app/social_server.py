@@ -30,12 +30,13 @@ def main() -> None:
     if not 1 <= port <= 65535:
         raise SystemExit("SOCIAL_PORT must be an integer from 1 to 65535")
     verifier = FirebaseTokenVerifier(project_id)
+    moderator_uids = tuple(filter(None, (uid.strip() for uid in os.environ.get("SOCIAL_MODERATOR_UIDS", "").split(","))))
     try:
         migrate_social_database(database_url)
     except Exception:
         raise SystemExit("Social database initialization failed; details omitted") from None
     repository = PostgresProfileRepository(database_url)
-    uvicorn.run(create_social_app(project_id, verifier, repository), host=host, port=port)
+    uvicorn.run(create_social_app(project_id, verifier, repository, moderator_uids), host=host, port=port)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
-"""PostgreSQL migrations and owner-scoped social profile storage."""
+"""PostgreSQL migrations and social profile/forum storage."""
 
 from pathlib import Path
+from uuid import UUID, uuid4
 
 
 MIGRATIONS_DIR = Path(__file__).with_name("migrations")
@@ -82,6 +83,53 @@ class PostgresProfileRepository:
                 f"ON CONFLICT (uid) DO UPDATE SET {updates_sql}, updated_at = now() "
                 f"RETURNING {return_columns_sql}",
                 values,
+            ).fetchone()
+
+    def create_forum_post(self, author_uid: str, title: str, body: str) -> dict:
+        with self.pool.connection() as connection:
+            return connection.execute(
+                "INSERT INTO social_forum_posts (post_id, author_uid, title, body) "
+                "VALUES (%s, %s, %s, %s) RETURNING post_id, status",
+                (uuid4(), author_uid, title, body),
+            ).fetchone()
+
+    def list_approved_forum_posts(self, limit: int) -> list[dict]:
+        with self.pool.connection() as connection:
+            return connection.execute(
+                "SELECT post_id, title, body, status, created_at FROM social_forum_posts "
+                "WHERE status = 'approved' ORDER BY created_at DESC, post_id DESC LIMIT %s",
+                (limit,),
+            ).fetchall()
+
+    def list_pending_forum_posts(self, limit: int, exclude_author_uid: str) -> list[dict]:
+        with self.pool.connection() as connection:
+            return connection.execute(
+                "SELECT post_id, title, body, status, created_at FROM social_forum_posts "
+                "WHERE status = 'pending' AND author_uid <> %s "
+                "ORDER BY created_at ASC, post_id ASC LIMIT %s",
+                (exclude_author_uid, limit),
+            ).fetchall()
+
+    def moderate_forum_post(self, post_id: str | UUID, moderator_uid: str, decision: str) -> dict:
+        try:
+            post_uuid = UUID(str(post_id))
+        except ValueError as exc:
+            raise ValueError("not_found") from exc
+        with self.pool.connection() as connection, connection.transaction():
+            post = connection.execute(
+                "SELECT author_uid, status FROM social_forum_posts WHERE post_id = %s FOR UPDATE",
+                (post_uuid,),
+            ).fetchone()
+            if post is None:
+                raise ValueError("not_found")
+            if post["author_uid"] == moderator_uid:
+                raise ValueError("self_moderation")
+            if post["status"] != "pending":
+                raise ValueError("already_moderated")
+            return connection.execute(
+                "UPDATE social_forum_posts SET status = %s, moderated_at = now(), moderator_uid = %s "
+                "WHERE post_id = %s AND status = 'pending' RETURNING post_id, status",
+                (decision, moderator_uid, post_uuid),
             ).fetchone()
 
     def stats(self) -> dict:

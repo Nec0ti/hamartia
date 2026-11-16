@@ -1,6 +1,6 @@
 # Social profile and home-hosting plan
 
-**Status:** dated planning note accompanying a private social prototype. It is not legal advice, a compliance assessment, or launch approval. A social sign-in/profile UI prototype now exists but remains disabled in current builds. No public hosting, tunnel, live sign-in, forum, or study-data sync is included. No legal or operational gate below is cleared.
+**Status:** dated planning note accompanying a private social prototype. It is not legal advice, a compliance assessment, or launch approval. A social sign-in/profile UI prototype and a private moderated forum now exist; builds remain disabled by default. No public hosting, tunnel, live sign-in, or study-data sync is included. No legal or operational gate below is cleared. Forum implementation details and local verification are in [the forum report](2026-11-16-moderated-study-forum.md).
 
 This concise planning note records the current implementation boundary and rechecks relevant primary sources as of 2026-11-16. Re-check primary sources and obtain qualified advice before any public launch.
 
@@ -8,7 +8,7 @@ This concise planning note records the current implementation boundary and reche
 
 - The current desktop/local JSON API remains separate, loopback-only, and unchanged. Social routes live in their own opt-in FastAPI service.
 - Firebase is used for server-side verification of ID tokens. The UID comes from verified claims. A Google sign-in UI prototype exists, but builds are disabled by default and no live Firebase project, Google client, or social API host is configured.
-- This slice stores only the owner’s optional profile fields in PostgreSQL. It has no public profile HTTP route, forum, direct messages, uploaded avatar, external avatar URL, or local-study-data sync.
+- At the earlier profile-only checkpoint, PostgreSQL stored only the owner's optional profile fields and had no forum. The later forum adds the separate `social_forum_posts` table; details are in [the forum report](2026-11-16-moderated-study-forum.md). There is still no public profile HTTP route, direct messages, uploaded avatar, external avatar URL, or local-study-data sync.
 - The profile has a nickname, integer age, grade, class, user-entered curriculum/preferences/goals, and a built-in avatar preset. There is no gender or date-of-birth field. Each field has an independent visibility switch that defaults off; the allowlisted public projection is not mounted over HTTP.
 - Social profile data is not added to Study Agent payloads. No password is collected, stored, or sent.
 
@@ -64,7 +64,7 @@ The existing desktop API must not be rebound to a LAN/public interface or have i
 6. **Physical host:** inspect current OS updates, CPU/RAM headroom, disk SMART/free-space status, power protection, firewall, network path, and existing services. Run a representative low-traffic load test and demonstrate encrypted, offline, physically separate backup restoration. A tunnel does not solve host capacity, reliability, or legal duties.
 7. **Security and lifecycle:** before real users, review owner isolation across every route and background job, credential rotation, logging, retention, profile export/deletion, incident response, and a fast disable/rollback plan. Public visibility remains off unless a user explicitly selects each field.
 
-Until these gates are decided and completed, keep this service private and loopback-only. The UI prototype remains disabled. Study-data sync and forum work are separate implementation slices in the approved social direction. Public profile reads must remain closed until field-visibility behavior and moderation controls are in place. DMs remain deferred. No public deployment or real-user data is part of this PR.
+Until these gates are decided and completed, keep this service private and loopback-only. The UI prototype remains disabled. The forum has authenticated reads for approved posts only; pending content is available only to configured moderators, except that a submitter receives a pending-status receipt. Study-data sync remains a separate implementation slice. Public profile reads must remain closed. DMs remain deferred. No public deployment or real-user data is part of this PR.
 
 ## Primary references checked for this update
 

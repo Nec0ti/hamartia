@@ -96,35 +96,46 @@ export function createSocialClient({
     }
   }
 
-  async function requestProfile(method, patch) {
+  async function request(method, path, body) {
     if (!enabled || !hasAcceptedAgreement()) return { status: 'disabled' }
     if (desktopBridge) {
-      const result = method === 'GET'
-        ? await desktopBridge.getProfile(acceptedAgreementVersion)
-        : await desktopBridge.patchProfile(patch, acceptedAgreementVersion)
+      const bridgeMethod = {
+        'GET /social/me/profile': () => desktopBridge.getProfile(acceptedAgreementVersion),
+        'PATCH /social/me/profile': () => desktopBridge.patchProfile(body, acceptedAgreementVersion),
+        'GET /social/forum/posts?limit=50': () => desktopBridge.listForumPosts(acceptedAgreementVersion),
+        'POST /social/forum/posts': () => desktopBridge.createForumPost(body, acceptedAgreementVersion),
+        'GET /social/forum/moderation?limit=50': () => desktopBridge.getModerationQueue(acceptedAgreementVersion),
+      }[`${method} ${path}`]
+      const moderationMatch = path.match(/^\/social\/forum\/posts\/([0-9a-f-]{36})\/moderation$/i)
+      const result = bridgeMethod
+        ? await bridgeMethod()
+        : method === 'PATCH' && moderationMatch
+          ? await desktopBridge.moderateForumPost(moderationMatch[1], body, acceptedAgreementVersion)
+          : (() => { throw new Error('Social request is unavailable.') })()
       return result?.status ? result : { status: 'signedIn', profile: result }
     }
     const { auth } = await getBrowserClient()
     const user = auth.currentUser
     if (!user) return { status: 'signedOut' }
     const idToken = await user.getIdToken()
-    const response = await fetchImpl('/social/me/profile', {
+    const response = await fetchImpl(path, {
       method,
       headers: {
         authorization: `Bearer ${idToken}`,
         accept: 'application/json',
-        ...(method === 'PATCH' ? { 'content-type': 'application/json' } : {}),
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
       },
-      ...(method === 'PATCH' ? { body: JSON.stringify(patch) } : {}),
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       cache: 'no-store',
       redirect: 'error',
     })
     if (response.status === 401) return { status: 'signedOut' }
-    if (!response.ok) throw new Error('Social profile is unavailable.')
+    if (response.status === 403) return { status: 'forbidden' }
+    if (!response.ok) throw new Error('Social request is unavailable.')
     try {
-      return { status: 'signedIn', profile: await response.json() }
+      return { status: 'signedIn', data: await response.json() }
     } catch {
-      throw new Error('Social profile response was invalid.')
+      throw new Error('Social response was invalid.')
     }
   }
 
@@ -143,8 +154,18 @@ export function createSocialClient({
     },
     clearAgreementAcceptance: () => { acceptedAgreementVersion = '' },
     signIn,
-    getProfile: () => requestProfile('GET'),
-    patchProfile: (patch) => requestProfile('PATCH', patch),
+    getProfile: async () => {
+      const result = await request('GET', '/social/me/profile')
+      return result.status === 'signedIn' ? { status: result.status, profile: result.data ?? result.profile } : result
+    },
+    patchProfile: async (patch) => {
+      const result = await request('PATCH', '/social/me/profile', patch)
+      return result.status === 'signedIn' ? { status: result.status, profile: result.data ?? result.profile } : result
+    },
+    listForumPosts: () => request('GET', '/social/forum/posts?limit=50'),
+    createForumPost: (post) => request('POST', '/social/forum/posts', post),
+    getModerationQueue: () => request('GET', '/social/forum/moderation?limit=50'),
+    moderateForumPost: (postId, decision) => request('PATCH', `/social/forum/posts/${postId}/moderation`, { decision }),
     signOut,
   })
 }

@@ -240,7 +240,11 @@ class PostgresSocialProfileTests(unittest.TestCase):
 
     def test_profile_endpoints_are_private_and_projection_is_not_mounted(self):
         paths = {route.path for route in self.app.router.routes[0].original_router.routes}
-        self.assertEqual(paths, {"/social/health", "/social/me", "/social/me/profile"})
+        self.assertEqual(paths, {
+            "/social/health", "/social/me", "/social/me/profile",
+            "/social/forum/posts", "/social/forum/moderation",
+            "/social/forum/posts/{post_id}/moderation",
+        })
         self.assertEqual(self.client.get("/social/profiles/anyone").status_code, 404)
         self.assertEqual(self.client.get("/social/me/profile").status_code, 401)
 

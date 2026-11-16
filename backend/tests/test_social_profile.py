@@ -75,6 +75,38 @@ class ProfileModelTests(unittest.TestCase):
         self.assertEqual(response.json(), {"detail": "Profile storage unavailable"})
         self.assertNotIn("secret", response.text)
 
+    def test_invalid_tokens_are_rejected_before_profile_storage_is_touched(self):
+        class TripwireRepository:
+            def __init__(self):
+                self.calls = 0
+
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+            def get_profile(self, _uid):
+                self.calls += 1
+                raise AssertionError("invalid identity reached profile storage")
+
+            def patch_profile(self, _uid, _changes):
+                self.calls += 1
+                raise AssertionError("invalid identity reached profile storage")
+
+        repository = TripwireRepository()
+
+        def verifier(_token):
+            raise InvalidFirebaseToken("invalid test token")
+
+        with TestClient(create_social_app(PROJECT, verifier, repository)) as client:
+            headers = {"Authorization": "Bearer invalid"}
+            read = client.get("/social/me/profile", headers=headers)
+            write = client.patch("/social/me/profile", headers=headers, json={"nickname": "must not persist"})
+        self.assertEqual(read.status_code, 401)
+        self.assertEqual(write.status_code, 401)
+        self.assertEqual(repository.calls, 0)
+
 
 @unittest.skipUnless(TEST_DATABASE_URL, "requires a dedicated real PostgreSQL test database")
 class PostgresSocialProfileTests(unittest.TestCase):

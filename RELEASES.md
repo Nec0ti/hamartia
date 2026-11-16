@@ -943,3 +943,61 @@ CLI odaklı testler 22\/22 geçti\. Tam backend testi, test veritabanı olmadı�
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 ChatGPT veya yapılandırılmış uç nokta sağlayıcısı, yerel model, tarayıcı, fiziksel cihaz ya da sosyal servis kullanılmadı\. CLI bir ana bilgisayar protokolüdür\: istemci soruları ve önizlemeleri göstermeli, kullanıcı onayını almalıdır; kendi terminal onay ekranı veya sağlayıcı bağlantısı yoktur\. Aynı işletim sistemi kullanıcısındaki süreçler mevcut yerel güven sınırındadır\.
+
+## ARETE-061
+
+## English
+
+`ARETE-061` — [PR #65](https://github.com/Nec0ti/hamartia/pull/65): fix\: keep desktop readiness details private
+
+### Highlights
+
+The local readiness endpoint no longer returns the user's absolute data folder path or raw filesystem error text\.
+
+### Behavior and why
+
+The unauthenticated \`\/healthcheck\/ready\` response still reports whether storage is ready\. Its success response now contains only the status\. Storage failure returns HTTP 503 with a generic message, preventing callers that gate startup on HTTP success from proceeding when storage is unavailable\.
+
+### How to use
+
+No action is needed\. Existing launchers continue to check the HTTP readiness status\.
+
+### Compatibility / migration
+
+No data or migration changes are needed\. The \`data\_dir\` success field and detailed \`error\` text are removed from this endpoint; repository callers only use the status code\.
+
+### Verification
+
+The focused readiness tests passed 2\/2, covering unauthenticated success and HTTP 503 with generic failure details\. \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+The full backend suite, packaged\-app smoke, and dynamic security testing were not run\. The review was source\-based and scoped to local desktop\/backend boundaries\.
+
+## Türkçe
+
+`ARETE-061` — [PR #65](https://github.com/Nec0ti/hamartia/pull/65): fix\: keep desktop readiness details private
+
+### Öne çıkanlar
+
+Yerel hazır olma uç noktası artık kullanıcının mutlak veri klasörü yolunu veya ham dosya sistemi hata metnini döndürmüyor\.
+
+### Davranış ve nedeni
+
+Kimlik doğrulaması istemeyen \`\/healthcheck\/ready\` uç noktası depolamanın hazır olup olmadığını bildirmeye devam ediyor\. Başarılı yanıt artık yalnızca durumu içeriyor\. Depolama hatası HTTP 503 ve genel bir mesaj döndürüyor; böylece başlangıcı HTTP başarısına göre başlatan çağıranlar depolama kullanılamazken devam etmiyor\.
+
+### Kullanım
+
+İşlem gerekmiyor\. Mevcut başlatıcılar HTTP hazır olma durumunu kontrol etmeye devam ediyor\.
+
+### Uyumluluk / geçiş
+
+Veri veya geçiş değişikliği gerekmiyor\. Bu uç noktanın başarılı yanıtındaki \`data\_dir\` alanı ve ayrıntılı \`error\` metni kaldırıldı; depodaki çağıranlar yalnızca HTTP durum kodunu kullanıyor\.
+
+### Doğrulama
+
+Kimlik doğrulamasız başarılı yanıtı ve HTTP 503 ve genel hata ayrıntılarını kapsayan odaklı hazır olma testleri 2\/2 geçti\. \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Tüm backend testleri, paketlenmiş uygulama duman testi ve dinamik güvenlik testi çalıştırılmadı\. İnceleme kaynak koduna dayalıydı ve yerel masaüstü\/backend sınırlarıyla sınırlıydı\.

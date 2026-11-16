@@ -77,10 +77,10 @@ class StudyAgentExamTests(unittest.TestCase):
             token = draft["state_token"]
         return result, messages, profile
 
-    def create_body(self, draft, messages, profile, approval_id=None):
+    def create_body(self, draft, messages, profile, approval_id=None, language="en"):
         return {
             "messages": messages,
-            "language": "en",
+            "language": language,
             "expected_exam_field": "duration_seconds",
             "state_token": None,
             "scoring_profile_id": profile.profile_id,
@@ -343,6 +343,14 @@ class StudyAgentExamTests(unittest.TestCase):
         result = self.client.post("/exams/agent-create", json=body)
         self.assertEqual(result.status_code, 422, result.text)
         self.assertEqual(self.rows(), [])
+
+    def test_agent_create_accepts_the_explicit_turkish_preview_locale(self):
+        response, messages, profile = self.complete_flow(language="tr")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = self.create_body(response.json(), messages, profile, language="tr")
+        saved = self.client.post("/exams/agent-create", json=body)
+        self.assertEqual(saved.status_code, 201, saved.text)
+        self.assertEqual(saved.json()["subject"], "Biology")
 
 
 if __name__ == "__main__":

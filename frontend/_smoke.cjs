@@ -878,6 +878,33 @@ async function main(smokeRun) {
               window.__questionCaptureDraftResponse = draft
               return { status: 'completed', draft }
             }
+            if (payload.workflow === 'exam-entry') {
+              const field = payload.expected_exam_field
+              const quote = payload.messages.at(-1)
+              const evidence_claims = field && quote ? [{ field, quote }] : []
+              window.__examCaptureProviderCalls = [...(window.__examCaptureProviderCalls || []), {
+                field, quote, language: payload.language,
+              }]
+              const response = await fetch(`${backendUrl}/exams/agent-draft`, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  messages: payload.messages, language: payload.language,
+                  expected_exam_field: field,
+                  state_token: payload.exam_state_token || null,
+                  scoring_profile_id: payload.scoring_profile_id,
+                  scoring_profile_version: payload.scoring_profile_version,
+                  evidence_claims,
+                }),
+                signal: AbortSignal.timeout(10_000),
+              })
+              const responseBody = await response.text()
+              window.__examCaptureDraftResponses = (window.__examCaptureDraftResponses || 0) + 1
+              window.__examCaptureDraftHttp = { status: response.status, body: responseBody }
+              if (!response.ok) return { status: 'failed', detail: responseBody }
+              const draft = JSON.parse(responseBody)
+              window.__examCaptureDraftResponse = draft
+              return { status: 'completed', draft }
+            }
             window.__mockAgentDelta?.({ requestId: payload.requestId, delta: 'A mocked study response.' })
             return { status: 'completed' }
           },
@@ -1013,6 +1040,50 @@ async function main(smokeRun) {
       ['question_text', 'en'], ['subject', 'en'], ['topic', 'en'],
     ])
 
+    await page.getByLabel('Study Agent mode').selectOption('exam-entry')
+    const examCreateRequests = () => appRequests.filter((request) => request.path === '/exams/agent-create' && request.method === 'POST')
+    async function submitExamMessage(text, expectedQuestion) {
+      const responsesBefore = await page.evaluate(() => window.__examCaptureDraftResponses || 0)
+      await page.locator('textarea').fill(text)
+      await page.getByRole('checkbox').check()
+      await page.getByRole('button', { name: (await page.locator('html').getAttribute('lang')) === 'tr' ? 'OpenAI’a gönder' : 'Send to OpenAI' }).click()
+      await page.waitForFunction((previous) => (window.__examCaptureDraftResponses || 0) > previous, responsesBefore)
+      if (expectedQuestion) await page.getByText(expectedQuestion, { exact: true }).waitFor()
+    }
+    await page.getByLabel('Scoring profile', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    const englishExamAnswers = ['2026-11-16', 'Biology', '25', '3', '2', '55', '0']
+    const englishExamQuestions = [
+      'What is the exact exam date? Reply as YYYY-MM-DD.',
+      'What was the subject? Reply with one subject name.',
+      'How many answers were correct? Reply with one whole number.',
+      'How many answers were incorrect? Reply with one whole number.',
+      'How many answers were blank? Reply with one whole number.',
+      'How many whole minutes did the exam take? Enter 0 only if the recorded duration was zero.',
+      'How many additional seconds did it take? Enter 0 if there were no additional seconds.',
+    ]
+    for (let index = 0; index < englishExamAnswers.length; index += 1) {
+      await submitExamMessage(englishExamAnswers[index], englishExamQuestions[index + 1] || null)
+    }
+    await page.getByRole('heading', { name: 'Proposed branch-exam record' }).waitFor()
+    assert.equal(examCreateRequests().length, 0)
+    const englishExamPreview = await page.evaluate(() => window.__examCaptureDraftResponse)
+    assert.equal(englishExamPreview.status, 'ready')
+    assert.deepEqual(englishExamPreview.fields, {
+      date: '2026-11-16', exam_type: 'branch', subject: 'Biology',
+      duration_minutes: 55, duration_seconds: 0, correct: 25, incorrect: 3, blank: 2,
+      scoring_profile_id: customProfile.profile_id, scoring_profile_version: 1, sections: [],
+    })
+    assert.deepEqual(englishExamPreview.scoring_profile_snapshot.profile_id, customProfile.profile_id)
+    await page.getByRole('button', { name: 'Cancel this draft' }).click()
+    await page.getByText('Draft cancelled. Nothing was saved.', { exact: true }).waitFor()
+    assert.equal(examCreateRequests().length, 0)
+    assert.equal((await (await localFetch(`${apiUrl}/exams`)).json()).some((row) => row.subject === 'Biology' && row.date === '2026-11-16'), false)
+    const englishExamCalls = await page.evaluate(() => window.__examCaptureProviderCalls || [])
+    assert.deepEqual(englishExamCalls.map(({ field, language }) => [field, language]), [
+      ['date', 'en'], ['subject', 'en'], ['correct', 'en'], ['incorrect', 'en'], ['blank', 'en'], ['duration_minutes', 'en'], ['duration_seconds', 'en'],
+    ])
+    assert(englishExamCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
+
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Çalışma Asistanı' }).click()
@@ -1121,6 +1192,66 @@ async function main(smokeRun) {
     const tombstoneText = await fs.readFile(path.join(dataDir, 'question_agent_approvals.json'), 'utf8')
     assert(!tombstoneText.includes(turkishQuestionText))
     assert(!tombstoneText.includes('Biyoloji'))
+
+    await page.getByLabel('Çalışma Asistanı modu').selectOption('exam-entry')
+    await page.getByLabel('Puanlama profili', { exact: true }).selectOption(`${customProfile.profile_id}@1`)
+    const turkishExamAnswers = ['2026-11-16', 'Biyoloji', '25', '3', '2', '55', '0']
+    const turkishExamQuestions = [
+      'Deneme hangi tarihte yapıldı? Tam tarihi YYYY-MM-DD biçiminde yaz.',
+      'Deneme hangi ders içindi? Tek bir ders adı yaz.',
+      'Kaç soruyu doğru yaptın? Tek bir tam sayı yaz.',
+      'Kaç soruyu yanlış yaptın? Tek bir tam sayı yaz.',
+      'Kaç soruyu boş bıraktın? Tek bir tam sayı yaz.',
+      'Deneme kaç tam dakika sürdü? Süre gerçekten sıfırsa 0 yaz.',
+      'Ek olarak kaç saniye sürdü? Ek saniye yoksa 0 yaz.',
+    ]
+    for (let index = 0; index < turkishExamAnswers.length; index += 1) {
+      await submitExamMessage(turkishExamAnswers[index], turkishExamQuestions[index + 1] || null)
+    }
+    await page.getByRole('heading', { name: 'Önerilen branş denemesi kaydı' }).waitFor()
+    assert.equal(examCreateRequests().length, 0)
+    const turkishExamPreview = await page.evaluate(() => window.__examCaptureDraftResponse)
+    assert.equal(turkishExamPreview.status, 'ready')
+    assert.equal(turkishExamPreview.fields.subject, 'Biyoloji')
+    assert.deepEqual(turkishExamPreview.scoring_profile_snapshot.profile_id, customProfile.profile_id)
+    assert.equal(turkishExamPreview.derived.net, 23.5)
+    assert.equal(typeof turkishExamPreview.derived.xp, 'number')
+    const [approvedExamResponse] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === '/exams/agent-create' && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Bu önizlemeyi onayla ve kaydet' }).click(),
+    ])
+    assert.equal(approvedExamResponse.status(), 201, `${await approvedExamResponse.text()} body=${JSON.stringify(appRequests.find((request) => request.path === '/exams/agent-create')?.body)}`)
+    await page.getByText('Branş denemesi kaydedildi. Sınavlar sekmesinde bulabilirsin.', { exact: true }).waitFor()
+    assert.equal(examCreateRequests().length, 1)
+    const approvedExamBody = examCreateRequests()[0].body
+    assert.deepEqual(approvedExamBody.fields, turkishExamPreview.fields)
+    assert.deepEqual(approvedExamBody.evidence, turkishExamPreview.verified_evidence)
+    assert.deepEqual(approvedExamBody.derived, turkishExamPreview.derived)
+    assert.equal(approvedExamBody.preview_digest, turkishExamPreview.preview_digest)
+    assert.equal(approvedExamBody.language, 'tr')
+    assert.equal(approvedExamBody.scoring_profile_id, customProfile.profile_id)
+    assert.equal(approvedExamBody.approval_id.length, 36)
+    let approvedAgentExam
+    try {
+      const records = await (await localFetch(`${apiUrl}/exams`)).json()
+      approvedAgentExam = records.find((record) => record.id.startsWith(`exam_agent_${approvedExamBody.approval_id.replaceAll('-', '')}_`))
+      assert.ok(approvedAgentExam)
+      assert.deepEqual([approvedAgentExam.subject, approvedAgentExam.date, approvedAgentExam.net, approvedAgentExam.xp], [
+        'Biyoloji', '2026-11-16', turkishExamPreview.derived.net, turkishExamPreview.derived.xp,
+      ])
+    } finally {
+      if (approvedAgentExam) {
+        assert.equal((await localFetch(`${apiUrl}/exams/${approvedAgentExam.id}`, { method: 'DELETE' })).status, 200)
+      }
+    }
+    assert.equal((await (await localFetch(`${apiUrl}/exams`)).json()).some((row) => row.id === approvedAgentExam?.id), false)
+    const examTombstoneText = await fs.readFile(path.join(dataDir, 'exam_agent_approvals.json'), 'utf8')
+    assert(!examTombstoneText.includes('Biyoloji'))
+    const allExamMockCalls = await page.evaluate(() => window.__examCaptureProviderCalls || [])
+    assert.deepEqual(allExamMockCalls.map(({ field, language }) => [field, language]), [
+      ...['date', 'subject', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds'].map((field) => [field, 'tr']),
+    ])
+    assert(allExamMockCalls.every((call) => Object.keys(call).sort().join(',') === 'field,language,quote'))
     assert.deepEqual(externalRequestsBlocked, [])
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'en'))
@@ -1411,11 +1542,19 @@ async function main(smokeRun) {
       '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-draft',
       '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-draft', '/questions/agent-create',
     ])
+    assert.deepEqual(appRequests.filter((request) => request.path.startsWith('/exams/agent-')).map((request) => request.path), [
+      ...Array(14).fill('/exams/agent-draft'), '/exams/agent-create',
+    ])
+    const approvedExamRequest = appRequests.find((request) => request.path === '/exams/agent-create')
+    assert.equal(approvedExamRequest.body.evidence_claims.length, 7)
+    assert.equal(approvedExamRequest.body.approval_id.length, 36)
+    assert.equal(approvedExamRequest.body.derived.net, 23.5)
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'GET'))
     assert(appRequests.some((request) => request.path === '/clock' && request.method === 'PATCH'))
     const localAgentRoutes = new Set([
       '/learning-evidence/agent-draft', '/learning-evidence/agent-create',
       '/questions/agent-draft', '/questions/agent-create',
+      '/exams/agent-draft', '/exams/agent-create',
     ])
     assert(!appRequests.some((request) => !request.path.startsWith('/practice/agent-')
       && !localAgentRoutes.has(request.path)

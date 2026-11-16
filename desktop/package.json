@@ -38,6 +38,7 @@
       "chatgpt.cjs",
       "safeStorageSmoke.cjs",
       "backendInvocation.cjs",
+      "backendReadiness.cjs",
       "restoreFlow.cjs",
       "shutdownFlow.cjs",
       "windowIcon.cjs",

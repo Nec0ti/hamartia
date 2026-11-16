@@ -827,3 +827,61 @@ This release contains the Windows installer, Debian package, and AppImage built 
 `ARETE-058` sürümü, [#62 numaralı PR'da birleştirilen Hamartia güncellemesini](https://github.com/Nec0ti/hamartia/pull/62) içerir.
 
 Bu sürüm Windows kurulum programını, Debian paketini ve AppImage dosyasını içerir. Çalışma verileri mevcut kullanıcının uygulama verileri klasöründe saklanır.
+
+## ARETE-059
+
+## English
+
+`ARETE-059` — [PR #63](https://github.com/Nec0ti/hamartia/pull/63): feat\: require detailed bilingual release summaries
+
+### Highlights
+
+Future ARETE releases will explain the actual changes from the merged PR in both English and Turkish\. The PR template now asks for detailed release content, and the generator publishes those PR\-provided details instead of generic text\. Titles and summary content are escaped safely so Markdown\/HTML cannot inject headings, links, or markup into the release\.
+
+### Behavior and why
+
+No Hamartia application behavior changed\. This repository change improves how users understand each release and prevents the workflow from publishing notes when required information is missing or malformed\.
+
+### How to use
+
+PR authors should fill in every section of the new release\-summary block\. Plain paragraphs and simple lists are supported; other Markdown\/HTML syntax is shown as text\. Docs\-only or internal\-only changes should say that user behavior did not change\. Release notes are generated automatically after merge\.
+
+### Compatibility / migration
+
+No app data, API, or package compatibility changes\. PRs merged after this policy takes effect must include all required English and Turkish fields for automatic release publication\.
+
+### Verification
+
+The release metadata test suite passed 6\/6, covering bilingual field rendering, missing\-field rejection in either language, hostile title and summary Markdown rendering, merged\-PR selection, ARETE numbering, ledger idempotence, artifact validation, and first publication\. Python compilation and \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+Package builds and end\-to\-end GitHub Actions publication were not run locally; normal CI will build packages after merge\. The publisher intentionally fails if a merged PR lacks a complete bilingual summary, so authors must fill the template before merging\.
+
+## Türkçe
+
+`ARETE-059` — [PR #63](https://github.com/Nec0ti/hamartia/pull/63): feat\: require detailed bilingual release summaries
+
+### Öne çıkanlar
+
+Gelecekteki ARETE sürümleri, birleştirilen PR'daki gerçek değişiklikleri İngilizce ve Türkçe açıklayacak\. PR şablonu ayrıntılı sürüm bilgisi istiyor ve oluşturucu genel metin yerine PR'da sağlanan bilgileri yayımlıyor\. Başlıklar ve özet içeriği güvenli biçimde kaçırılıyor; böylece Markdown\/HTML sürüm notlarına başlık, bağlantı veya işaretleme enjekte edemiyor\.
+
+### Davranış ve nedeni
+
+Hamartia uygulamasının davranışı değişmedi\. Bu depo değişikliği, kullanıcıların her sürümde nelerin değiştiğini anlamasını kolaylaştırıyor ve gerekli bilgiler eksik ya da biçimi bozuk olduğunda iş akışının not yayımlamasını engelliyor\.
+
+### Kullanım
+
+PR yazarları yeni sürüm özeti bloğundaki tüm alanları doldurmalı\. Düz paragraflar ve basit listeler desteklenir; diğer Markdown\/HTML sözdizimi metin olarak gösterilir\. Yalnızca belge veya iç çalışma değişikliklerinde kullanıcı davranışının değişmediği açıkça belirtilmeli\. Sürüm notları birleştirme sonrasında otomatik oluşturulur\.
+
+### Uyumluluk / geçiş
+
+Uygulama verisi, API veya paket uyumluluğunda değişiklik yok\. Bu kural yürürlüğe girdikten sonra birleştirilen PR'lar otomatik sürüm yayımlanabilmesi için İngilizce ve Türkçe tüm alanları içermeli\.
+
+### Doğrulama
+
+Sürüm metadata testleri 6\/6 geçti\. İki dilde alanların oluşturulması, iki dilde eksik alanların reddedilmesi, kötü niyetli başlık ve özet Markdown'ının güvenli gösterimi, birleştirilmiş PR seçimi, ARETE numaralandırması, sürüm günlüğü tekrar güvenliği, paket doğrulaması ve ilk yayımlama kapsandı\. Python derlemesi ve \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Paket derlemeleri ve uçtan uca GitHub Actions yayımlaması yerelde çalıştırılmadı; normal CI birleştirme sonrasında paketleri oluşturacak\. Birleştirilmiş PR'da eksik bir iki dilli özet varsa yayımlama kasıtlı olarak başarısız olur; bu nedenle yazarlar PR'ı birleştirmeden önce şablonu doldurmalı\.

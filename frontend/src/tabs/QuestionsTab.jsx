@@ -228,6 +228,7 @@ export default function QuestionsTab({ initialExam = null }) {
             <div className="min-w-0 space-y-3">
               {editing?.id === question.id ? (
                 <form onSubmit={edit} className="grid gap-3 sm:grid-cols-2">
+                  <fieldset disabled={busy} className="contents">
                   <label className="text-xs text-canvas-muted">{t('common.subject')}<input aria-label={t('questions.editSubject')} value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className={inputClass} /></label>
                   <label className="text-xs text-canvas-muted">{t('common.topic')}<input aria-label={t('questions.editTopic')} value={editing.topic} onChange={(e) => setEditing({ ...editing, topic: e.target.value })} className={inputClass} /></label>
                   <label className="text-xs text-canvas-muted sm:col-span-2">{t('questions.questionText')}<textarea maxLength={65536} aria-label={t('questions.editQuestionText')} value={editing.ocr_text} onChange={(e) => setEditing({ ...editing, ocr_text: e.target.value })} rows={3} className={inputClass} /><span className="mt-1 block">{t('questions.textByteLimit')}</span></label>
@@ -236,6 +237,7 @@ export default function QuestionsTab({ initialExam = null }) {
                     <button className="inline-flex items-center gap-1 rounded-lg bg-canvas-accent px-3 py-2 text-sm text-canvas-base"><Save size={14} /> {t('common.save')}</button>
                     <button type="button" onClick={() => setEditing(null)} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted"><X size={14} /> {t('common.cancel')}</button>
                   </div>
+                  </fieldset>
                 </form>
               ) : (
                 <>
@@ -249,15 +251,15 @@ export default function QuestionsTab({ initialExam = null }) {
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <label className="sr-only" htmlFor={`tag-${question.id}`}>{t('questions.errorType')}</label>
-                <select id={`tag-${question.id}`} value={question.hamartia_tag} onChange={(e) => tag(question, e.target.value)} className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text">
+                <select id={`tag-${question.id}`} disabled={busy} value={question.hamartia_tag} onChange={(e) => tag(question, e.target.value)} className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text disabled:opacity-50">
                   {TAGS.map((item) => <option key={item} value={item}>{tagLabel(item, t)}</option>)}
                 </select>
                 {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> {t('questions.reviewWithAI')}</button>}
-                {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> {t('questions.markReviewed')}</button>}
-                {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-canvas-raise px-3 py-2 text-xs text-canvas-text"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">{t('questions.undoReview')}</button></>}
+                {!question.reviewed_at && <button type="button" disabled={busy} onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise disabled:opacity-50"><CheckCircle2 size={14} /> {t('questions.markReviewed')}</button>}
+                {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-canvas-raise px-3 py-2 text-xs text-canvas-text"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" disabled={busy} onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text disabled:opacity-50">{t('questions.undoReview')}</button></>}
                 {hasCurriculumReference(question.curriculum_reference) && <CurriculumReferenceSummary value={question.curriculum_reference} t={t} />}
-                <button type="button" onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text, curriculum_reference: { ...EMPTY_CURRICULUM_REFERENCE, ...(question.curriculum_reference || {}) } })} aria-label={t('questions.editQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> {t('common.edit')}</button>
-                <button type="button" onClick={() => remove(question)} aria-label={t('questions.deleteQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Trash2 size={14} /> {t('common.delete')}</button>
+                <button type="button" disabled={busy} onClick={() => setEditing({ id: question.id, subject: question.subject, topic: question.topic, ocr_text: question.ocr_text, curriculum_reference: { ...EMPTY_CURRICULUM_REFERENCE, ...(question.curriculum_reference || {}) } })} aria-label={t('questions.editQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Pencil size={14} /> {t('common.edit')}</button>
+                <button type="button" disabled={busy} onClick={() => remove(question)} aria-label={t('questions.deleteQuestion', { subject: question.subject || question.id })} className="inline-flex items-center gap-1 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text"><Trash2 size={14} /> {t('common.delete')}</button>
               </div>
               {question.analysis && (
                 <div className="rounded-lg bg-canvas-base p-3 text-sm">

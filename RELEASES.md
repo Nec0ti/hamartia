@@ -1175,3 +1175,61 @@ Yerel profil, ilerleme veya yedekleme biçiminde değişiklik yok\. Yerel verile
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Yerel Chromium, bulunmayan \`libglib\-2\.0\.so\.0\` nedeniyle tarayıcı kontrollerini başlatamadı; bu kontroller PR CI'da geçti\. Gerçek sağlayıcı\/model çağrısı, AI karşılaştırması, dağıtım veya uzaktaki sunucuya erişim yapılmadı\.
+
+## ARETE-065
+
+## English
+
+`ARETE-065` — [PR #69](https://github.com/Nec0ti/hamartia/pull/69): Polish bilingual docs and project README
+
+### Highlights
+
+This user\-facing documentation and README update adds grouped navigation, per\-page contents links, a responsive layout, clearer package\-version context, feedback links, a Getting Started guide map, two FAQ answers, and a shorter repository overview\. No application behavior changes\.
+
+### Behavior and why
+
+The app behaves the same\. The guide is easier to navigate across 17 English and 17 Turkish pages, and the README now directs users to the guide, downloads, local quickstart, and privacy details\. Backup documentation now accurately includes optional local onboarding and student\-profile data\.
+
+### How to use
+
+Open the \[user guide\]\(https\:\/\/nec0ti\.github\.io\/hamartia\/\), expand a sidebar group, and use “On this page” to jump to a section\. Use the language switch for the matching Turkish or English page\. The README links directly to downloads and the guide\.
+
+### Compatibility / migration
+
+No application, API, backup, or data\-format changes\. No migration or user action is required\.
+
+### Verification
+
+Python compilation, static page generation, the offline documentation integrity benchmark, the 34\-route Playwright docs smoke, README link\-target checks, \`git diff \-\-check\`, and 1440 px\/390 px visual review passed\. Integrity checked 1,060 local links\/assets and 156 exact evidence excerpts with zero errors; no AI or network access was used\.
+
+### Not run / known limitations
+
+Application test suites, external\-link fetching, provider\/model execution, human retrieval\/usability testing, and a full accessibility audit were not run\. Visual screenshots were reviewed locally and are not human\-cohort results\.
+
+## Türkçe
+
+`ARETE-065` — [PR #69](https://github.com/Nec0ti/hamartia/pull/69): Polish bilingual docs and project README
+
+### Öne çıkanlar
+
+Bu kullanıcıya yönelik dokümantasyon ve README güncellemesi; gruplandırılmış gezinti, sayfa içi bölüm bağlantıları, duyarlı yerleşim, açıklanmış paket sürümü, geri bildirim bağlantıları, Başlarken kılavuz tablosu, iki sık sorulan soru yanıtı ve daha kısa bir depo özeti ekler\. Uygulama davranışı değişmez\.
+
+### Davranış ve nedeni
+
+Uygulama aynı şekilde çalışır\. Kılavuz, 17 İngilizce ve 17 Türkçe sayfada daha kolay gezinmeyi sağlar; README kullanıcıları kılavuza, indirmelere, yerel hızlı başlangıca ve gizlilik bilgilerine yönlendirir\. Yedekleme açıklaması, isteğe bağlı yerel ilk kullanım ve öğrenci profili verilerinin dahil olduğunu doğru biçimde belirtir\.
+
+### Kullanım
+
+\[Kullanım kılavuzunu\]\(https\:\/\/nec0ti\.github\.io\/hamartia\/\) aç, kenar çubuğundan bir grubu genişlet ve bölüme geçmek için “Bu sayfada” bağlantılarını kullan\. Eşleşen Türkçe veya İngilizce sayfa için dil seçicisini kullan\. README indirme ve kılavuz bağlantıları içerir\.
+
+### Uyumluluk / geçiş
+
+Uygulama, API, yedek veya veri biçimi değişikliği yoktur\. Geçiş ya da kullanıcı işlemi gerekmez\.
+
+### Doğrulama
+
+Python derlemesi, statik sayfa üretimi, çevrimdışı dokümantasyon bütünlük denetimi, 34 rotalı Playwright dokümantasyon smoke'u, README bağlantı hedefleri, \`git diff \-\-check\` ve 1440 px\/390 px görsel inceleme geçti\. Bütünlük denetimi 1\.060 yerel bağlantı\/varlığı ve 156 kanıt alıntısını sıfır hatayla kontrol etti; AI veya ağ erişimi kullanılmadı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Uygulama testleri, dış bağlantıları açma, sağlayıcı\/model çalıştırma, insanlarla bilgi bulma\/kullanılabilirlik deneyi ve tam erişilebilirlik denetimi yapılmadı\. Görseller yerelde incelendi; insan deneyi sonucu değildir\.

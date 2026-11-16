@@ -26,6 +26,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-16 backup restore crash recovery and Windows CI correction](2026-11-16-backup-restore-crash-recovery.md)
 - [2026-11-16 tracker reconciliation for PRs 55–57 and ARETE-051–053](2026-11-16-tracker-reconciliation-pr55-57.md)
 - [2026-11-16 social sign-in and private profile UI prototype](2026-11-16-social-signin-onboarding.md)
+- [2026-11-16 social legal, privacy, and hosting readiness source review](2026-11-16-social-legal-privacy-hosting-readiness.md)
 - [2026-11-16 text-only Study Agent missed-question capture](2026-11-16-study-agent-question-capture.md)
 - [2026-11-16 single-subject Study Agent branch-exam capture](2026-11-16-study-agent-branch-exam-capture.md)
 

@@ -3,6 +3,7 @@ import time
 import unittest
 import uuid
 import json
+from base64 import urlsafe_b64decode
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -113,8 +114,25 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(ValueError, "invalid or expired"):
             resolve_learning_evidence_state_token(token, next_messages, "en")
-
         token_body, token_signature = token.split(".", 1)
+        alternate_signature = next((
+            token_signature[:-1] + candidate
+            for candidate in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+            if candidate != token_signature[-1]
+            and urlsafe_b64decode((token_signature[:-1] + candidate) + "=")
+            == urlsafe_b64decode(token_signature + "=")
+        ), None)
+        self.assertIsNotNone(alternate_signature)
+        noncanonical_variants = [
+            f"{token_body}.{token_signature}!!!",
+            f"{token_body}.{token_signature}=",
+            f"{token_body}=.{token_signature}",
+            f"{token_body}.{alternate_signature}",
+        ]
+        for variant in noncanonical_variants:
+            with self.subTest(variant=variant[-8:]), self.assertRaisesRegex(ValueError, "invalid or expired"):
+                resolve_learning_evidence_state_token(variant, next_messages, "en")
+
         tampered_body = ("A" if token_body[0] != "A" else "B") + token_body[1:]
         tampered = f"{tampered_body}.{token_signature}"
         with self.assertRaisesRegex(ValueError, "invalid or expired"):

@@ -206,12 +206,21 @@ def resolve_learning_evidence_state_token(
         raise ValueError("Learning-evidence conversation state is invalid or expired.")
     body_text, signature_text = token.split(".", 1)
     try:
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", body_text) or not re.fullmatch(r"[A-Za-z0-9_-]+", signature_text):
+            raise ValueError
         body = body_text.encode("ascii")
         signature = urlsafe_b64decode(signature_text + "=" * (-len(signature_text) % 4))
+        decoded_body = urlsafe_b64decode(body_text + "=" * (-len(body_text) % 4))
+        if (
+            len(signature) != hashlib.sha256().digest_size
+            or urlsafe_b64encode(signature).rstrip(b"=").decode("ascii") != signature_text
+            or urlsafe_b64encode(decoded_body).rstrip(b"=").decode("ascii") != body_text
+        ):
+            raise ValueError
         expected_signature = hmac.new(_LEARNING_EVIDENCE_STATE_SECRET, body, hashlib.sha256).digest()
         if not hmac.compare_digest(signature, expected_signature):
             raise ValueError
-        payload = json.loads(urlsafe_b64decode(body_text + "=" * (-len(body_text) % 4)))
+        payload = json.loads(decoded_body)
         issued_at = payload["issued_at"]
         message_count = payload["message_count"]
         if (
@@ -228,7 +237,8 @@ def resolve_learning_evidence_state_token(
         claims = [LearningEvidenceQuote.model_validate(item).model_dump() for item in payload["claims"]]
         if len(claims) > 12:
             raise ValueError
-        token_key = hashlib.sha256(token.encode("ascii")).hexdigest()
+        canonical_token = f"{body_text}.{signature_text}".encode("ascii")
+        token_key = hashlib.sha256(canonical_token).hexdigest()
         now = int(time.time())
         with _LEARNING_EVIDENCE_STATE_LOCK:
             expired = [key for key, timestamp in _LEARNING_EVIDENCE_STATE_USED.items()

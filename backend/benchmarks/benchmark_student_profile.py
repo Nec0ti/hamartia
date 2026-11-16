@@ -115,6 +115,18 @@ def main():
                     raise AssertionError("stale profile update was not rejected")
                 check(client.get("/student-profile").json(), current_row, "stale update preserved full row")
 
+                for preset, threshold in (("comet", 500), ("planet", 1000), ("galaxy", 2000)):
+                    candidate = client.get("/student-profile").json()
+                    candidate["profile"]["avatar_preset"] = preset
+                    (data_dir / "user.json").write_text(json.dumps({"total_xp": threshold - 1}), encoding="utf-8")
+                    if client.put("/student-profile", json=candidate).status_code != 422:
+                        raise AssertionError(f"locked avatar {preset} was accepted below its threshold")
+                    (data_dir / "user.json").write_text(json.dumps({"total_xp": threshold}), encoding="utf-8")
+                    unlocked = client.put("/student-profile", json=candidate)
+                    if unlocked.status_code != 200 or unlocked.json()["profile"]["avatar_preset"] != preset:
+                        raise AssertionError(f"avatar {preset} was not accepted at its threshold")
+                    revision = unlocked.json()["revision"]
+
                 contenders = [fixture(index + 10, revision) for index in range(24)]
                 with ThreadPoolExecutor(max_workers=8) as pool:
                     responses = list(pool.map(lambda value: client.put("/student-profile", json=value), contenders))
@@ -163,6 +175,8 @@ def main():
                     "stale_updates_rejected": 1,
                     "backup_round_trip": True,
                     "reset_round_trip": True,
+                    "avatar_unlock_boundaries": {"comet": 500, "planet": 1000, "galaxy": 2000},
+                    "ai_included": False,
                     "provider_tripwire_calls": 0,
                     "network_tripwire_calls": 0,
                     "measurements": {"save": save_timing, "read": read_timing, "update": update_timing, "backup": backup_timing, "reset": reset_timing},

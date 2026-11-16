@@ -3,10 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import DATA_DIR
-from app.models.schemas import StudentOnboarding
+from app.core.progression import progression_summary
+from app.models.schemas import Exam, StudentOnboarding, UserStats
 from app.services.storage import StorageService
 
 router = APIRouter(prefix="/student-profile", tags=["student-profile"])
+
+AVATAR_UNLOCK_LEVELS = {"comet": 2, "planet": 3, "galaxy": 5}
 
 
 def get_storage():
@@ -23,6 +26,13 @@ async def get_student_profile(storage: StorageService = Depends(get_storage)):
 
 @router.put("", response_model=StudentOnboarding)
 async def save_student_profile(payload: StudentOnboarding, storage: StorageService = Depends(get_storage)):
+    avatar = payload.profile.avatar_preset
+    if avatar in AVATAR_UNLOCK_LEVELS:
+        stats = storage.load_doc("user.json", UserStats) or UserStats()
+        exams = storage.load_list("exams.json", Exam)
+        level = progression_summary(exams, bonus_xp=stats.total_xp)["level"]
+        if level < AVATAR_UNLOCK_LEVELS[avatar]:
+            raise HTTPException(status_code=422, detail="This built-in avatar is not unlocked yet.")
     result = None
 
     def replace(current):

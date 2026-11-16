@@ -1,7 +1,14 @@
+import { levelForXp } from '../utils/formatters.js'
+
 export const STUDENT_PROFILE_FIELDS = Object.freeze([
   'nickname', 'age_years', 'grade_year', 'curriculum', 'study_preferences', 'study_goals', 'avatar_preset',
 ])
-export const STUDENT_AVATARS = Object.freeze(['sunrise', 'moon', 'leaf', 'star', 'book', 'mountain', 'wave', 'lantern'])
+export const STUDENT_AVATARS = Object.freeze(['sunrise', 'moon', 'leaf', 'star', 'book', 'mountain', 'wave', 'lantern', 'comet', 'planet', 'galaxy'])
+export const AVATAR_UNLOCK_LEVELS = Object.freeze({ comet: 2, planet: 3, galaxy: 5 })
+
+export function studentAvatarUnlocked(preset, totalXp) {
+  return !AVATAR_UNLOCK_LEVELS[preset] || levelForXp(totalXp) >= AVATAR_UNLOCK_LEVELS[preset]
+}
 
 export function firstRunStage(state) {
   if (!state || state.survey_completed) return null

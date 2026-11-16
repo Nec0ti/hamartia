@@ -69,6 +69,7 @@ async function main(smokeRun) {
           } catch {
             launcher.kill('SIGKILL')
             await withTimeout(exited, 2000, 'Dev server forced shutdown')
+            throw new Error('Dev server required forced termination; detached child cleanup is unconfirmed, so fixture data is preserved.')
           }
         }
       })()

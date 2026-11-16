@@ -35,7 +35,10 @@ function withDeadline(operation, timeoutMs, describe, cleanup) {
     timer = setTimeout(() => {
       timeoutError = new Error(`Browser smoke exceeded ${timeoutMs}ms${describe()}`)
       cleanupPromise = withTimeout(Promise.resolve().then(() => cleanup(timeoutError)), 15_000, 'Browser smoke timeout cleanup')
-        .catch((cleanupError) => { timeoutError.cleanupError = cleanupError })
+        .catch((cleanupError) => {
+          timeoutError.cleanupError = cleanupError
+          timeoutError.message += `; cleanup failed: ${cleanupError.message}`
+        })
       cleanupPromise.then(() => reject(timeoutError))
     }, timeoutMs)
   })

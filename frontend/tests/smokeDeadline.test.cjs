@@ -48,3 +48,10 @@ test('smoke deadline cannot resolve successfully after timeout while cleanup is 
     /Browser smoke exceeded 5ms; phase: race/,
   )
 })
+
+test('smoke deadline surfaces cleanup failure instead of hiding failed reaping', async () => {
+  await assert.rejects(
+    withDeadline(() => new Promise(() => {}), 5, () => '; phase: cleanup', () => Promise.reject(new Error('fixture retained'))),
+    /cleanup failed: fixture retained/,
+  )
+})

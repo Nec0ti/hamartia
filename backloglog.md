@@ -1,5 +1,11 @@
 # Backlog log
 
+## 2026-11-16 — detailed bilingual release summaries
+
+- Added an English PR template with a marked, structured release summary in English and Turkish. The release generator now requires every section in both languages and copies merged PR content into public notes for highlights, behavior/reason, how to use, compatibility/migration, verification, and not-run checks/known limitations.
+- Added the policy to root `AGENTS.md`; docs-only and internal-only changes must explicitly state that user behavior did not change. Older ARETE entries were left untouched. The automatic release-after-merge flow is unchanged.
+- Release metadata tests passed. No package builds, AI/providers, or server were run for this documentation and release-generator change. See [report](reports/2026-11-16-detailed-bilingual-release-notes.md).
+
 ## 2026-11-16 — PRs #49–#50 and forum submission quota
 
 - PR #49 fixed the local development API origin guard so hostile-origin multipart writes are rejected before parsing; the focused check confirmed no hostile question/upload files were created.

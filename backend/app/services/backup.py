@@ -6,6 +6,7 @@ import os
 import shutil
 import stat
 import tempfile
+import uuid
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -397,9 +398,104 @@ def extract_backup(archive_path, destination):
             raise BackupError(f"Invalid backup archive: {exc}") from exc
 
 
-def _snapshot_path(data_dir):
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    return data_dir.with_name(f"{data_dir.name}.before-restore-{stamp}")
+def _sync_directory(path):
+    if os.name == "posix":
+        descriptor = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
+def _sync_tree(path):
+    for current, directories, files in os.walk(path, topdown=False):
+        for name in files:
+            with (Path(current) / name).open("r+b") as source:
+                os.fsync(source.fileno())
+        for name in directories:
+            _sync_directory(Path(current) / name)
+    _sync_directory(path)
+
+
+def _restore_journal_path(data_dir):
+    return data_dir.with_name(f".{data_dir.name}.restore-journal.json")
+
+
+def _write_restore_journal(path, data_dir, staged, snapshot):
+    temporary = path.with_suffix(".tmp")
+    payload = _json_bytes({"target": data_dir.name, "staged": staged.name, "snapshot": snapshot.name if snapshot else ""})
+    with os.fdopen(open_private_file(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC), "wb") as output:
+        output.write(payload)
+        output.flush()
+        os.fsync(output.fileno())
+    os.replace(temporary, path)
+    _sync_directory(path.parent)
+
+
+def recover_restore(data_dir):
+    """Reconcile an interrupted restore before storage can create a new directory."""
+    data_dir = Path(data_dir)
+    journal = _restore_journal_path(data_dir)
+    if not journal.exists():
+        return
+    try:
+        if journal.is_symlink() or data_dir.is_symlink():
+            raise BackupError("Restore recovery refuses symbolic-link paths")
+        record = json.loads(journal.read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or record.get("target") != data_dir.name:
+            raise ValueError("wrong target")
+        staged = data_dir.with_name(record["staged"])
+        snapshot_name = record.get("snapshot", "")
+        if staged.parent != data_dir.parent or not staged.name.startswith(f".{data_dir.name}.restore-stage-"):
+            raise ValueError("invalid staging path")
+        snapshot = data_dir.with_name(snapshot_name) if snapshot_name else None
+        if snapshot and (snapshot.parent != data_dir.parent or not snapshot.name.startswith(f"{data_dir.name}.before-restore-")):
+            raise ValueError("invalid snapshot path")
+        if staged.is_symlink() or (snapshot and snapshot.is_symlink()):
+            raise ValueError("restore paths cannot be symbolic links")
+        if staged.exists() and data_dir.exists():
+            if not snapshot or snapshot.exists():
+                raise BackupError("Restore recovery would overwrite an unexpected data directory")
+            data_dir.rename(snapshot)
+            _sync_directory(data_dir.parent)
+            staged.rename(data_dir)
+            _sync_directory(data_dir.parent)
+        elif staged.exists():
+            staged.rename(data_dir)
+            _sync_directory(data_dir.parent)
+        elif data_dir.exists():
+            pass  # The staged directory was installed and the restore committed.
+        elif snapshot and snapshot.exists():
+            snapshot.rename(data_dir)
+            _sync_directory(data_dir.parent)
+        else:
+            raise BackupError("Restore recovery found no usable data directory")
+        journal.unlink()
+        _sync_directory(journal.parent)
+    except BackupError:
+        raise
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise BackupError(f"Cannot recover interrupted backup restore: {exc}") from exc
+
+
+def _rollback_restore(data_dir):
+    journal = _restore_journal_path(data_dir)
+    if not journal.exists():
+        return
+    record = json.loads(journal.read_text(encoding="utf-8"))
+    staged = Path(data_dir).with_name(record["staged"])
+    snapshot_name = record.get("snapshot", "")
+    snapshot = Path(data_dir).with_name(snapshot_name) if snapshot_name else None
+    if Path(data_dir).exists() and not staged.exists():
+        Path(data_dir).rename(staged)
+        _sync_directory(Path(data_dir).parent)
+    if not Path(data_dir).exists() and snapshot and snapshot.exists():
+        snapshot.rename(data_dir)
+        _sync_directory(Path(data_dir).parent)
+    if staged.exists():
+        shutil.rmtree(staged)
+    journal.unlink()
+    _sync_directory(journal.parent)
 
 
 def restore_backup(archive_path, data_dir):
@@ -407,6 +503,7 @@ def restore_backup(archive_path, data_dir):
     data_dir = Path(data_dir)
     data_dir.parent.mkdir(parents=True, exist_ok=True)
     with DataDirectoryLock(data_dir):
+        recover_restore(data_dir)
         if data_dir.is_symlink():
             raise BackupError("Refusing to replace a symbolic-link data directory")
         if data_dir.exists() and not data_dir.is_dir():
@@ -415,8 +512,8 @@ def restore_backup(archive_path, data_dir):
             secure_data_tree(data_dir)
         except OSError as exc:
             raise BackupError(str(exc)) from exc
-        with tempfile.TemporaryDirectory(prefix=f".{data_dir.name}.restore-", dir=data_dir.parent) as temp_root:
-            staged = Path(temp_root) / "data"
+        staged = data_dir.with_name(f".{data_dir.name}.restore-stage-{uuid.uuid4().hex}")
+        try:
             manifest = extract_backup(archive_path, staged)
             settings_path = data_dir / "settings.json"
             current_key = ""
@@ -428,13 +525,26 @@ def restore_backup(archive_path, data_dir):
             restored_settings.api_key = current_key
             restored_settings_path.write_bytes(_json_bytes(restored_settings.model_dump(mode="json")))
 
-            snapshot = _snapshot_path(data_dir) if data_dir.exists() else None
+            snapshot = data_dir.with_name(f"{data_dir.name}.before-restore-{uuid.uuid4().hex}") if data_dir.exists() else None
+            if snapshot:
+                _sync_tree(data_dir)
+            _sync_tree(staged)
+            _write_restore_journal(_restore_journal_path(data_dir), data_dir, staged, snapshot)
             if snapshot:
                 data_dir.rename(snapshot)
-            try:
-                staged.rename(data_dir)
-            except Exception as error:
-                if snapshot and snapshot.exists():
-                    snapshot.rename(data_dir)
-                raise BackupError(f"Could not apply backup; previous data was restored: {error}") from error
+                _sync_directory(data_dir.parent)
+            staged.rename(data_dir)
+            _sync_directory(data_dir.parent)
+            _restore_journal_path(data_dir).unlink()
+            _sync_directory(data_dir.parent)
             return {"manifest": manifest, "snapshot": str(snapshot) if snapshot else ""}
+        except Exception as error:
+            try:
+                _rollback_restore(data_dir)
+            except Exception as recovery_error:
+                raise BackupError(f"Restore failed and needs startup recovery: {recovery_error}") from error
+            if staged.exists():
+                shutil.rmtree(staged)
+            if isinstance(error, BackupError):
+                raise
+            raise BackupError(f"Could not apply backup; previous data was restored: {error}") from error

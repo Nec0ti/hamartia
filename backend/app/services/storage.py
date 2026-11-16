@@ -113,6 +113,8 @@ class StorageError(RuntimeError):
 class StorageService:
     def __init__(self, data_dir: Path):
         self.data_dir = Path(data_dir)
+        from app.services.backup import recover_restore
+        recover_restore(self.data_dir)
         secure_directory(self.data_dir)
     # -- internal helpers ---------------------------------------------------
 

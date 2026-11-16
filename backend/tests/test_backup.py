@@ -23,8 +23,8 @@ from app.models.schemas import (
     LearningEvidenceDeletedApprovalLedger, PracticeDraft, Question, QuestionDeletedApprovalLedger, ReviewAttempt, Settings, UserStats,
 )
 from app.services.backup import (
-    BackupError, JSON_MODELS, _freeze_clock_state_for_backup,
-    _prepare_clock_state_for_restore, create_backup, extract_backup, restore_backup,
+    BackupError, JSON_MODELS, _freeze_clock_state_for_backup, _write_restore_journal,
+    _prepare_clock_state_for_restore, create_backup, extract_backup, recover_restore, restore_backup,
 )
 from app.services.data_lock import DataDirectoryBusy, DataDirectoryLock
 from app.services.storage import StorageService, data_mutation_lock
@@ -527,7 +527,7 @@ class BackupTests(unittest.TestCase):
         rename = Path.rename
 
         def fail_new_data(source, destination):
-            if source.name == "data" and ".rollback.restore-" in str(source.parent):
+            if source.name.startswith(".rollback.restore-stage-"):
                 raise OSError("simulated staging rename failure")
             return rename(source, destination)
 
@@ -538,6 +538,102 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(read_json(target / "exams.json")[0]["id"], "keep-me")
         self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
         self.assertFalse(list(self.root.glob("rollback.before-restore-*")))
+
+    def test_restore_recovers_after_each_commit_boundary_before_storage_initializes(self):
+        class SimulatedCrash(BaseException):
+            pass
+
+        for boundary in ("journal", "old_rename", "new_rename", "journal_remove"):
+            with self.subTest(boundary=boundary):
+                target = self.root / f"crash-{boundary}"
+                make_data(target, "keep-me", "local-key")
+                real_rename = Path.rename
+                real_unlink = Path.unlink
+                real_write_journal = _write_restore_journal
+
+                def crash_after_journal(*args):
+                    real_write_journal(*args)
+                    if boundary == "journal":
+                        raise SimulatedCrash()
+
+                def crash_after_rename(source, destination):
+                    result = real_rename(source, destination)
+                    if boundary == "old_rename" and source == target:
+                        raise SimulatedCrash()
+                    if boundary == "new_rename" and destination == target and source.name.startswith(f".{target.name}.restore-stage-"):
+                        raise SimulatedCrash()
+                    return result
+
+                def crash_after_unlink(path, *args, **kwargs):
+                    result = real_unlink(path, *args, **kwargs)
+                    if boundary == "journal_remove" and path.name == f".{target.name}.restore-journal.json":
+                        raise SimulatedCrash()
+                    return result
+
+                with patch("app.services.backup._write_restore_journal", crash_after_journal), \
+                     patch.object(Path, "rename", crash_after_rename), \
+                     patch.object(Path, "unlink", crash_after_unlink):
+                    with self.assertRaises(SimulatedCrash):
+                        restore_backup(self.archive, target)
+
+                if boundary == "old_rename":
+                    async def start_app():
+                        async with main.lifespan(main.app):
+                            pass
+
+                    with patch.object(main, "DATA_DIR", target):
+                        asyncio.run(start_app())
+                else:
+                    # StorageService is the early caller that used to recreate an empty DATA_DIR.
+                    StorageService(target)
+                expected = "saved-exam"
+                self.assertEqual(read_json(target / "exams.json")[0]["id"], expected)
+                self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
+                self.assertFalse((self.root / f".{target.name}.restore-journal.json").exists())
+
+    def test_restore_recovery_handles_missing_and_empty_targets(self):
+        class SimulatedCrash(BaseException):
+            pass
+
+        for initially_empty in (False, True):
+            with self.subTest(initially_empty=initially_empty):
+                target = self.root / ("empty-existing" if initially_empty else "missing-target")
+                if initially_empty:
+                    target.mkdir()
+                real_write_journal = _write_restore_journal
+
+                def crash_after_journal(*args):
+                    real_write_journal(*args)
+                    raise SimulatedCrash()
+
+                with patch("app.services.backup._write_restore_journal", crash_after_journal):
+                    with self.assertRaises(SimulatedCrash):
+                        restore_backup(self.archive, target)
+
+                recover_restore(target)
+                self.assertEqual(read_json(target / "exams.json")[0]["id"], "saved-exam")
+                self.assertEqual(read_json(target / "settings.json")["api_key"], "")
+
+    def test_restore_crash_before_journal_replace_leaves_live_data_untouched(self):
+        class SimulatedCrash(BaseException):
+            pass
+
+        target = self.root / "journal-publish-crash"
+        make_data(target, "keep-me", "local-key")
+        real_replace = os.replace
+
+        def crash_before_publish(source, destination):
+            if destination == self.root / f".{target.name}.restore-journal.json":
+                raise SimulatedCrash()
+            return real_replace(source, destination)
+
+        with patch("app.services.backup.os.replace", crash_before_publish):
+            with self.assertRaises(SimulatedCrash):
+                restore_backup(self.archive, target)
+
+        StorageService(target)
+        self.assertEqual(read_json(target / "exams.json")[0]["id"], "keep-me")
+        self.assertEqual(read_json(target / "settings.json")["api_key"], "local-key")
 
 
 if __name__ == "__main__":

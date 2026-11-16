@@ -188,3 +188,9 @@
 - Focused profile tests 6/6; full backend 313 passed / 12 PostgreSQL tests skipped; frontend 70/70; build passed. The profile benchmark passed with `ai_included: false` and zero provider/network tripwire calls.
 - Onboarding browser smoke could not launch Chromium because `libglib-2.0.so.0` is missing. CI/package verification remains pending; do not merge before the sequential ARETE release coordination.
 - Report: `reports/2026-11-16-xp-avatar-unlocks.md`.
+# 2026-11-16 desktop loopback API authentication
+
+- Added fail-closed token authentication to the desktop backend: `/questions`, `/backup`, static frontend routes, and other API requests require the per-launch Electron control token. Readiness remains public; shutdown keeps its existing token check. Missing desktop configuration returns 503 and missing/wrong request tokens return 401.
+- Electron sends the credential as a host-scoped HttpOnly SameSite=Strict cookie to the same loopback origin that serves its renderer. The token is never serialized into preload, IPC, or renderer JavaScript. Main-process ChatGPT reads and draft previews carry the token header. Tokenless direct development API use remains available only when the app is launched without a control token.
+- Regression coverage denies originless requests to `/questions` and `/backup` with missing/wrong credentials; accepts the main-process header, packaged cookie, and trusted Vite-origin cookie; and preserves existing origin-guard tests. Desktop smoke now checks protected API access and `document.cookie` secrecy.
+- Focused backend tests pass 17/17; the full backend suite ran 314 tests (302 passed, 12 PostgreSQL integration tests skipped); the full desktop suite passes 81/81. JavaScript syntax and `git diff --check` pass. The packaged Electron smoke was not run locally; Windows/Linux package CI is required before merge. No local AI/provider call or benchmark was run. See `reports/2026-11-16-desktop-loopback-api-auth.md`.

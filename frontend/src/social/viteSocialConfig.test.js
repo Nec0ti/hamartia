@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { contentSecurityPolicy, socialBuildConfiguration, socialProxyTarget } from '../../vite.config.js'
+import { contentSecurityPolicy, developmentApiOrigin, socialBuildConfiguration, socialProxyTarget } from '../../vite.config.js'
 
 const BROWSER = {
   VITE_SOCIAL_ENABLED: 'true',
@@ -65,14 +65,20 @@ test('Vite social proxy accepts HTTPS or numeric loopback origins and rejects al
   assert.throws(() => socialProxyTarget('http://127.0.0.1:8765/social'), /numeric loopback/)
 })
 
-test('production CSP is strict and injected before scripts; dev CSP adds only emulator/HMR allowances', () => {
+test('production CSP stays strict and dev CSP allows only its validated API origin plus emulator/HMR', () => {
   const production = contentSecurityPolicy(false).transformIndexHtml()[0]
   assert.equal(production.injectTo, 'head-prepend')
   assert.match(production.attrs.content, /script-src 'self'/)
   assert.doesNotMatch(production.attrs.content, /unsafe-eval/)
   assert.match(production.attrs.content, /object-src 'none'/)
   assert.match(production.attrs.content, /base-uri 'self'/)
-  const development = contentSecurityPolicy(true).transformIndexHtml()[0].attrs.content
+  const development = contentSecurityPolicy(true, 'http://127.0.0.1:8000').transformIndexHtml()[0].attrs.content
   assert.match(development, /127\.0\.0\.1:9099/)
   assert.match(development, /ws:\/\/127\.0\.0\.1:5173/)
+  assert.match(development, /connect-src[^;]*http:\/\/127\.0\.0\.1:8000/)
+  assert.doesNotMatch(production.attrs.content, /127\.0\.0\.1:8000/)
+  assert.equal(developmentApiOrigin(), 'http://localhost:8000')
+  assert.equal(developmentApiOrigin('https://api.example.test'), 'https://api.example.test')
+  assert.throws(() => developmentApiOrigin('http://api.example.test'), /VITE_API_BASE/)
+  assert.throws(() => developmentApiOrigin('http://127.0.0.1:8000/social'), /VITE_API_BASE/)
 })

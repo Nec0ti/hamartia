@@ -17,7 +17,23 @@ export function socialProxyTarget(value) {
   return target.origin
 }
 
-export function contentSecurityPolicy(development) {
+export function developmentApiOrigin(value) {
+  const configured = value?.trim() || 'http://localhost:8000'
+  const url = new URL(configured)
+  const host = url.hostname.startsWith('[') && url.hostname.endsWith(']')
+    ? url.hostname.slice(1, -1)
+    : url.hostname
+  const numericLoopback = net.isIP(host) === 6 ? host === '::1' : net.isIP(host) === 4 && host.startsWith('127.')
+  const loopbackName = host === 'localhost'
+  const validOrigin = !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash
+  if (!validOrigin || !(url.protocol === 'https:' || (url.protocol === 'http:' && (numericLoopback || loopbackName)))) {
+    throw new Error('VITE_API_BASE must be an HTTPS origin or a loopback HTTP origin in development.')
+  }
+  return url.origin
+}
+
+export function contentSecurityPolicy(development, apiBase) {
+  const devApi = development ? ` ${developmentApiOrigin(apiBase)}` : ''
   return {
     name: 'hamartia-content-security-policy',
     transformIndexHtml() {
@@ -27,7 +43,7 @@ export function contentSecurityPolicy(development) {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        `connect-src 'self' ${FIREBASE_AUTH_HOSTS}${development ? ' http://127.0.0.1:9099 http://localhost:9099 ws://127.0.0.1:5173 ws://localhost:5173' : ''}`,
+        `connect-src 'self' ${FIREBASE_AUTH_HOSTS}${devApi}${development ? ' http://127.0.0.1:9099 http://localhost:9099 ws://127.0.0.1:5173 ws://localhost:5173' : ''}`,
         `frame-src 'self' https://*.firebaseapp.com https://*.web.app https://accounts.google.com${development ? ' http://127.0.0.1:9099 http://localhost:9099' : ''}`,
         "object-src 'none'",
         "base-uri 'self'",
@@ -116,7 +132,7 @@ export default defineConfig(({ command, mode }) => {
       __HAMARTIA_BROWSER_AGREEMENT_VERSION__: JSON.stringify(env.VITE_SOCIAL_AGREEMENT_REVIEWED === 'true' ? env.VITE_SOCIAL_AGREEMENT_VERSION || '' : ''),
       __HAMARTIA_DESKTOP_AGREEMENT_VERSION__: JSON.stringify(socialConfig.desktopPublicConfig.agreementVersion),
     },
-    plugins: [react(), contentSecurityPolicy(command === 'serve'), publicConfigAsset(socialConfig.desktopPublicConfig)],
+    plugins: [react(), contentSecurityPolicy(command === 'serve', env.VITE_API_BASE), publicConfigAsset(socialConfig.desktopPublicConfig)],
     server: {
       port: 5173,
       proxy: {

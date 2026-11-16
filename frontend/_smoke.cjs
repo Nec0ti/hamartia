@@ -52,16 +52,13 @@ async function main(smokeRun) {
           try {
             await withTimeout(browser.close(), 5000, 'Chromium shutdown')
           } catch {
-            try {
-              if (typeof browser.process === 'function') {
-                const browserProcess = browser.process()
-                if (browserProcess) {
-                  const exited = new Promise((resolve) => browserProcess.once('exit', resolve))
-                  browserProcess.kill('SIGKILL')
-                  await withTimeout(exited, 2000, 'Chromium forced shutdown').catch(() => {})
-                }
-              }
-            } catch {}
+            if (typeof browser.process !== 'function') throw new Error('Chromium shutdown timed out and its process cannot be reaped.')
+            const browserProcess = browser.process()
+            if (browserProcess && browserProcess.exitCode === null) {
+              const exited = new Promise((resolve) => browserProcess.once('exit', resolve))
+              browserProcess.kill('SIGKILL')
+              await withTimeout(exited, 2000, 'Chromium forced shutdown')
+            }
           }
         }
         if (launcher.exitCode === null) {
@@ -71,7 +68,7 @@ async function main(smokeRun) {
             await withTimeout(exited, 5000, 'Dev server shutdown')
           } catch {
             launcher.kill('SIGKILL')
-            await withTimeout(exited, 2000, 'Dev server forced shutdown').catch(() => {})
+            await withTimeout(exited, 2000, 'Dev server forced shutdown')
           }
         }
       })()

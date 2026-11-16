@@ -76,9 +76,20 @@ test('production CSP stays strict and dev CSP allows only its validated API orig
   assert.match(development, /127\.0\.0\.1:9099/)
   assert.match(development, /ws:\/\/127\.0\.0\.1:5173/)
   assert.match(development, /connect-src[^;]*http:\/\/127\.0\.0\.1:8000/)
+  const defaultDevelopment = contentSecurityPolicy(true).transformIndexHtml()[0].attrs.content
+  assert.match(defaultDevelopment, /connect-src[^;]*http:\/\/localhost:8000/)
+  const httpsDevelopment = contentSecurityPolicy(true, 'https://api.example.test').transformIndexHtml()[0].attrs.content
+  assert.match(httpsDevelopment, /connect-src[^;]*https:\/\/api\.example\.test/)
+  assert.doesNotMatch(httpsDevelopment, /https:\/\/unrelated\.example\.test/)
+  const httpsProduction = contentSecurityPolicy(false, 'https://api.example.test').transformIndexHtml()[0].attrs.content
+  assert.doesNotMatch(httpsProduction, /https:\/\/api\.example\.test/)
+  assert.doesNotMatch(httpsProduction, /localhost:8000/)
   assert.doesNotMatch(production.attrs.content, /127\.0\.0\.1:8000/)
   assert.equal(developmentApiOrigin(), 'http://localhost:8000')
   assert.equal(developmentApiOrigin('https://api.example.test'), 'https://api.example.test')
   assert.throws(() => developmentApiOrigin('http://api.example.test'), /VITE_API_BASE/)
   assert.throws(() => developmentApiOrigin('http://127.0.0.1:8000/social'), /VITE_API_BASE/)
+  assert.throws(() => developmentApiOrigin('https://user:password@api.example.test'), /VITE_API_BASE/)
+  assert.throws(() => developmentApiOrigin('https://api.example.test?token=value'), /VITE_API_BASE/)
+  assert.throws(() => developmentApiOrigin('https://api.example.test#fragment'), /VITE_API_BASE/)
 })

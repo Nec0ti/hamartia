@@ -4,6 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
+const { onePixelPng } = require('./smokeFixtures.cjs')
 const { diagnosticRequests, isSettingsRequestUrl, settingsRoutePattern, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
@@ -34,7 +35,7 @@ async function main(smokeRun) {
     subject: 'Matematik', topic: 'Fonksiyon', hamartia_tag: '[Knowledge Gap]',
     created_at: '2026-11-14T09:00:00Z', reviewed_at: '', review_attempts: [],
   }]))
-  await fs.writeFile(path.join(uploads, 'q1.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL6sAAAAASUVORK5CYII=', 'base64'))
+  await fs.writeFile(path.join(uploads, 'q1.png'), onePixelPng)
   const python = process.env.HAMARTIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')
   const launcher = spawn(python, [path.resolve(__dirname, '../scripts/dev.py')], {
     cwd: path.resolve(__dirname, '..'),

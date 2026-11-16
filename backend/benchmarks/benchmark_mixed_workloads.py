@@ -25,7 +25,7 @@ PRACTICE_PROFILE_FIXTURES = {
     ("benchmark-mixed", 1): {
         "profile_id": "benchmark-mixed", "version": 1,
         "display_name": "Mixed workload v1", "country_label": "Fixture",
-        "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
+        "scoring_rule": {"correct_points": "2/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
     },
     ("benchmark-mixed", 2): {
         "profile_id": "benchmark-mixed", "version": 2,
@@ -185,16 +185,36 @@ def fixtures(exam_count, question_count, session_count):
         duration_minutes=10 + index % 60, duration_seconds=index % 60,
         scoring_profile=_practice_profile(index),
     ) for index in range(session_count)]
-    sessions[0] = PracticeSession(
-        id="session-0", date=TODAY.isoformat(), subject=" Matematik ", topic=" Boundary ",
-        correct=0, incorrect=0, blank=6, duration_minutes=0, duration_seconds=59,
-        scoring_profile=_practice_profile(0),
-    )
-    sessions[1] = PracticeSession(
-        id="session-1", date=(TODAY - timedelta(days=729)).isoformat(), subject="matematik", topic="boundary",
-        correct=1000, incorrect=4, blank=0, duration_minutes=90, duration_seconds=0,
-        scoring_profile=_practice_profile(1),
-    )
+    if len(sessions) > 0:
+        sessions[0] = PracticeSession(
+            id="session-0", date=TODAY.isoformat(), subject=" Matematik ", topic=" Boundary ",
+            correct=0, incorrect=0, blank=6, duration_minutes=0, duration_seconds=59,
+            scoring_profile=_practice_profile(0),
+        )
+    if len(sessions) > 1:
+        sessions[1] = PracticeSession(
+            id="session-1", date=(TODAY - timedelta(days=729)).isoformat(), subject="matematik", topic="boundary",
+            correct=1000, incorrect=4, blank=0, duration_minutes=90, duration_seconds=0,
+            scoring_profile=_practice_profile(1),
+        )
+    if len(sessions) > 2:
+        sessions[2] = PracticeSession(
+            id="session-2", date=(TODAY - timedelta(days=2)).isoformat(), subject="Matematik", topic="Boundary",
+            correct=8, incorrect=2, blank=1, duration_minutes=15, duration_seconds=0,
+            scoring_profile=_practice_profile(2),
+        )
+    if len(sessions) > 3:
+        sessions[3] = PracticeSession(
+            id="session-3", date=(TODAY - timedelta(days=1)).isoformat(), subject="matematik", topic="boundary",
+            correct=8, incorrect=4, blank=2, duration_minutes=12, duration_seconds=0,
+            scoring_profile=_practice_profile(1),
+        )
+    if len(sessions) > 4:
+        sessions[4] = PracticeSession(
+            id="session-4", date=(TODAY - timedelta(days=3)).isoformat(), subject="MATEMATIK", topic="BOUNDARY",
+            correct=4, incorrect=1, blank=1, duration_minutes=9, duration_seconds=30,
+            scoring_profile=_practice_profile(0),
+        )
     return exams, questions, sessions, image_files
 
 
@@ -257,13 +277,16 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
         expected_practice = _expected_practice(sessions)
         practice_result = practice_topic_summaries(storage.load_list("practice_sessions.json", PracticeSession))
         assert_oracle(practice_result, expected_practice, "mixed practice groups")
-        boundary_versions = [
-            row for row in practice_result
-            if row["subject"].casefold() == "matematik" and row["topic"].casefold() == "boundary"
-            and row["scoring_profile"]["profile_id"] == "benchmark-mixed"
-        ]
-        assert [row["scoring_profile"]["version"] for row in boundary_versions] == [1, 2]
-        assert boundary_versions[0]["net"] != boundary_versions[1]["net"]
+        if session_count >= 5:
+            boundary_profiles = [
+                row for row in practice_result
+                if row["subject"].casefold() == "matematik" and row["topic"].casefold() == "boundary"
+            ]
+            assert [
+                (row["scoring_profile"]["profile_id"], row["scoring_profile"]["version"])
+                for row in boundary_profiles
+            ] == [("benchmark-mixed", 1), ("benchmark-mixed", 2), ("legacy-yks", 1)]
+            assert len({row["net"] for row in boundary_profiles}) == 3
         oracle_self_checks = [
             probe_oracle_self_check(progression_result, expected_progression,
                                    lambda value: value.__setitem__("total_xp", value["total_xp"] + 1),

@@ -5,6 +5,7 @@ import json
 import random
 import tempfile
 import time
+from fractions import Fraction
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from collections import Counter, defaultdict
@@ -14,12 +15,34 @@ from statistics import median
 from app.core.practice import practice_topic_summaries
 from app.core.progression import progression_summary
 from app.core.study_plan import topic_priorities
-from app.models.schemas import Exam, PracticeSession, Question, ReviewAttempt
+from app.models.schemas import Exam, ExamScoringProfile, PracticeSession, Question, ReviewAttempt
 from app.services.storage import StorageService
 from benchmark_common import assert_oracle, emit, probe_oracle_self_check, seeded_photo_png
 
 SEED = 20261114
 TODAY = date(2026, 11, 14)
+PRACTICE_PROFILE_FIXTURES = {
+    ("benchmark-mixed", 1): {
+        "profile_id": "benchmark-mixed", "version": 1,
+        "display_name": "Mixed workload v1", "country_label": "Fixture",
+        "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
+    },
+    ("benchmark-mixed", 2): {
+        "profile_id": "benchmark-mixed", "version": 2,
+        "display_name": "Mixed workload v2", "country_label": "Fixture",
+        "scoring_rule": {"correct_points": "3/2", "wrong_penalty": "1/3", "blank_points": "1/5"},
+    },
+    ("legacy-yks", 1): {
+        "profile_id": "legacy-yks", "version": 1,
+        "display_name": "YKS (legacy)", "country_label": "Türkiye",
+        "scoring_rule": {"correct_points": "1/1", "wrong_penalty": "1/4", "blank_points": "0/1"},
+    },
+}
+
+
+def _practice_profile(index):
+    key = (("benchmark-mixed", 1), ("benchmark-mixed", 2), ("legacy-yks", 1))[index % 3]
+    return ExamScoringProfile(**PRACTICE_PROFILE_FIXTURES[key])
 
 
 def percentile(samples, percent):
@@ -160,14 +183,17 @@ def fixtures(exam_count, question_count, session_count):
         topic=rng.choice(topics),
         correct=index % 26, incorrect=index % 8, blank=1 + index % 5,
         duration_minutes=10 + index % 60, duration_seconds=index % 60,
+        scoring_profile=_practice_profile(index),
     ) for index in range(session_count)]
     sessions[0] = PracticeSession(
         id="session-0", date=TODAY.isoformat(), subject=" Matematik ", topic=" Boundary ",
         correct=0, incorrect=0, blank=6, duration_minutes=0, duration_seconds=59,
+        scoring_profile=_practice_profile(0),
     )
     sessions[1] = PracticeSession(
         id="session-1", date=(TODAY - timedelta(days=729)).isoformat(), subject="matematik", topic="boundary",
         correct=1000, incorrect=4, blank=0, duration_minutes=90, duration_seconds=0,
+        scoring_profile=_practice_profile(1),
     )
     return exams, questions, sessions, image_files
 
@@ -231,6 +257,13 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
         expected_practice = _expected_practice(sessions)
         practice_result = practice_topic_summaries(storage.load_list("practice_sessions.json", PracticeSession))
         assert_oracle(practice_result, expected_practice, "mixed practice groups")
+        boundary_versions = [
+            row for row in practice_result
+            if row["subject"].casefold() == "matematik" and row["topic"].casefold() == "boundary"
+            and row["scoring_profile"]["profile_id"] == "benchmark-mixed"
+        ]
+        assert [row["scoring_profile"]["version"] for row in boundary_versions] == [1, 2]
+        assert boundary_versions[0]["net"] != boundary_versions[1]["net"]
         oracle_self_checks = [
             probe_oracle_self_check(progression_result, expected_progression,
                                    lambda value: value.__setitem__("total_xp", value["total_xp"] + 1),
@@ -487,9 +520,12 @@ def _expected_curriculum_references(questions, limit=8):
 def _expected_practice(sessions):
     groups = {}
     for session in sessions:
-        key = (session.subject.strip().casefold(), session.topic.strip().casefold())
+        profile_key = (session.scoring_profile.profile_id, session.scoring_profile.version)
+        key = (*profile_key, session.subject.strip().casefold(), session.topic.strip().casefold())
+        profile_snapshot = PRACTICE_PROFILE_FIXTURES[profile_key]
         group = groups.setdefault(key, {
             "subject": session.subject, "topic": session.topic, "sessions": [],
+            "scoring_profile": profile_snapshot,
             "correct": 0, "incorrect": 0, "blank": 0,
         })
         group["sessions"].append(session)
@@ -499,18 +535,30 @@ def _expected_practice(sessions):
     for group in groups.values():
         ordered = sorted(group.pop("sessions"), key=lambda item: (item.date, item.created_at, item.id))
         answered = group["correct"] + group["incorrect"]
+        rule = group["scoring_profile"]["scoring_rule"]
+
+        def literal_net(item):
+            return float(
+                item.correct * Fraction(rule["correct_points"])
+                - item.incorrect * Fraction(rule["wrong_penalty"])
+                + item.blank * Fraction(rule["blank_points"])
+            )
+
         group.update({
             "session_count": len(ordered), "answered": answered,
-            "net": sum(item.correct - item.incorrect / 4 for item in ordered),
+            "net": sum(literal_net(item) for item in ordered),
             "accuracy": group["correct"] / answered if answered else None,
             "trend": [{
                 "id": item.id, "date": item.date,
-                "net": item.correct - item.incorrect / 4,
+                "net": literal_net(item),
                 "accuracy": item.correct / (item.correct + item.incorrect) if item.correct + item.incorrect else None,
             } for item in ordered],
         })
         result.append(group)
-    result.sort(key=lambda item: (item["subject"].casefold(), item["topic"].casefold()))
+    result.sort(key=lambda item: (
+        item["subject"].casefold(), item["topic"].casefold(),
+        item["scoring_profile"]["profile_id"], item["scoring_profile"]["version"],
+    ))
     return result
 
 

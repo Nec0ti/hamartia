@@ -10,7 +10,7 @@ import { useI18n } from '../i18n.jsx'
  * (XP / level / streak) is intentionally NOT editable here — it lives in
  * backend/data/user.json and is served read-only via /user.
  */
-export default function SettingsModal({ open, settings, loading, onSave, onClose, loadError }) {
+export default function SettingsModal({ open, settings, loading, onSave, onClose, onEditProfile, onReplayTour, loadError }) {
   const { t, language, setLanguage } = useI18n()
   const [draft, setDraft] = useState(
     settings ?? { litellm_base_url: 'http://localhost:4000/v1', model_name: 'ollama/qwen2.5', api_key: '' },
@@ -108,6 +108,10 @@ export default function SettingsModal({ open, settings, loading, onSave, onClose
               <option value="en">English</option>
               <option value="tr">Türkçe</option>
             </select>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={onEditProfile} className="text-sm font-medium text-canvas-text underline">{t('profile.edit')}</button>
+            <button type="button" onClick={onReplayTour} className="text-sm font-medium text-canvas-text underline">{t('profile.restartTour')}</button>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-canvas-muted">

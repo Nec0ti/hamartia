@@ -66,6 +66,12 @@ export const clock = {
   update: (payload) => client.patch('/clock', payload).then((r) => r.data),
 }
 
+export const studentProfile = {
+  get: () => client.get('/student-profile').then((r) => r.data),
+  save: (payload) => client.put('/student-profile', payload).then((r) => r.data),
+  reset: () => client.delete('/student-profile').then((r) => r.data),
+}
+
 /* ----------------------------- questions -------------------------------- */
 
 export const questions = {
@@ -151,4 +157,4 @@ export const health = {
  */
 export { handleApiError }
 
-export default { exams, examProfiles, practice, learningEvidence, clock, questions, cosmos, user, settings, studyAgent, health }
+export default { exams, examProfiles, practice, learningEvidence, clock, studentProfile, questions, cosmos, user, settings, studyAgent, health }

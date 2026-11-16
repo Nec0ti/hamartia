@@ -65,6 +65,7 @@ async function main() {
         assert.equal(await page.locator('main#content h1 + .page-description').count(), 1, `${route} places a subtitle after the page title`)
         assert.equal(await page.locator('.page-toc a').count(), await page.locator('main article h2').count(), `${route} has an in-page link for each section`)
         assert.equal(await page.locator('.product-nav a').count(), 3, `${route} has product navigation`)
+        assert.equal(await page.locator('.product-nav a').first().innerText(), lang === 'en' ? 'User Manual' : 'Kullanım kılavuzu', `${route} has the active manual tab`)
         assert.equal(await page.locator('.edition').innerText(), lang === 'en' ? 'Desktop package · v0.1.0' : 'Masaüstü paketi · v0.1.0', `${route} shows the packaged app version`)
         assert.equal(await page.locator('.site-footer a[href$="/issues/new"]').count(), 1, `${route} has a feedback link`)
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at 390px`)

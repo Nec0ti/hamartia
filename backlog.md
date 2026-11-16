@@ -102,6 +102,7 @@
 - [x] Publish a 17-page EN/TR static wiki for Getting Started, system architecture, study workflows, Cosmos/progression, mistake/review behavior, exam/Maarif scope, OS installs, providers/consent/privacy, backup, Clock, accessibility/language, learning-evidence boundaries, FAQ, troubleshooting, and contribution; validate route and translation parity ([report](reports/2026-11-15-bilingual-wiki-docs.md)).
 - [x] Strengthen system-level non-AI benchmarks with persisted end-to-end workloads and explicit correctness checks; keep AI excluded. The quality pass adds full question post-mutation oracles, named untimed persistence fault probes, skewed mixed-size persisted fixtures, multi-process/crash recovery, and loopback HTTP ([report](reports/2026-11-15-system-resilience-benchmark.md)).
 - [x] Redesign the public guide as a responsive, keyboard-navigable bilingual wiki; validate navigation, links, mobile width, and page parity without telemetry.
+- [x] Restyle the bilingual docs as a dark, release-aware manual with persistent category navigation, an on-page contents rail, and compact light/dark README branding ([report](reports/2026-11-17-dark-docs-theme.md)).
 - [x] Add the paired bilingual docs task pack and offline integrity benchmark after the wiki and system benchmark releases. Human retrieval scoring and screenshot evaluation remain open; no AI answer or scoring path is included.
 
 ## P7 — canceled remote social prototype

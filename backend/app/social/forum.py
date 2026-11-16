@@ -44,4 +44,4 @@ class ForumPost(BaseModel):
 
 class ForumPostSummary(BaseModel):
     post_id: UUID
-    status: Literal["approved", "rejected"]
+    status: Literal["pending", "approved", "rejected"]

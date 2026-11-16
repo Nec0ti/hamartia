@@ -89,9 +89,10 @@ class SocialAuthTests(unittest.TestCase):
     def test_only_social_health_and_me_routes_are_mounted(self):
         router = self.client.app.router.routes[0].original_router
         paths = {route.path for route in router.routes}
-        self.assertEqual(paths, {"/social/health", "/social/me"})
+        self.assertEqual(paths, {"/social/health", "/social/me", "/social/me/profile"})
         self.assertEqual(self.client.get("/social/health").json(), {"status": "ok"})
         self.assertEqual(self.client.get("/study-agent").status_code, 404)
+        self.assertEqual(self.client.get("/social/profiles/someone").status_code, 404)
 
     def test_entrypoint_fails_closed_before_firebase_init_without_project_id(self):
         from app.social_server import main
@@ -103,12 +104,17 @@ class SocialAuthTests(unittest.TestCase):
     def test_entrypoint_defaults_to_loopback_and_rejects_public_bind(self):
         from app import social_server
 
-        with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT}, clear=True), \
+        with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT,
+                                        "SOCIAL_DATABASE_URL": "postgresql://test"}, clear=True), \
                 patch.object(social_server, "FirebaseTokenVerifier", return_value=self.verifier), \
+                patch.object(social_server, "migrate_social_database"), \
+                patch.object(social_server, "PostgresProfileRepository", return_value=object()), \
                 patch.object(social_server.uvicorn, "run") as run:
             social_server.main()
         self.assertEqual(run.call_args.kwargs["host"], "127.0.0.1")
-        with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT, "SOCIAL_HOST": "0.0.0.0"}, clear=True):
+        with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT,
+                                        "SOCIAL_DATABASE_URL": "postgresql://test",
+                                        "SOCIAL_HOST": "0.0.0.0"}, clear=True):
             with self.assertRaisesRegex(SystemExit, "must be loopback"):
                 social_server.main()
 

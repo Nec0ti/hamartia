@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from app.models.schemas import ClockState, CosmosData, Exam, ExamDeletedApprovalLedger, ExamScoringProfile, LearningEvidence, LearningEvidenceDeletedApprovalLedger, PracticeSession, Question, QuestionDeletedApprovalLedger, Settings, StudentOnboarding, UserStats
 from app.services.data_lock import DataDirectoryLock
+from app.services.private_storage import open_private_file, secure_data_tree, secure_directory
 from app.services.storage import data_mutation_guard
 
 BACKUP_FORMAT = "hamartia-local-backup"
@@ -174,7 +175,8 @@ def _capture_backup_snapshot(data_dir, snapshot_dir):
     snapshot_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     json_files["clock.json"] = _freeze_clock_state_for_backup(json.loads(json_files["clock.json"]), snapshot_ms)
     for name, raw in json_files.items():
-        (snapshot_dir / name).write_bytes(raw)
+        with os.fdopen(open_private_file(snapshot_dir / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL), "wb") as output:
+            output.write(raw)
 
     upload_root = data_dir / "uploads"
     upload_paths = []
@@ -203,8 +205,8 @@ def _capture_backup_snapshot(data_dir, snapshot_dir):
     total_size = sum(map(len, json_files.values()))
     for source in upload_paths:
         target = snapshot_dir / source.relative_to(data_dir)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with source.open("rb") as input_file, target.open("xb") as output_file:
+        secure_directory(target.parent)
+        with source.open("rb") as input_file, os.fdopen(open_private_file(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL), "wb") as output_file:
             while chunk := input_file.read(CHUNK_SIZE):
                 total_size += len(chunk)
                 if total_size > MAX_UNPACKED_BYTES:
@@ -220,9 +222,17 @@ def _write_backup_archive(data_dir, destination):
     upload_paths.sort(key=lambda path: path.relative_to(data_dir).as_posix())
 
     destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.is_symlink():
+        raise BackupError("Refusing to write a backup through a symbolic link")
     manifest_files = []
     total_size = 0
     try:
+        if os.name == "posix":
+            descriptor = open_private_file(
+                destination,
+                os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0),
+            )
+            os.close(descriptor)
         with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
             for name, raw in json_files.items():
                 if len(raw) > MAX_JSON_BYTES:
@@ -268,6 +278,7 @@ def create_backup(data_dir, destination):
     with tempfile.TemporaryDirectory(prefix="hamartia-backup-snapshot-") as temp_root:
         snapshot_dir = Path(temp_root)
         with data_mutation_guard(data_dir):
+            secure_data_tree(data_dir)
             _capture_backup_snapshot(data_dir, snapshot_dir)
         return _write_backup_archive(snapshot_dir, destination)
 
@@ -339,17 +350,17 @@ def extract_backup(archive_path, destination):
             if set(expected) != set(names) - {"manifest.json"}:
                 raise BackupError("Backup manifest does not match its contents")
 
-            destination.mkdir(parents=True, exist_ok=True)
+            secure_directory(destination)
             for name, entry in expected.items():
                 if not isinstance(entry.get("size"), int) or not isinstance(entry.get("sha256"), str):
                     raise BackupError(f"Invalid size or digest for {name}")
                 if entry["size"] < 0 or len(entry["sha256"]) != 64:
                     raise BackupError(f"Invalid size or digest for {name}")
                 target = destination.joinpath(*PurePosixPath(name).parts)
-                target.parent.mkdir(parents=True, exist_ok=True)
+                secure_directory(target.parent)
                 digest = hashlib.sha256()
                 size = 0
-                with archive.open(name) as source, target.open("xb") as output:
+                with archive.open(name) as source, os.fdopen(open_private_file(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL), "wb") as output:
                     while chunk := source.read(CHUNK_SIZE):
                         size += len(chunk)
                         digest.update(chunk)
@@ -358,7 +369,8 @@ def extract_backup(archive_path, destination):
                     raise BackupError(f"Checksum or size mismatch for {name}")
 
             for name in OPTIONAL_BACKUP_JSON - set(expected):
-                (destination / name).write_bytes(_json_bytes(_defaults()[name]))
+                with os.fdopen(open_private_file(destination / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL), "wb") as output:
+                    output.write(_json_bytes(_defaults()[name]))
 
             clock_path = destination / "clock.json"
             clock_state = ClockState.model_validate_json(clock_path.read_bytes())
@@ -374,6 +386,7 @@ def extract_backup(archive_path, destination):
             references = _upload_references(json_files)
             if not references.issubset(set(expected)):
                 raise BackupError("Backup is missing a referenced question or study document")
+            secure_data_tree(destination)
             return manifest
         except (json.JSONDecodeError, KeyError, TypeError, zipfile.BadZipFile, RuntimeError) as exc:
             if isinstance(exc, BackupError):
@@ -395,6 +408,7 @@ def restore_backup(archive_path, data_dir):
             raise BackupError("Refusing to replace a symbolic-link data directory")
         if data_dir.exists() and not data_dir.is_dir():
             raise BackupError("Data directory path is not a directory")
+        secure_data_tree(data_dir)
         with tempfile.TemporaryDirectory(prefix=f".{data_dir.name}.restore-", dir=data_dir.parent) as temp_root:
             staged = Path(temp_root) / "data"
             manifest = extract_backup(archive_path, staged)

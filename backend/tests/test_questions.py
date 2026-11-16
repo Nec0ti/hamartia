@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import tempfile
 import threading
 import unittest
@@ -70,6 +71,9 @@ class QuestionFlowTests(unittest.TestCase):
         self.assertEqual(created.topic, "Denklemler")
         self.assertEqual((self.uploads / created.image_name).read_bytes(), b"\x89PNG\r\n\x1a\nfixture")
         self.assertTrue(created.image_name.startswith("q_"))
+        if os.name == "posix":
+            self.assertEqual(self.uploads.stat().st_mode & 0o777, 0o700)
+            self.assertEqual((self.uploads / created.image_name).stat().st_mode & 0o777, 0o600)
 
     def test_text_only_question_is_saved_without_an_image(self):
         created = asyncio.run(question_api.upload_question(

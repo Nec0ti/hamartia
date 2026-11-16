@@ -239,3 +239,9 @@
 - Reworked the root README into a concise project overview with direct release/docs paths, a feature guide map, local quickstart, platform packages, data/provider disclosures, contribution path, backlog, and license.
 - Reviewed page bodies before editing; retained the already detailed provider, privacy, scoring, backup, evidence, Clock, installation, troubleshooting, accessibility, purpose, progression, mistake, architecture, and contribution material.
 - Generator, Python compilation, offline docs integrity benchmark, 34-route Playwright docs smoke, screenshots at 1440 px and 390 px, and `git diff --check` passed. Human retrieval/usability and full accessibility remain open. No AI/model/provider or external-link calls were made. See `reports/2026-11-17-docs-readme-polish.md`.
+
+## 2026-11-17 dark docs theme and README mark
+
+- Reworked the generated docs chrome and shared CSS into a dark, responsive manual with stacked release/version and manual-navigation bars, grouped persistent desktop sidebar, right-side section rail, blue active/link states, and dark tables. Kept the 17 EN/TR page bodies and section anchors unchanged.
+- Replaced the oversized standalone README mark with a compact inline title mark. GitHub's supported color-scheme `<picture>` selects a white transparent SVG in dark mode; the default image is the existing high-contrast tile favicon.
+- The 390 px category groups wrap into a two-column grid so the active third group stays visible; the Install route has a viewport-intersection assertion. Python compilation, docs generation, 34-route Playwright smoke, offline docs integrity benchmark, 1440 px/390 px screenshots, light/dark README mark previews, and `git diff --check` passed. Human retrieval/usability and full screen-reader audit remain open; no AI or provider call was made. See [report](reports/2026-11-17-dark-docs-theme.md).

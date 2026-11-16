@@ -393,9 +393,11 @@ def render(lang: str, slug: str) -> str:
 </head>
 <body>
   <a class="skip-link" href="#content">{'Skip to content' if lang == 'en' else 'İçeriğe geç'}</a>
-  <header class="site-header"><a class="brand" href="{relative_href(lang, slug, lang, 'getting-started')}" aria-label="Hamartia"><img src="{root_prefix}assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
-    <nav class="product-nav" aria-label="{'Product navigation' if lang == 'en' else 'Ürün gezintisi'}"><a href="{relative_href(lang, slug, lang, 'getting-started')}" aria-current="page">{'Guide' if lang == 'en' else 'Kılavuz'}</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">{'Download' if lang == 'en' else 'İndir'}</a><a href="https://github.com/Nec0ti/hamartia">{'Source' if lang == 'en' else 'Kaynak kod'}</a></nav>
-    <div class="header-actions"><span class="edition">{'Desktop package · v' if lang == 'en' else 'Masaüstü paketi · v'}{APP_VERSION}</span><a class="language-link" href="{escape(language_href)}" lang="{other}" hreflang="{other}">{language_label}</a></div>
+  <header class="site-header"><div class="masthead"><a class="brand" href="{relative_href(lang, slug, lang, 'getting-started')}" aria-label="Hamartia"><img src="{root_prefix}assets/hamartia-mark.svg" alt=""><span>Hamartia</span></a>
+    <span class="edition">{'Desktop package · v' if lang == 'en' else 'Masaüstü paketi · v'}{APP_VERSION}</span></div>
+    <div class="docs-bar"><nav class="product-nav" aria-label="{'Product navigation' if lang == 'en' else 'Ürün gezintisi'}"><a href="{relative_href(lang, slug, lang, 'getting-started')}" aria-current="page">{'User Manual' if lang == 'en' else 'Kullanım kılavuzu'}</a><a href="https://github.com/Nec0ti/hamartia/releases/latest">{'Download' if lang == 'en' else 'İndir'}</a><a href="https://github.com/Nec0ti/hamartia">{'Source' if lang == 'en' else 'Kaynak kod'}</a></nav>
+      <div class="header-actions"><a class="language-link" href="{escape(language_href)}" lang="{other}" hreflang="{other}">{language_label}</a></div>
+    </div>
   </header>
   <div class="page-layout">
     <aside class="sidebar"><p class="sidebar-title">{'Documentation' if lang == 'en' else 'Dokümantasyon'}</p><nav aria-label="{'Documentation pages' if lang == 'en' else 'Dokümantasyon sayfaları'}">{''.join(nav_groups)}</nav>

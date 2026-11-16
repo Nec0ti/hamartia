@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.core.config import DATA_DIR
 from app.models.schemas import Settings
 from app.api.practice import AgentDraftRequest, practice_agent_draft
+from app.api.learning_evidence import AgentLearningEvidenceDraftRequest, learning_evidence_agent_draft
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
 
@@ -25,7 +26,8 @@ class LocalStudyRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
     model_name: str = Field(min_length=1, max_length=256)
     has_api_key: bool
-    workflow: Literal["chat", "practice-entry"] = "chat"
+    workflow: Literal["chat", "practice-entry", "learning-evidence-entry"] = "chat"
+    expected_evidence_field: Literal["activity", "subject", "topic", "date", "observation"] = "activity"
     messages: list[str] = Field(default_factory=list, max_length=30)
     scoring_profile_id: str | None = None
     scoring_profile_version: int | None = Field(default=None, ge=1)
@@ -96,6 +98,19 @@ async def configured_study_agent(payload: LocalStudyRequest):
             )
             draft["proposal_mismatch"] = bool(prepared["rejected_claims"])
             return draft
+        if payload.workflow == "learning-evidence-entry":
+            if not payload.messages or any(not item.strip() or len(item) > 4000 for item in payload.messages):
+                raise HTTPException(status_code=422, detail="Provide at least one student message of up to 4,000 characters.")
+            prepared = await ai.study_learning_evidence_prepare(
+                payload.messages, payload.language, payload.expected_evidence_field,
+            )
+            return await learning_evidence_agent_draft(
+                AgentLearningEvidenceDraftRequest(
+                    messages=payload.messages,
+                    language=payload.language,
+                    evidence_claims=prepared["evidence_claims"],
+                ),
+            )
         answer = await ai.study_chat(payload.message.strip(), payload.context, payload.language)
     except HTTPException:
         raise

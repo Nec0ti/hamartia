@@ -7,10 +7,12 @@ resolved from core.config so the service and routers share one location.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import backup, clock, cosmos, exam_profiles, exams, learning_evidence, practice, questions, settings, study_agent
 from app.core.config import DATA_DIR
+from app.core.http_errors import safe_validation_error_handler
 from app.services.data_lock import DataDirectoryLock
 
 
@@ -26,6 +28,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
 
 # CORS for the single-page React frontend (adjust origins in prod).
 app.add_middleware(

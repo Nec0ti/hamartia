@@ -7,12 +7,14 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 from openai import OpenAIError
 from pydantic import ValidationError
 from starlette.datastructures import Headers
 
 from app.api import questions as question_api
+from app.core.http_errors import safe_validation_error_handler
 from app.models.schemas import MAX_QUESTION_TEXT_BYTES, CouncilAnalysis, CurriculumReference, Exam, Question, Settings, SettingsUpdate
 from app.services.ai_service import MAX_QUESTION_IMAGE_BYTES
 from app.services.question_analysis_consent import QuestionAnalysisConsentRegistry
@@ -695,6 +697,7 @@ class QuestionFlowTests(unittest.TestCase):
     def test_http_preview_cancel_and_approval_routes_keep_provider_behind_approval(self):
         self.storage.save_list("questions.json", [Question(id="q-http", ocr_text="synthetic")])
         app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
         app.include_router(question_api.router)
         app.dependency_overrides[question_api.get_storage] = lambda: self.storage
         provider = AsyncMock(return_value=json.dumps({
@@ -718,6 +721,22 @@ class QuestionFlowTests(unittest.TestCase):
             result = client.post("/questions/q-http/analyze", json={"consent_id": approved.json()["consent_id"]})
             self.assertEqual(result.status_code, 200)
             provider.assert_awaited_once()
+
+    def test_oversized_question_patch_validation_does_not_echo_private_text(self):
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(question_api.router)
+        app.dependency_overrides[question_api.get_storage] = lambda: self.storage
+        private_text = "private-synthetic-question-" * (MAX_QUESTION_TEXT_BYTES // 10)
+
+        with TestClient(app) as client:
+            response = client.patch("/questions/q1", json={
+                "subject": "Math", "topic": "Synthetic", "ocr_text": private_text,
+            })
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json(), {"detail": "Invalid request"})
+        self.assertNotIn(private_text, response.text)
 
     def test_question_or_endpoint_change_invalidates_pending_consent(self):
         self.storage.save_list("questions.json", [Question(id="q1", ocr_text="before")])

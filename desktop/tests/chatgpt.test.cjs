@@ -75,6 +75,8 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
   const learningEvidenceDraftRequests = []
   let questionDraft = { status: 'incomplete', fields: {}, verified_evidence: {}, evidence_claims: [], missing: ['question_text'], ambiguous: {}, questions: ['Paste the exact problem text as one message.'], expected_field: 'question_text', preview_digest: null, write_allowed: false }
   const questionDraftRequests = []
+  let examDraft = { status: 'incomplete', fields: { date: '2026-11-16' }, verified_evidence: {}, evidence_claims: [], missing: ['subject'], ambiguous: {}, questions: ['Which subject was this exam for?'], expected_field: 'subject', state_token: 'opaque-exam-state', preview_digest: null, write_allowed: false }
+  const examDraftRequests = []
   const tokenBodies = []
   const calls = []
   const encryptionKey = crypto.randomBytes(32)
@@ -142,6 +144,10 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
       questionDraftRequests.push(JSON.parse(options.body))
       return Response.json(questionDraft)
     }
+    if (String(url) === 'http://127.0.0.1:43210/exams/agent-draft') {
+      examDraftRequests.push(JSON.parse(options.body))
+      return Response.json(examDraft)
+    }
     if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({
       pending_questions: 3, scheduled_questions: 2,
       topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: {} }],
@@ -168,7 +174,9 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
     setPracticeDraft: (value) => { practiceDraft = value },
     setLearningEvidenceDraft: (value) => { learningEvidenceDraft = value },
     setQuestionDraft: (value) => { questionDraft = value },
+    setExamDraft: (value) => { examDraft = value },
     getQuestionDraftRequests: () => questionDraftRequests,
+    getExamDraftRequests: () => examDraftRequests,
     getLearningEvidenceDraftRequests: () => learningEvidenceDraftRequests,
     getPracticeDraft: () => practiceDraft,
     getPracticeDraftRequests: () => practiceDraftRequests,
@@ -411,6 +419,43 @@ test('question-entry sends one strict latest-turn quote to local host and return
   assert.equal(JSON.parse(followup.input[4].output).write_allowed, false)
   assert.equal(testApp.calls.some(({ url }) => url.endsWith('/questions/agent-create')), false)
   assert.equal(testApp.calls.some(({ url }) => url.endsWith('/questions/insights')), false)
+})
+
+test('exam-entry sends one exact latest-turn quote to local host and returns a preview without creating a record', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['2026-11-16']
+  const claims = [{ field: 'date', quote: messages[0] }]
+  const call = { type: 'function_call', id: 'fc_exam', call_id: 'call_exam', name: 'hamartia_exam_prepare', arguments: JSON.stringify({ evidence: claims }), status: 'completed' }
+  const draft = {
+    status: 'incomplete', language: 'tr', fields: { date: messages[0] }, verified_evidence: {},
+    evidence_claims: claims, missing: ['subject'], ambiguous: {}, questions: ['Bu deneme hangi dersti?'],
+    expected_field: 'subject', state_token: 'opaque-exam-state', preview_digest: null, write_allowed: false,
+  }
+  const reasoningItem = { type: 'reasoning', id: 'rs_exam', summary: [] }
+  testApp.setExamDraft(draft)
+  testApp.setResponseStreams([
+    [{ type: 'response.completed', response: { id: 'exam-1', output: [reasoningItem, call] } }],
+  ])
+  const result = await testApp.client.chat({
+    requestId: 'request-exam-0001', message: messages[0], model: 'model-a', language: 'tr', workflow: 'exam-entry',
+    messages, expected_exam_field: 'date', exam_state_token: null,
+    scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7,
+  }, () => assert.fail('Exam evidence tool output must never stream to the renderer.'))
+  assert.equal(result.status, 'completed')
+  assert.deepEqual(result.draft, draft)
+  const [initial] = testApp.getResponseRequests()
+  assert.match(initial.instructions, /entire newest student answer/i)
+  assert.equal(initial.store, false)
+  assert.deepEqual(initial.input[0].tools[0].parameters.properties.evidence.items.properties.field.enum,
+    ['date', 'subject', 'correct', 'incorrect', 'blank', 'duration_minutes', 'duration_seconds'])
+  assert.deepEqual(testApp.getExamDraftRequests(), [{
+    messages, language: 'tr', expected_exam_field: 'date', state_token: null,
+    scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7, evidence_claims: claims,
+  }])
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/agent-create')), false)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/insights')), false)
 })
 
 test('learning-evidence carries only opaque signed state into the next host preview', async (t) => {

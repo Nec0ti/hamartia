@@ -30,6 +30,11 @@ from app.services.study_agent_question import (
     prepare_question_capture,
     provider_tool_parameters as question_tool_parameters,
 )
+from app.services.study_agent_exam import (
+    EXAM_TOOL_NAME,
+    ExamToolArguments,
+    provider_tool_parameters as exam_tool_parameters,
+)
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -366,6 +371,49 @@ class AIService:
         if final_message.tool_calls:
             raise ValueError("The configured endpoint attempted an additional question-capture tool call.")
         return prepared
+
+    async def study_exam_prepare(self, messages: list[str], language: str, expected_field: str) -> dict:
+        """Request only one exact current-turn exam quote from the configured provider."""
+        client = await self._ensure_async()
+        system = (
+            "You are Hamartia's branch-exam evidence assistant. Use the one available tool exactly once. "
+            f"The host currently expects only `{expected_field}`. Submit one exact quote that is the entire newest student message, "
+            "with that field name. The host will parse the value using the field-specific prompt; never send a value, date inference, "
+            "exam type, scoring profile, ID, net, XP, transcript modification, or write instruction. "
+            "Do not guess, normalize, paraphrase, or use an earlier turn. If the newest turn is unclear, return an empty evidence list. "
+            "Answer in " + ("Turkish" if language == "tr" else "English") + "."
+        )
+        transcript = {"role": "user", "content": json.dumps({"student_messages": messages}, ensure_ascii=False)}
+        function_tool = {
+            "type": "function",
+            "function": {
+                "name": EXAM_TOOL_NAME,
+                "description": "Submit one exact current-turn quote for host verification and a read-only branch-exam preview.",
+                "parameters": exam_tool_parameters(),
+                "strict": True,
+            },
+        }
+        response = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "system", "content": system}, transcript],
+            tools=[function_tool],
+            tool_choice={"type": "function", "function": {"name": EXAM_TOOL_NAME}},
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        message = response.choices[0].message
+        calls = message.tool_calls or []
+        if message.content not in (None, "") or len(calls) != 1:
+            raise ValueError("The configured endpoint did not return exactly one exam evidence tool call.")
+        call = calls[0]
+        if call.type != "function" or call.function.name != EXAM_TOOL_NAME or not call.id:
+            raise ValueError("The configured endpoint returned an unsupported exam tool call.")
+        try:
+            arguments = json.loads(call.function.arguments)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("The configured endpoint returned malformed exam evidence arguments.") from exc
+        tool_arguments = ExamToolArguments.model_validate(arguments)
+        return {"current_evidence_claims": [item.model_dump() for item in tool_arguments.evidence]}
 
     def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:
         content = [{

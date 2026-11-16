@@ -75,3 +75,17 @@ test('Study Agent missed-question capture explains exact text, optional skips, p
   assert.match(translate('agent.questionCaptureNoWrite', 'en'), /Only approval saves the record/)
   assert.equal(translate('agent.questionCaptureSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
 })
+
+test('Study Agent branch-exam capture describes explicit fields, host scoring, and approval in both languages', () => {
+  assert.equal(translate('agent.workflowExam', 'en'), 'Capture a branch exam')
+  assert.equal(translate('agent.workflowExam', 'tr'), 'Branş denemesi kaydet')
+  assert.match(translate('agent.examCaptureHint', 'en'), /one single-subject branch exam/)
+  assert.match(translate('agent.examCaptureHint', 'tr'), /Tek dersli bir branş denemesi/)
+  assert.match(translate('agent.examCaptureHint', 'en'), /never assumes today, counts, timing, exam type, or score/)
+  assert.match(translate('agent.examCapturePrompt', 'tr'), /YYYY-MM-DD/)
+  assert.match(translate('agent.examCaptureConsent', 'en'), /only the student messages/)
+  assert.match(translate('agent.examCaptureLocalConsent', 'tr', { endpoint: 'https://provider.example/v1', key: 'anahtar bilgisi' }), /yapılandırılmış uç noktaya gönderilir/)
+  assert.match(translate('agent.examCaptureNoWrite', 'en'), /Only approval saves it/)
+  assert.match(translate('agent.examCaptureNoWrite', 'tr'), /yalnızca onayın kaydeder/)
+  assert.equal(translate('agent.examCaptureSave', 'tr'), 'Bu önizlemeyi onayla ve kaydet')
+})

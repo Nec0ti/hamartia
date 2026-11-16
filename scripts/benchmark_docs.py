@@ -344,6 +344,34 @@ def run_integrity() -> dict:
         if en_anchor_order != tr_anchor_order:
             errors.append(f"EN/TR h2 anchor order differs for {page}")
 
+    exam_doc_requirements = {
+        ("en", "study-agent"): ("branch-exam-capture", (
+            "current student transcript", "expected field", "scoring-profile id/version",
+            "never sent to the provider", "computes net/xp",
+        )),
+        ("tr", "study-agent"): ("branch-exam-capture", (
+            "mevcut öğrenci konuşmasını", "beklediği alanı", "profili kimliği/sürümü",
+            "sağlayıcıya gönderilmez", "net/xp hesaplar",
+        )),
+        ("en", "privacy-and-consent"): ("branch-exam-data", (
+            "current student transcript", "expected field", "scoring-profile id/version",
+            "record ids remain host-side", "computes net/xp",
+        )),
+        ("tr", "privacy-and-consent"): ("branch-exam-data", (
+            "mevcut öğrenci konuşmasını", "beklenen alanı", "profili kimliği/sürümü",
+            "kayıt kimlikleri ana bilgisayarda kalır", "net/xp hesaplar",
+        )),
+    }
+    for (locale, page), (section_id, required_phrases) in exam_doc_requirements.items():
+        if (locale, page) not in pages:
+            errors.append(f"Missing {locale} {page} page required for branch-exam data-flow docs")
+            continue
+        section = " ".join(pages[(locale, page)][1].sections.get(section_id, []))
+        section = normalized(section)
+        for phrase in required_phrases:
+            if normalized(phrase) not in section:
+                errors.append(f"{locale} {page} #{section_id} omits required branch-exam data-flow detail: {phrase}")
+
     tasks = read_json(TASKS_PATH)
     key = read_json(KEY_PATH)
     decoys = read_json(DECOYS_PATH)

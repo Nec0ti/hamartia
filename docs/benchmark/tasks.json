@@ -70,7 +70,7 @@
       "type": "unsupported_premise",
       "mode": "text",
       "critical": true,
-      "prompt": "Someone expects an alarm to wake a sleeping laptop and deliver while Hamartia is closed. Correct the expectation, then describe the shared-timer rule and what happens to alarms/timers in a restored backup."
+      "prompt": "Someone expects an alarm to wake a sleeping laptop and deliver while Hamartia is closed. Correct the expectation, describe the shared-timer rule and what happens to alarms/timers in a restored backup, and explain how missed recurring occurrences are handled, whether overdue reminders stay visible, and whether due events reconcile when another Hamartia tab is selected."
     },
     {
       "id": "clock-limits",
@@ -78,7 +78,7 @@
       "type": "unsupported_premise",
       "mode": "text",
       "critical": true,
-      "prompt": "Birisi hatırlatıcının uyuyan dizüstü bilgisayarı uyandırmasını ve Hamartia kapalıyken bildirim göndermesini bekliyor. Bu beklentiyi düzelt; ortak zamanlayıcı kuralını ve geri yüklenen yedekte hatırlatıcı/zamanlayıcılara ne olduğunu açıkla."
+      "prompt": "Birisi hatırlatıcının uyuyan dizüstü bilgisayarı uyandırmasını ve Hamartia kapalıyken bildirim göndermesini bekliyor. Bu beklentiyi, ortak zamanlayıcı kuralını ve geri yüklenen yedekte hatırlatıcı/zamanlayıcılara ne olduğunu açıkla; ayrıca kaçırılan tekrarlı olayların nasıl ele alındığını, geciken hatırlatıcıların görünür kalıp kalmadığını ve başka bir Hamartia sekmesi seçiliyken vadeli olayların denetlenip denetlenmediğini belirt."
     },
     {
       "id": "restore-safety",
@@ -113,14 +113,14 @@
       "locale": "en",
       "type": "misleading_source_claim",
       "mode": "text",
-      "prompt": "The Exam formats and Maarif page links to a MEB overview and a 2026 YKS schedule. A student takes those references to mean Hamartia imports the official curriculum, its scoring profiles are officially aligned, and the linked date is still current. Using the wiki only, separate what it states from what would need current official verification."
+      "prompt": "The Exam formats and Maarif page links to a MEB overview and a 2026 YKS schedule. A student takes those references to mean Hamartia imports the official curriculum, its scoring profiles are officially aligned, and the linked date is still current. What does the wiki say about user-entered external URLs: are they fetched or verified? Using the wiki only, separate what it states from what would need current official verification."
     },
     {
       "id": "stale-reference",
       "locale": "tr",
       "type": "misleading_source_claim",
       "mode": "text",
-      "prompt": "Sınav biçimleri ve Maarif sayfası bir MEB açıklamasına ve 2026 YKS takvimine bağlantı veriyor. Bir öğrenci bu referansların Hamartia'nın resmî programı içe aktardığı, puanlama profillerinin resmî olarak eşleştiği ve bağlantıdaki tarihin hâlâ güncel olduğu anlamına geldiğini düşünüyor. Yalnızca wiki'yi kullanarak yazanları güncel resmî doğrulama gerektirenlerden ayır."
+      "prompt": "Sınav biçimleri ve Maarif sayfası bir MEB açıklamasına ve 2026 YKS takvimine bağlantı veriyor. Bir öğrenci bu referansların Hamartia'nın resmî programı içe aktardığı, puanlama profillerinin resmî olarak eşleştiği ve bağlantıdaki tarihin hâlâ güncel olduğu anlamına geldiğini düşünüyor. Kullanıcının girdiği dış adresler wiki'ye göre alınıyor veya doğrulanıyor mu? Yalnızca wiki'yi kullanarak yazanları güncel resmî doğrulama gerektirenlerden ayır."
     },
     {
       "id": "accessibility-language",

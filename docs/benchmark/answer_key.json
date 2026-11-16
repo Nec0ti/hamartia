@@ -686,8 +686,14 @@
         },
         {
           "points": 1,
-          "claim": "Due events are reconciled while the app is running, including another selected tab; overdue reminders stay visible.",
+          "claim": "Due events reconcile while another Hamartia tab is selected, and overdue reminders remain visible in Clock.",
           "evidence": [
+            {
+              "locale": "en",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Due events are reconciled while the app is running, including when another Hamartia tab is selected."
+            },
             {
               "locale": "en",
               "page": "clock-and-reminders",
@@ -753,8 +759,14 @@
         },
         {
           "points": 1,
-          "claim": "Geciken hatırlatıcılar Saat'te görünür kalır.",
+          "claim": "Başka bir Hamartia sekmesi seçiliyken de vadeli olaylar denetlenir; geciken hatırlatıcılar Saat’te görünür kalır.",
           "evidence": [
+            {
+              "locale": "tr",
+              "page": "clock-and-reminders",
+              "anchor": "alarms",
+              "quote": "Vadeli olaylar uygulama açıkken, Hamartia'nın başka sekmesi seçiliyken de denetlenir."
+            },
             {
               "locale": "tr",
               "page": "clock-and-reminders",

@@ -52,6 +52,8 @@ export const practice = {
 export const learningEvidence = {
   list: () => client.get('/learning-evidence').then((r) => r.data),
   create: (payload) => client.post('/learning-evidence', payload).then((r) => r.data),
+  agentDraft: (payload) => client.post('/learning-evidence/agent-draft', payload).then((r) => r.data),
+  agentCreate: (payload) => client.post('/learning-evidence/agent-create', payload).then((r) => r.data),
   update: (id, payload) => client.put(`/learning-evidence/${id}`, payload).then((r) => r.data),
   remove: (id) => client.delete(`/learning-evidence/${id}`).then((r) => r.data),
 }

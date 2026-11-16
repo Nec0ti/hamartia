@@ -35,6 +35,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
   const [profiles, setProfiles] = useState([LEGACY_PROFILE])
   const [scoringProfileRef, setScoringProfileRef] = useState('')
   const [studentMessages, setStudentMessages] = useState([])
+  const [expectedEvidenceField, setExpectedEvidenceField] = useState('activity')
   const [pendingPreview, setPendingPreview] = useState(null)
   const requestId = useRef('')
   const approvalRef = useRef(null)
@@ -149,7 +150,8 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     if (!consent || !message.trim() || (workflow === 'practice-entry' && !scoringProfileRef)
         || (provider === 'chatgpt' && !model) || busy) return
     const id = window.crypto.randomUUID()
-    const nextMessages = workflow === 'practice-entry' ? [...studentMessages, message.trim()] : null
+    const evidenceWorkflow = workflow === 'practice-entry' || workflow === 'learning-evidence-entry'
+    const nextMessages = evidenceWorkflow ? [...studentMessages, message.trim()] : null
     const profileSelection = workflow === 'practice-entry'
       ? (() => {
           const [scoring_profile_id, version] = scoringProfileRef.split('@')
@@ -164,7 +166,7 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     try {
       if (provider === 'local') {
         let context = ''
-        if (workflow === 'chat') {
+        if (!evidenceWorkflow) {
           const [insights, sessions] = await Promise.all([api.questions.insights(), api.practice.insights()])
           context = summarizeStudyAgentContext(insights, sessions)
         }
@@ -174,7 +176,8 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
           context,
           language,
           workflow,
-          ...(workflow === 'practice-entry' ? { messages: nextMessages } : {}),
+          ...(evidenceWorkflow ? { messages: nextMessages } : {}),
+          ...(workflow === 'learning-evidence-entry' ? { expected_evidence_field: expectedEvidenceField } : {}),
           ...profileSelection,
           endpoint: settings.litellm_base_url,
           model_name: settings.model_name,
@@ -182,21 +185,26 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
         })
         if (workflow === 'practice-entry') {
           displayPracticeDraft(nextMessages, result)
+        } else if (workflow === 'learning-evidence-entry') {
+          displayLearningEvidenceDraft(nextMessages, result)
         } else {
           setAnswer(result.answer)
           setMessage('')
         }
       } else {
-        const result = await desktop().chat({ requestId: id, message: message.trim(), model, language, workflow, messages: nextMessages || [], ...profileSelection, consent: true })
+        const result = await desktop().chat({ requestId: id, message: message.trim(), model, language, workflow, messages: nextMessages || [], ...profileSelection, ...(workflow === 'learning-evidence-entry' ? { expected_evidence_field: expectedEvidenceField } : {}), consent: true })
         if (result.status === 'failed') setError(result.detail)
         if (result.status === 'cancelled') setNotice(t('agent.cancelled'))
         if (result.status === 'completed' && workflow === 'practice-entry') {
           if (!result.draft || !Array.isArray(result.draft.questions)) throw new Error(t('agent.practiceProposalInvalid'))
           displayPracticeDraft(nextMessages, result.draft)
+        } else if (result.status === 'completed' && workflow === 'learning-evidence-entry') {
+          if (!result.draft || !Array.isArray(result.draft.questions)) throw new Error(t('agent.learningEvidenceInvalid'))
+          displayLearningEvidenceDraft(nextMessages, result.draft)
         } else if (result.status === 'completed') setMessage('')
       }
     } catch (e) {
-      setError(workflow === 'practice-entry' ? t('agent.practiceProposalInvalid') : e.response?.data?.detail || e.message || t('agent.requestError'))
+      setError(workflow === 'practice-entry' ? t('agent.practiceProposalInvalid') : workflow === 'learning-evidence-entry' ? t('agent.learningEvidenceInvalid') : e.response?.data?.detail || e.message || t('agent.requestError'))
     } finally {
       requestId.current = ''
       setBusy(false)
@@ -215,6 +223,15 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
       ...(!draft.questions?.length ? [draft.conflicts.length ? t('agent.practiceConflictReview') : t('agent.practicePreviewReady')] : []),
     ]
     setAnswer(response.join('\n'))
+  }
+
+  function displayLearningEvidenceDraft(messages, draft) {
+    approvalRef.current = null
+    setStudentMessages(messages)
+    setMessage('')
+    setPendingPreview(draft.preview_digest ? draft : null)
+    setExpectedEvidenceField(draft.expected_field || 'activity')
+    setAnswer(draft.preview_digest ? t('agent.learningEvidencePreviewReady') : (draft.questions || []).join('\n'))
   }
 
   async function approvePractice(duplicateChoice = null) {
@@ -256,6 +273,39 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
     }
   }
 
+  async function approveLearningEvidence() {
+    if (!pendingPreview || !window.confirm(t('agent.confirmLearningEvidenceSave'))) return
+    if (approvalRef.current?.digest !== pendingPreview.preview_digest) {
+      approvalRef.current = { digest: pendingPreview.preview_digest, id: window.crypto.randomUUID() }
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await api.learningEvidence.agentCreate({
+        messages: studentMessages,
+        language: pendingPreview.language,
+        evidence_claims: pendingPreview.evidence_claims,
+        fields: pendingPreview.fields,
+        evidence: pendingPreview.verified_evidence,
+        preview_digest: pendingPreview.preview_digest,
+        approval_id: approvalRef.current.id,
+      })
+      approvalRef.current = null
+      setPendingPreview(null)
+      setStudentMessages([])
+      setExpectedEvidenceField('activity')
+      setAnswer(t('agent.learningEvidenceSaved'))
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message || t('agent.requestError'))
+      if (e.response?.status === 409) {
+        setPendingPreview(null)
+        approvalRef.current = null
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function cancel() {
     if (requestId.current) await desktop()?.cancel(requestId.current)
   }
@@ -280,9 +330,10 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm text-canvas-muted">{t('agent.provider')}<select value={provider} disabled={busy} onChange={(event) => { setProvider(event.target.value); consentedSettings.current = null; setConsent(false); setAnswer(''); setPendingPreview(null); setError('') }} className="mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text"><option value="chatgpt">{t('agent.chatgptProvider')}</option><option value="local">{t('agent.configuredProvider')}</option></select></label>
-          <label className="block text-sm text-canvas-muted">{t('agent.workflow')}<select value={workflow} disabled={busy} onChange={(event) => { setWorkflow(event.target.value); setStudentMessages([]); setPendingPreview(null); setAnswer(''); setError('') }} className="mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text"><option value="chat">{t('agent.workflowChat')}</option><option value="practice-entry">{t('agent.workflowPractice')}</option></select></label>
+          <label className="block text-sm text-canvas-muted">{t('agent.workflow')}<select value={workflow} disabled={busy} onChange={(event) => { setWorkflow(event.target.value); setStudentMessages([]); setExpectedEvidenceField('activity'); setPendingPreview(null); approvalRef.current = null; setAnswer(''); setError('') }} className="mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text"><option value="chat">{t('agent.workflowChat')}</option><option value="practice-entry">{t('agent.workflowPractice')}</option><option value="learning-evidence-entry">{t('agent.workflowLearningEvidence')}</option></select></label>
         </div>
         {workflow === 'practice-entry' && <p className="mt-3 text-sm leading-relaxed text-canvas-muted">{t('agent.practiceEntryHint')}</p>}
+        {workflow === 'learning-evidence-entry' && <p className="mt-3 text-sm leading-relaxed text-canvas-muted">{t('agent.learningEvidenceHint')}</p>}
         {provider === 'local' && <p className="mt-2 max-w-3xl text-xs leading-relaxed text-canvas-muted">{t('agent.configuredProviderInfo')} <a href="https://nec0ti.github.io/hamartia/study-agent/#local-servers" target="_blank" rel="noopener noreferrer" className="text-canvas-text underline">{t('agent.configuredProviderGuide')}</a></p>}
         {provider === 'chatgpt' && (!connection?.connected ? <div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={signIn} disabled={busy || !connection || connection?.unavailable || connection?.recoveryRequired} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2.5 font-semibold text-canvas-base disabled:opacity-50"><LogIn size={17} />{t('agent.signIn')}</button>{connection?.savedAccount && <button type="button" onClick={forgetAccount} disabled={busy} className="rounded-lg border border-canvas-line px-4 py-2.5 text-sm text-canvas-text disabled:opacity-50">{t('agent.useDifferentAccount')}</button>}</div> : <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="text-sm text-canvas-text">{connection.email || t('agent.connected')}</span>
@@ -298,24 +349,30 @@ export default function StudyAgentTab({ settings, settingsOpen, onOpenSettings }
 
       {canSend && <div className="space-y-4 rounded-2xl border border-canvas-line bg-canvas-panel p-5">
         {provider === 'chatgpt' && <label className="block text-sm text-canvas-muted">{t('agent.model')}<select value={model} onChange={(event) => setModel(event.target.value)} className="mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text">{models.map((item) => <option key={item.slug} value={item.slug}>{item.display_name}</option>)}</select></label>}
-        {workflow === 'practice-entry' && studentMessages.length > 0 && <ol className="max-h-48 space-y-2 overflow-auto rounded-lg bg-canvas-base p-3 text-sm text-canvas-muted" aria-label={t('agent.workflowPractice')}>{studentMessages.map((item, index) => <li key={index} className="whitespace-pre-wrap">{item}</li>)}</ol>}
+        {workflow !== 'chat' && studentMessages.length > 0 && <ol className="max-h-48 space-y-2 overflow-auto rounded-lg bg-canvas-base p-3 text-sm text-canvas-muted" aria-label={workflow === 'practice-entry' ? t('agent.workflowPractice') : t('agent.workflowLearningEvidence')}>{studentMessages.map((item, index) => <li key={index} className="whitespace-pre-wrap">{item}</li>)}</ol>}
         {workflow === 'practice-entry' && <label className="block text-sm text-canvas-muted">{t('study.scoringProfile')}<select aria-label={t('study.scoringProfile')} required value={scoringProfileRef} onChange={(event) => { setScoringProfileRef(event.target.value); setPendingPreview(null); approvalRef.current = null }} className="mt-1 w-full rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text"><option value="">{t('study.chooseScoringProfile')}</option>{profiles.map((item) => <option key={`${item.profile_id}@${item.version}`} value={`${item.profile_id}@${item.version}`}>{item.display_name} · v{item.version}</option>)}</select></label>}
-        <label className="block text-sm text-canvas-muted">{workflow === 'practice-entry' ? t('agent.practiceEntryPrompt') : t('agent.question')}<textarea value={message} onChange={(event) => { setMessage(event.target.value); if (workflow === 'practice-entry') setPendingPreview(null) }} maxLength={4000} rows={4} className="mt-1 w-full resize-y rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text" placeholder={workflow === 'practice-entry' ? t('agent.practiceEntryPrompt') : t('agent.questionPlaceholder')} /></label>
-        <label className="flex items-start gap-2 text-xs leading-relaxed text-canvas-muted"><input type="checkbox" checked={consent} onChange={(event) => { const accepted = event.target.checked; consentedSettings.current = accepted && provider === 'local' ? settings : null; setConsent(accepted) }} className="mt-0.5 accent-canvas-accent" />{workflow === 'practice-entry' ? provider === 'chatgpt' ? t('agent.practiceEntryConsent') : t('agent.practiceEntryLocalConsent', { endpoint: configuredEndpoint, key: settings?.has_api_key ? t('agent.localKeySent') : t('agent.localNoKey') }) : provider === 'chatgpt' ? t('agent.consent') : t('agent.localConsent', { endpoint: configuredEndpoint, key: settings?.has_api_key ? t('agent.localKeySent') : t('agent.localNoKey') })}</label>
+        <label className="block text-sm text-canvas-muted">{workflow === 'practice-entry' ? t('agent.practiceEntryPrompt') : workflow === 'learning-evidence-entry' ? t('agent.learningEvidencePrompt') : t('agent.question')}<textarea value={message} onChange={(event) => { setMessage(event.target.value); if (workflow !== 'chat') { setPendingPreview(null); approvalRef.current = null } }} maxLength={4000} rows={4} className="mt-1 w-full resize-y rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-canvas-text" placeholder={workflow === 'practice-entry' ? t('agent.practiceEntryPrompt') : workflow === 'learning-evidence-entry' ? t('agent.learningEvidencePrompt') : t('agent.questionPlaceholder')} /></label>
+        <label className="flex items-start gap-2 text-xs leading-relaxed text-canvas-muted"><input type="checkbox" checked={consent} onChange={(event) => { const accepted = event.target.checked; consentedSettings.current = accepted && provider === 'local' ? settings : null; setConsent(accepted) }} className="mt-0.5 accent-canvas-accent" />{workflow === 'practice-entry' ? provider === 'chatgpt' ? t('agent.practiceEntryConsent') : t('agent.practiceEntryLocalConsent', { endpoint: configuredEndpoint, key: settings?.has_api_key ? t('agent.localKeySent') : t('agent.localNoKey') }) : workflow === 'learning-evidence-entry' ? provider === 'chatgpt' ? t('agent.learningEvidenceConsent') : t('agent.learningEvidenceLocalConsent', { endpoint: configuredEndpoint, key: settings?.has_api_key ? t('agent.localKeySent') : t('agent.localNoKey') }) : provider === 'chatgpt' ? t('agent.consent') : t('agent.localConsent', { endpoint: configuredEndpoint, key: settings?.has_api_key ? t('agent.localKeySent') : t('agent.localNoKey') })}</label>
         <div className="flex gap-2">{busy ? provider === 'chatgpt' ? <button type="button" onClick={cancel} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-4 py-2 text-sm text-canvas-text"><Square size={14} />{t('agent.cancel')}</button> : <p role="status" className="text-sm text-canvas-muted">{t('agent.working')}</p> : <button type="button" onClick={send} disabled={!consent || (workflow === 'practice-entry' && !scoringProfileRef) || (provider === 'local' && (settingsOpen || consentedSettings.current !== settings)) || !message.trim() || (provider === 'chatgpt' && !model)} className="inline-flex items-center gap-2 rounded-lg bg-canvas-accent px-4 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50"><Send size={14} />{t('agent.send')}</button>}</div>
         {answer && <div className="whitespace-pre-wrap rounded-lg bg-canvas-base p-4 text-sm leading-relaxed text-canvas-text" aria-live="polite">{answer}</div>}
         {pendingPreview && <div className="space-y-3 rounded-xl border border-canvas-line bg-canvas-base p-4">
-          <div><h2 className="font-semibold text-canvas-text">{t('agent.practicePreviewTitle')}</h2><p className="mt-1 text-xs text-canvas-muted">{t('agent.practiceNoWrite')}</p></div>
-          <p className="rounded-lg bg-canvas-panel p-3 text-sm text-canvas-muted">{t('agent.practiceScoringRule', {
-            profile: pendingPreview.scoring_profile_snapshot.display_name,
-            version: pendingPreview.scoring_profile_snapshot.version,
-            correct: pendingPreview.scoring_profile_snapshot.scoring_rule.correct_points,
-            penalty: pendingPreview.scoring_profile_snapshot.scoring_rule.wrong_penalty,
-            blank: pendingPreview.scoring_profile_snapshot.scoring_rule.blank_points,
-          })}</p>
-          <dl className="grid gap-3 sm:grid-cols-2">{Object.entries(pendingPreview.fields).map(([field, value]) => <div key={field} className="rounded-lg bg-canvas-panel p-3"><dt className="text-xs text-canvas-muted">{t(`agent.practice.${field}`)}</dt><dd className="mt-1 break-words text-sm text-canvas-text">{value}</dd><dd className="mt-2 border-t border-canvas-line pt-2 text-xs text-canvas-muted">{t('agent.provenance')}: “{pendingPreview.evidence[field].quote}”</dd></div>)}</dl>
-          {pendingPreview.conflicts.length > 0 && <div className="rounded-lg border border-canvas-line p-3"><h3 className="text-sm font-semibold text-canvas-text">{t('agent.practice.conflicts')}</h3><ul className="mt-2 space-y-1 text-xs text-canvas-muted">{pendingPreview.conflicts.map((item) => <li key={item.id}>{item.date} · {item.subject} / {item.topic} · {item.correct}/{item.incorrect}/{item.blank}</li>)}</ul></div>}
-          <div className="flex flex-wrap gap-2">{pendingPreview.conflicts.length === 0 ? <button type="button" onClick={() => approvePractice()} disabled={busy} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('agent.practiceSave')}</button> : <button type="button" onClick={() => approvePractice('new')} disabled={busy} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('agent.practiceSaveNew')}</button>}<button type="button" onClick={() => setPendingPreview(null)} disabled={busy} className="rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50">{t('agent.practiceCancel')}</button></div>
+          {workflow === 'learning-evidence-entry' ? <>
+            <div><h2 className="font-semibold text-canvas-text">{t('agent.learningEvidencePreviewTitle')}</h2><p className="mt-1 text-xs text-canvas-muted">{t('agent.learningEvidenceNoWrite')}</p></div>
+            <dl className="grid gap-3 sm:grid-cols-2">{Object.entries(pendingPreview.fields).map(([field, value]) => <div key={field} className="rounded-lg bg-canvas-panel p-3"><dt className="text-xs text-canvas-muted">{t(`agent.learningEvidence.${field}`)}</dt><dd className="mt-1 break-words text-sm text-canvas-text">{value || t('agent.learningEvidenceOmitted')}</dd>{pendingPreview.verified_evidence[field] && <dd className="mt-2 border-t border-canvas-line pt-2 text-xs text-canvas-muted">{t('agent.provenance')}: “{pendingPreview.verified_evidence[field].quote}”</dd>}</div>)}</dl>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={approveLearningEvidence} disabled={busy} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('agent.learningEvidenceSave')}</button><button type="button" onClick={() => { setPendingPreview(null); approvalRef.current = null; setStudentMessages([]); setExpectedEvidenceField('activity'); setAnswer(t('agent.learningEvidenceCancelled')) }} disabled={busy} className="rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50">{t('agent.learningEvidenceCancel')}</button></div>
+          </> : <>
+            <div><h2 className="font-semibold text-canvas-text">{t('agent.practicePreviewTitle')}</h2><p className="mt-1 text-xs text-canvas-muted">{t('agent.practiceNoWrite')}</p></div>
+            <p className="rounded-lg bg-canvas-panel p-3 text-sm text-canvas-muted">{t('agent.practiceScoringRule', {
+              profile: pendingPreview.scoring_profile_snapshot.display_name,
+              version: pendingPreview.scoring_profile_snapshot.version,
+              correct: pendingPreview.scoring_profile_snapshot.scoring_rule.correct_points,
+              penalty: pendingPreview.scoring_profile_snapshot.scoring_rule.wrong_penalty,
+              blank: pendingPreview.scoring_profile_snapshot.scoring_rule.blank_points,
+            })}</p>
+            <dl className="grid gap-3 sm:grid-cols-2">{Object.entries(pendingPreview.fields).map(([field, value]) => <div key={field} className="rounded-lg bg-canvas-panel p-3"><dt className="text-xs text-canvas-muted">{t(`agent.practice.${field}`)}</dt><dd className="mt-1 break-words text-sm text-canvas-text">{value}</dd><dd className="mt-2 border-t border-canvas-line pt-2 text-xs text-canvas-muted">{t('agent.provenance')}: “{pendingPreview.evidence[field].quote}”</dd></div>)}</dl>
+            {pendingPreview.conflicts.length > 0 && <div className="rounded-lg border border-canvas-line p-3"><h3 className="text-sm font-semibold text-canvas-text">{t('agent.practice.conflicts')}</h3><ul className="mt-2 space-y-1 text-xs text-canvas-muted">{pendingPreview.conflicts.map((item) => <li key={item.id}>{item.date} · {item.subject} / {item.topic} · {item.correct}/{item.incorrect}/{item.blank}</li>)}</ul></div>}
+            <div className="flex flex-wrap gap-2">{pendingPreview.conflicts.length === 0 ? <button type="button" onClick={() => approvePractice()} disabled={busy} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('agent.practiceSave')}</button> : <button type="button" onClick={() => approvePractice('new')} disabled={busy} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base disabled:opacity-50">{t('agent.practiceSaveNew')}</button>}<button type="button" onClick={() => setPendingPreview(null)} disabled={busy} className="rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50">{t('agent.practiceCancel')}</button></div>
+          </>}
         </div>}
       </div>}
 

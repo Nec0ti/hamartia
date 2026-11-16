@@ -4,15 +4,15 @@ import unittest
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from app.api import questions
+from app.api import questions, study_agent
 from app.core.http_errors import safe_validation_error_handler
-from app.models.schemas import Question, QuestionDeletedApprovalLedger
+from app.models.schemas import Question, QuestionDeletedApprovalLedger, Settings
 from app.services.storage import StorageService
 from app.services.study_agent_question import (
     QUESTION_STATE_MAX_AGE_SECONDS,
@@ -274,6 +274,47 @@ class StudyAgentQuestionTests(unittest.TestCase):
         raw = (self.data_dir / "question_agent_approvals.json").read_text()
         self.assertNotIn(QUESTION_TEXT, raw)
         self.assertNotIn("Biology", raw)
+
+    def test_composed_configured_provider_rejects_old_turn_quote_even_without_prior_claims(self):
+        endpoint = "https://provider.example/v1"
+        self.storage.save_doc("settings.json", Settings(
+            litellm_base_url=endpoint, model_name="mock-model", api_key="",
+        ))
+        app = FastAPI()
+        app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
+        app.include_router(study_agent.router)
+        with patch.object(study_agent, "DATA_DIR", self.data_dir), patch.object(study_agent, "AIService") as service:
+            fake = service.return_value
+            fake.base_url = endpoint
+            with TestClient(app) as client:
+                first_text = "A triangle has sides 3, 4, and 5. Find its perimeter."
+                first_messages = [first_text]
+                fake.study_question_prepare = AsyncMock(return_value={"current_evidence_claims": []})
+                first = client.post("/study-agent/local", json={
+                    "consent": True, "message": first_text, "context": "", "language": "en",
+                    "endpoint": endpoint, "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "question-entry", "expected_question_field": "question_text",
+                    "messages": first_messages,
+                })
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertEqual(first.json()["status"], "incomplete")
+                token = first.json()["state_token"]
+                self.assertEqual(self.rows(), [])
+
+                newest_text = "A rectangle has width 4 and length 7. Find its area."
+                fake.study_question_prepare = AsyncMock(return_value={
+                    "current_evidence_claims": [{"field": "question_text", "quote": first_text}],
+                })
+                stale = client.post("/study-agent/local", json={
+                    "consent": True, "message": newest_text, "context": "", "language": "en",
+                    "endpoint": endpoint, "model_name": "mock-model", "has_api_key": False,
+                    "workflow": "question-entry", "expected_question_field": "question_text",
+                    "question_state_token": token, "messages": [*first_messages, newest_text],
+                })
+                self.assertEqual(stale.status_code, 422, stale.text)
+                self.assertIn("current host-expected student turn", stale.json()["detail"])
+                fake.study_question_prepare.assert_awaited_once()
+                self.assertEqual(self.rows(), [])
 
     def test_manual_multipart_question_creation_remains_available(self):
         response = self.client.post("/questions", data={"ocr_text": "manual text", "subject": "Math"})

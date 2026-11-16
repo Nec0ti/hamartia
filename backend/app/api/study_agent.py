@@ -10,9 +10,11 @@ from app.core.config import DATA_DIR
 from app.models.schemas import Settings
 from app.api.practice import AgentDraftRequest, practice_agent_draft
 from app.api.learning_evidence import build_learning_evidence_agent_draft
+from app.api.questions import build_question_agent_draft
 from app.services.ai_service import AIService
 from app.services.storage import StorageService
 from app.services.study_agent_learning_evidence import prepare_learning_evidence, resolve_learning_evidence_state_token
+from app.services.study_agent_question import prepare_question_capture, resolve_question_state_token
 
 router = APIRouter(prefix="/study-agent", tags=["study-agent"])
 
@@ -27,9 +29,11 @@ class LocalStudyRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
     model_name: str = Field(min_length=1, max_length=256)
     has_api_key: bool
-    workflow: Literal["chat", "practice-entry", "learning-evidence-entry"] = "chat"
+    workflow: Literal["chat", "practice-entry", "learning-evidence-entry", "question-entry"] = "chat"
     expected_evidence_field: Literal["activity", "subject", "topic", "date", "observation"] = "activity"
     state_token: str | None = Field(default=None, max_length=24_000)
+    expected_question_field: Literal["question_text", "subject", "topic"] = "question_text"
+    question_state_token: str | None = Field(default=None, max_length=24_000)
     messages: list[str] = Field(default_factory=list, max_length=30)
     scoring_profile_id: str | None = None
     scoring_profile_version: int | None = Field(default=None, ge=1)
@@ -119,6 +123,26 @@ async def configured_study_agent(payload: LocalStudyRequest):
             return build_learning_evidence_agent_draft(
                 payload.messages, payload.language, payload.expected_evidence_field,
                 prior_claims, prepared["evidence_claims"],
+            )
+        if payload.workflow == "question-entry":
+            if not payload.messages or any(not item.strip() or len(item) > 4000 for item in payload.messages):
+                raise HTTPException(status_code=422, detail="Provide at least one student message of up to 4,000 characters.")
+            try:
+                prior_claims = resolve_question_state_token(
+                    payload.question_state_token, payload.messages, payload.language,
+                ) if payload.question_state_token is not None or len(payload.messages) > 1 else []
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            prior = prepare_question_capture(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
+            expected = prior["expected_field"] if prior else "question_text"
+            if expected != payload.expected_question_field:
+                raise HTTPException(status_code=409, detail="The question-capture conversation changed. Review the current question again.")
+            prepared = await ai.study_question_prepare(
+                payload.messages, payload.language, expected, prior_claims,
+            )
+            return build_question_agent_draft(
+                payload.messages, payload.language, expected,
+                prior_claims, prepared["current_evidence_claims"],
             )
         answer = await ai.study_chat(payload.message.strip(), payload.context, payload.language)
     except HTTPException:

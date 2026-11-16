@@ -24,6 +24,12 @@ from app.services.study_agent_learning_evidence import (
     dispatch_provider_tool as dispatch_learning_evidence_tool,
     provider_tool_parameters as learning_evidence_tool_parameters,
 )
+from app.services.study_agent_question import (
+    QUESTION_TOOL_NAME,
+    QuestionToolArguments,
+    prepare_question_capture,
+    provider_tool_parameters as question_tool_parameters,
+)
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -285,6 +291,80 @@ class AIService:
         if final_message.tool_calls:
             raise ValueError("The configured endpoint attempted an additional learning-evidence tool call.")
         prepared["evidence_claims"] = current_claims
+        return prepared
+
+    async def study_question_prepare(
+        self, messages: list[str], language: str, expected_field: str,
+        prior_question_claims: list[dict] | None = None,
+    ) -> dict:
+        """Run an evidence-only tool cycle for text-only missed-question capture."""
+        client = await self._ensure_async()
+        system = (
+            "You are Hamartia's missed-question capture assistant. Use the one available tool exactly once. "
+            f"The host currently expects only `{expected_field}`. Provide one exact quote that is the entire current student message, "
+            "with that field name. For question_text, ask the student to paste the exact problem text as one complete message and not summarize it. "
+            "For subject/topic, quote only the exact answer in the current turn; if unknown, quote the student's explicit skip reply. "
+            "Do not send values, IDs, tags, analysis, curriculum metadata, images, URLs, or write instructions. Never guess or paraphrase. "
+            "After verification, ask only the localized host follow-up or briefly say the exact preview is ready. Answer in "
+            f"{'Turkish' if language == 'tr' else 'English'}."
+        )
+        transcript = {"role": "user", "content": json.dumps({"student_messages": messages}, ensure_ascii=False)}
+        function_tool = {
+            "type": "function",
+            "function": {
+                "name": QUESTION_TOOL_NAME,
+                "description": "Submit one exact current-turn quote for host verification and a read-only question preview.",
+                "parameters": question_tool_parameters(),
+                "strict": True,
+            },
+        }
+        response = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "system", "content": system}, transcript],
+            tools=[function_tool],
+            tool_choice={"type": "function", "function": {"name": QUESTION_TOOL_NAME}},
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        message = response.choices[0].message
+        calls = message.tool_calls or []
+        if message.content not in (None, "") or len(calls) != 1:
+            raise ValueError("The configured endpoint did not return exactly one question-capture tool call.")
+        call = calls[0]
+        if call.type != "function" or call.function.name != QUESTION_TOOL_NAME or not call.id:
+            raise ValueError("The configured endpoint returned an unsupported question-capture tool call.")
+        try:
+            arguments = json.loads(call.function.arguments)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("The configured endpoint returned malformed question-capture arguments.") from exc
+        tool_args = QuestionToolArguments.model_validate(arguments)
+        current_claims = [item.model_dump() for item in tool_args.evidence]
+        prepared = prepare_question_capture(messages, language, [*(prior_question_claims or []), *current_claims])
+        prepared["current_evidence_claims"] = current_claims
+        tool_result = {
+            key: prepared[key]
+            for key in ("status", "fields", "verified_evidence", "missing", "ambiguous", "questions", "preview_digest", "write_allowed")
+        }
+        followup = await client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system},
+                transcript,
+                {"role": "assistant", "tool_calls": [{
+                    "id": call.id,
+                    "type": "function",
+                    "function": {"name": QUESTION_TOOL_NAME, "arguments": call.function.arguments},
+                }]},
+                {"role": "tool", "tool_call_id": call.id, "content": json.dumps(tool_result, ensure_ascii=False)},
+            ],
+            tools=[function_tool],
+            tool_choice="none",
+            parallel_tool_calls=False,
+            temperature=0,
+        )
+        final_message = followup.choices[0].message
+        if final_message.tool_calls:
+            raise ValueError("The configured endpoint attempted an additional question-capture tool call.")
         return prepared
 
     def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:

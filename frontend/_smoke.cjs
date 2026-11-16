@@ -821,7 +821,8 @@ async function main() {
       { ...customProfile, scoring_rule: { correct_points: '1/1', wrong_penalty: '1/2', blank_points: '0/1' } })
     assert.deepEqual(await page.evaluate(() => ({ ...window.__mockAgentPayload, requestId: undefined })), {
       message: 'topic: Functions',
-      model: 'mock-model', language: 'en', workflow: 'practice-entry', messages: [practiceEntry, 'topic: Functions'], consent: true, requestId: undefined,
+      model: 'mock-model', language: 'en', workflow: 'practice-entry', messages: [practiceEntry, 'topic: Functions'], consent: true,
+      scoring_profile_id: customProfile.profile_id, scoring_profile_version: 1, requestId: undefined,
     })
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()

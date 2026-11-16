@@ -77,6 +77,57 @@ def build_question_agent_draft(
     return prepared
 
 
+class AgentQuestionDraftRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    messages: list[str] = Field(min_length=1, max_length=30)
+    language: Literal["en", "tr"]
+    expected_question_field: Literal["question_text", "subject", "topic"]
+    state_token: str | None = Field(default=None, max_length=24_000)
+    evidence_claims: list[QuestionQuote] = Field(max_length=1)
+
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, messages):
+        if any(not item.strip() or len(item) > 4000 for item in messages):
+            raise ValueError("Each student message must contain 1 to 4,000 characters.")
+        return messages
+
+
+class StrictQuestionCaptureFields(QuestionCaptureFields):
+    model_config = {"extra": "forbid"}
+
+
+class QuestionEvidenceItem(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    value: str = Field(max_length=MAX_QUESTION_TEXT_BYTES)
+    message_index: int = Field(ge=0, le=29)
+    quote: str = Field(min_length=1, max_length=MAX_QUESTION_TEXT_BYTES)
+    start: int = Field(ge=0, le=4000)
+    end: int = Field(ge=1, le=4000)
+    skipped: bool = False
+
+
+class AgentQuestionCreateRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    messages: list[str] = Field(min_length=1, max_length=30)
+    language: Literal["en", "tr"]
+    evidence_claims: list[QuestionQuote] = Field(min_length=3, max_length=3)
+    fields: StrictQuestionCaptureFields
+    evidence: dict[Literal["question_text", "subject", "topic"], QuestionEvidenceItem]
+    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approval_id: UUID
+
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, messages):
+        if any(not item.strip() or len(item) > 4000 for item in messages):
+            raise ValueError("Each student message must contain 1 to 4,000 characters.")
+        return messages
+
+
 def _utcnow() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -586,57 +637,6 @@ class ReviewRequest(BaseModel):
 class AttemptRequest(BaseModel):
     correct: bool
     attempt_day: date | None = None
-
-
-class AgentQuestionDraftRequest(BaseModel):
-    model_config = {"extra": "forbid"}
-
-    messages: list[str] = Field(min_length=1, max_length=30)
-    language: Literal["en", "tr"]
-    expected_question_field: Literal["question_text", "subject", "topic"]
-    state_token: str | None = Field(default=None, max_length=24_000)
-    evidence_claims: list[QuestionQuote] = Field(max_length=1)
-
-    @field_validator("messages")
-    @classmethod
-    def validate_messages(cls, messages):
-        if any(not item.strip() or len(item) > 4000 for item in messages):
-            raise ValueError("Each student message must contain 1 to 4,000 characters.")
-        return messages
-
-
-class StrictQuestionCaptureFields(QuestionCaptureFields):
-    model_config = {"extra": "forbid"}
-
-
-class QuestionEvidenceItem(BaseModel):
-    model_config = {"extra": "forbid"}
-
-    value: str = Field(max_length=MAX_QUESTION_TEXT_BYTES)
-    message_index: int = Field(ge=0, le=29)
-    quote: str = Field(min_length=1, max_length=MAX_QUESTION_TEXT_BYTES)
-    start: int = Field(ge=0, le=4000)
-    end: int = Field(ge=1, le=4000)
-    skipped: bool = False
-
-
-class AgentQuestionCreateRequest(BaseModel):
-    model_config = {"extra": "forbid"}
-
-    messages: list[str] = Field(min_length=1, max_length=30)
-    language: Literal["en", "tr"]
-    evidence_claims: list[QuestionQuote] = Field(min_length=3, max_length=3)
-    fields: StrictQuestionCaptureFields
-    evidence: dict[Literal["question_text", "subject", "topic"], QuestionEvidenceItem]
-    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
-    approval_id: UUID
-
-    @field_validator("messages")
-    @classmethod
-    def validate_messages(cls, messages):
-        if any(not item.strip() or len(item) > 4000 for item in messages):
-            raise ValueError("Each student message must contain 1 to 4,000 characters.")
-        return messages
 
 
 class QuestionUpdate(BaseModel):

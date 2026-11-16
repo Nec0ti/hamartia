@@ -1,6 +1,6 @@
 {
-  "task_set_id": "hamartia-wiki-retrieval-v1",
-  "version": 1,
+  "task_set_id": "hamartia-wiki-retrieval-v2",
+  "version": 2,
   "tasks": [
     {
       "id": "workflow-synthesis",
@@ -149,6 +149,52 @@
       "type": "multi_page_synthesis",
       "mode": "text",
       "prompt": "Bir öğrenci tamamlanmış çalışma eğilimini, uzun Saat süresini ve kendi işaretlediği doğru tekrarları puanının yükseleceğinin kanıtı olarak gösteriyor. Her kaydın neyi ölçtüğünü, wiki'ye göre hangi sonucun çıkarılamayacağını ayır."
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "A tutor creates a profile named “Official Maarif” with a custom 1/5 penalty, then edits it after several exams and practice sets. A student claims the name makes the rule official, all earlier scores will change, and practice sets grant XP. Separate what the name means, how saved rule versions behave, which records receive XP, and what evidence this gives about mastery."
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Bir öğretmen “Resmî Maarif” adlı, yanlışlara 1/5 ceza veren özel bir profil oluşturup birkaç deneme ve çalışma setinden sonra profili düzenliyor. Bir öğrenci adın kuralı resmî yaptığını, önceki tüm puanların değişeceğini ve çalışma setlerinin XP verdiğini iddia ediyor. Adın ne anlama geldiğini, kayıtlı kural sürümlerinin nasıl davrandığını, hangi kayıtların XP kazandırdığını ve bunun ustalık hakkında neyi kanıtladığını ayır."
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "A student uses Study Agent for study guidance, then considers “Prepare a practice set” and “Review with AI” for a saved question. Compare the data sent in all three paths, identify which endpoint may be remote, and state exactly when a provider request occurs. Do not treat a local-looking model name as proof of locality."
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "critical": true,
+      "prompt": "Bir öğrenci Çalışma Asistanı ile çalışma rehberliği alıyor; sonra kayıtlı bir soru için “Çalışma seti hazırla” ve “Yapay zekâ ile incele” seçeneklerini düşünüyor. Üç akışta gönderilen verileri karşılaştır, hangi uç noktanın uzak olabileceğini belirt ve sağlayıcı isteğinin tam olarak ne zaman gönderildiğini açıkla. Yerel görünen model adını yerellik kanıtı sayma."
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "en",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "Before transferring a backup, a student assumes it includes the configured API key because the endpoint is called “local,” and assumes a failed restore deletes the destination history. Reconcile the backup contents, key handling, restore validation/failure behavior, and what a successful restore does to existing records. Cite at least two wiki pages."
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "tr",
+      "type": "multi_page_synthesis",
+      "mode": "text",
+      "prompt": "Bir öğrenci yedeği aktarırken uç nokta “yerel” diye yapılandırılmış API anahtarının yedekte bulunduğunu ve başarısız geri yüklemenin hedefteki geçmişi sildiğini varsayıyor. Yedek içeriğini, anahtarın işlenişini, geri yükleme doğrulama/başarısızlık davranışını ve başarılı geri yüklemenin mevcut kayıtlara ne yaptığını uzlaştır. En az iki wiki sayfasına atıf yap."
     }
   ]
 }

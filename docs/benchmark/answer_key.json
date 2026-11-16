@@ -1,9 +1,9 @@
 {
-  "task_set_id": "hamartia-wiki-retrieval-v1",
+  "task_set_id": "hamartia-wiki-retrieval-v2",
   "scoring": {
     "points_per_task": 5,
-    "points_per_locale": 50,
-    "points_total": 100,
+    "points_per_locale": 65,
+    "points_total": 130,
     "minimum_total_percent": 90,
     "minimum_each_locale_percent": 85,
     "critical_tasks_require_full_credit": true,
@@ -1393,6 +1393,430 @@
               "page": "learning-evidence",
               "anchor": "what-it-does-not",
               "quote": "Uygulamada geçirilen süre, seri, XP ve zamanlayıcı kullanımı öğrenmenin arttığına kanıt değildir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Custom profile names and country labels are user configuration, not official exam rules or verified alignment.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "These labels and rules are user configuration, not official exam or national rules and not verified alignment with an authority or Maarif."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Editing a profile creates a new version; saved records keep their original rule snapshot.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Saved exams keep a snapshot of that rule, so editing a profile creates a new version without changing old results."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Completed practice sets store scoring-profile snapshots and trends are separated by profile/version.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Each completed practice set stores the selected versioned scoring-profile snapshot"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Exam XP uses a fixed raw-count activity formula, while practice sets grant no XP.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "XP remains based on the fixed raw-count activity formula and is not a score or measure of mastery."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Neither score nor XP establishes mastery.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Neither score nor XP is evidence of mastery."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profile-boundary",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Özel profil adları ve ülke etiketleri kullanıcı yapılandırmasıdır; resmî kural veya doğrulanmış eşleştirme değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Bu etiket ve kurallar kullanıcı yapılandırmasıdır; resmî sınav veya ulusal kural, yetkili kurum ya da Maarif ile doğrulanmış eşleştirme değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Profili düzenlemek yeni sürüm oluşturur; kayıtlı sonuçlar eski kural anlık görüntüsünü korur.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "Kaydedilen deneme bu kuralın anlık görüntüsünü saklar; profili düzenlemek eski sonuçları değiştirmeden yeni sürüm oluşturur."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Tamamlanan çalışma setleri puanlama profili anlık görüntüsünü saklar ve eğilimler profil/sürüme göre ayrılır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "practice",
+              "quote": "Tamamlanan her çalışma seti seçilen sürümlü puanlama profilinin anlık görüntüsünü"
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Deneme XP’si sabit ham-sayı etkinlik formülüne dayanır; çalışma setleri XP kazandırmaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-workflows",
+              "anchor": "exam",
+              "quote": "XP sabit ham-sayı etkinlik formülüne dayanır; puan veya ustalık ölçüsü değildir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Puan ve XP ustalık kanıtı değildir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "exam-formats-and-maarif",
+              "anchor": "supported",
+              "quote": "Puan veya XP ustalık kanıtı değildir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "en",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "After the consent screen, Study guidance sends the typed prompt and bounded saved-study summary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Study-guidance requests send the typed prompt plus a bounded summary of saved study counts"
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Before each Study Agent request, Hamartia displays a consent screen."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Prepare a practice set sends only student messages from that conversation, without saved records or summary.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "The Prepare a practice set mode is different: it sends only student messages from that practice-entry conversation, with no saved study records or summary."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Review with AI uses the configured OpenAI-compatible endpoint, which may be local or remote.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "analysis",
+              "quote": "configured OpenAI-compatible endpoint, which may be local or remote."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Question analysis shows the saved question/OCR text and filename fields and whether image bytes are included; only approval sends one request.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "saved question/OCR text and filename fields, whether image bytes are included"
+            },
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "analysis",
+              "quote": "Approving sends one request; cancel sends none."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A configured endpoint can be remote; names or compatibility do not prove local inference.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Local-looking model names and OpenAI compatibility do not prove where inference runs or who can access the service."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "provider-data-flow",
+      "locale": "tr",
+      "critical": true,
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Onay ekranından sonra çalışma rehberliği yazılan istemi ve sınırlı kayıtlı çalışma özetini gönderir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Çalışma rehberliği istekleri yazdığın istemi ve kaydedilmiş çalışma sayıları"
+            },
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Her Çalışma Asistanı isteğinden önce Hamartia onay ekranı gösterir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Çalışma seti hazırla yalnızca konuşmadaki öğrenci mesajlarını gönderir; kayıt veya özet göndermez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "consent",
+              "quote": "Çalışma seti hazırla modu farklıdır: bu konuşmada yalnızca öğrenci mesajlarını, kayıtlı çalışma verisi veya özeti olmadan gönderir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yapay zekâ ile incele yerel veya uzak olabilen yapılandırılmış OpenAI uyumlu uç noktayı kullanır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "Soru analizi kullanıcı tarafından ayrı başlatılır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Soru analizi kayıtlı soru/OCR metni ve dosya adı alanlarını, görsel verisinin eklenip eklenmediğini gösterir; yalnızca onay tek istek gönderir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "kayıtlı soru/OCR metni ve dosya adı alanlarını, görsel verisinin eklenip eklenmediğini"
+            },
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "question-data",
+              "quote": "Yalnızca açık onay tek istek gönderir; vazgeçmek sağlayıcı isteği göndermez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Yapılandırılmış uç nokta uzak olabilir; model adı ve uyumluluk çıkarımın yerini kanıtlamaz.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "study-agent",
+              "anchor": "endpoint",
+              "quote": "Yerel görünen model adları ve OpenAI uyumluluğu, çıkarımın nerede çalıştığını veya hizmete kimin erişebildiğini kanıtlamaz."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "en",
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Backups include records and settings except secret key material.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "The archive includes study records, learning-evidence reflections, optional local onboarding and student-profile data, question images, settings except secret key material, and Clock state."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "The configured endpoint API key is stored unencrypted in local settings and excluded from backups.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "privacy-and-consent",
+              "anchor": "credentials",
+              "quote": "The configured endpoint API key is stored unencrypted in local settings, not returned by the Settings API and not included in backups."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Restore validates paths, sizes, checksums, schemas, and referenced uploads before replacement.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Current restore validates archive paths, sizes, checksums, data schemas, and referenced uploads before replacing data."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A failed validation should leave current data in place.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "A failed validation should leave current data in place."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "A successful restore replaces, rather than merges, current records and first snapshots the existing folder.",
+          "evidence": [
+            {
+              "locale": "en",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Restore replaces current study data; Hamartia first saves a timestamped snapshot of the existing data folder."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backup-credentials",
+      "locale": "tr",
+      "criteria": [
+        {
+          "points": 1,
+          "claim": "Yedekler kayıtları ve gizli anahtar malzemesi hariç ayarları içerir.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "create",
+              "quote": "Arşiv çalışma kayıtlarını, öğrenme kanıtı yansımalarını, isteğe bağlı yerel ilk kullanım ve öğrenci profili verilerini, soru görsellerini, gizli anahtar malzemesi hariç ayarları ve Saat durumunu içerir."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Uç nokta API anahtarı yerel ayarlarda şifrelenmeden tutulur ve yedeğe eklenmez.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "privacy-and-consent",
+              "anchor": "credentials",
+              "quote": "Yapılandırılmış uç noktanın API anahtarı yerel ayarlarda şifrelenmeden tutulur, Ayarlar API'sinden döndürülmez ve yedeklere eklenmez."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Geri yükleme değiştirmeden önce yolları, boyutları, sağlama toplamlarını, şemaları ve yüklemeleri doğrular.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Güncel geri yükleme, veriyi değiştirmeden önce arşiv yollarını, boyutları, sağlama toplamlarını, veri şemalarını ve başvurulan yüklemeleri doğrular."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "older",
+              "quote": "Doğrulama başarısız olursa mevcut veri yerinde kalmalıdır."
+            }
+          ]
+        },
+        {
+          "points": 1,
+          "claim": "Başarılı geri yükleme mevcut kayıtları birleştirmez, değiştirir ve önce mevcut klasörün tarihli kopyasını alır.",
+          "evidence": [
+            {
+              "locale": "tr",
+              "page": "backup-and-restore",
+              "anchor": "restore",
+              "quote": "Geri yükleme mevcut çalışma verilerini değiştirir; Hamartia önce mevcut veri klasörünün tarihli bir kopyasını alır."
             }
           ]
         }

@@ -27,7 +27,7 @@ KEY_PATH = DOCS / "benchmark" / "answer_key.json"
 DECOYS_PATH = DOCS / "benchmark" / "decoys.json"
 PROTOCOL_PATH = DOCS / "benchmark" / "README.md"
 CHECKER_PATH = Path(__file__).resolve()
-DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-15-docs-benchmark-results.json"
+DEFAULT_OUTPUT = ROOT / "reports" / "2026-11-16-docs-benchmark-hardening-results.json"
 LOCALES = ("en", "tr")
 EXPECTED_PAGE_COUNT = 17
 
@@ -397,11 +397,11 @@ def run_integrity() -> dict:
     decoys = read_json(DECOYS_PATH)
     if tasks.get("task_set_id") != key.get("task_set_id"):
         errors.append("Task workbook and answer key task_set_id differ")
-    if tasks.get("version") != 1:
-        errors.append("Task set version must be explicitly versioned as 1")
+    if tasks.get("version") != 2:
+        errors.append("Task set version must be explicitly versioned as 2")
     scoring = key.get("scoring", {})
-    if (scoring.get("points_per_task"), scoring.get("points_per_locale"), scoring.get("points_total")) != (5, 50, 100):
-        errors.append("Rubric point totals must be five per task, 50 per locale, and 100 overall")
+    if (scoring.get("points_per_task"), scoring.get("points_per_locale"), scoring.get("points_total")) != (5, 65, 130):
+        errors.append("Rubric point totals must be five per task, 65 per locale, and 130 overall")
     if (scoring.get("minimum_total_percent"), scoring.get("minimum_each_locale_percent"), scoring.get("critical_tasks_require_full_credit")) != (90, 85, True):
         errors.append("Human gates must remain 90% overall, 85% per locale, and full credit on critical tasks")
     task_entries = tasks.get("tasks", [])
@@ -419,10 +419,10 @@ def run_integrity() -> dict:
             ui_task_counts[task["locale"]] += 1
         if not task.get("prompt", "").strip():
             errors.append(f"Task {task.get('id')!r}/{task.get('locale')!r} has no prompt")
-    if len(task_pairs) != 10 or any(locales != set(LOCALES) for locales in task_pairs.values()):
-        errors.append("Task corpus must contain 10 EN/TR paired prompts")
-    if len(task_entries) != 20:
-        errors.append(f"Expected 20 task prompts, got {len(task_entries)}")
+    if len(task_pairs) != 13 or any(locales != set(LOCALES) for locales in task_pairs.values()):
+        errors.append("Task corpus must contain 13 EN/TR paired prompts")
+    if len(task_entries) != 26:
+        errors.append(f"Expected 26 task prompts, got {len(task_entries)}")
     if any(count != 1 for count in ui_task_counts.values()):
         errors.append("Each locale must have exactly one fixed-viewport screenshot task")
     key_pairs: dict[tuple[str, str], dict] = {}
@@ -478,8 +478,8 @@ def run_integrity() -> dict:
                 section_text = normalized(" ".join(target_parser.sections[anchor]))
                 if not quote or normalized(quote) not in section_text:
                     errors.append(f"Evidence excerpt not found in rendered target section: {target_locale}/{page}#{anchor}: {quote!r}")
-    if len(key_entries) != 20 or len(key_pairs) != 20:
-        errors.append("Answer key must contain 20 unique localized rubrics")
+    if len(key_entries) != 26 or len(key_pairs) != 26:
+        errors.append("Answer key must contain 26 unique localized rubrics")
     if set(key_pairs) != task_localized_ids:
         errors.append("Answer-key entries do not exactly cover the localized task prompts")
     task_critical = {(task.get("id"), task.get("locale")) for task in task_entries if task.get("critical")}
@@ -489,7 +489,7 @@ def run_integrity() -> dict:
     for locale in LOCALES:
         locale_total = sum(sum(c.get("points", 0) for c in entry.get("criteria", [])) for entry in key_entries if entry.get("locale") == locale)
         if locale_total != key.get("scoring", {}).get("points_per_locale"):
-            errors.append(f"{locale} rubric total should be 50, got {locale_total}")
+            errors.append(f"{locale} rubric total should be 65, got {locale_total}")
     if sum(sum(c.get("points", 0) for c in entry.get("criteria", [])) for entry in key_entries) != key.get("scoring", {}).get("points_total"):
         errors.append("Overall rubric score should total 100")
 
@@ -532,7 +532,7 @@ def run_integrity() -> dict:
     rendered_files = [path for path in DOCS.rglob("*") if path.is_file() and "benchmark" not in path.relative_to(DOCS).parts]
     hash_sensitivity = verify_hash_sensitivity(rendered_files)
     return {
-        "benchmark": "hamartia-bilingual-docs-integrity-v1",
+        "benchmark": "hamartia-bilingual-docs-integrity-v2",
         "task_set_id": tasks["task_set_id"],
         "task_pack_sha256": files_digest([TASKS_PATH, KEY_PATH, DECOYS_PATH], ROOT),
         "rendered_wiki_sha256": files_digest(rendered_files, ROOT),

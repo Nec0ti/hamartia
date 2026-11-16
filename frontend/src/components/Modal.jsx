@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { X } from 'lucide-react'
 import { useI18n } from '../i18n.jsx'
 
@@ -6,8 +6,9 @@ import { useI18n } from '../i18n.jsx'
  * Reusable modal shell: layered backdrop, focus trap on Escape, and a
  * scroll lock while open. Children receive a compact `close` callback.
  */
-export default function Modal({ open, onClose, title, children, footer }) {
+export default function Modal({ open, onClose, title, descriptionId, children, footer }) {
   const { t } = useI18n()
+  const titleId = useId()
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -33,10 +34,12 @@ export default function Modal({ open, onClose, title, children, footer }) {
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         className="absolute right-4 top-4 z-10 w-full max-w-lg rounded-xl border border-canvas-line bg-canvas-panel p-6 shadow-glow"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-canvas-text">
+          <h2 id={titleId} className="text-lg font-semibold tracking-tight text-canvas-text">
             {title}
           </h2>
           <button

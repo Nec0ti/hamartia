@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2, FileImage, FileText, Pencil, Save, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import api, { API_BASE, handleApiError } from '../services/api'
+import Modal from '../components/Modal.jsx'
+import { prepareQuestionAnalysisConsent, sendApprovedQuestionAnalysis } from '../services/questionAnalysisConsent.js'
 import { useI18n } from '../i18n.jsx'
 import { fmtDate } from '../utils/formatters.js'
 
@@ -25,6 +27,7 @@ export default function QuestionsTab({ initialExam = null }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [analysisConsent, setAnalysisConsent] = useState(null)
   const fileInput = useRef(null)
 
   const load = useCallback(async () => {
@@ -80,7 +83,31 @@ export default function QuestionsTab({ initialExam = null }) {
     setBusy(true)
     setError('')
     try {
-      await api.questions.analyze(question.id)
+      const preview = await prepareQuestionAnalysisConsent(api.questions, question.id)
+      setAnalysisConsent({ questionId: question.id, preview })
+    } catch (e) {
+      setError(handleApiError(e, t).detail)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const dismissAnalysisConsent = () => {
+    if (analysisConsent) {
+      void sendApprovedQuestionAnalysis(api.questions, analysisConsent.questionId, analysisConsent.preview, false)
+    }
+    setAnalysisConsent(null)
+  }
+
+  const approveAnalysisConsent = async () => {
+    if (!analysisConsent || busy) return
+    const pending = analysisConsent
+    // Close and consume the UI's consent before starting; a failure requires a fresh preview.
+    setAnalysisConsent(null)
+    setBusy(true)
+    setError('')
+    try {
+      await sendApprovedQuestionAnalysis(api.questions, pending.questionId, pending.preview, true)
       await load()
     } catch (e) {
       setError(handleApiError(e, t).detail)
@@ -222,7 +249,7 @@ export default function QuestionsTab({ initialExam = null }) {
                 <select id={`tag-${question.id}`} value={question.hamartia_tag} onChange={(e) => tag(question, e.target.value)} className="rounded-lg border border-canvas-line bg-canvas-base px-3 py-2 text-sm text-canvas-text">
                   {TAGS.map((item) => <option key={item} value={item}>{tagLabel(item, t)}</option>)}
                 </select>
-                {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> {t('questions.reviewWithLocalAI')}</button>}
+                {!question.analysis && <button type="button" disabled={busy} onClick={() => analyze(question)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text disabled:opacity-50"><Sparkles size={14} /> {t('questions.reviewWithAI')}</button>}
                 {!question.reviewed_at && <button type="button" onClick={() => review(question, true)} className="inline-flex items-center gap-2 rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-text hover:bg-canvas-raise"><CheckCircle2 size={14} /> {t('questions.markReviewed')}</button>}
                 {question.reviewed_at && <><span className="inline-flex items-center gap-1 rounded-lg bg-canvas-raise px-3 py-2 text-xs text-canvas-text"><CheckCircle2 size={14} /> {t('questions.reviewedOn', { date: fmtDate(question.reviewed_at.slice(0, 10), locale) })}</span><button type="button" onClick={() => review(question, false)} className="rounded-lg px-2 py-2 text-xs text-canvas-muted underline hover:text-canvas-text">{t('questions.undoReview')}</button></>}
                 {hasCurriculumReference(question.curriculum_reference) && <CurriculumReferenceSummary value={question.curriculum_reference} t={t} />}
@@ -241,6 +268,39 @@ export default function QuestionsTab({ initialExam = null }) {
         ))}
       </section>
       <div className="flex items-center gap-2 text-xs text-canvas-muted"><FileImage size={14} /> {t('questions.imagesStoredLocally')}</div>
+      <Modal
+        open={Boolean(analysisConsent)}
+        onClose={dismissAnalysisConsent}
+        title={t('questions.aiConsentTitle')}
+        descriptionId="question-analysis-consent-description"
+        footer={analysisConsent && <>
+          <button type="button" autoFocus onClick={dismissAnalysisConsent} className="rounded-lg border border-canvas-line px-3 py-2 text-sm text-canvas-muted">{t('questions.aiConsentCancel')}</button>
+          <button type="button" onClick={approveAnalysisConsent} className="rounded-lg bg-canvas-accent px-3 py-2 text-sm font-semibold text-canvas-base">{t('questions.aiConsentApprove')}</button>
+        </>}
+      >
+        {analysisConsent && <div id="question-analysis-consent-description" className="space-y-4 text-sm text-canvas-muted">
+          <p>{t('questions.aiConsentEndpointNote')}</p>
+          <p className="rounded-lg bg-canvas-base p-3 font-medium text-canvas-text">{t('questions.aiConsentEndpoint', {
+            hostClass: t(analysisConsent.preview.endpoint_class === 'local' ? 'questions.aiConsentHostLocal' : 'questions.aiConsentHostRemote'),
+            authority: analysisConsent.preview.endpoint_authority,
+            scheme: analysisConsent.preview.scheme.toUpperCase(),
+            model: analysisConsent.preview.model,
+          })}</p>
+          <div>
+            <p className="font-medium text-canvas-text">{t('questions.aiConsentIncludes')}</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {analysisConsent.preview.payload.analysis_instructions_included && <li>{t('questions.aiConsentInstructions')}</li>}
+              {analysisConsent.preview.payload.ocr_text_included && <li>{analysisConsent.preview.payload.ocr_text_has_content ? t('questions.aiConsentQuestionText') : t('questions.aiConsentQuestionTextEmpty')}</li>}
+              {analysisConsent.preview.payload.image_filename_included && <li>{t('questions.aiConsentImageFilename')}</li>}
+              <li>{analysisConsent.preview.payload.saved_image_included ? t('questions.aiConsentSavedImage') : t('questions.aiConsentNoSavedImage')}</li>
+            </ul>
+          </div>
+          <div className="rounded-lg border border-canvas-line p-3">
+            <p>{t(analysisConsent.preview.auth_setting_category === 'blank' ? 'questions.aiConsentAuthSettingBlank' : analysisConsent.preview.auth_setting_category === 'placeholder' ? 'questions.aiConsentAuthSettingPlaceholder' : 'questions.aiConsentAuthSettingConfigured')}</p>
+            <p className="mt-1">{t(analysisConsent.preview.auth_value_category === 'placeholder' ? 'questions.aiConsentAuthValuePlaceholder' : 'questions.aiConsentAuthValueConfigured')}</p>
+          </div>
+        </div>}
+      </Modal>
     </div>
   )
 }

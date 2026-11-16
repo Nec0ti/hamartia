@@ -37,6 +37,18 @@ test('configured Study Agent server option is labeled in both locales with remot
   assert.match(translate('settings.localAiServerUrl', 'tr'), /yerel veya uzak/)
 })
 
+test('question analysis action and consent explain its configured endpoint and payload in both locales', () => {
+  assert.equal(translate('questions.reviewWithAI', 'en'), 'Review with AI')
+  assert.equal(translate('questions.reviewWithAI', 'tr'), 'Yapay zekâyla incele')
+  assert.match(translate('questions.aiConsentEndpointNote', 'en'), /may be local or remote/)
+  assert.match(translate('questions.aiConsentEndpointNote', 'tr'), /yerel veya uzak olabilir/)
+  assert.match(translate('questions.aiConsentEndpoint', 'en', { hostClass: 'remote', authority: 'provider.example.test:443', scheme: 'HTTPS', model: 'fixture' }), /provider\.example\.test:443/)
+  assert.match(translate('questions.aiConsentQuestionText', 'en'), /question \/ OCR text/)
+  assert.match(translate('questions.aiConsentSavedImage', 'tr'), /görselinin verisi/)
+  assert.match(translate('questions.aiConsentAuthValueConfigured', 'en'), /value is hidden/)
+  assert.match(translate('questions.aiConsentAuthValueConfigured', 'tr'), /değeri gösterilmez/)
+})
+
 test('Study Agent practice entry explains evidence, missing fields, and approval in both languages', () => {
   assert.match(translate('agent.practiceEntryHint', 'en'), /never fills them in/)
   assert.match(translate('agent.practiceEntryHint', 'tr'), /kendisi doldurmaz/)

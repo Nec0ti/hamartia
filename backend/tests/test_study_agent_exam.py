@@ -3,6 +3,7 @@ import unittest
 import uuid
 import json
 import zipfile
+from threading import Event
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -16,7 +17,7 @@ from app.api import study_agent
 from app.core.http_errors import safe_validation_error_handler
 from app.models.schemas import Exam, ExamDeletedApprovalLedger, ExamScoringProfile, Settings, legacy_yks_profile
 from app.services.backup import create_backup, restore_backup
-from app.services.storage import StorageService
+from app.services.storage import StorageService, data_mutation_lock
 from app.services.study_agent_exam import (
     EXAM_FIELDS,
     ExamQuote,
@@ -239,6 +240,48 @@ class StudyAgentExamTests(unittest.TestCase):
         replay = self.client.post("/exams/agent-create", json=body)
         self.assertEqual(replay.status_code, 409, replay.text)
         self.assertEqual(self.rows(), [])
+
+    def test_malformed_approval_holds_consume_lock_before_concurrent_valid_create(self):
+        response, messages, profile = self.complete_flow()
+        self.assertEqual(response.status_code, 200, response.text)
+        body = self.create_body(response.json(), messages, profile)
+        malformed = dict(body)
+        malformed["evidence_claims"] = [dict(claim) for claim in body["evidence_claims"]]
+        malformed["evidence_claims"][-1]["quote"] = "not the student answer"
+
+        prepare_entered = Event()
+        allow_prepare = Event()
+        valid_started = Event()
+        original_prepare = exams.prepare_exam_capture
+
+        def gated_prepare(*args, **kwargs):
+            # This proves semantic recomputation runs inside the same mutation
+            # lock that consumes an approval ID and appends its record.
+            self.assertTrue(data_mutation_lock(self.data_dir)._is_owned())
+            prepare_entered.set()
+            self.assertTrue(allow_prepare.wait(5), "test did not release gated validation")
+            self.assertEqual(self.rows(), [])
+            return original_prepare(*args, **kwargs)
+
+        def post_valid():
+            valid_started.set()
+            return self.client.post("/exams/agent-create", json=body)
+
+        with patch.object(exams, "prepare_exam_capture", side_effect=gated_prepare):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                malformed_future = pool.submit(self.client.post, "/exams/agent-create", json=malformed)
+                self.assertTrue(prepare_entered.wait(5), "malformed request did not reach validation")
+                valid_future = pool.submit(post_valid)
+                self.assertTrue(valid_started.wait(5), "valid concurrent request did not start")
+                self.assertFalse(valid_future.done(), "valid request passed the consume lock during validation")
+                self.assertEqual(self.rows(), [])
+                allow_prepare.set()
+                malformed_result = malformed_future.result(timeout=5)
+                valid_result = valid_future.result(timeout=5)
+
+        self.assertEqual(malformed_result.status_code, 422, malformed_result.text)
+        self.assertEqual(valid_result.status_code, 201, valid_result.text)
+        self.assertEqual(len(self.rows()), 1)
 
     def test_custom_profile_is_host_selected_and_profile_changes_invalidate_draft(self):
         custom = ExamScoringProfile(

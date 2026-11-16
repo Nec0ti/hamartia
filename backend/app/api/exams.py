@@ -147,9 +147,12 @@ async def exam_agent_create(payload: AgentExamCreateRequest, storage: StorageSer
         fingerprint_body, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
     record_id = f"{approval_prefix}{fingerprint}"
-    # An approval ID already consumed by a different body is a replay conflict,
-    # even if the altered preview itself no longer validates. Exact retries may
-    # return the row; both paths are rechecked again under the append lock below.
+    # Serialize consumed-ID checks, validation, recomputation, and append as one
+    # operation. If a malformed altered request wins the lock first, it returns
+    # 422 without consuming the ID; if another body has already consumed it, any
+    # later request with that ID deterministically returns 409 before parsing.
+    result: list[Exam] = []
+    conflict = ""
     with data_mutation_guard(storage.data_dir):
         ledger = storage.load_doc(AGENT_APPROVALS_FILE, ExamDeletedApprovalLedger) or ExamDeletedApprovalLedger()
         if payload.approval_id in ledger.approval_ids:
@@ -159,56 +162,49 @@ async def exam_agent_create(payload: AgentExamCreateRequest, storage: StorageSer
             if existing.id == record_id:
                 return existing
             raise HTTPException(status_code=409, detail="This approval ID was already used for different exam data.")
-    if not claims or len(claims) > len(EXAM_FIELDS):
-        raise HTTPException(status_code=422, detail="Branch-exam evidence must contain at most seven verified field quotes.")
-    if not claims or claims[-1]["message_index"] != len(payload.messages) - 1:
-        raise HTTPException(status_code=422, detail="The final exam answer must match the newest student turn.")
-    try:
-        prepared = prepare_exam_capture(
-            payload.messages, payload.language, claims[:-1],
-            [{"field": claims[-1]["field"], "quote": claims[-1]["quote"]}], profile,
+        if not claims or len(claims) > len(EXAM_FIELDS):
+            raise HTTPException(status_code=422, detail="Branch-exam evidence must contain at most seven verified field quotes.")
+        if claims[-1]["message_index"] != len(payload.messages) - 1:
+            raise HTTPException(status_code=422, detail="The final exam answer must match the newest student turn.")
+        try:
+            prepared = prepare_exam_capture(
+                payload.messages, payload.language, claims[:-1],
+                [{"field": claims[-1]["field"], "quote": claims[-1]["quote"]}], profile,
+            )
+        except (ValueError, ValidationError) as exc:
+            raise HTTPException(status_code=422, detail="The approved exam preview no longer matches its evidence.") from exc
+        if (prepared["status"] != "ready"
+                or prepared["fields"] != payload.fields.model_dump()
+                or prepared["verified_evidence"] != payload.evidence
+                or prepared["evidence_claims"] != claims
+                or prepared["derived"] != payload.derived):
+            raise HTTPException(status_code=422, detail="The approved exam preview does not match verified student evidence.")
+        if prepared["preview_digest"] != payload.preview_digest:
+            raise HTTPException(status_code=409, detail="The exam preview changed. Review it again before saving.")
+
+        record_fields = payload.fields.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"})
+        created_record = Exam(
+            id=record_id,
+            created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            scoring_profile=profile,
+            **record_fields,
         )
-    except (ValueError, ValidationError) as exc:
-        raise HTTPException(status_code=422, detail="The approved exam preview no longer matches its evidence.") from exc
-    if (prepared["status"] != "ready"
-            or prepared["fields"] != payload.fields.model_dump()
-            or prepared["verified_evidence"] != payload.evidence
-            or prepared["evidence_claims"] != claims
-            or prepared["derived"] != payload.derived):
-        raise HTTPException(status_code=422, detail="The approved exam preview does not match verified student evidence.")
-    if prepared["preview_digest"] != payload.preview_digest:
-        raise HTTPException(status_code=409, detail="The exam preview changed. Review it again before saving.")
 
-    record_fields = payload.fields.model_dump(exclude={"scoring_profile_id", "scoring_profile_version"})
-    created_record = Exam(
-        id=record_id,
-        created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-        scoring_profile=profile,
-        **record_fields,
-    )
-    result: list[Exam] = []
-    conflict = ""
-    ledger_model = ExamDeletedApprovalLedger
-    with data_mutation_guard(storage.data_dir):
-        ledger = storage.load_doc(AGENT_APPROVALS_FILE, ledger_model) or ledger_model()
-        if payload.approval_id in ledger.approval_ids:
-            conflict = "This approved exam was deleted and cannot be recreated by replay."
-        else:
-            def append_or_replay(exams):
-                nonlocal conflict
-                existing = next((item for item in exams if item.id.startswith(approval_prefix)), None)
-                if existing is not None:
-                    if (existing.id == record_id
-                            and existing.model_dump(exclude={"created_at"}) == created_record.model_dump(exclude={"created_at"})):
-                        result.append(existing)
-                    else:
-                        conflict = "This approval ID was already used for different exam data."
-                    return False
-                exams.append(created_record)
-                result.append(created_record)
-                return True
+        def append_or_replay(exams):
+            nonlocal conflict
+            existing = next((item for item in exams if item.id.startswith(approval_prefix)), None)
+            if existing is not None:
+                if (existing.id == record_id
+                        and existing.model_dump(exclude={"created_at"}) == created_record.model_dump(exclude={"created_at"})):
+                    result.append(existing)
+                else:
+                    conflict = "This approval ID was already used for different exam data."
+                return False
+            exams.append(created_record)
+            result.append(created_record)
+            return True
 
-            storage.update_list("exams.json", Exam, append_or_replay)
+        storage.update_list("exams.json", Exam, append_or_replay)
     if conflict:
         raise HTTPException(status_code=409, detail=conflict)
     if not result:

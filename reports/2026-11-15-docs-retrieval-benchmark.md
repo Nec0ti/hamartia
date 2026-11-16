@@ -1,5 +1,7 @@
 # Bilingual documentation retrieval benchmark
 
+> Historical record: this report describes benchmark v1 and its then-current 50-point-per-locale gates. Version 2 supersedes that pack and protocol; see [the v2 hardening report](2026-11-16-docs-benchmark-hardening.md). The v1 machine result remains preserved as an historical snapshot.
+
 ## Scope
 
 This PR adds a versioned, independently authored task pack for the shipped 17-page English and Turkish wiki. It contains ten paired natural-language tasks total (20 locale-specific prompts, ten per locale) and a separate five-point-per-task answer key with manually written criteria and exact page/anchor excerpts. The task set covers cross-page workflow synthesis, false and unsupported premises, privacy/provider boundaries, Clock delivery limits, backup replacement/snapshot semantics, review intervals, misleading/stale decoys, learning-claim limits, and fixed-viewport language-switch screenshots.

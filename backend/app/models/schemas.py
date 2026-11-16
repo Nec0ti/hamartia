@@ -638,6 +638,14 @@ class LearningEvidenceCreate(LearningEvidenceData):
     pass
 
 
+class LearningEvidenceDeletedApprovalLedger(BaseModel):
+    """Content-free approval IDs retained so deleted AI entries cannot replay."""
+
+    model_config = {"extra": "forbid"}
+
+    approval_ids: list[UUID] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Clock and active study timer (backend/data/clock.json)
 # ---------------------------------------------------------------------------

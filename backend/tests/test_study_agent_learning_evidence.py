@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import uuid
+import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -143,6 +144,20 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         self.assertEqual(result["fields"]["activity"], messages[0])
         self.assertEqual(result["language"], "tr")
 
+    def test_activity_is_preserved_as_qualified_self_report_without_completion_inference(self):
+        for activity in (
+            "I completed chapter 2 except the final section.",
+            "I worked on chapter 2.",
+            "Son bölüm hariç 2. bölümü tamamladım.",
+        ):
+            with self.subTest(activity=activity):
+                messages = [activity, *MESSAGES[1:]]
+                claims = [{**CLAIMS[0], "quote": activity}, *CLAIMS[1:]]
+                result = prepare_learning_evidence(messages, "en" if activity.startswith("I ") else "tr", claims)
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["fields"]["activity"], activity)
+                self.assertEqual(result["verified_evidence"]["activity"]["quote"], activity)
+
     def test_quote_must_be_unique_and_match_expected_turn(self):
         duplicated = [*MESSAGES, "Biology"]
         result = prepare_learning_evidence(duplicated, "en", CLAIMS)
@@ -168,6 +183,15 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         result = prepare_learning_evidence(messages, "en", claims)
         self.assertEqual(result["status"], "ready")
         self.assertEqual(result["fields"]["reference_url"], "https://example.org/notes")
+        self.assertFalse(result["rejected_claims"])
+        punctuated_url = "https://example.org/notes."
+        punctuated_messages = [*MESSAGES]
+        punctuated_messages[4] += " " + punctuated_url
+        punctuated_claims = [*CLAIMS, {"field": "reference_url", "quote": punctuated_url}]
+        result = prepare_learning_evidence(punctuated_messages, "en", punctuated_claims)
+        self.assertEqual(result["status"], "ambiguous")
+        self.assertIsNone(result["preview_digest"])
+        self.assertIn("reference_url", result["ambiguous"])
         injected = [*CLAIMS, {"field": "reference_url", "quote": "https://attacker.example"}]
         result = prepare_learning_evidence(MESSAGES, "en", injected)
         self.assertEqual(result["fields"]["reference_url"], "")
@@ -226,6 +250,27 @@ class StudyAgentLearningEvidenceTests(unittest.TestCase):
         self.assertTrue(all(response.status_code == 201 for response in responses), [response.text for response in responses])
         self.assertEqual(len(self.rows()), 1)
         self.assertEqual(len({response.json()["id"] for response in responses}), 1)
+
+    def test_approval_tombstone_prevents_recreation_after_user_deletes_record(self):
+        draft = self.draft()
+        body = self.create_body(draft)
+        created = self.client.post("/learning-evidence/agent-create", json=body)
+        self.assertEqual(created.status_code, 201, created.text)
+        record_id = created.json()["id"]
+        deleted = self.client.delete(f"/learning-evidence/{record_id}")
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual(self.rows(), [])
+
+        replay = self.client.post("/learning-evidence/agent-create", json=body)
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(self.rows(), [])
+        ledger_path = self.data_dir / learning_evidence.AGENT_APPROVALS_FILE
+        ledger_text = ledger_path.read_text(encoding="utf-8")
+        self.assertNotIn("Biology", ledger_text)
+        self.assertNotIn(MESSAGES[-1], ledger_text)
+        ledger = json.loads(ledger_text)
+        self.assertEqual(set(ledger), {"approval_ids"})
+        self.assertEqual(ledger["approval_ids"], [body["approval_id"]])
 
     def test_configured_provider_entrypoint_uses_mock_tool_hints_and_never_writes(self):
         self.storage.save_doc("settings.json", Settings(

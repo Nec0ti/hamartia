@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import ValidationError
 
-from app.models.schemas import ClockState, CosmosData, Exam, ExamScoringProfile, LearningEvidence, PracticeSession, Question, Settings, UserStats
+from app.models.schemas import ClockState, CosmosData, Exam, ExamScoringProfile, LearningEvidence, LearningEvidenceDeletedApprovalLedger, PracticeSession, Question, Settings, UserStats
 from app.services.data_lock import DataDirectoryLock
 from app.services.storage import data_mutation_guard
 
@@ -28,9 +28,10 @@ JSON_MODELS = {
     "settings.json": ("doc", Settings),
     "practice_sessions.json": ("list", PracticeSession),
     "learning_evidence.json": ("list", LearningEvidence),
+    "learning_evidence_agent_approvals.json": ("doc", LearningEvidenceDeletedApprovalLedger),
     "clock.json": ("doc", ClockState),
 }
-OPTIONAL_BACKUP_JSON = {"exam_profiles.json", "practice_sessions.json", "learning_evidence.json", "clock.json"}
+OPTIONAL_BACKUP_JSON = {"exam_profiles.json", "practice_sessions.json", "learning_evidence.json", "learning_evidence_agent_approvals.json", "clock.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -58,6 +59,7 @@ def _defaults():
         "settings.json": Settings().model_dump(mode="json"),
         "practice_sessions.json": [],
         "learning_evidence.json": [],
+        "learning_evidence_agent_approvals.json": LearningEvidenceDeletedApprovalLedger().model_dump(mode="json"),
         "clock.json": ClockState().model_dump(mode="json"),
     }
 

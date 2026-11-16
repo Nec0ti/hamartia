@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import threading
+from uuid import UUID
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -19,7 +20,7 @@ from starlette.datastructures import Headers
 from app.api import questions as question_api
 from app.models.schemas import (
     ActiveClockTimer, ClockAlarm, ClockState, CosmosData, Exam, LearningEvidence, PracticeSession,
-    PracticeDraft, Question, ReviewAttempt, Settings, UserStats,
+    LearningEvidenceDeletedApprovalLedger, PracticeDraft, Question, ReviewAttempt, Settings, UserStats,
 )
 from app.services.backup import (
     BackupError, JSON_MODELS, _freeze_clock_state_for_backup,
@@ -86,10 +87,16 @@ class BackupTests(unittest.TestCase):
             observation="I corrected the sign error.", reference_url="https://example.org/work",
         )
         StorageService(self.source).save_list("learning_evidence.json", [evidence])
+        approval_id = UUID("b7f3e7f0-e48f-4e75-9fe6-a0fcd82f38ee")
+        StorageService(self.source).save_doc("learning_evidence_agent_approvals.json", LearningEvidenceDeletedApprovalLedger(approval_ids=[approval_id]))
         create_backup(self.source, self.archive)
         restored = self.root / "evidence-restored"
         restore_backup(self.archive, restored)
         self.assertEqual(StorageService(restored).load_list("learning_evidence.json", LearningEvidence), [evidence])
+        self.assertEqual(
+            StorageService(restored).load_doc("learning_evidence_agent_approvals.json", LearningEvidenceDeletedApprovalLedger),
+            LearningEvidenceDeletedApprovalLedger(approval_ids=[approval_id]),
+        )
 
         legacy = self.root / "legacy-evidence.zip"
         with zipfile.ZipFile(self.archive) as archive:

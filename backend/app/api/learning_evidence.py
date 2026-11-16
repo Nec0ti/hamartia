@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import DATA_DIR
-from app.models.schemas import LearningEvidence, LearningEvidenceCreate
-from app.services.storage import StorageService
+from app.models.schemas import LearningEvidence, LearningEvidenceCreate, LearningEvidenceDeletedApprovalLedger
+from app.services.storage import StorageService, data_mutation_guard
 from app.services.study_agent_learning_evidence import (
     LearningEvidenceQuote,
     MAX_MESSAGE_LENGTH,
@@ -21,6 +21,7 @@ from app.services.study_agent_learning_evidence import (
 )
 
 router = APIRouter(prefix="/learning-evidence", tags=["learning-evidence"])
+AGENT_APPROVALS_FILE = "learning_evidence_agent_approvals.json"
 
 
 class AgentLearningEvidenceDraftRequest(BaseModel):
@@ -100,45 +101,55 @@ async def learning_evidence_agent_create(
     ).encode("utf-8")).hexdigest()
     approval_prefix = f"learning_evidence_agent_{payload.approval_id.hex}_"
     record_id = f"{approval_prefix}{fingerprint}"
+    approval_key = payload.approval_id
+    created = LearningEvidence(
+        id=record_id,
+        created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        **payload.fields.model_dump(),
+    )
     result: list[LearningEvidence] = []
-    changed_replay = False
+    conflict = ""
     invalid_request = ""
 
-    def append_or_replay(records):
-        nonlocal changed_replay, invalid_request
-        prior = [item for item in records if item.id.startswith(approval_prefix)]
-        if prior:
-            replay = next((item for item in prior if item.id == record_id), None)
-            if replay is not None and all(
-                getattr(replay, field) == value for field, value in payload.fields.model_dump().items()
-            ):
-                result.append(replay)
+    # Serialize the approval lookup and record mutation together with deletes.
+    # The deletion ledger stores only a random approval UUID after a user has
+    # deleted an entry; it never stores a transcript hash or result ID.
+    with data_mutation_guard(storage.data_dir):
+        ledger = storage.load_doc(AGENT_APPROVALS_FILE, LearningEvidenceDeletedApprovalLedger) or LearningEvidenceDeletedApprovalLedger()
+        if approval_key in ledger.approval_ids:
+            conflict = "This approved learning-evidence record was deleted and cannot be recreated by replay."
+        else:
+            def append_or_replay(records):
+                nonlocal conflict, invalid_request
+                existing = next((item for item in records if item.id.startswith(approval_prefix)), None)
+                if existing is not None:
+                    if existing.id == record_id and all(
+                        getattr(existing, field) == value for field, value in payload.fields.model_dump().items()
+                    ):
+                        result.append(existing)
+                    else:
+                        conflict = "This approval ID was already used for different learning evidence."
+                    return False
+                if invalid_preview:
+                    invalid_request = "The learning-evidence preview is incomplete or ambiguous."
+                    return False
+                if field_mismatch:
+                    invalid_request = "The approved preview does not match the verified student evidence."
+                    return False
+                if digest_mismatch:
+                    invalid_request = "The learning-evidence preview changed. Review it again before saving."
+                    return False
+                records.append(created)
+                result.append(created)
                 return True
-            changed_replay = True
-            return False
-        if invalid_preview:
-            invalid_request = "The learning-evidence preview is incomplete or ambiguous."
-            return False
-        if field_mismatch:
-            invalid_request = "The approved preview does not match the verified student evidence."
-            return False
-        if digest_mismatch:
-            invalid_request = "The learning-evidence preview changed. Review it again before saving."
-            return False
-        created = LearningEvidence(
-            id=record_id,
-            created_at=datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-            **payload.fields.model_dump(),
-        )
-        records.append(created)
-        result.append(created)
-        return True
 
-    storage.update_list("learning_evidence.json", LearningEvidence, append_or_replay)
-    if changed_replay:
-        raise HTTPException(status_code=409, detail="This approval ID was already used for different learning evidence.")
+            storage.update_list("learning_evidence.json", LearningEvidence, append_or_replay)
+
+    if conflict:
+        raise HTTPException(status_code=409, detail=conflict)
     if invalid_request:
-        raise HTTPException(status_code=409 if digest_mismatch else 422, detail=invalid_request)
+        status_code = 409 if digest_mismatch else 422
+        raise HTTPException(status_code=status_code, detail=invalid_request)
     if not result:
         raise HTTPException(status_code=500, detail="Could not save the learning-evidence record.")
     return result[0]
@@ -180,13 +191,29 @@ async def update_evidence(
 
 @router.delete("/{evidence_id}")
 async def delete_evidence(evidence_id: str, storage: StorageService = Depends(get_storage)):
-    def remove(records):
-        remaining = [record for record in records if record.id != evidence_id]
-        if len(remaining) == len(records):
-            return False
-        records[:] = remaining
-        return True
+    with data_mutation_guard(storage.data_dir):
+        records = storage.load_list("learning_evidence.json", LearningEvidence)
+        target = next((record for record in records if record.id == evidence_id), None)
+        if target is None:
+            raise HTTPException(status_code=404, detail="Learning evidence not found")
+        approval_id = None
+        parts = target.id.split("_")
+        if len(parts) == 5 and parts[:3] == ["learning", "evidence", "agent"]:
+            try:
+                approval_id = UUID(hex=parts[3])
+            except ValueError:
+                approval_id = None
+        if approval_id is not None:
+            ledger = storage.load_doc(AGENT_APPROVALS_FILE, LearningEvidenceDeletedApprovalLedger) or LearningEvidenceDeletedApprovalLedger()
+            if approval_id not in ledger.approval_ids:
+                ledger.approval_ids.append(approval_id)
+                storage.save_doc(AGENT_APPROVALS_FILE, ledger)
+        def remove_target(current):
+            if target not in current:
+                return False
+            current.remove(target)
+            return True
 
-    if not storage.update_list("learning_evidence.json", LearningEvidence, remove):
-        raise HTTPException(status_code=404, detail="Learning evidence not found")
+        if not storage.update_list("learning_evidence.json", LearningEvidence, remove_target):
+            raise HTTPException(status_code=404, detail="Learning evidence not found")
     return {"deleted": evidence_id}

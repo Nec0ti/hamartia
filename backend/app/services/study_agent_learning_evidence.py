@@ -118,12 +118,14 @@ def _date_from_quote(quote: str) -> str | None:
 
 
 def _url_from_quote(quote: str) -> str | None:
+    # A URL claim must itself be the exact URL text. Do not strip sentence
+    # punctuation and silently persist a value different from its evidence.
+    if quote != quote.strip():
+        return None
     matches = re.findall(r"https?://[^\s<>\"'`]+", quote, flags=re.IGNORECASE)
-    if len(matches) != 1:
+    if len(matches) != 1 or matches[0] != quote or quote.endswith((".", ",", ";", "!", "?", ")", "。")):
         return None
-    candidate = matches[0].rstrip(".,;!?)\u3002")
-    if quote.count(candidate) != 1:
-        return None
+    candidate = matches[0]
     try:
         LearningEvidenceCreate.model_validate({
             "date": "2026-01-01", "subject": "x", "topic": "x", "activity": "x",
@@ -187,7 +189,7 @@ def prepare_learning_evidence(
         expected_field = REQUIRED_FIELDS[expected_index]
         turn_claims = claims_by_turn.get(turn, [])
         matching = [claim for claim in turn_claims if claim.field == expected_field]
-        wrong = [claim for claim in turn_claims if claim.field != expected_field]
+        wrong = [claim for claim in turn_claims if claim.field not in {expected_field, "reference_url"}]
         for claim in wrong:
             rejected.append({"field": claim.field, "reason": "field_not_expected_for_this_turn"})
         if len(matching) != 1:

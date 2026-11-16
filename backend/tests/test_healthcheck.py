@@ -30,7 +30,7 @@ class HealthcheckTests(unittest.TestCase):
             with self.make_client() as client:
                 response = client.get("/healthcheck/ready")
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json(), {
             "status": "not_ready",
             "error": "Data storage is unavailable.",

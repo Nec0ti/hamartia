@@ -1,6 +1,6 @@
 """Health and readiness probe for the Hamartia API."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 router = APIRouter(prefix="/healthcheck", tags=["system"])
 
@@ -12,7 +12,7 @@ async def health():
 
 
 @router.get("/ready", tags=["system"])
-async def ready():
+async def ready(response: Response):
     """Readiness probe: confirms the JSON datastore is writable."""
     from app.core.config import DATA_DIR
     from app.services.storage import StorageService
@@ -22,4 +22,5 @@ async def ready():
         svc.load_list("exams.json", __import__("app.models.schemas", fromlist=["Exam"]).Exam)
         return {"status": "ready"}
     except Exception:
+        response.status_code = 503
         return {"status": "not_ready", "error": "Data storage is unavailable."}

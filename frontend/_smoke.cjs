@@ -4,6 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
+const { withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -39,6 +40,8 @@ async function main() {
   let serverErrors = ''
   launcher.stderr.setEncoding('utf8').on('data', (chunk) => { serverErrors += chunk })
   let browser
+  let smokeDeadline
+  let smokePhase = 'browser startup'
   try {
     await waitForServer(launcher, `${apiUrl}/healthcheck/ready`, 'API')
     await waitForServer(launcher, baseUrl, 'frontend')
@@ -77,6 +80,14 @@ async function main() {
       }
     })
 
+    smokePhase = 'initial page render and settings request'
+    smokeDeadline = setTimeout(() => {
+      process.stderr.write(`Browser smoke exceeded 8 minutes during ${smokePhase}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}\n`)
+      if (launcher.exitCode === null) launcher.kill('SIGTERM')
+      void browser.close().finally(() => process.exit(1))
+      setTimeout(() => process.exit(1), 5000).unref()
+    }, 8 * 60 * 1000)
+
     let releaseInitialSettingsGet
     let notifyInitialSettingsGet
     const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
@@ -103,7 +114,12 @@ async function main() {
     })
     assert.equal(keyboardFocus.style, 'solid')
     assert(keyboardFocus.width >= 2, `Expected a visible keyboard focus ring, got ${keyboardFocus.width}px`)
-    await initialSettingsGetIntercepted
+    await withTimeout(
+      initialSettingsGetIntercepted,
+      10_000,
+      'Initial GET /settings was not intercepted',
+      () => `; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
+    )
     await page.getByRole('button', { name: 'Open settings' }).click()
     await page.getByRole('status').getByText('Loading saved settings…').waitFor()
     assert.equal(await page.getByLabel('API key').isDisabled(), true)
@@ -113,6 +129,7 @@ async function main() {
     await page.waitForFunction(() => !document.querySelector('#settings-api-key')?.disabled)
     await page.getByRole('button', { name: 'Close settings' }).click()
     await page.unroute(`${apiUrl}/settings`)
+    smokePhase = 'study, profile, and local API browser flow'
     await page.waitForLoadState('networkidle')
     await page.waitForFunction(() => localStorage.getItem('hamartia.language') === 'en')
     assert.equal(/\b(?:navigation|settings|dashboard|exams|questions|study|cosmos|common)\.[a-z]/i.test(await page.locator('body').innerText()), false)
@@ -1135,6 +1152,7 @@ async function main() {
     if (serverErrors) process.stderr.write(serverErrors)
     throw error
   } finally {
+    clearTimeout(smokeDeadline)
     await browser?.close()
     if (launcher.exitCode === null) {
       launcher.kill('SIGTERM')

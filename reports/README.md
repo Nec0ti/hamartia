@@ -21,6 +21,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 - [2026-11-15 backup snapshot and upload boundaries](2026-11-15-backup-snapshot-and-upload-boundaries.md)
 - [2026-11-15 Maarif-aware Study Agent and user-entered curriculum references](2026-11-15-maarif-aware-study-agent.md)
 - [2026-11-16 offline social-auth client benchmark](2026-11-16-social-auth-offline-benchmark.md)
+- [2026-11-16 social sign-in and private profile UI prototype](2026-11-16-social-signin-onboarding.md)
 
 - [2026-11-14 spaced missed-question review loop](2026-11-14-spaced-review-loop.md)
 - [2026-11-14 exam type and history CRUD](2026-11-14-exam-context-crud.md)

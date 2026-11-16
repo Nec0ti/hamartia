@@ -1,13 +1,13 @@
 # Social profile and home-hosting plan
 
-**Status:** dated planning note accompanying a private profile-storage prototype. It is not legal advice, a compliance assessment, or launch approval. No public hosting, tunnel, sign-in UI, forum, or study-data sync is included. No legal or operational gate below is cleared.
+**Status:** dated planning note accompanying a private social prototype. It is not legal advice, a compliance assessment, or launch approval. A social sign-in/profile UI prototype now exists but remains disabled in current builds. No public hosting, tunnel, live sign-in, forum, or study-data sync is included. No legal or operational gate below is cleared.
 
 This concise planning note records the current implementation boundary and rechecks relevant primary sources as of 2026-11-16. Re-check primary sources and obtain qualified advice before any public launch.
 
 ## Confirmed project boundaries
 
 - The current desktop/local JSON API remains separate, loopback-only, and unchanged. Social routes live in their own opt-in FastAPI service.
-- Firebase is used only for server-side verification of ID tokens. The UID comes from verified claims; account login UI and real credential setup are not implemented here.
+- Firebase is used for server-side verification of ID tokens. The UID comes from verified claims. A Google sign-in UI prototype exists, but builds are disabled by default and no live Firebase project, Google client, or social API host is configured.
 - This slice stores only the owner’s optional profile fields in PostgreSQL. It has no public profile HTTP route, forum, direct messages, uploaded avatar, external avatar URL, or local-study-data sync.
 - The profile has a nickname, integer age, grade, class, user-entered curriculum/preferences/goals, and a built-in avatar preset. There is no gender or date-of-birth field. Each field has an independent visibility switch that defaults off; the allowlisted public projection is not mounted over HTTP.
 - Social profile data is not added to Study Agent payloads. No password is collected, stored, or sent.
@@ -19,6 +19,14 @@ The eventual host's operating system, capacity, storage health, network path, IS
 The isolated service now has owner-private `GET/PATCH /social/me/profile` routes backed by the additive `social_profiles` PostgreSQL table. Ownership uses only the UID derived from verified Firebase claims; no UID, email, or other claim can be mass-assigned or appears in the profile response. Updates use parameterized, per-column `INSERT ... ON CONFLICT` statements so concurrent partial changes to one account preserve unrelated fields. Authenticated responses set `Cache-Control: no-store`. The allowlisted visibility projection is tested as a pure function and is not mounted as an HTTP route. The new profile table has no legacy records to migrate; the local JSON data directory and desktop API are unchanged.
 
 The separate service is opt-in and requires both `FIREBASE_PROJECT_ID` and `SOCIAL_DATABASE_URL`; `SOCIAL_HOST` must be a numeric loopback IP and defaults to `127.0.0.1`. It rejects hostnames and non-loopback addresses. Install `backend/requirements-social.txt`, apply migrations with `python -m app.social.migrate`, then start with `python -m app.social_server`. Database credentials belong in local environment/secret management only and must not be placed in source, this report, tests, or logs. The migration is additive and has no automated destructive downgrade; before future real-user data, define database backup/restore and rollback procedures.
+
+## Dated 2026-11-16 sign-in/profile UI prototype
+
+The optional bilingual UI has private profile onboarding, browser-dev Firebase popup support, and Electron system-browser OAuth using state, PKCE S256, and a one-use loopback callback. Electron keeps Google and Firebase tokens in main; browser development uses Firebase in-memory persistence. Both transports use fixed origins/routes, block redirects, and avoid local study API/auth changes. Packaged builds read a generated public config resource; missing values fail closed. Current builds contain no social provider configuration and emit an empty config, so sign-in is disabled.
+
+An unchecked pre-auth acknowledgement is required in the app UI, and IPC/profile calls require the configured reviewed agreement version. The linked English/Turkish User Agreement pages are clearly marked draft and unapproved; no reviewed version is configured. This is only an app-level pre-auth acknowledgement gate. There is no server-side consent receipt or audit record, and a custom client can call Firebase Authentication and the social API outside the UI. The gate is not legal protection or a substitute for approved terms and qualified legal/privacy review. Before enabling real sign-in, resolve the agreement text/version, provider configuration, API host, legal/privacy review, and operational host/network gates.
+
+The privacy guide describes this prototype without promising legal compliance. Social profile data is not included in Study Agent payloads. Google and Firebase provider behavior has not been verified with live credentials.
 
 ## Local verification snapshot
 
@@ -34,7 +42,7 @@ The separate service is opt-in and requires both `FIREBASE_PROJECT_ID` and `SOCI
 | --- | --- | --- |
 | Local exams, mistakes, practice, and progress | Existing per-user desktop data directory | Remains local; no migration or sync |
 | Social profile | PostgreSQL on a future operator-controlled host | Private owner-scoped prototype only |
-| Account identity | Firebase Authentication/Admin verification | Token verification boundary only; no login UI or live project |
+| Account identity | Firebase Authentication/Admin verification | Disabled UI prototype plus token verification boundary; no live project or credentials |
 | Study Agent request | Existing explicitly initiated provider flow | Profile and forum context stay excluded by default |
 | Public profile projection | Allowlisted values with explicit per-field opt-in | Pure function tested; no public endpoint |
 
@@ -48,19 +56,21 @@ The existing desktop API must not be rebound to a LAN/public interface or have i
 
 ## Legal and launch gates — all open
 
-1. **Türkiye and operator status:** obtain written advice about KVKK duties, data-controller identity, notices, rights, retention/deletion, cross-border transfers, and any applicable registry obligations. KVKK describes a controller as a real or legal person determining processing purposes and means; this does not decide how this specific service is classified or whether a legal entity is required.
-2. **5651 and community scope:** obtain counsel/BTK confirmation about current Law No. 5651, any hosting-provider duties, contact/notice handling, traffic-information obligations, and whether a future study app with social features falls within relevant social-network rules. The Ministry of Justice consolidated entry now reflects later amendments; the older 2023 BTK procedure contains a conditional treatment for services where social interaction is secondary, but neither source alone classifies Hamartia or settles its obligations.
-3. **Children and intended jurisdictions:** decide intended audience and age handling with qualified counsel. Self-entered age is unverified. Review child privacy, consent, safety, and platform duties in each intended jurisdiction before collecting real profiles or opening registration.
-4. **Cloudflare:** decide whether Cloudflare’s edge processing is acceptable and disclose it if used; otherwise choose another access design and re-evaluate its providers and risks.
-5. **Physical host:** inspect current OS updates, CPU/RAM headroom, disk SMART/free-space status, power protection, firewall, network path, and existing services. Run a representative low-traffic load test and demonstrate encrypted, offline, physically separate backup restoration. A tunnel does not solve host capacity, reliability, or legal duties.
-6. **Security and lifecycle:** before real users, review owner isolation across every route and background job, credential rotation, logging, retention, profile export/deletion, incident response, and a fast disable/rollback plan. Public visibility remains off unless a user explicitly selects each field.
+1. **User Agreement and privacy notice:** the bilingual `v0.1-draft` User Agreement is a review placeholder, not approved terms. Obtain qualified legal/privacy review, complete and version both notices against the real processor/hosting path, and configure no reviewed version until that work is done. There is no server-side consent receipt/audit record; the UI acknowledgement can be bypassed by a custom client.
+2. **Türkiye and operator status:** obtain written advice about KVKK duties, data-controller identity, notices, rights, retention/deletion, cross-border transfers, and any applicable registry obligations. KVKK describes a controller as a real or legal person determining processing purposes and means; this does not decide how this specific service is classified or whether a legal entity is required.
+3. **5651 and community scope:** obtain counsel/BTK confirmation about current Law No. 5651, any hosting-provider duties, contact/notice handling, traffic-information obligations, and whether a future study app with social features falls within relevant social-network rules. The Ministry of Justice consolidated entry now reflects later amendments; the older 2023 BTK procedure contains a conditional treatment for services where social interaction is secondary, but neither source alone classifies Hamartia or settles its obligations.
+4. **Children and intended jurisdictions:** decide intended audience and age handling with qualified counsel. Self-entered age is unverified. Review child privacy, consent, safety, and platform duties in each intended jurisdiction before collecting real profiles or opening registration.
+5. **Cloudflare:** decide whether Cloudflare’s edge processing is acceptable and disclose it if used; otherwise choose another access design and re-evaluate its providers and risks.
+6. **Physical host:** inspect current OS updates, CPU/RAM headroom, disk SMART/free-space status, power protection, firewall, network path, and existing services. Run a representative low-traffic load test and demonstrate encrypted, offline, physically separate backup restoration. A tunnel does not solve host capacity, reliability, or legal duties.
+7. **Security and lifecycle:** before real users, review owner isolation across every route and background job, credential rotation, logging, retention, profile export/deletion, incident response, and a fast disable/rollback plan. Public visibility remains off unless a user explicitly selects each field.
 
-Until these gates are decided and completed, keep this service private and loopback-only. Google sign-in UI, study-data sync, and forum work are separate implementation slices in the approved social direction; none is included here. Public profile reads must remain closed until field-visibility behavior and moderation controls are in place. DMs remain deferred. No public deployment or real-user data is part of this PR.
+Until these gates are decided and completed, keep this service private and loopback-only. The UI prototype remains disabled. Study-data sync and forum work are separate implementation slices in the approved social direction. Public profile reads must remain closed until field-visibility behavior and moderation controls are in place. DMs remain deferred. No public deployment or real-user data is part of this PR.
 
 ## Primary references checked for this update
 
 - [Firebase Admin ID-token verification](https://firebase.google.com/docs/auth/admin/verify-id-tokens) — server-side token verification and UID.
-- [Google OAuth for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app) — installed apps are public clients and must not keep a client secret. This login flow is not implemented.
+- [Google OAuth for desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app) — installed apps are public clients and must not keep a client secret; used for implementation guidance only.
+- [Firebase Google sign-in](https://firebase.google.com/docs/auth/web/google-signin), [Firebase Auth persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence), and [Firebase Auth Emulator](https://firebase.google.com/docs/emulator-suite/connect_auth) — SDK flow and offline test guidance; no live provider verification was run.
 - [Cloudflare Tunnel](https://developers.cloudflare.com/tunnel/) — outbound-only tunnel and request path through Cloudflare.
 - [Cloudflare Default HTTP Privacy](https://developers.cloudflare.com/data-localization/regional-services/http-requests/) — TLS termination, inspection, and in-memory edge processing.
 - [Cloudflare cache controls](https://developers.cloudflare.com/cache/concepts/cache-control/) and [authenticated/dynamic content guidance](https://developers.cloudflare.com/cache/troubleshooting/dynamic-content-and-login-issues/) — cache behavior must be verified in the actual configuration.

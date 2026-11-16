@@ -98,6 +98,7 @@ async function main(smokeRun) {
     const consoleErrors = []
     const failedResponses = []
     const appRequests = []
+    const externalRequestsBlocked = []
     const settingsRouteEvaluations = []
     let createdQuestion
     let linkedQuestion
@@ -145,6 +146,16 @@ async function main(smokeRun) {
         await initialSettingsGetGate
       }
       await route.continue()
+    })
+    const allowedSmokeOrigins = new Set([baseUrl, apiUrl])
+    await page.route('**/*', async (route) => {
+      const requestUrl = new URL(route.request().url())
+      if (allowedSmokeOrigins.has(requestUrl.origin)) {
+        await route.fallback()
+      } else {
+        externalRequestsBlocked.push(requestUrl.origin)
+        await route.abort()
+      }
     })
     settingsRouteRegistered = true
     const started = performance.now()
@@ -934,6 +945,10 @@ async function main(smokeRun) {
     await page.getByRole('button', { name: 'Cancel this draft' }).click()
     await page.getByText('Draft cancelled. Nothing was saved.', { exact: true }).waitFor()
     assert.equal(createRequests().length, 0)
+    const englishMockCalls = await page.evaluate(() => window.__learningEvidenceProviderCalls || [])
+    assert.deepEqual(englishMockCalls.map(({ field, language }) => [field, language]), [
+      ['activity', 'en'], ['activity', 'en'], ['subject', 'en'], ['topic', 'en'], ['date', 'en'], ['observation', 'en'],
+    ])
 
     await page.evaluate(() => localStorage.setItem('hamartia.language', 'tr'))
     await page.reload({ waitUntil: 'networkidle' })
@@ -954,6 +969,10 @@ async function main(smokeRun) {
     await page.getByRole('heading', { name: 'Önerilen öğrenme kanıtı kaydı' }).waitFor()
     await page.getByText('Birinci konuyu çalıştım.', { exact: true }).last().waitFor()
     assert.equal(createRequests().length, 0)
+    const allMockCalls = await page.evaluate(() => window.__learningEvidenceProviderCalls || [])
+    assert.deepEqual(allMockCalls.slice(-5).map(({ field, language }) => [field, language]), [
+      ['activity', 'tr'], ['subject', 'tr'], ['topic', 'tr'], ['date', 'tr'], ['observation', 'tr'],
+    ])
     await page.getByRole('button', { name: 'Bu önizlemeyi onayla ve kaydet' }).click()
     await page.getByText('Öğrenme kanıtı kaydedildi. Yeni kayıt girebilirsin.', { exact: true }).waitFor()
     assert.equal(createRequests().length, 1)
@@ -968,6 +987,7 @@ async function main(smokeRun) {
     assert.equal(approvedBody.preview_digest, trPreview.preview_digest)
     assert.equal(approvedBody.evidence.activity.quote, 'Birinci konuyu çalıştım.')
     assert.equal((await (await localFetch(`${apiUrl}/learning-evidence`)).json()).length, 1)
+    assert.deepEqual(externalRequestsBlocked, [])
 
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()

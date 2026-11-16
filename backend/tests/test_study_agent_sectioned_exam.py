@@ -3,15 +3,15 @@ import unittest
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from app.api import exams
+from app.api import exams, study_agent
 from app.core.http_errors import safe_validation_error_handler
-from app.models.schemas import Exam, ExamDeletedApprovalLedger, legacy_yks_profile
+from app.models.schemas import Exam, ExamDeletedApprovalLedger, Settings, legacy_yks_profile
 from app.services.storage import StorageService
 from app.services.backup import create_backup, restore_backup
 from app.services.study_agent_exam import issue_exam_state_token
@@ -26,13 +26,17 @@ class StudyAgentSectionedExamTests(unittest.TestCase):
         app = FastAPI()
         app.add_exception_handler(RequestValidationError, safe_validation_error_handler)
         app.include_router(exams.router)
+        app.include_router(study_agent.router)
         self.data_patch = patch.object(exams, "DATA_DIR", self.data_dir)
         self.data_patch.start()
+        self.study_data_patch = patch.object(study_agent, "DATA_DIR", self.data_dir)
+        self.study_data_patch.start()
         self.client = TestClient(app)
 
     def tearDown(self):
         self.client.close()
         self.data_patch.stop()
+        self.study_data_patch.stop()
         self.temp.cleanup()
 
     @staticmethod
@@ -110,6 +114,22 @@ class StudyAgentSectionedExamTests(unittest.TestCase):
         self.assertEqual(valid.json()["evidence_claims"], [{"field": "exam_type", "quote": "TYT", "message_index": 1}])
         self.assertEqual(self.rows(), [])
 
+    def test_turkish_section_questions_are_localized(self):
+        messages, token = ["TYT"], None
+        values = [("exam_type", "TYT"), ("date", "2026-11-16"), ("duration_minutes", "90"),
+                  ("duration_seconds", "0"), ("section_count", "2")]
+        for field, value in values:
+            messages.append(value) if field != "exam_type" else None
+            if field == "exam_type": messages = [value]
+            response = self.draft(messages, field, value, token, "tr")
+            self.assertEqual(response.status_code, 200, response.text)
+            token = response.json()["state_token"]
+        self.assertIn("1. bölüm dersi", response.json()["questions"][0])
+        messages.append("Matematik")
+        response = self.draft(messages, "section_1_subject", "Matematik", token, "tr")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn("1. bölüm doğru sayısı", response.json()["questions"][0])
+
     def test_six_section_ceiling_and_unique_subject_validation(self):
         values = ["TYT", "2026-11-16", "1", "0", str(MAX_SECTIONS)]
         values.extend([value for index in range(1, MAX_SECTIONS + 1) for value in (f"Subject {index}", "1", "0", "0")])
@@ -166,3 +186,22 @@ class StudyAgentSectionedExamTests(unittest.TestCase):
             responses = list(pool.map(lambda _: self.client.post("/exams/sectioned-agent-create", json=body), range(4)))
         self.assertTrue(all(response.status_code == 201 for response in responses), [response.text for response in responses])
         self.assertEqual(len(self.rows()), 1)
+
+    def test_configured_endpoint_flow_uses_mock_quote_hint_and_host_verification(self):
+        endpoint = "http://127.0.0.1:9444/v1"
+        self.storage.save_doc("settings.json", Settings(litellm_base_url=endpoint, model_name="mock-model"))
+        fake = type("MockAI", (), {})()
+        fake.base_url = endpoint
+        fake.study_sectioned_exam_prepare = AsyncMock(return_value={"current_evidence_claims": [{"field": "exam_type", "quote": "TYT"}]})
+        with patch.object(study_agent, "AIService", return_value=fake) as ai_service:
+            response = self.client.post("/study-agent/local", json={
+                "consent": True, "message": "TYT", "context": "", "language": "en", "endpoint": endpoint,
+                "model_name": "mock-model", "has_api_key": False, "workflow": "sectioned-exam-entry",
+                "expected_sectioned_exam_field": "exam_type", "sectioned_exam_state_token": None,
+                "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1, "messages": ["TYT"],
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["expected_field"], "date")
+        fake.study_sectioned_exam_prepare.assert_awaited_once_with(["TYT"], "en", "exam_type")
+        ai_service.assert_called_once()
+        self.assertEqual(self.rows(), [])

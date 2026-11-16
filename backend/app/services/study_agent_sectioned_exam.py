@@ -164,6 +164,10 @@ def _value(field: str, quote: str) -> Any:
 def _question(field: str, language: str) -> str:
     label = field.replace("section_", "section ").replace("_", " ")
     if language == "tr":
+        match = re.fullmatch(r"section_(\d+)_(subject|correct|incorrect|blank)", field)
+        if match:
+            number, name = match.groups()
+            label = f"{number}. bölüm " + {"subject": "dersi", "correct": "doğru sayısı", "incorrect": "yanlış sayısı", "blank": "boş sayısı"}[name]
         names = {"exam_type": "sınav türü (TYT veya AYT)", "date": "tarih (YYYY-MM-DD)", "duration_minutes": "tam dakika", "duration_seconds": "ek saniye", "section_count": f"bölüm sayısı (1-{MAX_SECTIONS})"}
         return f"{label if field.startswith('section_') else names[field]} için tek ve açık bir değer yaz."
     names = {"exam_type": "exam type (TYT or AYT)", "date": "date (YYYY-MM-DD)", "duration_minutes": "whole minutes", "duration_seconds": "additional seconds", "section_count": f"section count (1-{MAX_SECTIONS})"}

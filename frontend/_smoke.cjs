@@ -4,7 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { chromium } = require('playwright')
-const { isSettingsRequestUrl, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
+const { diagnosticRequests, isSettingsRequestUrl, settingsRoutePattern, withDeadline, withTimeout } = require('./smokeDeadline.cjs')
 
 const apiUrl = 'http://127.0.0.1:8000'
 
@@ -52,15 +52,26 @@ async function main(smokeRun) {
           try {
             await withTimeout(browser.close(), 5000, 'Chromium shutdown')
           } catch {
-            if (typeof browser.process === 'function') browser.process()?.kill('SIGKILL')
+            try {
+              if (typeof browser.process === 'function') {
+                const browserProcess = browser.process()
+                if (browserProcess) {
+                  const exited = new Promise((resolve) => browserProcess.once('exit', resolve))
+                  browserProcess.kill('SIGKILL')
+                  await withTimeout(exited, 2000, 'Chromium forced shutdown').catch(() => {})
+                }
+              }
+            } catch {}
           }
         }
         if (launcher.exitCode === null) {
+          const exited = new Promise((resolve) => launcher.once('exit', resolve))
           launcher.kill('SIGTERM')
           try {
-            await withTimeout(new Promise((resolve) => launcher.once('exit', resolve)), 5000, 'Dev server shutdown')
+            await withTimeout(exited, 5000, 'Dev server shutdown')
           } catch {
             launcher.kill('SIGKILL')
+            await withTimeout(exited, 2000, 'Dev server forced shutdown').catch(() => {})
           }
         }
       })()
@@ -107,21 +118,28 @@ async function main(smokeRun) {
         appRequests.push({ url: request.url(), origin: requestUrl.origin, path: requestUrl.pathname, query: Object.fromEntries(requestUrl.searchParams), method: request.method(), body: jsonBody ? request.postDataJSON() : null })
       }
     })
-    smokeRun.diagnostics = () => `; page URL=${page.url()}; page origin=${new URL(page.url()).origin}; expected API origin=${apiUrl}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; route matcher evaluations=${JSON.stringify(settingsRouteEvaluations.slice(-20))}; page errors=${JSON.stringify(pageErrors)}`
+    smokeRun.diagnostics = () => {
+      const pageUrl = new URL(page.url())
+      return `; page origin=${pageUrl.origin}; page path=${pageUrl.pathname}; expected API origin=${apiUrl}; route registered=${settingsRouteRegistered}; route pattern=${settingsRouteMatcher}; recent API requests=${JSON.stringify(diagnosticRequests(appRequests.slice(-8)))}; route matcher evaluations=${JSON.stringify(settingsRouteEvaluations.slice(-20))}; page errors=${JSON.stringify(pageErrors)}`
+    }
 
     let releaseInitialSettingsGet
     let notifyInitialSettingsGet
-    const settingsRouteMatcher = (url) => {
-      const matched = isSettingsRequestUrl(url, apiUrl)
-      if (settingsRouteEvaluations.length < 40) {
-        settingsRouteEvaluations.push({ href: url.href || String(url), origin: url.origin || '', pathname: url.pathname || '', matched })
-      }
-      return matched
-    }
+    const settingsRouteMatcher = settingsRoutePattern(apiUrl)
     const initialSettingsGetIntercepted = new Promise((resolve) => { notifyInitialSettingsGet = resolve })
     const initialSettingsGetGate = new Promise((resolve) => { releaseInitialSettingsGet = resolve })
     let interceptedInitialSettingsGet = false
+    let settingsRouteRegistered = false
     await page.route(settingsRouteMatcher, async (route) => {
+      const requestUrl = new URL(route.request().url())
+      const matched = isSettingsRequestUrl(requestUrl, apiUrl)
+      if (settingsRouteEvaluations.length < 40) {
+        settingsRouteEvaluations.push({ method: route.request().method(), origin: requestUrl.origin, path: requestUrl.pathname, matched })
+      }
+      if (!matched) {
+        await route.continue()
+        return
+      }
       if (route.request().method() === 'GET') {
         interceptedInitialSettingsGet = true
         notifyInitialSettingsGet()
@@ -129,6 +147,7 @@ async function main(smokeRun) {
       }
       await route.continue()
     })
+    settingsRouteRegistered = true
     const started = performance.now()
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
@@ -148,7 +167,7 @@ async function main(smokeRun) {
       initialSettingsGetIntercepted,
       10_000,
       'Initial GET /settings was not intercepted',
-      () => `; route handler ran=${interceptedInitialSettingsGet}; URL=${page.url()}; recent API requests=${JSON.stringify(appRequests.slice(-8))}; page errors=${JSON.stringify(pageErrors)}`,
+      () => `${smokeRun.diagnostics()}; route handler ran=${interceptedInitialSettingsGet}`,
     )
     await page.getByRole('button', { name: 'Open settings' }).click()
     await page.getByRole('status').getByText('Loading saved settings…').waitFor()

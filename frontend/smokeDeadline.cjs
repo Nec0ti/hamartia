@@ -17,6 +17,16 @@ function isSettingsRequestUrl(value, expectedOrigin) {
   }
 }
 
+function settingsRoutePattern(expectedOrigin) {
+  const origin = new URL(expectedOrigin).origin
+  const escapedOrigin = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`^${escapedOrigin}/settings/?(?:\\?.*)?$`)
+}
+
+function diagnosticRequests(requests) {
+  return requests.map(({ method, origin, path }) => ({ method, origin, path }))
+}
+
 function withDeadline(operation, timeoutMs, describe, cleanup) {
   let timer
   let timeoutError
@@ -24,16 +34,20 @@ function withDeadline(operation, timeoutMs, describe, cleanup) {
   const deadline = new Promise((_, reject) => {
     timer = setTimeout(() => {
       timeoutError = new Error(`Browser smoke exceeded ${timeoutMs}ms${describe()}`)
-      cleanupPromise = withTimeout(Promise.resolve().then(() => cleanup(timeoutError)), 12_000, 'Browser smoke timeout cleanup')
+      cleanupPromise = withTimeout(Promise.resolve().then(() => cleanup(timeoutError)), 15_000, 'Browser smoke timeout cleanup')
         .catch((cleanupError) => { timeoutError.cleanupError = cleanupError })
       cleanupPromise.then(() => reject(timeoutError))
     }, timeoutMs)
   })
-  const work = Promise.resolve().then(operation).catch((error) => {
-    if (!timeoutError) throw error
-    return cleanupPromise.then(() => { throw timeoutError })
-  })
+  const work = Promise.resolve().then(operation).then(
+    (result) => timeoutError
+      ? cleanupPromise.then(() => { throw timeoutError })
+      : result,
+    (error) => timeoutError
+      ? cleanupPromise.then(() => { throw timeoutError })
+      : Promise.reject(error),
+  )
   return Promise.race([work, deadline]).finally(() => clearTimeout(timer))
 }
 
-module.exports = { withTimeout, isSettingsRequestUrl, withDeadline }
+module.exports = { diagnosticRequests, withTimeout, isSettingsRequestUrl, settingsRoutePattern, withDeadline }

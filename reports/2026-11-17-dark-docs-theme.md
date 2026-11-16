@@ -2,13 +2,13 @@
 
 ## Scope
 
-Changed the shared static docs template and CSS to use stacked dark header bars, current desktop package version context, a distinct User Manual tab, grouped documentation navigation, a persistent desktop sidebar, right-side section links, charcoal surfaces, blue links/active states, and responsive mobile navigation. The 17 English and 17 Turkish page bodies and section IDs remain unchanged. The README now has a compact icon beside its H1, with a white mark selected in dark mode and the existing high-contrast tile favicon as the default image.
+Changed the shared static docs template and CSS to use stacked dark header bars, current desktop package version context, a distinct User Manual tab, grouped documentation navigation, a persistent desktop sidebar, right-side section links, charcoal surfaces, blue links/active states, and responsive mobile navigation. At 390 px the category groups wrap into a two-column grid so the active group cannot sit offscreen in a horizontal strip. The 17 English and 17 Turkish page bodies and section IDs remain unchanged. The README now has a compact icon beside its H1, with a white mark selected in dark mode and the existing high-contrast tile favicon as the default image.
 
 ## Verification
 
 - `python3 -m py_compile scripts/build_docs.py` — passed.
 - `python3 scripts/build_docs.py` — generated all 34 EN/TR pages.
-- `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) NODE_PATH=/home/necoti/hamartia-clock/frontend/node_modules npm --prefix frontend run test:docs'` — passed all 34 routes, reciprocal language links, section parity, internal links, 390 px overflow, and keyboard skip link.
+- `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) NODE_PATH=/home/necoti/hamartia-clock/frontend/node_modules npm --prefix frontend run test:docs'` — passed all 34 routes, reciprocal language links, section parity, internal links, 390 px overflow, keyboard skip link, and visibility of the active third category on the Install route.
 - `python3 scripts/benchmark_docs.py --output /tmp/hamartia-docs-theme-benchmark.json` — passed offline integrity checks: 17 routes per locale, 34 active nav items, 1,060 local links/assets, 156 exact evidence excerpts, and zero errors. No network or AI was used.
 - `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) node /tmp/hamartia-docs-theme-preview.cjs'` — captured and visually inspected full-page 1440 px and 390 px docs screenshots, plus the README mark in Chromium with both light and dark color schemes. The preview server served the repo root so the relative asset paths match the README.
 - `gh api /markdown --input /tmp/hamartia-readme-markdown.json` — GitHub's GFM renderer returned a `<themed-picture>` containing the `<picture>`, dark-mode `<source>`, and visible fallback `<img>`. Chromium rendered that exact returned HTML with a repository-root base in both schemes; `naturalWidth` and `currentSrc` confirmed the fallback tile in light mode and white SVG in dark mode, with zero failed requests.

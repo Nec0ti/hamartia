@@ -61,6 +61,14 @@ async function main() {
         assert.equal(await page.locator('.sidebar li').count(), pages.length, `${route} nav parity`)
         assert.equal(await page.locator('.sidebar details').count(), 3, `${route} has grouped navigation`)
         assert.equal(await page.locator('.sidebar details[open] [aria-current="page"]').count(), 1, `${route} expands the active group`)
+        if (pages[index] === 'install/') {
+          const activeGroup = page.locator('.sidebar .nav-group:nth-child(3)[open]')
+          assert.equal(await activeGroup.count(), 1, `${route} places setup/reference in the third mobile category`)
+          assert.equal(await activeGroup.evaluate(node => {
+            const rect = node.getBoundingClientRect()
+            return rect.left >= 0 && rect.right <= innerWidth && rect.top < innerHeight && rect.bottom > 0
+          }), true, `${route} keeps the third active category visible at 390px`)
+        }
         assert.equal(await page.locator('.sidebar .nav-group:first-of-type li:first-child a').getAttribute('href'), index === 0 ? './' : '../', `${route} starts with Getting Started`)
         assert.equal(await page.locator('main#content h1 + .page-description').count(), 1, `${route} places a subtitle after the page title`)
         assert.equal(await page.locator('.page-toc a').count(), await page.locator('main article h2').count(), `${route} has an in-page link for each section`)

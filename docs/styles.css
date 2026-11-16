@@ -99,9 +99,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
   .page-layout { display: block; padding: 0 18px; }
   .sidebar { position: static; max-height: none; overflow: visible; padding: 12px 0 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .sidebar-title { margin-bottom: 5px; }
-  .sidebar nav { display: flex; align-items: flex-start; gap: 8px; overflow-x: auto; overscroll-behavior-inline: contain; }
-  .nav-group { flex: 0 0 auto; min-width: 134px; margin: 0 0 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
-  .nav-group summary { padding: 7px 9px; white-space: nowrap; }
+  .sidebar nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 8px; overflow: visible; }
+  .nav-group { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+  .nav-group summary { padding: 7px 8px; line-height: 1.25; }
   .nav-group ol { max-height: 42vh; overflow: auto; padding: 0 5px 6px; }
   .nav-group li a { padding: 6px 8px; font-size: 13px; }
   .nav-group li a[aria-current=page] { padding-left: 5px; }

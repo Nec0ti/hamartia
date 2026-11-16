@@ -100,6 +100,9 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
   }
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url: String(url), options })
+    if (String(url).startsWith('http://127.0.0.1:43210/')) {
+      assert.equal(options.headers?.['X-Hamartia-Control-Token'], 'synthetic-control-token')
+    }
     if (String(url).includes('.well-known/openid-configuration')) {
       oidcRequests += 1
       if (oidcMetadata instanceof Error) throw oidcMetadata
@@ -163,7 +166,7 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
     throw new Error(`Unexpected mock request: ${url}`)
   }
   const client = createChatGPT({
-    app: { getPath: () => directory }, safeStorage, fetchImpl, platform, getBackendUrl: () => 'http://127.0.0.1:43210',
+    app: { getPath: () => directory }, safeStorage, fetchImpl, platform, controlToken: 'synthetic-control-token', getBackendUrl: () => 'http://127.0.0.1:43210',
     shell: { openExternal: async (value) => {
       if (openExternalError) throw openExternalError
       authorizationUrls.push(value)

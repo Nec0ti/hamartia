@@ -264,7 +264,11 @@ function safeError(status, code) {
   return 'The ChatGPT study agent could not complete this request. Please try again.'
 }
 
-function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () => Date.now(), getBackendUrl, sendDelta, platform = process.platform }) {
+function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () => Date.now(), getBackendUrl, sendDelta, platform = process.platform, controlToken }) {
+  const fetchBackend = (url, options = {}) => fetchImpl(url, {
+    ...options,
+    headers: { ...options.headers, ...(controlToken ? { 'X-Hamartia-Control-Token': controlToken } : {}) },
+  })
   const file = path.join(app.getPath('userData'), 'chatgpt-credentials.bin')
   const hostFile = path.join(app.getPath('userData'), 'chatgpt-host-id')
   let refreshInFlight
@@ -582,8 +586,8 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
   async function studyContext(signal) {
     const backendUrl = getBackendUrl()
     const [insightsResponse, sessionsResponse] = await Promise.all([
-      fetchImpl(`${backendUrl}/questions/insights`, { signal }),
-      fetchImpl(`${backendUrl}/practice/insights`, { signal }),
+      fetchBackend(`${backendUrl}/questions/insights`, { signal }),
+      fetchBackend(`${backendUrl}/practice/insights`, { signal }),
     ])
     if (!insightsResponse.ok || !sessionsResponse.ok) throw new Error('Could not read local study priorities. No study request was sent.')
     return summarizeStudyContext(await insightsResponse.json(), await sessionsResponse.json())
@@ -684,7 +688,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }
         const backendUrl = getBackendUrl()
         if (!backendUrl) throw new Error('Hamartia could not verify the practice evidence. Nothing was saved.')
-        const verifiedResponse = await fetchImpl(`${backendUrl}/practice/agent-draft`, {
+        const verifiedResponse = await fetchBackend(`${backendUrl}/practice/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ messages, language, evidence_claims: argumentsValue.evidence, scoring_profile_id, scoring_profile_version }),
@@ -755,7 +759,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }
         const backendUrl = getBackendUrl()
         if (!backendUrl) throw new Error('Hamartia could not verify the learning evidence. Nothing was saved.')
-        const verifiedResponse = await fetchImpl(`${backendUrl}/learning-evidence/agent-draft`, {
+        const verifiedResponse = await fetchBackend(`${backendUrl}/learning-evidence/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -830,7 +834,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }
         const backendUrl = getBackendUrl()
         if (!backendUrl) throw new Error('Hamartia could not verify the question evidence. Nothing was saved.')
-        const verifiedResponse = await fetchImpl(`${backendUrl}/questions/agent-draft`, {
+        const verifiedResponse = await fetchBackend(`${backendUrl}/questions/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -893,7 +897,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }
         const backendUrl = getBackendUrl()
         if (!backendUrl) throw new Error('Hamartia could not verify the exam evidence. Nothing was saved.')
-        const verifiedResponse = await fetchImpl(`${backendUrl}/exams/agent-draft`, {
+        const verifiedResponse = await fetchBackend(`${backendUrl}/exams/agent-draft`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -928,7 +932,7 @@ function createChatGPT({ app, safeStorage, shell, fetchImpl = fetch, now = () =>
         }
         const backendUrl = getBackendUrl()
         if (!backendUrl) throw new Error('Hamartia could not verify the sectioned exam evidence. Nothing was saved.')
-        const verifiedResponse = await fetchImpl(`${backendUrl}/exams/sectioned-agent-draft`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        const verifiedResponse = await fetchBackend(`${backendUrl}/exams/sectioned-agent-draft`, { method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ messages, language, expected_exam_field: expected_sectioned_exam_field, state_token: sectioned_exam_state_token,
             scoring_profile_id, scoring_profile_version, evidence_claims: argumentsValue.evidence }), signal: controller.signal })
         const draft = await verifiedResponse.json().catch(() => ({}))

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.responses import FileResponse, PlainTextResponse
+from starlette.requests import Request
 
 
 VITE_ORIGINS = frozenset({
@@ -44,6 +45,38 @@ class DesktopOriginGuard:
             response = PlainTextResponse("Cross-origin desktop API requests are not allowed.", status_code=403)
             await response(scope, receive, send)
             return
+
+        await self.app(scope, receive, send)
+
+
+class DesktopAuthGuard:
+    """Keep the loopback desktop API private to its Electron process."""
+
+    def __init__(self, app, required=True):
+        self.app = app
+        self.required = required
+
+    async def __call__(self, scope, receive, send):
+        if (
+            scope["type"] != "http"
+            or scope["method"] == "OPTIONS"
+            or scope.get("path") in {"/healthcheck/ready", "/desktop/ready", "/desktop/shutdown"}
+        ):
+            await self.app(scope, receive, send)
+            return
+
+        expected = os.environ.get("HAMARTIA_CONTROL_TOKEN", "")
+        if not expected and self.required:
+            response = PlainTextResponse("Desktop API authentication is not configured.", status_code=503)
+            await response(scope, receive, send)
+            return
+        if expected:
+            request = Request(scope, receive=receive)
+            supplied = request.headers.get("x-hamartia-control-token") or request.cookies.get("hamartia_control", "")
+            if not supplied or not hmac.compare_digest(expected, supplied):
+                response = PlainTextResponse("Desktop API authentication required.", status_code=401)
+                await response(scope, receive, send)
+                return
 
         await self.app(scope, receive, send)
 
@@ -101,7 +134,9 @@ def mount_frontend(app: FastAPI, directory: Path):
         return FileResponse(index)
 
 
-def configure_frontend(app: FastAPI):
+def configure_frontend(app: FastAPI, require_control_token=False):
+    if require_control_token:
+        app.add_middleware(DesktopAuthGuard)
     app.add_middleware(DesktopOriginGuard, allowed_origins=desktop_allowed_origins())
 
     @app.get("/desktop/ready", include_in_schema=False)

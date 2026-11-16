@@ -93,6 +93,8 @@ async function main() {
     assert.equal(readiness.language, 'en', 'The packaged app should start in English')
     assert.equal(readiness.overviewVisible, true, 'The Overview screen should be rendered')
     assert.equal(readiness.healthStatus, 200, 'The same-origin readiness API should return HTTP 200')
+    assert.equal(readiness.apiStatus, 200, 'The renderer should read the protected local API through its HttpOnly session cookie')
+    assert.equal(readiness.controlCookieVisible, false, 'The control cookie must not be readable by renderer JavaScript')
     assert.match(readiness.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
     assert.equal(readiness.backendUrl, readiness.origin, 'The marker should identify the backend origin')
     const storageMode = process.env.HAMARTIA_ELECTRON_SMOKE_STORAGE_MODE || 'protected'

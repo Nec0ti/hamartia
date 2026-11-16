@@ -113,11 +113,13 @@ class SocialAuthTests(unittest.TestCase):
                 patch.object(social_server.uvicorn, "run") as run:
             social_server.main()
         self.assertEqual(run.call_args.kwargs["host"], "127.0.0.1")
-        with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT,
-                                        "SOCIAL_DATABASE_URL": "postgresql://test",
-                                        "SOCIAL_HOST": "0.0.0.0"}, clear=True):
-            with self.assertRaisesRegex(SystemExit, "must be loopback"):
-                social_server.main()
+        for unsafe_host in ("0.0.0.0", "localhost", "not-an-ip"):
+            with self.subTest(host=unsafe_host):
+                with patch.dict("os.environ", {"FIREBASE_PROJECT_ID": PROJECT,
+                                                "SOCIAL_DATABASE_URL": "postgresql://test",
+                                                "SOCIAL_HOST": unsafe_host}, clear=True):
+                    with self.assertRaisesRegex(SystemExit, "numeric loopback IP"):
+                        social_server.main()
 
     def test_missing_project_configuration_fails_closed(self):
         with self.assertRaises(ValueError):

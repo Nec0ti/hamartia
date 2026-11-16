@@ -1,5 +1,6 @@
 """Opt-in entrypoint for the separate social-only prototype service."""
 
+import ipaddress
 import os
 
 import uvicorn
@@ -17,8 +18,11 @@ def main() -> None:
     if not database_url:
         raise SystemExit("SOCIAL_DATABASE_URL is required; social service was not started")
     host = os.environ.get("SOCIAL_HOST", "127.0.0.1")
-    if host != "127.0.0.1" and host != "localhost" and host != "::1":
-        raise SystemExit("SOCIAL_HOST must be loopback for this prototype")
+    try:
+        if not ipaddress.ip_address(host).is_loopback:
+            raise ValueError("not loopback")
+    except ValueError as exc:
+        raise SystemExit("SOCIAL_HOST must be a numeric loopback IP for this prototype") from exc
     try:
         port = int(os.environ.get("SOCIAL_PORT", "8765"))
     except ValueError as exc:

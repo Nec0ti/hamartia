@@ -84,6 +84,12 @@
 - [x] Redesign the public guide as a responsive, keyboard-navigable bilingual wiki; validate navigation, links, mobile width, and page parity without telemetry.
 - [x] Add the paired bilingual docs task pack and offline integrity benchmark after the wiki and system benchmark releases. Human retrieval scoring and screenshot evaluation remain open; no AI answer or scoring path is included.
 
+## P7 — private social prototype
+
+- [x] Add the separate opt-in, loopback-only Firebase ID-token boundary with `/social/me` returning only verified UID; keep the desktop/local API untouched ([auth slice](reports/2026-11-16-social-auth-slice.md)).
+- [ ] Add owner-scoped private profile GET/PATCH over PostgreSQL with per-field private defaults, strict allowlisted fields, and a pure but unmounted public projection. No login UI, public profile route, forum, DM, local study sync, AI context, or hosting is included ([plan and current verification](reports/2026-11-16-social-profile-and-hosting-plan.md)).
+- [ ] Before any public launch, complete legal/privacy, Cloudflare/network, and physical-host readiness gates in the report; do not treat this prototype or CI as clearing them.
+
 ## Next small task
 
-The first social-only authentication boundary is implemented as a private, data-free prototype ([report](reports/2026-11-16-social-auth-slice.md)). Keep it opt-in and loopback-only. Before any public launch, complete legal/privacy review, Cloudflare/network architecture and access-control review, and physical-host hardening and operational review. Do not add Google client login, user data, or deployment until those gates are separately authorized and designed. Separately complete the outstanding real SIWC, consumer-device package, configured-endpoint, and human docs retrieval/usability checks. Keep real provider execution and quality outside CI and benchmarks. Verify subsequent ARETE numbering on a later merged PR.
+Complete review/CI for the private social profile slice. Keep the service opt-in and loopback-only. Google sign-in UI, study-data sync, and forum implementation are separate slices in the approved social direction; DMs remain deferred. Keep public profile reads closed until visibility behavior and moderation controls are implemented. Before any public deployment or real-user data, complete the legal/privacy, Cloudflare/network, and physical-host gates in [the social planning report](reports/2026-11-16-social-profile-and-hosting-plan.md). Separately complete the outstanding real SIWC, consumer-device package, configured-endpoint, and human docs retrieval/usability checks. Keep real provider execution and quality outside CI and benchmarks.

@@ -107,7 +107,7 @@ class DesktopServerTests(unittest.TestCase):
             form = await request.form()
             return {"fields": list(form.keys())}
 
-        configure_frontend(app)
+        configure_frontend(app, require_control_token=True)
         return app, reached
 
     def test_desktop_guard_rejects_cross_site_multipart_before_parsing(self):
@@ -131,11 +131,12 @@ class DesktopServerTests(unittest.TestCase):
         with patch.dict("os.environ", {"HAMARTIA_HOST": "127.0.0.1", "HAMARTIA_PORT": "43127"}):
             app, _ = self._guarded_upload_app()
         client = TestClient(app)
-        response = client.post(
-            "/upload",
-            data={"name": "desktop"},
-            headers={"origin": "http://127.0.0.1:43127", "sec-fetch-site": "same-origin"},
-        )
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "fixture-token"}, clear=True):
+            response = client.post(
+                "/upload",
+                data={"name": "desktop"},
+                headers={"origin": "http://127.0.0.1:43127", "sec-fetch-site": "same-origin", "X-Hamartia-Control-Token": "fixture-token"},
+            )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"fields": ["name"]})
         client.close()
@@ -144,20 +145,48 @@ class DesktopServerTests(unittest.TestCase):
         with patch.dict("os.environ", {"HAMARTIA_HOST": "127.0.0.1", "HAMARTIA_PORT": "8000"}):
             app, _ = self._guarded_upload_app()
         client = TestClient(app)
-        response = client.post(
-            "/upload",
-            data={"name": "dev"},
-            headers={"origin": "http://localhost:5173", "sec-fetch-site": "same-site"},
-        )
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "fixture-token"}, clear=True):
+            response = client.post(
+                "/upload",
+                data={"name": "dev"},
+                headers={"origin": "http://localhost:5173", "sec-fetch-site": "same-site", "X-Hamartia-Control-Token": "fixture-token"},
+            )
         self.assertEqual(response.status_code, 200)
         client.close()
 
-    def test_desktop_guard_rejects_null_origin_but_preserves_originless_cli(self):
+    def test_desktop_api_requires_token_even_without_origin_and_accepts_cookie_or_main_header(self):
+        app = FastAPI()
+        app.get("/questions")(lambda: {"questions": []})
+        app.get("/backup")(lambda: {"backup": "synthetic"})
+        configure_frontend(app, require_control_token=True)
+        client = TestClient(app)
         with patch.dict("os.environ", {}, clear=True):
+            unconfigured = client.get("/questions")
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "correct-token"}, clear=True):
+            missing = client.get("/questions")
+            wrong = client.get("/backup", headers={"X-Hamartia-Control-Token": "wrong-token"})
+            desktop = client.get("/questions", headers={"X-Hamartia-Control-Token": "correct-token"})
+            packaged_cookie = client.get("/backup", headers={"Cookie": "hamartia_control=correct-token"})
+            dev_cookie = client.get("/questions", headers={
+                "Cookie": "hamartia_control=correct-token",
+                "Origin": "http://localhost:5173",
+                "Sec-Fetch-Site": "same-site",
+            })
+        self.assertEqual(unconfigured.status_code, 503)
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(wrong.status_code, 401)
+        self.assertEqual(desktop.status_code, 200)
+        self.assertEqual(packaged_cookie.status_code, 200)
+        self.assertEqual(dev_cookie.status_code, 200)
+        client.close()
+
+    def test_desktop_guard_rejects_null_origin_but_preserves_originless_cli(self):
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "fixture-token"}, clear=True):
             app, _ = self._guarded_upload_app()
         client = TestClient(app)
-        rejected = client.post("/upload", data={"name": "browser"}, headers={"origin": "null"})
-        allowed = client.post("/upload", data={"name": "cli"})
+        with patch.dict("os.environ", {"HAMARTIA_CONTROL_TOKEN": "fixture-token"}, clear=True):
+            rejected = client.post("/upload", data={"name": "browser"}, headers={"origin": "null"})
+            allowed = client.post("/upload", data={"name": "cli"}, headers={"X-Hamartia-Control-Token": "fixture-token"})
         self.assertEqual(rejected.status_code, 403)
         self.assertEqual(allowed.status_code, 200)
         client.close()

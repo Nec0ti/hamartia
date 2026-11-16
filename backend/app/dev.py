@@ -1,6 +1,11 @@
 """ASGI entrypoint for the local development launcher."""
 
-from app.desktop import DesktopOriginGuard, desktop_allowed_origins
+import os
+
+from app.desktop import DesktopAuthGuard, DesktopOriginGuard, desktop_allowed_origins
 from app.main import app
 
-application = DesktopOriginGuard(app, allowed_origins=desktop_allowed_origins())
+application = DesktopAuthGuard(
+    DesktopOriginGuard(app, allowed_origins=desktop_allowed_origins()),
+    required=bool(os.environ.get("HAMARTIA_CONTROL_TOKEN")),
+)

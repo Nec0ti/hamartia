@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } = require('electron')
 const { randomBytes, randomUUID } = require('node:crypto')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
@@ -123,6 +123,14 @@ async function openWindow() {
     backendUrl = `http://${HOST}:${port}`
     backend = startBackend(port)
     await waitUntilReady(backend, backendUrl, CONTROL_TOKEN)
+    await session.defaultSession.cookies.set({
+      url: backendUrl,
+      name: 'hamartia_control',
+      value: CONTROL_TOKEN,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'strict',
+    })
   }
 
   const icon = getWindowIconPath({
@@ -164,9 +172,14 @@ async function writeSmokeReadiness(window) {
       let last = {}
       while (Date.now() < deadline) {
         let healthStatus = null
+        let apiStatus = null
         try {
           const health = await fetch('/healthcheck/ready', { signal: AbortSignal.timeout(1000) })
           healthStatus = health.status
+        } catch {}
+        try {
+          const api = await fetch('/questions', { signal: AbortSignal.timeout(1000) })
+          apiStatus = api.status
         } catch {}
         const headings = [...document.querySelectorAll('h1, h2, h3, h4')].map((item) => item.textContent.trim())
         last = {
@@ -176,8 +189,10 @@ async function writeSmokeReadiness(window) {
           overviewVisible: headings.includes('Overview'),
           headings,
           healthStatus,
+          apiStatus,
+          controlCookieVisible: document.cookie.includes('hamartia_control'),
         }
-        if (last.language === 'en' && last.overviewVisible && last.healthStatus === 200) return last
+        if (last.language === 'en' && last.overviewVisible && last.healthStatus === 200 && last.apiStatus === 200) return last
         await new Promise((resolve) => setTimeout(resolve, 250))
       }
       throw new Error('Timed out waiting for English Overview and HTTP 200 readiness: ' + JSON.stringify(last))
@@ -308,7 +323,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     try {
-      chatgpt = createChatGPT({ app, safeStorage, shell, getBackendUrl: () => backendUrl })
+      chatgpt = createChatGPT({ app, safeStorage, shell, controlToken: CONTROL_TOKEN, getBackendUrl: () => backendUrl })
       if (process.env.HAMARTIA_ELECTRON_SMOKE_MARKER) {
         try {
           safeStorageSmokeMetadata = await probeSafeStorage({

@@ -3,13 +3,14 @@
 import json
 import os
 import re
+import secrets
 import socket
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -22,11 +23,17 @@ def free_port():
         return sock.getsockname()[1]
 
 
-def request(url, data=None):
+def request(url, data=None, token=None):
     body = None if data is None else json.dumps(data).encode()
-    request = Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urlopen(request, timeout=2) as response:
-        return response.status, response.read()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["X-Hamartia-Control-Token"] = token
+    request = Request(url, data=body, headers=headers)
+    try:
+        with urlopen(request, timeout=2) as response:
+            return response.status, response.read()
+    except HTTPError as response:
+        return response.code, response.read()
 
 
 def stop(process):
@@ -47,12 +54,14 @@ def main():
 
     port = free_port()
     base_url = f"http://127.0.0.1:{port}"
+    control_token = secrets.token_hex(32)
     with tempfile.TemporaryDirectory(prefix="hamartia-desktop-smoke-") as temp_dir:
         env = {
             **os.environ,
             "HAMARTIA_HOST": "127.0.0.1",
             "HAMARTIA_PORT": str(port),
             "HAMARTIA_DATA_DIR": str(Path(temp_dir) / "data"),
+            "HAMARTIA_CONTROL_TOKEN": control_token,
         }
 
         def launch():
@@ -80,20 +89,24 @@ def main():
                 raise TimeoutError("Frozen backend did not become ready")
 
             startup_ms = round((time.perf_counter() - started) * 1000, 1)
-            _, page = request(f"{base_url}/study-plan")
+            for route in ("/questions", "/backup"):
+                status, _ = request(f"{base_url}{route}")
+                if status != 401:
+                    raise AssertionError(f"Unauthenticated {route} returned HTTP {status}")
+            _, page = request(f"{base_url}/study-plan", token=control_token)
             if b'<div id="root"></div>' not in page:
                 raise AssertionError("SPA fallback did not serve the frontend index")
             assets = re.findall(rb'(?:src|href)="(/assets/[^\"]+)"', page)
             if not assets:
                 raise AssertionError("Frontend index did not reference built assets")
             for asset in assets:
-                _, content = request(f"{base_url}{asset.decode()}")
+                _, content = request(f"{base_url}{asset.decode()}", token=control_token)
                 if not content:
                     raise AssertionError(f"Frontend asset is empty: {asset.decode()}")
             status, body = request(f"{base_url}/exams", {
                 "date": "2026-11-14", "exam_type": "branch", "subject": "Matematik",
                 "duration_minutes": 30, "correct": 5, "incorrect": 1, "blank": 1,
-            })
+            }, token=control_token)
             if status != 201:
                 raise AssertionError(f"Exam creation returned HTTP {status}")
             exam = json.loads(body)
@@ -114,7 +127,7 @@ def main():
                     time.sleep(0.1)
             else:
                 raise TimeoutError("Frozen backend did not restart")
-            _, body = request(f"{base_url}/exams")
+            _, body = request(f"{base_url}/exams", token=control_token)
             records = json.loads(body)
             if not any(item.get("id") == exam["id"] for item in records):
                 raise AssertionError("Study data did not persist across backend restarts")

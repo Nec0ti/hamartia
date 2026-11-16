@@ -6,13 +6,14 @@ from pathlib import Path
 
 import uvicorn
 
-from app.desktop import configure_frontend, desktop_server_settings
+from app.desktop import DesktopAuthGuard, configure_frontend, desktop_server_settings
 from app.core.config import DATA_DIR
 from app.main import app
 from app.services.backup import BackupError, restore_backup
 from app.services.data_lock import DataDirectoryBusy
 
 configure_frontend(app)
+application = DesktopAuthGuard(app, required=True)
 
 
 def restore_backup_command(archive_path: Path, data_dir: Path = DATA_DIR):
@@ -41,7 +42,7 @@ def main(argv=None):
     except ValueError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(2) from error
-    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))
+    server = uvicorn.Server(uvicorn.Config(application, host=host, port=port, log_level="info"))
     app.state.desktop_shutdown_callback = lambda: setattr(server, "should_exit", True)
     server.run()
     return 0

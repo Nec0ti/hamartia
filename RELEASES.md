@@ -1409,3 +1409,67 @@ API, veri biçimi veya geçiş değişikliği yoktur\. Backend CI'ye sentetik gi
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Kıyaslama yalnızca sentetik ayarlar\/veriler ve sabit bir mock taşıyıcı kullanır; sağlayıcıyı, modeli, uç nokta gecikmesini veya gerçek kimlik bilgilerini ölçmez\. İnsan değerlendirmesi ve fiziksel\/manuel sürüm kapıları uygulanmadı\.
+
+## ARETE-069
+
+## English
+
+`ARETE-069` — [PR #73](https://github.com/Nec0ti/hamartia/pull/73): feat\: show dashboard net changes over time
+
+### Highlights
+
+- Added a dashboard chart showing net\-score change since the previous saved exam\.
+- Restyled the existing net trend and included zero and negative results\.
+- Simplified the performance radar by removing its duplicate overdrawn series\.
+- Added accessible exam\-by\-exam summaries for both trend charts\.
+
+### Behavior and why
+
+Students can see whether each recorded exam improved or declined relative to the prior result in the same selected history\. The first exam is shown without a comparison; fewer than two records do not imply improvement\. The performance radar uses one data series, avoiding an identical overdrawn layer\. Same\-day exams have distinct localized sequence labels in axis ticks and tooltips\. Screen readers can access a table of each filtered exam's date, subject, net, and change\.
+
+### How to use
+
+Open Overview and review the Change since previous exam chart\. Existing exam type, subject, and scoring\-profile\-version filters apply to both charts\. Screen\-reader users can navigate each chart's associated exam data table\.
+
+### Compatibility / migration
+
+No API, storage, scoring, backup, or data\-format changes; no migration is needed\. All trend calculations use saved exam nets and their immutable scoring\-profile snapshots\.
+
+### Verification
+
+Frontend tests passed 58\/58, including localized same\-day labels, accessible date\/subject\/net\/change rows, chronological order, zero\/negative scores, empty\/single\-record history, and scoring\-profile\-version isolation\. Production build passed\. The full browser smoke passed with the Nix Chromium override; it asserts both localized chart tables and their no\-previous\-exam state, and all Dashboard history row\/cell lookups are scoped to the Exam history table\. \`node \-\-check \_smoke\.cjs\` passed\. Release metadata tests passed 6\/6\. GitHub frontend, backend, Windows recovery, and Windows\/Linux package checks all passed at the PR head\. No AI\/provider calls were run\.
+
+### Not run / known limitations
+
+The default cached Playwright Chromium cannot launch because this environment lacks libglib\-2\.0\.so\.0; the Nix Chromium override was used and the full smoke passed\. No screenshot artifact was produced\. The build retains its existing large main\-chunk advisory\. Previous CI runs caught unscoped Dashboard row selectors; the final\-head checks pass with all history selectors scoped to the Exam history table\. No screenshot artifact or separate human visual inspection was produced\.
+
+## Türkçe
+
+`ARETE-069` — [PR #73](https://github.com/Nec0ti/hamartia/pull/73): feat\: show dashboard net changes over time
+
+### Öne çıkanlar
+
+- Önceki kayıtlı denemeye göre net değişimini gösteren bir ana sayfa grafiği eklendi\.
+- Mevcut net grafiği yenilendi; sıfır ve negatif sonuçlar da gösteriliyor\.
+- Üst üste çizilen aynı veri serisi kaldırılarak performans radarı sadeleştirildi\.
+- Her iki eğilim grafiğine ekran okuyucular için deneme bazlı veri tablosu eklendi\.
+
+### Davranış ve nedeni
+
+Öğrenciler, her kayıtlı denemenin aynı seçili geçmişteki önceki sonuca göre yükselip düştüğünü görebilir\. İlk deneme karşılaştırmasız gösterilir; iki kayıttan az geçmişte gelişim varmış gibi bir sonuç üretilmez\. Performans radarı, aynı veriyi üst üste çizen katman olmadan tek seri kullanır\. Aynı gündeki denemeler eksen ve ipuçlarında yerelleştirilmiş sıra numarasıyla ayrılır\. Ekran okuyucular, filtrelenmiş her denemenin tarihini, dersini, netini ve değişimini içeren tabloya erişebilir\.
+
+### Kullanım
+
+Genel Bakış sayfasındaki Önceki denemeye göre değişim grafiğini inceleyin\. Mevcut deneme türü, ders ve puanlama profili sürümü filtreleri iki grafiğe de uygulanır\. Ekran okuyucular her grafiğe bağlı deneme verisi tablosunda gezinebilir\.
+
+### Uyumluluk / geçiş
+
+API, depolama, puanlama, yedekleme veya veri biçimi değişmedi; geçiş gerekmez\. Tüm eğilim hesapları kayıtlı deneme netlerini ve değiştirilemeyen puanlama profili anlık görüntülerini kullanır\.
+
+### Doğrulama
+
+Ön yüz testleri 58\/58 geçti; yerelleştirilmiş aynı gün etiketleri, erişilebilir tarih\/ders\/net\/değişim satırları, kronolojik sıralama, sıfır\/negatif puanlar, boş\/tek kayıt geçmişi ve puanlama profili sürümlerinin ayrılması kapsandı\. Üretim derlemesi geçti\. Sürüm metadata testleri 6\/6 geçti\. GitHub ön yüz, backend, Windows kurtarma ve Windows\/Linux paket kontrollerinin tamamı PR headinde geçti\. AI\/sağlayıcı çağrısı yapılmadı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Ortamda libglib\-2\.0\.so\.0 olmadığı için varsayılan Playwright Chromium açılamıyor; Nix Chromium seçeneğiyle tam smoke testi geçti\. Ekran görüntüsü üretilmedi\. Derlemede mevcut büyük ana paket uyarısı sürüyor\. Önceki CI çalışmaları Deneme geçmişi tablosuna kapsamlanmamış satır seçicilerini yakaladı; son head üzerindeki kontroller, tüm seçiciler kapsamlandıktan sonra geçti\. Ekran görüntüsü veya ayrıca insan tarafından görsel inceleme yapılmadı\.

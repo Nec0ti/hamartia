@@ -3,6 +3,7 @@
 ## 2026-11-18 dashboard chart trends
 
 - Dashboard exam net history is date-ordered and includes zero and negative results. A companion chart shows each result's net change from the previous saved result after the existing exam-type, subject, and scoring-profile-version filters.
+- The performance radar no longer draws the same geometry twice; its single series uses the dashboard accent color.
 - The first result has no comparison; the chart reports that another exam is needed when history has fewer than two points. No record format, backend contract, or saved data changed. EN/TR text and chart labels are present.
 - Frontend tests/build passed; browser smoke could not launch Chromium because this NixOS environment lacks `libglib-2.0.so.0`. See [verification report](reports/2026-11-18-dashboard-chart-trends.md).
 

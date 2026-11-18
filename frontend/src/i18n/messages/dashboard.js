@@ -20,7 +20,6 @@ export default {
   'dashboard.noPerformanceData': { en: 'No performance data yet.', tr: 'Henüz performans verisi yok.' },
   'dashboard.performanceRadar': { en: 'Performance radar', tr: 'Performans radarı' },
   'dashboard.radarDescription': { en: 'Performance radar chart: speed, focus, precision, and stamina', tr: 'Performans radarı: hız, odak, isabet ve dayanıklılık' },
-  'dashboard.chartReference': { en: 'Reference', tr: 'Referans' },
   'dashboard.chartActual': { en: 'Current', tr: 'Mevcut' },
   'dashboard.axis.speed': { en: 'Speed', tr: 'Hız' },
   'dashboard.axis.focus': { en: 'Focus', tr: 'Odak' },

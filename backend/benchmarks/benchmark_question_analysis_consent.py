@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+from base64 import b64encode
 from contextlib import ExitStack, contextmanager
 import json
 import socket
@@ -129,7 +130,9 @@ class MockProvider:
         if request.headers.get("authorization") != f"Bearer {SYNTHETIC_KEY}":
             raise AssertionError("mock request did not use only the synthetic fixture key")
         body = json.loads(request.content)
-        if body.get("model") != MODEL or OCR_TEXT not in json.dumps(body, ensure_ascii=False):
+        serialized = json.dumps(body, ensure_ascii=False)
+        image_data_url = f"data:image/png;base64,{b64encode(IMAGE_BYTES).decode('ascii')}"
+        if body.get("model") != MODEL or OCR_TEXT not in serialized or serialized.count(image_data_url) != 1:
             raise AssertionError("mock request differs from the synthetic approved question snapshot")
         if should_fail:
             raise httpx.ConnectError("synthetic mocked transport failure", request=request)

@@ -11,6 +11,7 @@ The timed samples include the local preview route, explicit approval route, requ
 ## Correctness coverage
 
 - An independent exact-value oracle checks the preview's safe authority, scheme, model, payload inclusion categories, and auth categories. It asserts the synthetic key is omitted and that no extra disclosure fields are returned.
+- The mock validates the exact synthetic model, OCR text, synthetic authorization value, endpoint, and one exact `data:image/png;base64,...` URL derived from the fixture image bytes in the wire request.
 - Successful approvals are checked against a complete expected persisted `Question` row. A separate full-row check proves a manual tag changed during a suspended mocked response survives alongside the saved analysis.
 - Preview, cancel/decline, replay, and stale question/settings approvals produce zero mock transport calls. Approval is one-use; question and settings changes during a suspended mocked response return 409 and preserve the latest stored values.
 - A mocked transport failure produces exactly one attempt and does not persist analysis. All race and failure probes run outside timed samples.
@@ -23,7 +24,7 @@ Command:
 PYTHONPATH=backend /home/necoti/hamartia/.venv/bin/python backend/benchmarks/benchmark_question_analysis_consent.py --repeats 3
 ```
 
-It passed all three repeats on Python 3.14.8, Linux x86_64, with eight logical CPUs. Each repeat measured eight successful approvals. Per-repeat p50 values were 0.015879, 0.016652, and 0.018924 seconds; p95 values were 0.731127, 0.022374, and 0.025122 seconds. The command took 4.70 seconds locally. Each repeat reported 12 mocked transport attempts total, of which eight were timed approvals; provider calls: zero. The timer stops at the approved request response; full-row persistence and replay checks run outside timing. These are host-path plus synthetic mock-transport measurements; they do not measure a provider, model, endpoint latency, or real credentials. CI uses Python 3.12 and runner timing may differ.
+It passed all three repeats on Python 3.14.8, Linux x86_64, with eight logical CPUs. Each repeat measured eight successful approvals. Per-repeat p50 values were 0.018917, 0.017937, and 0.024083 seconds; p95 values were 0.848933, 0.029917, and 0.025444 seconds. The command took 4.57 seconds locally. Each repeat reported 12 mocked transport attempts total, of which eight were timed approvals; provider calls: zero. The timer stops at the approved request response; full-row persistence and replay checks run outside timing. These are host-path plus synthetic mock-transport measurements; they do not measure a provider, model, endpoint latency, or real credentials. CI uses Python 3.12 and runner timing may differ.
 
 ## Verification
 

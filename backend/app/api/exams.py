@@ -69,7 +69,8 @@ class StrictExamCreate(ExamCreate):
             sections = value["sections"]
             try:
                 expected = {
-                    "subject": f"{str(value.get('exam_type', '')).upper()} Geneli",
+                    "subject": (str(value.get("format_name", "")).strip() if value.get("exam_type") == "custom"
+                               else f"{str(value.get('exam_type', '')).upper()} Geneli"),
                     "correct": sum(item.get("correct", 0) for item in sections),
                     "incorrect": sum(item.get("incorrect", 0) for item in sections),
                     "blank": sum(item.get("blank", 0) for item in sections),
@@ -343,6 +344,7 @@ async def create_exam(payload: ExamCreate, storage: StorageService = Depends(get
         id=f"exam_{uuid4().hex}",
         date=payload.date,
         exam_type=payload.exam_type,
+        format_name=payload.format_name,
         subject=payload.subject,
         correct=payload.correct,
         incorrect=payload.incorrect,

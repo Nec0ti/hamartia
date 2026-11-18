@@ -377,9 +377,9 @@ class ExamScoringProfileCreate(BaseModel):
 
 
 class ExamSection(BaseModel):
-    """One subject's result inside a full TYT or AYT mock session."""
+    """One user-named section's result inside a sectioned exam session."""
 
-    subject: str
+    subject: str = Field(max_length=120)
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)
     blank: int = Field(ge=0)
@@ -393,7 +393,7 @@ class ExamSection(BaseModel):
         return value
 
 
-def _exam_section_totals(exam_type, subject, correct, incorrect, blank, sections):
+def _exam_section_totals(exam_type, subject, correct, incorrect, blank, sections, format_name=""):
     if not sections:
         return subject, correct, incorrect, blank
     if exam_type == "branch":
@@ -402,7 +402,7 @@ def _exam_section_totals(exam_type, subject, correct, incorrect, blank, sections
     if len(names) != len(set(names)):
         raise ValueError("section subjects must be unique")
     return (
-        f"{exam_type.upper()} Geneli",
+        format_name.strip() if exam_type == "custom" else f"{exam_type.upper()} Geneli",
         sum(section.correct for section in sections),
         sum(section.incorrect for section in sections),
         sum(section.blank for section in sections),
@@ -414,7 +414,8 @@ class Exam(BaseModel):
 
     id: str
     date: str = Field(description="ISO date, e.g. 2026-10-07")
-    exam_type: Literal["tyt", "ayt", "branch"] = "branch"
+    exam_type: Literal["tyt", "ayt", "branch", "custom"] = "branch"
+    format_name: str = Field(default="", max_length=120)
     subject: str
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)
@@ -430,10 +431,12 @@ class Exam(BaseModel):
     def validate_section_totals(self):
         if self.sections:
             subject, correct, incorrect, blank = _exam_section_totals(
-                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections,
+                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections, self.format_name,
             )
             if (self.subject, self.correct, self.incorrect, self.blank) != (subject, correct, incorrect, blank):
                 raise ValueError("exam totals must match section totals")
+        if self.exam_type == "custom" and (not self.format_name.strip() or not self.sections):
+            raise ValueError("custom sectioned exams require a format name and at least one section")
         return self
 
     # Derived metrics — computed on serialization via @computed_field.
@@ -465,7 +468,8 @@ class ExamCreate(BaseModel):
     """Raw inputs accepted when recording an exam."""
 
     date: str
-    exam_type: Literal["tyt", "ayt", "branch"] = "branch"
+    exam_type: Literal["tyt", "ayt", "branch", "custom"] = "branch"
+    format_name: str = Field(default="", max_length=120)
     subject: str
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)
@@ -488,8 +492,14 @@ class ExamCreate(BaseModel):
     def derive_section_totals(self):
         if self.sections:
             self.subject, self.correct, self.incorrect, self.blank = _exam_section_totals(
-                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections,
+                self.exam_type, self.subject, self.correct, self.incorrect, self.blank, self.sections, self.format_name,
             )
+        if self.exam_type == "custom":
+            self.format_name = self.format_name.strip()
+            if not self.format_name or len(self.sections) < 1 or len(self.sections) > 12:
+                raise ValueError("custom sectioned exams require a format name and 1 to 12 sections")
+        elif self.format_name:
+            raise ValueError("format_name is only supported for custom sectioned exams")
         return self
 
     @field_validator("date")

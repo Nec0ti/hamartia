@@ -139,7 +139,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
               <div key={index} className="grid grid-cols-2 gap-2 rounded-lg border border-canvas-line p-3 sm:grid-cols-5">
                 <label className="col-span-2 text-xs text-canvas-muted sm:col-span-1">
                   {customMock ? t('exams.sectionName') : t('exams.subject')}
-                  <input aria-label={t(customMock ? 'exams.sectionNumber' : 'exams.subjectNumber', { number: index + 1 })} required value={section.subject} onChange={(e) => updateSection(index, 'subject', e.target.value)} placeholder={customMock ? '' : t('exams.turkishPlaceholder')} className={inputCls} />
+                  <input aria-label={t(customMock ? 'exams.sectionNumber' : 'exams.subjectNumber', { number: index + 1 })} maxLength={customMock ? 120 : undefined} required value={section.subject} onChange={(e) => updateSection(index, 'subject', e.target.value)} placeholder={customMock ? '' : t('exams.turkishPlaceholder')} className={inputCls} />
                 </label>
                 {['correct', 'incorrect', 'blank'].map((key, itemIndex) => (
                   <label key={key} className="text-xs text-canvas-muted">

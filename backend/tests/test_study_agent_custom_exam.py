@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import uuid
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -171,6 +172,39 @@ class StudyAgentCustomExamTests(unittest.TestCase):
         fake.study_custom_exam_prepare.assert_awaited_once_with(["Personal mock"], "en", "format_name")
         ai_service.assert_called_once()
         self.assertEqual(self.rows(), [])
+
+    def test_local_cli_requires_full_verified_preview_and_separate_approval(self):
+        from app.core import config
+        from app.services.study_agent_cli import dispatch_record_command
+
+        fields = self.field_list(2)
+        values = ["CLI mock", "2026-11-19", "45", "0", "2",
+                  "Reading", "4", "1", "2", "Reasoning", "3", "2", "1"]
+        messages, token, draft = [], None, None
+        with patch.object(config, "DATA_DIR", self.data_dir):
+            for field, value in zip(fields, values, strict=True):
+                messages.append(value)
+                draft = asyncio.run(dispatch_record_command({
+                    "command": "study.custom_sectioned_exam.draft", "messages": messages,
+                    "language": "en", "expected_exam_field": field, "state_token": token,
+                    "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1,
+                    "evidence_claims": [{"field": field, "quote": value}],
+                }))
+                self.assertFalse(draft["write_allowed"])
+                token = draft["state_token"]
+            self.assertEqual(draft["status"], "ready")
+            self.assertEqual(self.rows(), [])
+            saved = asyncio.run(dispatch_record_command({
+                "command": "study.custom_sectioned_exam.approve", "approved": True,
+                "messages": messages, "language": "en", "expected_exam_field": draft["evidence_claims"][-1]["field"],
+                "state_token": None, "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1,
+                "evidence_claims": draft["evidence_claims"], "fields": draft["fields"],
+                "evidence": draft["verified_evidence"], "scoring_profile_snapshot": draft["scoring_profile_snapshot"],
+                "derived": draft["derived"], "preview_digest": draft["preview_digest"], "approval_id": str(uuid.uuid4()),
+            }))
+        self.assertEqual(saved["status"], "saved")
+        self.assertEqual(saved["record"]["format_name"], "CLI mock")
+        self.assertEqual(len(self.rows()), 1)
 
 
 def _profile():

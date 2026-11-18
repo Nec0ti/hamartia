@@ -79,6 +79,8 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
   const examDraftRequests = []
   let sectionedExamDraft = { status: 'incomplete', fields: { exam_type: 'tyt' }, verified_evidence: {}, evidence_claims: [], missing: ['date'], ambiguous: {}, questions: ['What date?'], expected_field: 'date', state_token: 'opaque-sectioned-state', preview_digest: null, write_allowed: false }
   const sectionedExamDraftRequests = []
+  let customExamDraft = { status: 'incomplete', fields: { format_name: 'Personal mock' }, verified_evidence: {}, evidence_claims: [], missing: ['date'], ambiguous: {}, questions: ['What date?'], expected_field: 'date', state_token: 'opaque-custom-state', preview_digest: null, write_allowed: false }
+  const customExamDraftRequests = []
   const tokenBodies = []
   const calls = []
   const encryptionKey = crypto.randomBytes(32)
@@ -157,6 +159,10 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
       sectionedExamDraftRequests.push(JSON.parse(options.body))
       return Response.json(sectionedExamDraft)
     }
+    if (String(url) === 'http://127.0.0.1:43210/exams/custom-sectioned-agent-draft') {
+      customExamDraftRequests.push(JSON.parse(options.body))
+      return Response.json(customExamDraft)
+    }
     if (String(url) === 'http://127.0.0.1:43210/questions/insights') return Response.json({
       pending_questions: 3, scheduled_questions: 2,
       topics: [{ subject: 'Math', topic: 'Functions', pending_count: 2, tags: {} }],
@@ -185,9 +191,11 @@ async function setup({ backend = 'gnome_libsecret', encryptionAvailable = true, 
     setQuestionDraft: (value) => { questionDraft = value },
     setExamDraft: (value) => { examDraft = value },
     setSectionedExamDraft: (value) => { sectionedExamDraft = value },
+    setCustomExamDraft: (value) => { customExamDraft = value },
     getQuestionDraftRequests: () => questionDraftRequests,
     getExamDraftRequests: () => examDraftRequests,
     getSectionedExamDraftRequests: () => sectionedExamDraftRequests,
+    getCustomExamDraftRequests: () => customExamDraftRequests,
     getLearningEvidenceDraftRequests: () => learningEvidenceDraftRequests,
     getPracticeDraft: () => practiceDraft,
     getPracticeDraftRequests: () => practiceDraftRequests,
@@ -488,6 +496,28 @@ test('sectioned exam entry sends only a latest-turn quote hint to the host', asy
   assert.deepEqual(request.input[0].tools[0].parameters.properties.evidence.items.required, ['field', 'quote'])
   assert.deepEqual(testApp.getSectionedExamDraftRequests(), [{ messages, language: 'tr', expected_exam_field: 'exam_type', state_token: null, scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7, evidence_claims: claims }])
   assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/sectioned-agent-create')), false)
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/insights')), false)
+})
+
+test('custom mock entry accepts up to twelve user-named sections and sends only the current quote', async (t) => {
+  const testApp = await setup()
+  t.after(() => fs.rm(testApp.directory, { recursive: true, force: true }))
+  await testApp.client.signIn()
+  const messages = ['Personal mock']
+  const claims = [{ field: 'format_name', quote: 'Personal mock' }]
+  const call = { type: 'function_call', id: 'fc_custom_exam', call_id: 'call_custom_exam', name: 'hamartia_custom_exam_prepare', arguments: JSON.stringify({ evidence: claims }), status: 'completed' }
+  const draft = { status: 'incomplete', fields: { format_name: 'Personal mock' }, verified_evidence: {}, evidence_claims: claims, missing: ['date'], ambiguous: {}, questions: ['What date?'], expected_field: 'date', state_token: 'opaque-custom-state', preview_digest: null, write_allowed: false }
+  testApp.setCustomExamDraft(draft)
+  testApp.setResponseStreams([[{ type: 'response.completed', response: { id: 'custom-exam-1', output: [call] } }]])
+  const result = await testApp.client.chat({ requestId: 'request-custom-exam-00001', message: 'Personal mock', model: 'model-a', language: 'en', workflow: 'custom-sectioned-exam-entry', messages, expected_custom_exam_field: 'format_name', custom_exam_state_token: null, scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7 })
+  assert.equal(result.status, 'completed')
+  assert.deepEqual(result.draft, draft)
+  const [request] = testApp.getResponseRequests()
+  assert.match(request.instructions, /user-defined sectioned mock/i)
+  assert.match(request.instructions, /do not infer a national exam/i)
+  assert.equal(request.store, false)
+  assert.deepEqual(testApp.getCustomExamDraftRequests(), [{ messages, language: 'en', expected_exam_field: 'format_name', state_token: null, scoring_profile_id: 'profile_host-choice', scoring_profile_version: 7, evidence_claims: claims }])
+  assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/custom-sectioned-agent-create')), false)
   assert.equal(testApp.calls.some(({ url }) => url.endsWith('/exams/insights')), false)
 })
 

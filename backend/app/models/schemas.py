@@ -379,7 +379,7 @@ class ExamScoringProfileCreate(BaseModel):
 class ExamSection(BaseModel):
     """One user-named section's result inside a sectioned exam session."""
 
-    subject: str = Field(max_length=120)
+    subject: str
     correct: int = Field(ge=0)
     incorrect: int = Field(ge=0)
     blank: int = Field(ge=0)
@@ -435,7 +435,8 @@ class Exam(BaseModel):
             )
             if (self.subject, self.correct, self.incorrect, self.blank) != (subject, correct, incorrect, blank):
                 raise ValueError("exam totals must match section totals")
-        if self.exam_type == "custom" and (not self.format_name.strip() or not self.sections):
+        if self.exam_type == "custom" and (not self.format_name.strip() or not self.sections
+                                            or any(len(section.subject) > 120 for section in self.sections)):
             raise ValueError("custom sectioned exams require a format name and at least one section")
         return self
 
@@ -496,7 +497,8 @@ class ExamCreate(BaseModel):
             )
         if self.exam_type == "custom":
             self.format_name = self.format_name.strip()
-            if not self.format_name or len(self.sections) < 1 or len(self.sections) > 12:
+            if (not self.format_name or len(self.sections) < 1 or len(self.sections) > 12
+                    or any(len(section.subject) > 120 for section in self.sections)):
                 raise ValueError("custom sectioned exams require a format name and 1 to 12 sections")
         elif self.format_name:
             raise ValueError("format_name is only supported for custom sectioned exams")

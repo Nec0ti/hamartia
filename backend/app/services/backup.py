@@ -24,6 +24,7 @@ JSON_MODELS = {
     "exams.json": ("list", Exam),
     "exam_agent_approvals.json": ("doc", ExamDeletedApprovalLedger),
     "sectioned_exam_agent_approvals.json": ("doc", ExamDeletedApprovalLedger),
+    "custom_sectioned_exam_agent_approvals.json": ("doc", ExamDeletedApprovalLedger),
     "exam_profiles.json": ("list", ExamScoringProfile),
     "questions.json": ("list", Question),
     "user.json": ("doc", UserStats),
@@ -37,7 +38,7 @@ JSON_MODELS = {
     "clock.json": ("doc", ClockState),
     "onboarding.json": ("doc", StudentOnboarding),
 }
-OPTIONAL_BACKUP_JSON = {"exam_profiles.json", "practice_sessions.json", "learning_evidence.json", "learning_evidence_agent_approvals.json", "question_agent_approvals.json", "exam_agent_approvals.json", "sectioned_exam_agent_approvals.json", "clock.json", "onboarding.json"}
+OPTIONAL_BACKUP_JSON = {"exam_profiles.json", "practice_sessions.json", "learning_evidence.json", "learning_evidence_agent_approvals.json", "question_agent_approvals.json", "exam_agent_approvals.json", "sectioned_exam_agent_approvals.json", "custom_sectioned_exam_agent_approvals.json", "clock.json", "onboarding.json"}
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 MAX_FILES = 10_000
@@ -59,6 +60,7 @@ def _defaults():
         "exams.json": [],
         "exam_agent_approvals.json": ExamDeletedApprovalLedger().model_dump(mode="json"),
         "sectioned_exam_agent_approvals.json": ExamDeletedApprovalLedger().model_dump(mode="json"),
+        "custom_sectioned_exam_agent_approvals.json": ExamDeletedApprovalLedger().model_dump(mode="json"),
         "exam_profiles.json": [],
         "questions.json": [],
         "user.json": UserStats().model_dump(mode="json"),

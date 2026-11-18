@@ -12,6 +12,7 @@
     "test:browser": "node _smoke.cjs",
     "test:onboarding": "node _onboarding_smoke.cjs",
     "bench:clock": "node benchmarks/benchmark_clock_engine.mjs",
+    "bench:practice-helpers": "node benchmarks/benchmark_focused_practice_helpers.mjs",
     "bench:dashboard-ui": "node benchmarks/benchmark_dashboard_ui.cjs"
   },
   "dependencies": {

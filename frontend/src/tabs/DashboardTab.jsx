@@ -10,6 +10,7 @@ import {
 import StatsCards from './StatsCards.jsx'
 import RadarChart from './RadarChart.jsx'
 import TrendChart from './TrendChart.jsx'
+import NetChangeChart from './NetChangeChart.jsx'
 import RecentExams from './RecentExams.jsx'
 import AddExamModal from './AddExamModal.jsx'
 import ExamProfileManager from './ExamProfileManager.jsx'
@@ -227,6 +228,7 @@ export default function DashboardTab({ onUploadQuestion }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <RadarChart radar={profile?.radar} />
         <TrendChart data={filtered} toggle={toggle} subjectFilter={subjectFilter} subjects={subjects} onToggle={setToggle} onFilter={setSubjectFilter} />
+        <NetChangeChart data={filtered} subjectFilter={subjectFilter} />
       </div>
 
       <RecentExams

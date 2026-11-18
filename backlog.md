@@ -31,6 +31,7 @@
 - [x] Record completed topic practice sets separately; derive net, answered-question accuracy, and topic trends only from these sets.
 - [x] Start a focused study session from a priority topic; track time and correct/incorrect/blank counts, then convert it to the existing set record when finished.
 - [x] Show net and accuracy trends as charts for topic practice sets; provide edit/delete access to sets older than the last six records.
+- [x] Polish dashboard exam charts and show change from each previous exam within the selected subject and scoring-profile version ([report](reports/2026-11-18-dashboard-chart-trends.md)).
 - [x] Start the local API and frontend with one command; check readiness and port conflicts.
 
 ## P2 — verification and hardening

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { averageRecordedNet, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, filterExamsByScoringProfile } from './examSections.js'
+import { averageRecordedNet, examNetChanges, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, filterExamsByScoringProfile } from './examSections.js'
 
 const mock = {
   id: 'mock-1', subject: 'TYT Geneli', net: 40, correct: 45, incorrect: 20, blank: 15,
@@ -50,6 +50,32 @@ test('every all-blank recorded exam contributes to its profile average, includin
   ]
   assert.equal(averageRecordedNet(exams), 14 / 3)
   assert.equal(averageRecordedNet([{ correct: 0, incorrect: 0, blank: 0, net: 0 }]), 0)
+})
+
+test('net change is chronological, profile-ready, and never invents a single-record improvement', () => {
+  const changes = examNetChanges([
+    { id: 'later', date: '2026-03-02', created_at: '2026-03-02T10:00:00Z', net: 0 },
+    { id: 'same-day-later', date: '2026-03-01', created_at: '2026-03-01T11:00:00Z', net: 12 },
+    { id: 'first', date: '2026-03-01', created_at: '2026-03-01T10:00:00Z', net: 10 },
+  ])
+  assert.deepEqual(changes.map(({ id, change }) => [id, change]), [
+    ['first', null], ['same-day-later', 2], ['later', -12],
+  ])
+  assert.deepEqual(examNetChanges([{ id: 'only', date: '2026-03-01', net: 4 }]).map((item) => item.change), [null])
+  assert.deepEqual(examNetChanges([]), [])
+})
+
+test('zero and negative exam results remain in net-change history partitioned by scoring version', () => {
+  const records = [
+    { id: 'one', date: '2026-03-01', net: 2, scoring_profile: { profile_id: 'custom', version: 1 } },
+    { id: 'two', date: '2026-03-02', net: 0, scoring_profile: { profile_id: 'custom', version: 1 } },
+    { id: 'three', date: '2026-03-03', net: -1, scoring_profile: { profile_id: 'custom', version: 1 } },
+    { id: 'other-version', date: '2026-03-04', net: 20, scoring_profile: { profile_id: 'custom', version: 2 } },
+  ]
+  assert.deepEqual(examNetChanges(filterExamsByScoringProfile(records, 'custom@1')).map(({ net, change }) => [net, change]), [
+    [2, null], [0, -2], [-1, -1],
+  ])
+  assert.deepEqual(examNetChanges(filterExamsByScoringProfile(records, 'custom@2')).map(({ net, change }) => [net, change]), [[20, null]])
 })
 
 test('section previews apply the exam snapshot rule and keep exact fractional arithmetic', () => {

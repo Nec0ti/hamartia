@@ -48,3 +48,12 @@ export function examResultsForSubject(exams, subject = 'all') {
     return exam.subject === subject ? [exam] : []
   })
 }
+
+export function examNetChanges(exams) {
+  const ordered = [...exams].sort((a, b) => a.date.localeCompare(b.date)
+    || (a.created_at || '').localeCompare(b.created_at || '') || a.id.localeCompare(b.id))
+  return ordered.map((exam, index) => ({
+    ...exam,
+    change: index ? exam.net - ordered[index - 1].net : null,
+  }))
+}

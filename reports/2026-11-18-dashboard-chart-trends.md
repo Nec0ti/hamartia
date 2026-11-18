@@ -11,9 +11,9 @@ The exam net chart now includes every recorded net, including zero and negative 
 - `cd frontend && npm run build` — passed after all chart changes. Existing Vite warning remains that the main minified JS chunk exceeds the 500 KB advisory threshold.
 - `cd frontend && node --check _smoke.cjs` — passed. Browser smoke now scopes the fixture-date assertion to the labeled Exam history table and checks both EN/TR chart-summary tables, including each single-row/no-previous-exam state.
 - `nix shell nixpkgs#chromium --command sh -c 'PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium) HAMARTIA_PYTHON=/home/necoti/hamartia/.venv/bin/python npm run test:browser'` — passed the full browser smoke, including EN/TR accessible table names, fixture date/value rows, profile-version filtering, and the localized single-record state. Output reports `ai_included: false`.
-- The default cached Playwright Chromium cannot launch because `libglib-2.0.so.0` is unavailable in this NixOS environment; the Nix Chromium override resolves it. Earlier CI runs exposed unscoped history row/cell selectors after adding the hidden chart tables; Dashboard history selectors now use `#exam-history-table`, while chart-summary assertions use their own IDs. CI for this follow-up commit is pending.
+- The default cached Playwright Chromium cannot launch because `libglib-2.0.so.0` is unavailable in this NixOS environment; the Nix Chromium override resolves it. Earlier CI runs exposed unscoped history row/cell selectors after adding the hidden chart tables; Dashboard history selectors now use `#exam-history-table`, while chart-summary assertions use their own IDs. The final-head GitHub frontend, backend, Windows recovery, and Windows/Linux package checks all passed.
 - `npm run test:browser` without `HAMARTIA_PYTHON` cannot find system FastAPI/Uvicorn; the existing Hamartia virtualenv is required here.
 
 ## Limits
 
-No backend tests were needed because the API and saved data are unchanged. No screenshot artifact was produced. No AI/provider execution or benchmark was run.
+No direct local backend test was needed because the API and saved data are unchanged; the GitHub backend check passed. No screenshot artifact or separate human visual review was produced. No AI/provider execution or benchmark was run.

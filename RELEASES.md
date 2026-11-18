@@ -1589,3 +1589,69 @@ Uygulanamaz\. Uygulama kodu, API sözleşmesi, kayıtlı veri, yedek biçimi vey
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Uygulama testleri ve derlemeleri, sağlayıcı\/model çalıştırması, fiziksel cihaz kontrolleri ve insan erişim\/görüntü değerlendirmesi yapılmadı\. Windows 10\/11 ve Debian paket kalıcılığı, yapılandırılmış uç nokta ve sentetik görsel aktarımı, gerçek SIWC yaşam döngüsü, insan dokümantasyon değerlendirmesi ve Windows geri yükleme güç kaybı dayanıklılığı dâhil manuel kapılar açık\. Çözüm sırası özetleri tüm denenen soruları kapsamaz ve başarı oranı vermez\.
+
+## ARETE-072
+
+## English
+
+`ARETE-072` — [PR #76](https://github.com/Nec0ti/hamartia/pull/76): test\: enforce benchmark network boundaries
+
+### Highlights
+
+This benchmark\-only update strengthens the runtime boundary that keeps model\/provider work and external networking out of deterministic host benchmarks\. It covers the Study Agent CLI benchmark and the system\-resilience benchmark's local API process\.
+
+### Behavior and why
+
+During timed and adversarial Study Agent CLI trials, fail\-fast tripwires cover TCP connection and send methods \(\`connect\`, \`connect\_ex\`, \`create\_connection\`, \`send\`, \`sendall\`\), UDP methods \(\`sendto\`, \`sendmsg\` where available\), DNS\/name\-resolution entry points \(\`getaddrinfo\`, forward and reverse lookup helpers\), and synchronous\/asynchronous HTTPX transports\. Synthetic self\-checks call the blocked paths without invoking the underlying OS\/network functions\.
+
+The system\-resilience benchmark allows its required numeric loopback traffic, permits local AF\_UNIX IPC, and rejects non\-loopback TCP\/UDP destinations and hostname\/reverse\-DNS resolution\. Its parent guard is self\-checked\. Separately, a short\-timeout subprocess loads the actual generated API\-child \`sitecustomize\.py\`, verifies the guard\-installed marker, and attempts synthetic forbidden TCP, UDP, and DNS operations\. The self\-check confirms rejection and numeric loopback resolution without sending traffic externally\. The real workload remains the benchmark's temporary local \`\/exams\` API\.
+
+These are Python\-level guards on the benchmark paths\. They provide observable fail\-fast coverage for the listed APIs; they do not claim to sandbox native extensions or arbitrary subprocesses\.
+
+### How to use
+
+There is no application\-user change\. Run the existing Study Agent CLI and system\-resilience benchmark commands; the network\-boundary self\-checks run automatically\. Existing CI already invokes both benchmarks, so this change adds no workflow job\.
+
+### Compatibility / migration
+
+No application API, saved data, backup format, runtime feature, or dependency changed\. No migration is needed\.
+
+### Verification
+
+On Python 3\.14\.8\/Linux, the Study Agent CLI benchmark passed with \`\-\-repeats 3\` for its 24\- and 100\-record workloads, with 175 adversarial probes per workload and zero counted network attempts\. The system\-resilience benchmark passed its four\-process persistence and crash\-recovery checks, 32\/32 local HTTP request oracles, parent plus generated\-child guard self\-checks, and the AF\_UNIX socketpair self\-check passed on Linux\. Backend CLI tests passed 22\/22 and storage process\-lock tests passed 2\/2\. Python compilation and \`git diff \-\-check\` passed\. Exact\-head PR CI is pending\. No AI\/provider or external network call was made\.
+
+### Not run / known limitations
+
+No live provider, local model, external network request, or physical\-device check was run\. This is benchmark\-path defense in depth, not an OS\-level network sandbox\.
+
+## Türkçe
+
+`ARETE-072` — [PR #76](https://github.com/Nec0ti/hamartia/pull/76): test\: enforce benchmark network boundaries
+
+### Öne çıkanlar
+
+Bu yalnızca benchmark'lara yönelik güncelleme, model\/sağlayıcı çalışmasını ve harici ağ erişimini deterministik ana makine benchmark'larının dışında tutan çalışma zamanı sınırını güçlendiriyor\. Study Agent CLI ve sistem dayanıklılığı benchmark'ının yerel API süreci kapsanıyor\.
+
+### Davranış ve nedeni
+
+Ölçülen ve saldırgan girdili Study Agent CLI denemelerinde TCP bağlantı ve gönderim yöntemleri \(\`connect\`, \`connect\_ex\`, \`create\_connection\`, \`send\`, \`sendall\`\), UDP yöntemleri \(varsa \`sendto\`, \`sendmsg\`\), DNS\/ad çözümleme giriş noktaları \(\`getaddrinfo\`, ileri ve ters çözümleme yardımcıları\) ve senkron\/asenkron HTTPX aktarımları anında engelleniyor\. Sentetik öz kontroller, işletim sisteminin gerçek ağ çağrılarına ulaşmadan engelli yolları çağırıyor\.
+
+Sistem dayanıklılığı benchmark'ı gerekli sayısal loopback trafiğine ve yerel AF\_UNIX süreçler arası iletişime izin veriyor; loopback dışındaki TCP\/UDP hedeflerini ve ana makine adı\/ters DNS çözümlemesini reddediyor\. Platform desteklediğinde AF\_UNIX socketpair öz kontrolü bu yerel iletişimi doğruluyor\. Üst süreçteki koruma ayrıca öz kontrolden geçiyor\. Bunun yanında kısa zaman aşımı olan ayrı bir alt süreç, API alt süreci için gerçekten üretilen \`sitecustomize\.py\` dosyasını yüklüyor, korumanın yüklendiğini belirten işareti doğruluyor ve sentetik engelli TCP, UDP ve DNS işlemlerini deniyor\. Öz kontrol, harici trafik göndermeden reddetme ve sayısal loopback çözümlemesini doğruluyor\. Gerçek iş yükü benchmark'ın geçici yerel \`\/exams\` API'siyle sınırlı\.
+
+Bunlar benchmark yollarındaki Python düzeyi korumalardır\. Listelenen API'lerde gözlemlenebilir, hızlı hata veren denetimler sağlar; yerel ikili eklentileri veya keyfi alt süreçleri işletim sistemi düzeyinde yalıttığını iddia etmez\.
+
+### Kullanım
+
+Uygulama kullanıcıları için değişiklik yok\. Mevcut Study Agent CLI ve sistem dayanıklılığı benchmark komutlarını çalıştırın; ağ sınırı öz kontrolleri otomatik çalışır\. Mevcut CI iki benchmark'ı zaten çağırdığı için yeni bir CI işi eklenmedi\.
+
+### Uyumluluk / geçiş
+
+Uygulama API'si, kayıtlı veri, yedek biçimi, çalışma zamanı özelliği veya bağımlılık değişmedi\. Geçiş gerekmiyor\.
+
+### Doğrulama
+
+Python 3\.14\.8\/Linux üzerinde Study Agent CLI benchmark'ı 24 ve 100 kayıtlı iş yüklerinde \`\-\-repeats 3\` ile geçti; her iş yükünde 175 saldırgan deneme yapıldı ve sayılan ağ girişimi sıfır oldu\. Sistem dayanıklılığı benchmark'ı dört süreçli kayıt kalıcılığı ve çökme kurtarma kontrollerini, 32\/32 yerel HTTP isteği oracle'ını ve üst süreç ile üretilen alt süreç koruma öz kontrollerini geçti; mevcut Linux ortamında AF\_UNIX socketpair kontrolü de başarılı oldu\. Backend CLI testleri 22\/22, depolama süreç kilidi testleri 2\/2 geçti\. Python derleme kontrolü ve \`git diff \-\-check\` başarılı oldu\. PR'ın tam kafa CI durumu beklemede\. AI\/sağlayıcı çalıştırılmadı ve harici ağ çağrısı yapılmadı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Canlı sağlayıcı, yerel model, harici ağ isteği veya fiziksel cihaz kontrolü yapılmadı\. Bu, benchmark yollarına yönelik ek savunmadır; işletim sistemi düzeyinde ağ yalıtımı değildir\.

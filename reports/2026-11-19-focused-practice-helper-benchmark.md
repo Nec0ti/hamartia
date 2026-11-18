@@ -22,10 +22,10 @@ The run passed all 192 resolver oracles and all 4,096 duration oracles. Results:
 
 | Measurement | p50 | p95 | Range |
 | --- | ---: | ---: | ---: |
-| Legacy focused-completion resolution, 192 cases | 0.1403 ms | 0.2511 ms | 0.1259–0.2511 ms |
-| Duration conversion, 4,096 cases | 0.1599 ms | 0.4169 ms | 0.1516–0.4169 ms |
+| Legacy focused-completion resolution, 192 cases | 0.1336 ms | 0.3484 ms | 0.1093–0.3484 ms |
+| Duration conversion, 4,096 cases | 0.1657 ms | 0.5265 ms | 0.1519–0.5265 ms |
 
-The run reported `provider_execution: false`, `model_execution: false`, `browser_used: false`, and `network_attempts: 0`. Timings are machine- and load-dependent and are not regression thresholds. CI registration and PR validation are pending; no full CI result is claimed here.
+The run reported `provider_execution: false`, `model_execution: false`, `browser_used: false`, and `network_attempts: 0`. Timings are machine- and load-dependent and are not regression thresholds. CI invokes the new benchmark after the existing clock benchmark in the frontend job; PR CI validation remains pending.
 
 ## Türkçe
 
@@ -49,7 +49,7 @@ Ortam: Linux x86_64, Node.js 26.12.1.
 
 | Ölçüm | Ortanca | p95 | Aralık |
 | --- | ---: | ---: | ---: |
-| Eski odaklı çalışma tamamlamasını çözme, 192 senaryo | 0,1403 ms | 0,2511 ms | 0,1259–0,2511 ms |
-| Süre dönüşümü, 4.096 senaryo | 0,1599 ms | 0,4169 ms | 0,1516–0,4169 ms |
+| Eski odaklı çalışma tamamlamasını çözme, 192 senaryo | 0,1336 ms | 0,3484 ms | 0,1093–0,3484 ms |
+| Süre dönüşümü, 4.096 senaryo | 0,1657 ms | 0,5265 ms | 0,1519–0,5265 ms |
 
-Çıktı `provider_execution: false`, `model_execution: false`, `browser_used: false` ve `network_attempts: 0` bildirdi. Süreler makineye ve sistem yüküne göre değişebilir; performans eşiği değildir. CI kaydı ve PR doğrulaması beklemededir; burada tam CI sonucu iddia edilmemektedir.
+Çıktı `provider_execution: false`, `model_execution: false`, `browser_used: false` ve `network_attempts: 0` bildirdi. Süreler makineye ve sistem yüküne göre değişebilir; performans eşiği değildir. Benchmark, ön uç CI işinde mevcut saat benchmark'ından sonra çalıştırılır; PR CI doğrulaması beklemededir.

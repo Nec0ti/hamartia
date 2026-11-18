@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from app.api import exams, study_agent
+from app.api import exams, questions as question_api, study_agent
 from app.core.http_errors import safe_validation_error_handler
-from app.models.schemas import Exam, ExamDeletedApprovalLedger, Settings
+from app.models.schemas import Exam, ExamDeletedApprovalLedger, ExamScoringProfile, ExamScoringRule, Settings
 from app.services.backup import create_backup, restore_backup
 from app.services.storage import StorageService
 from app.services.study_agent_custom_exam import MAX_MESSAGES, MAX_SECTIONS, _question, issue_state_token
@@ -98,6 +98,44 @@ class StudyAgentCustomExamTests(unittest.TestCase):
         self.assertEqual(saved.json()["scoring_profile"], draft["scoring_profile_snapshot"])
         self.assertEqual((saved.json()["net"], saved.json()["xp"]), (draft["derived"]["net"], draft["derived"]["xp"]))
         self.assertEqual(len(self.rows()), 1)
+
+    def test_manual_custom_crud_question_context_profile_snapshot_and_backup_round_trip(self):
+        profile = ExamScoringProfile(profile_id="custom-user", version=4, display_name="Exact custom", country_label="User defined",
+            scoring_rule=ExamScoringRule(correct_points="5/2", wrong_penalty="1/3", blank_points="0"))
+        self.storage.save_list("exam_profiles.json", [profile])
+        created = self.client.post("/exams", json={
+            "date": "2026-11-19", "exam_type": "custom", "format_name": "My two-part mock",
+            "subject": "My two-part mock", "correct": 0, "incorrect": 0, "blank": 0,
+            "duration_minutes": 70, "duration_seconds": 30,
+            "sections": [
+                {"subject": "Reading", "correct": 8, "incorrect": 2, "blank": 1},
+                {"subject": "Reasoning", "correct": 6, "incorrect": 1, "blank": 3},
+            ], "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        original = created.json()
+        question = asyncio.run(question_api.upload_question(None, "A saved custom exam question", "Reading", "", self.storage,
+            exam_id=original["id"], question_number=11, solve_order=7, time_spent_seconds=52))
+        self.assertEqual(question.exam_section_total, 11)
+        self.assertEqual(question.exam_id, original["id"])
+        updated = self.client.put(f"/exams/{original['id']}", json={
+            "date": "2026-11-19", "exam_type": "custom", "format_name": "My revised mock",
+            "subject": "My revised mock", "correct": 0, "incorrect": 0, "blank": 0,
+            "duration_minutes": 71, "duration_seconds": 0,
+            "sections": [
+                {"subject": "Reading", "correct": 9, "incorrect": 2, "blank": 1},
+                {"subject": "Reasoning", "correct": 6, "incorrect": 1, "blank": 3},
+            ], "scoring_profile_id": None,
+        })
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["format_name"], "My revised mock")
+        self.assertEqual(updated.json()["scoring_profile"], profile.model_dump(mode="json"))
+        archive = self.data_dir / "custom-manual.zip"
+        restored = self.data_dir / "custom-manual-restored"
+        create_backup(self.data_dir, archive)
+        restore_backup(archive, restored)
+        restored_exam = StorageService(restored).load_list("exams.json", Exam)[0]
+        self.assertEqual(restored_exam.model_dump(mode="json"), updated.json())
 
     def test_twelve_sections_fit_custom_turn_limit_and_names_remain_distinct(self):
         draft, messages = self.complete(MAX_SECTIONS)

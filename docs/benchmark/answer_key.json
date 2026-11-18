@@ -24,7 +24,7 @@
               "locale": "en",
               "page": "study-workflows",
               "anchor": "exam",
-              "quote": "Full mocks keep section results together while preserving subject summaries."
+              "quote": "Full mocks keep section results together while preserving section summaries."
             }
           ]
         },
@@ -97,7 +97,7 @@
               "locale": "tr",
               "page": "study-workflows",
               "anchor": "exam",
-              "quote": "Tam denemeler bölüm sonuçlarını bir arada tutarken ders özetlerini de korur."
+              "quote": "Tam denemeler bölüm sonuçlarını bir arada tutar."
             }
           ]
         },
@@ -170,7 +170,7 @@
               "locale": "en",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "The app records TYT/AYT full mock sessions and single-subject exams; full mocks retain subject sections."
+              "quote": "The app records TYT/AYT full mocks, user-defined custom mocks, and single-subject exams."
             }
           ]
         },
@@ -237,7 +237,7 @@
               "locale": "tr",
               "page": "exam-formats-and-maarif",
               "anchor": "supported",
-              "quote": "Uygulama TYT/AYT tam denemelerini ve tek ders denemelerini kaydeder; tam denemelerde ders bölümleri korunur."
+              "quote": "Uygulama TYT/AYT tam denemelerini, kullanıcı tanımlı özel denemeleri ve tek ders denemelerini kaydeder."
             }
           ]
         },

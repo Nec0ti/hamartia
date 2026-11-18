@@ -25,7 +25,7 @@ The run passed all 256 resolver oracles and all 4,096 duration oracles. Results:
 | Legacy focused-completion resolution, 256 cases | 0.1793 ms | 0.3406 ms | 0.1097–0.3406 ms |
 | Duration conversion, 4,096 cases | 0.3221 ms | 0.6679 ms | 0.3013–0.6679 ms |
 
-The run reported `provider_execution: false`, `model_execution: false`, `browser_used: false`, and `network_attempts: 0`. Timings are machine- and load-dependent and are not regression thresholds. CI invokes the new benchmark after the existing clock benchmark in the frontend job; PR CI validation remains pending.
+The run reported `provider_execution: false`, `model_execution: false`, `browser_used: false`, and `network_attempts: 0`. Timings are machine- and load-dependent and are not regression thresholds. The frontend job runs this command after the existing clock benchmark. Exact code head `7dcf98a` passed the full [PR CI workflow](https://github.com/Nec0ti/hamartia/actions/runs/44406373034): frontend tests/build/benchmarks and browser smokes, backend tests and benchmarks, and Windows backup recovery. The separate Linux/Windows package workflow also passed. Independent review found no remaining benchmark, oracle, or network-boundary blocker. A subsequent report-only commit records these results; the benchmark code is unchanged.
 
 ## Türkçe
 
@@ -52,4 +52,4 @@ Ortam: Linux x86_64, Node.js 26.12.1.
 | Eski odaklı çalışma tamamlamasını çözme, 256 senaryo | 0,1793 ms | 0,3406 ms | 0,1097–0,3406 ms |
 | Süre dönüşümü, 4.096 senaryo | 0,3221 ms | 0,6679 ms | 0,3013–0,6679 ms |
 
-Çıktı `provider_execution: false`, `model_execution: false`, `browser_used: false` ve `network_attempts: 0` bildirdi. Süreler makineye ve sistem yüküne göre değişebilir; performans eşiği değildir. Benchmark, ön uç CI işinde mevcut saat benchmark'ından sonra çalıştırılır; PR CI doğrulaması beklemededir.
+Çıktı `provider_execution: false`, `model_execution: false`, `browser_used: false` ve `network_attempts: 0` bildirdi. Süreler makineye ve sistem yüküne göre değişebilir; performans eşiği değildir. Komut, ön uç CI işinde mevcut saat benchmark'ından sonra çalışır. `7dcf98a` kod commit'i tam [PR CI iş akışını](https://github.com/Nec0ti/hamartia/actions/runs/44406373034) geçti: ön uç testleri/derlemesi/benchmark'ları ve tarayıcı smoke kontrolleri, arka uç testleri ve benchmark'ları ile Windows yedek kurtarma. Ayrı Linux/Windows paket iş akışı da geçti. Bağımsız incelemede benchmark, oracle veya ağ sınırıyla ilgili açık sorun bulunmadı. Sonraki commit yalnızca bu raporu günceller; benchmark kodu değişmez.

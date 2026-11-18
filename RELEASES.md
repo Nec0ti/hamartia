@@ -1655,3 +1655,65 @@ Python 3\.14\.8\/Linux üzerinde Study Agent CLI benchmark'ı 24 ve 100 kayıtl�
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Canlı sağlayıcı, yerel model, harici ağ isteği veya fiziksel cihaz kontrolü yapılmadı\. Bu, benchmark yollarına yönelik ek savunmadır; işletim sistemi düzeyinde ağ yalıtımı değildir\.
+
+## ARETE-073
+
+## English
+
+`ARETE-073` — [PR #77](https://github.com/Nec0ti/hamartia/pull/77): test\: benchmark dashboard charts and deferred tabs
+
+### Highlights
+
+This internal benchmark update adds repeatable browser coverage for the dashboard's 512\-exam net and score\-change summaries, verifies deferred Study Agent loading, and records the UI benchmark in CI\. It also refreshes the benchmark report and corrects the historical ARETE\-072 CI status in \`RELEASES\.md\` against the successful merged\-head run\.
+
+### Behavior and why
+
+Each benchmark repetition seeds 512 synthetic dated Mathematics exams and opens a fresh browser context\. It checks every row in both chart summary tables against an independently calculated oracle, confirms Study Agent and Clock scripts are absent from the initial dashboard requests, then selects Study Agent and confirms its deferred module loads and its view renders\. Requests outside local loopback are blocked\. Timing is reported without a pass threshold, avoiding host\-speed\-dependent failures\. AI and provider execution are explicitly excluded\.
+
+The ARETE\-072 release record distinguishes successful PR\-head run \`44398481015\` on \`b583167a1dae70185f2559a54abe2ff98aeeb108\` from successful post\-merge push run \`44399319761\` on merge commit \`fe06f1ef15f8d524b640b21d2f85bd829c4c4f7f\`\.
+
+### How to use
+
+There is no end\-user action\. Developers can run \`npm run bench\:dashboard\-ui \-\-prefix frontend\` with Chromium available\. CI runs the same registered benchmark after the browser smoke suite\. See \`reports\/2026\-11\-18\-dashboard\-ui\-benchmark\.md\` for the workload, commands, measurements, and limits\.
+
+### Compatibility / migration
+
+Internal tooling and documentation only\. No application runtime behavior, API, saved data, or dependency changes; no migration is required\.
+
+### Verification
+
+The frontend unit suite passed 59\/59\. The registered Playwright benchmark passed three fresh\-context repetitions\: both 512\-row summaries matched the oracle in every run; initial dashboard scripts numbered 53; selecting Study Agent added two module requests, including a 193,485\-byte Vite development response\. Dashboard summary completion was 8,287 \/ 4,551 \/ 4,568 ms \(median 4,568\); Study Agent selection\-to\-render was 410 \/ 249 \/ 261 ms \(median 261\)\. These timings are descriptive and have no pass threshold\. The benchmark reported \`ai\_included\: false\`, \`provider\_calls\: 0\`, and \`external\_network\_allowed\: false\`\. \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+No live provider, local model, external network endpoint, packaged desktop build, or production bundle\-size benchmark was run\. Byte counts are Vite development\-server response bodies and are not production bundle sizes\. Timing is specific to this local host and browser\.
+
+## Türkçe
+
+`ARETE-073` — [PR #77](https://github.com/Nec0ti/hamartia/pull/77): test\: benchmark dashboard charts and deferred tabs
+
+### Öne çıkanlar
+
+Bu dahili benchmark güncellemesi, kontrol panelindeki 512 denemelik net ve puan değişimi özetleri için tekrarlanabilir tarayıcı denetimi ekliyor, Çalışma Asistanı'nın seçilene kadar yüklenmediğini doğruluyor ve UI benchmark'ını CI'a kaydediyor\. Benchmark raporunu güncelliyor ve \`RELEASES\.md\` içindeki ARETE\-072 CI durumunu başarılı birleştirilmiş kafa çalıştırmasına göre düzeltiyor\.
+
+### Davranış ve nedeni
+
+Her benchmark tekrarı 512 sentetik ve tarihli Matematik denemesi hazırlar ve yeni bir tarayıcı bağlamı açar\. İki grafik özet tablosundaki her satırı bağımsız hesaplanan sonuçla karşılaştırır; ilk kontrol paneli isteklerinde Çalışma Asistanı ve Saat betiklerinin bulunmadığını doğrular; ardından Çalışma Asistanı'nı seçerek ertelenmiş modülün yüklendiğini ve görünümün çizildiğini kontrol eder\. Yerel loopback dışındaki istekler engellenir\. Süreler eşiksiz raporlanır; böylece ana makine hızına bağlı test hataları oluşmaz\. AI ve sağlayıcı çalıştırması açıkça kapsam dışıdır\.
+
+ARETE\-072 sürüm kaydı, PR kafasındaki \`b583167a1dae70185f2559a54abe2ff98aeeb108\` üzerinde başarılı olan \`44398481015\` PR çalıştırması ile birleştirme commit'i \`fe06f1ef15f8d524b640b21d2f85bd829c4c4f7f\` üzerinde başarılı olan \`44399319761\` numaralı birleştirme sonrası push çalıştırmasını birbirinden ayırıyor\.
+
+### Kullanım
+
+Son kullanıcıların bir işlem yapması gerekmiyor\. Geliştiriciler Chromium kullanılabilirken \`npm run bench\:dashboard\-ui \-\-prefix frontend\` komutunu çalıştırabilir\. CI aynı kayıtlı benchmark'ı tarayıcı smoke testinden sonra yürütür\. İş yükü, komutlar, ölçümler ve sınırlar için \`reports\/2026\-11\-18\-dashboard\-ui\-benchmark\.md\` dosyasına bakın\.
+
+### Uyumluluk / geçiş
+
+Yalnızca dahili araçlar ve dokümantasyon değişti\. Uygulamanın çalışma zamanı davranışı, API'si, kayıtlı verisi veya bağımlılıkları değişmedi; geçiş gerekmiyor\.
+
+### Doğrulama
+
+Ön uç birim testleri 59\/59 geçti\. Kayıtlı Playwright benchmark'ı yeni tarayıcı bağlamlarında üç kez geçti\: her çalıştırmada iki adet 512 satırlı özet oracle ile eşleşti; kontrol panelinin ilk betik isteği sayısı 53 oldu; Çalışma Asistanı seçildiğinde 193\.485 baytlık Vite geliştirme yanıtı dâhil iki modül isteği gerçekleşti\. Özetlerin tamamlanması 8\.287 \/ 4\.551 \/ 4\.568 ms \(ortanca 4\.568\); Çalışma Asistanı seçiminden çizime kadar 410 \/ 249 \/ 261 ms \(ortanca 261\) sürdü\. Bu süreler bilgilendirme amaçlıdır, geçme eşiği yoktur\. Benchmark \`ai\_included\: false\`, \`provider\_calls\: 0\` ve \`external\_network\_allowed\: false\` bildirdi\. \`git diff \-\-check\` başarılı oldu\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Canlı sağlayıcı, yerel model, harici ağ hedefi, masaüstü paket derlemesi veya üretim paketi boyut benchmark'ı çalıştırılmadı\. Bayt sayıları Vite geliştirme sunucusu yanıt gövdeleridir; üretim paketi boyutlarını göstermez\. Süreler bu yerel ana makine ve tarayıcıya özgüdür\.

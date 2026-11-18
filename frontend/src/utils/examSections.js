@@ -1,4 +1,4 @@
-import { netScoreWithRule } from './formatters.js'
+import { fmtDate, fmtNet, netScoreWithRule } from './formatters.js'
 
 export function examSubjectOptions(exams) {
   return Array.from(new Set(exams.flatMap((exam) => (
@@ -49,9 +49,39 @@ export function examResultsForSubject(exams, subject = 'all') {
   })
 }
 
-export function examNetChanges(exams) {
+export function orderExamTimeline(exams) {
   const ordered = [...exams].sort((a, b) => a.date.localeCompare(b.date)
     || (a.created_at || '').localeCompare(b.created_at || '') || a.id.localeCompare(b.id))
+  const totals = new Map()
+  for (const exam of ordered) totals.set(exam.date, (totals.get(exam.date) || 0) + 1)
+  const positions = new Map()
+  return ordered.map((exam) => {
+    const same_day_index = (positions.get(exam.date) || 0) + 1
+    positions.set(exam.date, same_day_index)
+    return { ...exam, same_day_index, same_day_total: totals.get(exam.date) }
+  })
+}
+
+export function examChartLabel(exam, dateLabel, t) {
+  return exam.same_day_total > 1
+    ? `${dateLabel} · ${t('dashboard.examSequence', { number: exam.same_day_index })}`
+    : dateLabel
+}
+
+export function examChartSummaryRows(exams, locale, t) {
+  return exams.map((exam) => ({
+    id: exam.id,
+    date: examChartLabel(exam, fmtDate(exam.date, locale), t),
+    subject: exam.subject,
+    net: fmtNet(exam.net, locale),
+    change: exam.change == null
+      ? t('dashboard.noPreviousExam')
+      : `${exam.change > 0 ? '+' : ''}${fmtNet(exam.change, locale)}`,
+  }))
+}
+
+export function examNetChanges(exams) {
+  const ordered = orderExamTimeline(exams)
   return ordered.map((exam, index) => ({
     ...exam,
     change: index ? exam.net - ordered[index - 1].net : null,

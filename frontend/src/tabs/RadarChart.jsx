@@ -6,11 +6,7 @@ import { useI18n } from '../i18n.jsx'
 
 const AXES = [['speed', 'dashboard.axis.speed'], ['focus', 'dashboard.axis.focus'], ['precision', 'dashboard.axis.precision'], ['stamina', 'dashboard.axis.stamina']]
 
-/**
- * Recharts spider/radar chart for the four performance axes. Renders an outer
- * faint grid ring plus a thin accent sector so the panel reads as "cosmic"
- * without extra chrome.
- */
+/** Recharts spider/radar chart for the four performance axes. */
 export default function RadarChart({ radar }) {
   const { t } = useI18n()
   const [ready, setReady] = useState(false)
@@ -51,21 +47,15 @@ export default function RadarChart({ radar }) {
               tick={{ fill: '#52525b', fontSize: 10 }}
               axisLine={false}
             />
-            {/* Faint concentric grid ring. */}
-            <Radar
-              name={t('dashboard.chartReference')}
-              dataKey="value"
-              stroke="#d4d4d8"
-              strokeOpacity={0.3}
-              polygon={{ fill: '#d4d4d8', fillOpacity: 0.12 }}
-            />
-            {/* Primary performance layer. */}
             <Radar
               name={t('dashboard.chartActual')}
               dataKey="value"
-              stroke="#d4d4d8"
-              strokeWidth={2}
-              polygon={{ fill: '#d4d4d8', fillOpacity: 0.35 }}
+              stroke="#fb7185"
+              strokeWidth={2.5}
+              fill="#fb7185"
+              fillOpacity={0.2}
+              dot={{ r: 3, fill: '#fb7185', stroke: '#18181b', strokeWidth: 1.5 }}
+              activeDot={{ r: 5 }}
             />
           </RechartsRadarChart>
         </ResponsiveContainer>

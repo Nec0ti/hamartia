@@ -1349,3 +1349,63 @@ Benchmark komutu Python 3\.14\.8 üzerinde yerel olarak 14,17 saniyede geçti ve
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Yeni GitHub Actions adımı henüz çalışmadı; PR CI sonucu bekleniyor\. Yerel süre Python 3\.14\.8 ile ölçüldü, CI ise Python 3\.12 kullanıyor; runner süreleri değişebilir\. Uygulama test paketi, sağlayıcı çağrısı veya yerel model çalıştırılmadı\.
+
+## ARETE-068
+
+## English
+
+`ARETE-068` — [PR #72](https://github.com/Nec0ti/hamartia/pull/72): bench\: add question\-analysis consent host benchmark
+
+### Highlights
+
+- Adds a persisted host\-only benchmark for question\-analysis consent and runs it three times in backend CI\.
+- Checks exact consent disclosure, the fixture OCR text and exact image data URI in the mocked wire request, one\-use approval, full persisted question rows, stale\-request conflicts, manual\-tag preservation, and one\-attempt failure behavior\.
+
+### Behavior and why
+
+This is an internal benchmark and CI change\. Hamartia user behavior and production question\-analysis behavior do not change\. The benchmark gives a repeatable check of the existing consent and persistence path\.
+
+### How to use
+
+No user action is needed\. CI runs \`PYTHONPATH=backend python backend\/benchmarks\/benchmark\_question\_analysis\_consent\.py \-\-repeats 3\`\.
+
+### Compatibility / migration
+
+No API, data\-format, or migration changes\. Backend CI gains one benchmark command using synthetic fixtures and a fixed \`httpx\.MockTransport\`\.
+
+### Verification
+
+The exact three\-repeat command passed locally on Python 3\.14\.8 in 4\.57 seconds; it reported zero provider\/model calls and zero network access\. Eight timed approvals per repeat produced p50 values of 0\.018917, 0\.017937, and 0\.024083 seconds; p95 values were 0\.848933, 0\.029917, and 0\.025444 seconds\. Relevant consent tests passed 60\/60, release\-metadata parser tests passed 6\/6, and \`git diff \-\-check\` passed\. On PR head 3077fc2, backend \(1m45s\), frontend \(2m11s\), Windows backup\/recovery \(43s\), Linux package build \(3m24s\), and Windows package build \(3m44s\) CI jobs all passed\.
+
+### Not run / known limitations
+
+The benchmark uses only synthetic settings\/data and a fixed mock transport; it measures no provider, model, endpoint latency, or real credentials\. Human evaluation and physical\/manual release gates were not performed\.
+
+## Türkçe
+
+`ARETE-068` — [PR #72](https://github.com/Nec0ti/hamartia/pull/72): bench\: add question\-analysis consent host benchmark
+
+### Öne çıkanlar
+
+- Soru analizi onayı için kalıcı veriyi kapsayan, yalnızca yerel makinede çalışan bir kıyaslama ekler ve bunu backend CI içinde üç kez çalıştırır\.
+- Onay açıklamasını, mock isteğindeki sentetik OCR metni ve tam görsel veri adresini, tek kullanımlık onayı, kaydedilen soru satırını, eski istek çakışmalarını, manuel etiketin korunmasını ve hata durumunda tek denemeyi doğrular\.
+
+### Davranış ve nedeni
+
+Bu değişiklik yalnızca dahili kıyaslama ve CI kapsamındadır\. Hamartia kullanıcı davranışı ve üretimdeki soru analizi davranışı değişmez\. Kıyaslama, mevcut onay ve kayıt akışının tekrarlanabilir biçimde denetlenmesini sağlar\.
+
+### Kullanım
+
+Kullanıcının bir işlem yapması gerekmez\. CI şu komutu üç kez çalıştırır\: \`PYTHONPATH=backend python backend\/benchmarks\/benchmark\_question\_analysis\_consent\.py \-\-repeats 3\`\.
+
+### Uyumluluk / geçiş
+
+API, veri biçimi veya geçiş değişikliği yoktur\. Backend CI'ye sentetik girdiler ve sabit \`httpx\.MockTransport\` kullanan bir kıyaslama komutu eklenir\.
+
+### Doğrulama
+
+Üç tekrarlı komut Python 3\.14\.8 üzerinde yerel olarak 4,57 saniyede geçti; sıfır sağlayıcı\/model çağrısı ve sıfır ağ erişimi bildirdi\. Her tekrardaki sekiz zamanlı onay için p50 değerleri 0,018917, 0,017937 ve 0,024083 saniye; p95 değerleri 0,848933, 0,029917 ve 0,025444 saniyeydi\. İlgili onay testleri 60\/60, sürüm metadata ayrıştırıcısı testleri 6\/6 geçti; \`git diff \-\-check\` de başarılı oldu\. PR head 3077fc2 için backend \(1 dk 45 sn\), frontend \(2 dk 11 sn\), Windows yedekleme\/kurtarma \(43 sn\), Linux paket derlemesi \(3 dk 24 sn\) ve Windows paket derlemesi \(3 dk 44 sn\) CI işleri başarılı oldu\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Kıyaslama yalnızca sentetik ayarlar\/veriler ve sabit bir mock taşıyıcı kullanır; sağlayıcıyı, modeli, uç nokta gecikmesini veya gerçek kimlik bilgilerini ölçmez\. İnsan değerlendirmesi ve fiziksel\/manuel sürüm kapıları uygulanmadı\.

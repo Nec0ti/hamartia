@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import DashboardTab from './tabs/DashboardTab.jsx'
-import QuestionsTab from './tabs/QuestionsTab.jsx'
-import StudyPlanTab from './tabs/StudyPlanTab.jsx'
-import StudyAgentTab from './tabs/StudyAgentTab.jsx'
-import CosmosTab from './tabs/CosmosTab.jsx'
-import ClockTab from './tabs/ClockTab.jsx'
-import ComingSoon from './tabs/ComingSoon.jsx'
+const QuestionsTab = lazy(() => import('./tabs/QuestionsTab.jsx'))
+const StudyPlanTab = lazy(() => import('./tabs/StudyPlanTab.jsx'))
+const StudyAgentTab = lazy(() => import('./tabs/StudyAgentTab.jsx'))
+const CosmosTab = lazy(() => import('./tabs/CosmosTab.jsx'))
+const ClockTab = lazy(() => import('./tabs/ClockTab.jsx'))
+const ComingSoon = lazy(() => import('./tabs/ComingSoon.jsx'))
 import SettingsModal from './components/SettingsModal.jsx'
 import OnboardingModal from './components/OnboardingModal.jsx'
 import StudentProfileModal from './components/StudentProfileModal.jsx'
@@ -114,7 +114,9 @@ function AppContent() {
         onOpenSettings={openSettings}
       />
       <main className="min-h-[calc(100vh-57px)] flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-        {panel}
+        <Suspense fallback={<div role="status" aria-live="polite" className="px-6 py-24 text-center text-canvas-muted">{t('navigation.loadingTab')}</div>}>
+          {panel}
+        </Suspense>
       </main>
       <SettingsModal
         open={settingsOpen}

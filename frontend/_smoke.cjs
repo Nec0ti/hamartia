@@ -102,6 +102,7 @@ async function main(smokeRun) {
     const consoleErrors = []
     const failedResponses = []
     const appRequests = []
+    const frontendModuleRequests = []
     const externalRequestsBlocked = []
     const settingsRouteEvaluations = []
     let createdQuestion
@@ -116,6 +117,7 @@ async function main(smokeRun) {
       if (response.status() >= 400) failedResponses.push({ url: response.url(), status: response.status() })
     })
     page.on('request', (request) => {
+      if (request.url().startsWith(baseUrl)) frontendModuleRequests.push(request.url())
       if (request.url().startsWith(apiUrl)) {
         const jsonBody = request.headers()['content-type']?.includes('application/json')
         const requestUrl = new URL(request.url())
@@ -166,6 +168,8 @@ async function main(smokeRun) {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
     await page.getByRole('heading', { name: 'Overview' }).waitFor()
+    assert.equal(frontendModuleRequests.some((url) => /\/src\/tabs\/(StudyAgentTab|ClockTab)\.jsx/.test(url)), false,
+      'Non-default Study Agent and Clock tabs must not load with the dashboard')
     const brandMark = page.getByRole('img', { name: 'Hamartia' })
     await brandMark.waitFor()
     assert.equal(await brandMark.evaluate((image) => image.naturalWidth > 0), true)
@@ -226,7 +230,19 @@ async function main(smokeRun) {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText('Henüz deneme kaydı yok.').waitFor()
     assert.equal(await page.getByText('Cannot read properties of undefined', { exact: false }).count(), 0)
+    let continueStudyPlanChunk
+    let notifyStudyPlanChunkRequested
+    const studyPlanChunkRequested = new Promise((resolve) => { notifyStudyPlanChunkRequested = resolve })
+    await page.route('**/src/tabs/StudyPlanTab.jsx*', async (route) => {
+      notifyStudyPlanChunkRequested()
+      await new Promise((resolve) => { continueStudyPlanChunk = resolve })
+      await route.continue()
+    })
     await page.getByRole('button', { name: 'Çalışma Planı' }).click()
+    await withTimeout(studyPlanChunkRequested, 10_000, 'Study Plan lazy chunk was not requested')
+    await page.getByRole('status').getByText('Yükleniyor…').waitFor()
+    continueStudyPlanChunk()
+    await page.unroute('**/src/tabs/StudyPlanTab.jsx*')
     await page.getByRole('heading', { name: 'Şimdi çöz' }).waitFor()
     assert.equal(await page.getByRole('img', { name: 'Matematik · Fonksiyon sorusu' }).count(), 1)
     assert.equal(await page.getByRole('button', { name: 'Doğru çözdüm' }).count(), 1)
@@ -416,6 +432,8 @@ async function main(smokeRun) {
     await page.getByRole('button', { name: 'Denemeyi kaydet' }).click()
     await page.getByRole('button', { name: /Denemeyi düzenle Matematik/ }).waitFor()
     await page.locator('tbody tr').filter({ hasText: 'Matematik' }).dblclick()
+    await page.getByText(/^Bu bölümde \d+ soru var\.$/).waitFor()
+    assert.equal(await page.getByLabel('Ders').inputValue(), 'Matematik', 'Dashboard upload must carry the selected exam into the lazily loaded Questions tab')
     await page.getByLabel('Sınavdaki soru no').fill('2')
     await page.getByLabel('Çözüm sırası').fill('1')
     await page.getByLabel('Soruda harcanan saniye').fill('32')
@@ -943,6 +961,7 @@ async function main(smokeRun) {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Study Agent' }).click()
     await page.getByRole('heading', { name: 'Study Agent' }).waitFor()
+    assert(frontendModuleRequests.some((url) => url.includes('/src/tabs/StudyAgentTab.jsx')), 'Study Agent module should load when its tab is selected')
     await page.evaluate(() => {
       window.__rawProposalVisible = false
       const inspect = () => { if (document.body.innerText.includes('{"fields"')) window.__rawProposalVisible = true }
@@ -1471,6 +1490,7 @@ async function main(smokeRun) {
     })
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Clock' }).click()
+    assert(frontendModuleRequests.some((url) => url.includes('/src/tabs/ClockTab.jsx')), 'Clock module should load when its tab is selected')
     await page.getByRole('region', { name: 'Clock' }).getByText('Clock state could not be saved or loaded. Your previous saved state remains available.').waitFor()
     assert.ok(await page.evaluate(() => localStorage.getItem('hamartia.active-practice-session')))
     failedResponses.splice(0, failedResponses.length, ...failedResponses.filter((item) => !(new URL(item.url).pathname === '/clock' && item.status === 503)))

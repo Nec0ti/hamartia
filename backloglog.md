@@ -1,5 +1,11 @@
 # Backlog log
 
+## 2026-11-18 — dashboard initial-bundle reduction
+
+- Deferred Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon until selected, with an accessible bilingual loading status; kept Dashboard eager and ClockProvider mounted.
+- Initial JS fell from 891.27 kB / 245.11 kB gzip to 777.06 kB / 222.59 kB gzip (−114.21 kB / −22.52 kB gzip). The dashboard still includes Recharts and the >500 kB warning remains.
+- Frontend tests passed 54/54, production build passed, and the full browser smoke passed under Nix Chromium. Browser assertions cover lazy loading and dashboard question-upload context. No AI/provider call; see [report](reports/2026-11-18-dashboard-tab-code-splitting.md).
+
 ## 2026-11-17 — README logo visibility
 
 - Reduced the root README inline mark to 20 px and used the transparent black/white brand SVGs for light/dark GitHub themes.

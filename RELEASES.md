@@ -1473,3 +1473,61 @@ API, depolama, puanlama, yedekleme veya veri biçimi değişmedi; geçiş gerekm
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Ortamda libglib\-2\.0\.so\.0 olmadığı için varsayılan Playwright Chromium açılamıyor; Nix Chromium seçeneğiyle tam smoke testi geçti\. Ekran görüntüsü üretilmedi\. Derlemede mevcut büyük ana paket uyarısı sürüyor\. Önceki CI çalışmaları Deneme geçmişi tablosuna kapsamlanmamış satır seçicilerini yakaladı; son head üzerindeki kontroller, tüm seçiciler kapsamlandıktan sonra geçti\. Ekran görüntüsü veya ayrıca insan tarafından görsel inceleme yapılmadı\.
+
+## ARETE-070
+
+## English
+
+`ARETE-070` — [PR #74](https://github.com/Nec0ti/hamartia/pull/74): perf\: lazy\-load non\-dashboard tabs
+
+### Highlights
+
+The Dashboard stays in the initial bundle\. Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon load only when selected, reducing initial JavaScript by 114\.21 kB minified and 22\.53 kB gzip in the measured production build\.
+
+### Behavior and why
+
+The selected tab now shows a polite loading status while its code loads\. Deferring less frequently used screens reduces the initial download while preserving the existing Dashboard\-first workflow\. The timer provider stays mounted as users switch tabs\.
+
+### How to use
+
+No new steps are needed\. Select any tab in the navigation; its screen loads on first selection\.
+
+### Compatibility / migration
+
+No API, stored data, or backup format changed\. Dashboard\-created missed questions still carry their exam context into Questions\. No migration is needed\.
+
+### Verification
+
+All PR CI checks passed\: frontend jobs \(2\:11 and 2\:13\), backend jobs \(2\:20 and 2\:38\), Windows backup\-recovery jobs \(0\:45 and 0\:49\), Linux package build \(4\:57\), and Windows package build \(3\:35\)\. Frontend tests passed 58\/58 on the merged branch\. The production build passed and measured initial JavaScript at 781\.35 kB \/ 223\.68 kB gzip versus 895\.56 kB \/ 246\.21 kB gzip on clean current master \(Vite 6\.4\.6, same lockfile\-pinned dependencies\)\. The full browser smoke passed under Nix Chromium and checked deferred module requests, loading status, and exam\-to\-question context handoff\. No AI\/provider call was made\.
+
+### Not run / known limitations
+
+The initial JavaScript still exceeds Vite's 500 kB advisory because the Dashboard uses Recharts\. Lazy chunk download failures do not yet have a dedicated retry screen\. The cached Playwright Chromium binary could not start because this host lacks \`libglib\-2\.0\.so\.0\`; the smoke passed using Nix Chromium instead\.
+
+## Türkçe
+
+`ARETE-070` — [PR #74](https://github.com/Nec0ti/hamartia/pull/74): perf\: lazy\-load non\-dashboard tabs
+
+### Öne çıkanlar
+
+Ana Sayfa başlangıç paketinde kalıyor\. Yanlışlarım, Çalışma Planı, Çalışma Asistanı, Cosmos, Saat ve Yakında ekranları yalnızca seçildiklerinde yükleniyor\. Ölçülen üretim derlemesinde başlangıç JavaScript'i küçültülmüş hâlde 114,21 kB, gzip boyutunda 22,53 kB azaldı\.
+
+### Davranış ve nedeni
+
+Seçilen ekranın kodu yüklenirken erişilebilir bir yükleniyor durumu gösteriliyor\. Daha seyrek kullanılan ekranları ertelemek ilk indirmeyi azaltırken Ana Sayfa ile başlayan mevcut akışı koruyor\. Sekmeler arasında geçişte zamanlayıcı sağlayıcısı çalışmaya devam ediyor\.
+
+### Kullanım
+
+Yeni bir işlem gerekmiyor\. Gezintiden herhangi bir sekmeyi seçin; ekran ilk seçimde yüklenir\.
+
+### Uyumluluk / geçiş
+
+API, kayıtlı veri veya yedek biçiminde değişiklik yok\. Ana Sayfa'dan açılan yanlış soru, sınav bağlamını Yanlışlarım ekranına taşımaya devam ediyor\. Geçiş gerekmiyor\.
+
+### Doğrulama
+
+PR CI kontrollerinin tümü geçti\: ön uç işleri \(2\:11 ve 2\:13\), arka uç işleri \(2\:20 ve 2\:38\), Windows yedek kurtarma işleri \(0\:45 ve 0\:49\), Linux paket derlemesi \(4\:57\) ve Windows paket derlemesi \(3\:35\)\. Birleştirilmiş dalda ön uç testleri 58\/58 geçti\. Üretim derlemesi başarılı oldu; başlangıç JavaScript'i 781,35 kB \/ 223,68 kB gzip ölçüldü\. Güncel master tabanı 895,56 kB \/ 246,21 kB gzip idi \(Vite 6\.4\.6 ve aynı kilit dosyası bağımlılıkları\)\. Nix Chromium ile tam tarayıcı testi geçti; ertelenmiş modül isteklerini, yükleniyor durumunu ve sınavdan soru ekranına bağlam aktarımını kontrol etti\. AI\/sağlayıcı çağrısı yapılmadı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Ana Sayfa Recharts kullandığı için başlangıç JavaScript'i Vite'ın 500 kB uyarı eşiğinin üzerinde kalıyor\. Ertelenmiş bir parçanın indirilememesi için özel bir yeniden deneme ekranı henüz yok\. Playwright'ın önbellekteki Chromium'u bu makinede \`libglib\-2\.0\.so\.0\` eksik olduğu için başlayamadı; test bunun yerine Nix Chromium ile geçti\.

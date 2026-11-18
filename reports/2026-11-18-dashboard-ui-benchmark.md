@@ -18,8 +18,8 @@ Environment: NixOS, Chromium 156.0.8078.47, Node.js 26.12.1, Python 3.14.8, Vite
 
 | Measurement | Repeat 1 | Repeat 2 | Repeat 3 | Median | Range |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Dashboard navigation to both complete 512-row summaries (ms) | 11,151 | 9,045 | 8,494 | 9,045 | 8,494–11,151 |
-| Study Agent selection to rendered heading (ms) | 721 | 443 | 529 | 529 | 443–721 |
+| Dashboard navigation to both complete 512-row summaries (ms) | 8,287 | 4,551 | 4,568 | 4,568 | 4,551–8,287 |
+| Study Agent selection to rendered heading (ms) | 410 | 249 | 261 | 261 | 249–410 |
 | Initial frontend script requests | 53 | 53 | 53 | 53 | 53–53 |
 | Requests after selecting Study Agent | 2 | 2 | 2 | 2 | 2–2 |
 | Study Agent module response body (bytes) | 193,485 | 193,485 | 193,485 | 193,485 | 193,485–193,485 |
@@ -48,8 +48,8 @@ Ortam: NixOS, Chromium 156.0.8078.47, Node.js 26.12.1, Python 3.14.8, Vite 6.4.6
 
 | Ölçüm | Tekrar 1 | Tekrar 2 | Tekrar 3 | Ortanca | Aralık |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Ana Sayfa'dan iki tam 512 satırlı özete kadar (ms) | 11.151 | 9.045 | 8.494 | 9.045 | 8.494–11.151 |
-| Çalışma Asistanı seçiminden başlığın çizilmesine kadar (ms) | 721 | 443 | 529 | 529 | 443–721 |
+| Ana Sayfa'dan iki tam 512 satırlı özete kadar (ms) | 8.287 | 4.551 | 4.568 | 4.568 | 4.551–8.287 |
+| Çalışma Asistanı seçiminden başlığın çizilmesine kadar (ms) | 410 | 249 | 261 | 261 | 249–410 |
 | İlk yüklemedeki ön uç betik istekleri | 53 | 53 | 53 | 53 | 53–53 |
 | Çalışma Asistanı seçildikten sonraki istekler | 2 | 2 | 2 | 2 | 2–2 |
 | Çalışma Asistanı modül yanıt gövdesi (bayt) | 193.485 | 193.485 | 193.485 | 193.485 | 193.485–193.485 |

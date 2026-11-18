@@ -3,6 +3,7 @@
 Add each review, test, or benchmark report here as a dated Markdown file. Include the commands, scope, results, and limitations. Local AI runs and model performance must not be included in these measurements. Social prototype reports are historical only: the feature set was canceled and removed in [the cancellation report](2026-11-16-social-prototype-canceled.md).
 
 - [2026-11-18 benchmark network-boundary tripwires](2026-11-18-benchmark-network-tripwires.md)
+- [2026-11-18 dashboard chart and lazy-tab UI benchmark](2026-11-18-dashboard-ui-benchmark.md)
 
 - [2026-11-18 dashboard chart trends](2026-11-18-dashboard-chart-trends.md)
 - [2026-11-18 dashboard initial-bundle reduction](2026-11-18-dashboard-tab-code-splitting.md)

@@ -15,6 +15,14 @@ def _assert_address(address):
         raise RuntimeError(f"non-loopback network address blocked: {host}")
 
 
+def _assert_socket_address(sock, address):
+    # Unix-domain sockets are local IPC and do not use IP destinations.
+    # Keep the guard closed for all other families unless the target is loopback.
+    if getattr(sock, "family", None) == getattr(socket, "AF_UNIX", object()):
+        return
+    _assert_address(address)
+
+
 def _assert_numeric_name(host):
     try:
         loopback = ipaddress.ip_address(host).is_loopback
@@ -34,28 +42,28 @@ def install_loopback_guard():
     methods, resolvers = originals
 
     def connect(sock, address):
-        _assert_address(address)
+        _assert_socket_address(sock, address)
         return methods["connect"](sock, address)
 
     def connect_ex(sock, address):
-        _assert_address(address)
+        _assert_socket_address(sock, address)
         return methods["connect_ex"](sock, address)
 
     def send(sock, data, *args, **kwargs):
-        _assert_address(sock.getpeername())
+        _assert_socket_address(sock, sock.getpeername())
         return methods["send"](sock, data, *args, **kwargs)
 
     def sendall(sock, data, *args, **kwargs):
-        _assert_address(sock.getpeername())
+        _assert_socket_address(sock, sock.getpeername())
         return methods["sendall"](sock, data, *args, **kwargs)
 
     def sendto(sock, *args, **kwargs):
-        _assert_address(kwargs.get("address", args[-1] if args else None))
+        _assert_socket_address(sock, kwargs.get("address", args[-1] if args else None))
         return methods["sendto"](sock, *args, **kwargs)
 
     def sendmsg(sock, *args, **kwargs):
         address = kwargs.get("address", args[3] if len(args) > 3 else None)
-        _assert_address(address if address is not None else sock.getpeername())
+        _assert_socket_address(sock, address if address is not None else sock.getpeername())
         return methods["sendmsg"](sock, *args, **kwargs)
 
     for name, replacement in (

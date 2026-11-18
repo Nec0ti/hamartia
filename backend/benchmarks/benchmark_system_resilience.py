@@ -112,6 +112,30 @@ def self_check_loopback_guard():
                     mock.assert_called_once()
 
 
+def self_check_unix_socketpair_guard():
+    if not hasattr(socket, "AF_UNIX") or not hasattr(socket, "socketpair"):
+        return "skipped_unavailable"
+    try:
+        left, right = socket.socketpair()
+    except (OSError, NotImplementedError):
+        return "skipped_unavailable"
+    try:
+        left.settimeout(1)
+        right.settimeout(1)
+        with loopback_only():
+            left.send(b"a")
+            assert right.recv(1) == b"a"
+            left.sendall(b"b")
+            assert right.recv(1) == b"b"
+            if hasattr(socket.socket, "sendmsg"):
+                left.sendmsg([b"c"])
+                assert right.recv(1) == b"c"
+    finally:
+        left.close()
+        right.close()
+    return "passed"
+
+
 def request_json(url, method="GET", payload=None):
     data = None if payload is None else json.dumps(payload, separators=(",", ":")).encode()
     request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
@@ -225,6 +249,16 @@ finally:
     socket.socket.getpeername = original_getpeername
 resolved = socket.getaddrinfo("127.0.0.1", 9)
 assert resolved and all(ipaddress.ip_address(item[4][0]).is_loopback for item in resolved)
+if hasattr(socket, "AF_UNIX") and hasattr(socket, "socketpair"):
+    left, right = socket.socketpair()
+    try:
+        left.settimeout(1)
+        right.settimeout(1)
+        left.sendall(b"local")
+        assert right.recv(5) == b"local"
+    finally:
+        left.close()
+        right.close()
 print("child network guard loaded and rejected synthetic outbound paths")
 '''
     result = subprocess.run(
@@ -453,6 +487,7 @@ def main():
     assert 1 <= args.clients <= 8 and 1 <= args.requests_per_client <= 10
     assert 1 <= len(args.seeds) <= 4
     self_check_loopback_guard()
+    unix_socketpair_check = self_check_unix_socketpair_guard()
     with tempfile.TemporaryDirectory(prefix="hamartia-system-resilience-") as temporary:
         root = Path(temporary)
         contention = multiprocess_writers(root, args.workers, args.writes)
@@ -462,7 +497,8 @@ def main():
         "benchmark": "system_resilience_and_loopback_http", "multiprocess_storage": contention,
         "atomic_replace_crash_recovery": recovery, "loopback_http": http,
         "fault_and_correctness_checks_timed": False,
-        "network_boundary": "Parent and API child guard TCP/UDP destinations and DNS to numeric loopback only; parent and spawned child self-checks pass; only /exams is called; no settings or AI route is contacted",
+        "network_boundary": "Parent and API child guard non-loopback TCP/UDP destinations and DNS; numeric loopback is allowed, AF_UNIX local IPC is permitted and self-checked where available; parent and spawned child self-checks pass; only /exams is called; no settings or AI route is contacted",
+        "unix_socketpair_guard_self_check": unix_socketpair_check,
         "ai_included": False,
     }, args.json_output)
 

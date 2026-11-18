@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import ast
 import hashlib
 import inspect
 import json
 import platform
 import random
+import socket
 import sys
 import time
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from unittest.mock import patch
+
+import httpx
 
 from app import hamartia_cli
 from app.hamartia_cli import run_json_line
@@ -144,6 +150,48 @@ def self_check_exact_read_only_gate() -> None:
         except AssertionError:
             continue
         raise AssertionError(f"benchmark gate accepted an unsafe value: {unsafe_result!r}")
+
+
+def _blocked_network(*_args, **_kwargs):
+    raise AssertionError("network access during host-only CLI benchmark")
+
+
+@contextmanager
+def network_tripwires():
+    with ExitStack() as stack:
+        guards = {
+            "socket_connect": stack.enter_context(patch.object(socket.socket, "connect", side_effect=_blocked_network)),
+            "socket_connect_ex": stack.enter_context(patch.object(socket.socket, "connect_ex", side_effect=_blocked_network)),
+            "httpx_sync": stack.enter_context(patch.object(httpx.HTTPTransport, "handle_request", side_effect=_blocked_network)),
+            "httpx_async": stack.enter_context(patch.object(httpx.AsyncHTTPTransport, "handle_async_request", side_effect=_blocked_network)),
+        }
+        yield guards
+
+
+def self_check_network_tripwires() -> None:
+    with network_tripwires() as guards:
+        with socket.socket() as probe:
+            for name in ("connect", "connect_ex"):
+                try:
+                    getattr(probe, name)(("127.0.0.1", 1))
+                except AssertionError as exc:
+                    if "network access" not in str(exc):
+                        raise
+                else:
+                    raise AssertionError(f"{name} network tripwire allowed a synthetic connection")
+        for name, operation in (
+            ("httpx_sync", lambda: httpx.HTTPTransport.handle_request(object.__new__(httpx.HTTPTransport), None)),
+            ("httpx_async", lambda: asyncio.run(httpx.AsyncHTTPTransport.handle_async_request(object.__new__(httpx.AsyncHTTPTransport), None))),
+        ):
+            try:
+                operation()
+            except AssertionError as exc:
+                if "network access" not in str(exc):
+                    raise
+            else:
+                raise AssertionError(f"{name} network tripwire allowed a synthetic request")
+        for guard in guards.values():
+            guard.assert_called_once()
 
 
 def assert_prepare_is_structurally_side_effect_free() -> None:
@@ -485,35 +533,40 @@ def adversarial_probes(seed: int) -> int:
 def run_trial(count: int, seed: int) -> dict:
     self_check_exact_read_only_gate()
     assert_prepare_is_structurally_side_effect_free()
-    rng = random.Random(seed)
-    fixtures = [fixture(index) for index in range(count)]
-    rng.shuffle(fixtures)
-    encoded = [json.dumps(request, ensure_ascii=False, separators=(",", ":")) for request, _, _, _ in fixtures]
-    started = time.perf_counter()
-    for index, (line, (_, expected, expected_evidence, expected_digest)) in enumerate(zip(encoded, fixtures, strict=True)):
-        result = run_json_line(line)
-        _assert_exact_read_only_gate(result)
-        if result.get("status") != "ready" or result.get("fields") != expected:
-            raise AssertionError(f"independent CLI oracle mismatch at row {index}")
-        if result.get("preview_digest") != expected_digest:
-            raise AssertionError(f"independent exact-preview digest mismatch at row {index}")
-        if result.get("verified_evidence") != expected_evidence:
-            raise AssertionError(f"independent quote/value/offset oracle mismatch at row {index}")
-    elapsed = time.perf_counter() - started
+    with network_tripwires() as guards:
+        rng = random.Random(seed)
+        fixtures = [fixture(index) for index in range(count)]
+        rng.shuffle(fixtures)
+        encoded = [json.dumps(request, ensure_ascii=False, separators=(",", ":")) for request, _, _, _ in fixtures]
+        started = time.perf_counter()
+        for index, (line, (_, expected, expected_evidence, expected_digest)) in enumerate(zip(encoded, fixtures, strict=True)):
+            result = run_json_line(line)
+            _assert_exact_read_only_gate(result)
+            if result.get("status") != "ready" or result.get("fields") != expected:
+                raise AssertionError(f"independent CLI oracle mismatch at row {index}")
+            if result.get("preview_digest") != expected_digest:
+                raise AssertionError(f"independent exact-preview digest mismatch at row {index}")
+            if result.get("verified_evidence") != expected_evidence:
+                raise AssertionError(f"independent quote/value/offset oracle mismatch at row {index}")
+        elapsed = time.perf_counter() - started
 
-    negatives = [
-        ({"command": "study.practice.prepare", "language": "en", "messages": ["I did not get 5 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
-        ({"command": "study.practice.prepare", "language": "en", "messages": ["Maybe I got about 5 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
-        ({"command": "practice.delete", "language": "en", "messages": ["delete"], "evidence": []}, "error", None, False),
-    ]
-    for request, status, field, missing in negatives:
-        _assert_rejected_probe(request, status=status, field=field, missing=missing)
-    adversarial_count = adversarial_probes(seed)
+        negatives = [
+            ({"command": "study.practice.prepare", "language": "en", "messages": ["I did not get 5 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
+            ({"command": "study.practice.prepare", "language": "en", "messages": ["Maybe I got about 5 right."], "evidence": [{"field": "correct", "quote": "5 right"}]}, "ambiguous", "correct", False),
+            ({"command": "practice.delete", "language": "en", "messages": ["delete"], "evidence": []}, "error", None, False),
+        ]
+        for request, status, field, missing in negatives:
+            _assert_rejected_probe(request, status=status, field=field, missing=missing)
+        adversarial_count = adversarial_probes(seed)
+    for name, guard in guards.items():
+        if guard.call_count:
+            raise AssertionError(f"unexpected network attempt during CLI benchmark: {name}={guard.call_count}")
     return {
         "records_checked": count, "seconds": elapsed, "probes_checked": len(negatives) + adversarial_count,
         "side_effects": {
             "provider_calls": {"measurement": "structurally_excluded", "runtime_counted": False},
             "writes": {"measurement": "structurally_excluded", "runtime_counted": False},
+            "network_calls": {"measurement": "socket and HTTP transport tripwires", "runtime_counted": True, "count": 0},
         },
     }
 
@@ -521,6 +574,7 @@ def run_trial(count: int, seed: int) -> dict:
 def main(repeats: int = 5, json_output: str | None = None) -> None:
     if not 3 <= repeats <= 15:
         raise ValueError("repeats must be between 3 and 15")
+    self_check_network_tripwires()
     runs = []
     for count in (24, 100):
         run_trial(count, SEED)  # warm-up
@@ -530,7 +584,7 @@ def main(repeats: int = 5, json_output: str | None = None) -> None:
             **results[-1], "p50_seconds": round(durations[len(durations) // 2], 6),
             "p95_seconds": round(durations[-1], 6),
             "oracle": "EN natural/labeled and TR natural/labeled fixtures; independent values/evidence/digests; adversarial exact statuses and corrections",
-            "side_effect_check": "AST inspection confirmed the legacy study.practice.prepare and evidence-tool parser functions call no provider or persistence services; counters are structural exclusions, not runtime instrumentation",
+            "side_effect_check": "AST inspection confirmed the legacy parser functions call no provider or persistence services; provider/write effects are structurally excluded, while socket and HTTP transport tripwires dynamically count network attempts",
         })
     output = {
         "benchmark": "study_agent_cli_prepare", "seed": SEED, "ai_included": False,

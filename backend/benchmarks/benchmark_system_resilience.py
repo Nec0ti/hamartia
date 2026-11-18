@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from fractions import Fraction
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID
 
 from app.services.storage import StorageService
@@ -37,9 +38,10 @@ def timing(samples):
 
 @contextmanager
 def loopback_only():
-    original = socket.socket.connect
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
 
-    def guarded(sock, address):
+    def assert_loopback(address):
         host = address[0] if isinstance(address, tuple) else address
         try:
             loopback = ipaddress.ip_address(host).is_loopback
@@ -47,14 +49,42 @@ def loopback_only():
             loopback = host == "localhost"
         if not loopback:
             raise AssertionError(f"benchmark blocked non-loopback connection: {host}")
-        return original(sock, address)
+
+    def guarded_connect(sock, address):
+        assert_loopback(address)
+        return original_connect(sock, address)
+
+    def guarded_connect_ex(sock, address):
+        assert_loopback(address)
+        return original_connect_ex(sock, address)
 
     import ipaddress
-    socket.socket.connect = guarded
+    socket.socket.connect = guarded_connect
+    socket.socket.connect_ex = guarded_connect_ex
     try:
         yield
     finally:
-        socket.socket.connect = original
+        socket.socket.connect = original_connect
+        socket.socket.connect_ex = original_connect_ex
+
+
+def self_check_loopback_guard():
+    with patch.object(socket.socket, "connect", return_value=None) as original_connect, \
+            patch.object(socket.socket, "connect_ex", return_value=0) as original_connect_ex:
+        with loopback_only():
+            with socket.socket() as probe:
+                for name in ("connect", "connect_ex"):
+                    try:
+                        getattr(probe, name)(("203.0.113.1", 9))
+                    except AssertionError as exc:
+                        if "non-loopback" not in str(exc):
+                            raise
+                    else:
+                        raise AssertionError(f"{name} guard allowed a synthetic non-loopback address")
+                probe.connect(("127.0.0.1", 9))
+                probe.connect_ex(("127.0.0.1", 9))
+        original_connect.assert_called_once()
+        original_connect_ex.assert_called_once()
 
 
 def request_json(url, method="GET", payload=None):
@@ -124,13 +154,20 @@ def start_api(data_dir, port, guard_dir):
     (guard_dir / "sitecustomize.py").write_text(
         "import ipaddress, socket\n"
         "_connect = socket.socket.connect\n"
-        "def _loopback_only(sock, address):\n"
+        "_connect_ex = socket.socket.connect_ex\n"
+        "def _assert_loopback(address):\n"
         " host = address[0] if isinstance(address, tuple) else address\n"
         " try: allowed = ipaddress.ip_address(host).is_loopback\n"
         " except ValueError: allowed = host == 'localhost'\n"
         " if not allowed: raise RuntimeError('non-loopback network blocked: ' + str(host))\n"
+        "def _loopback_only(sock, address):\n"
+        " _assert_loopback(address)\n"
         " return _connect(sock, address)\n"
-        "socket.socket.connect = _loopback_only\n", encoding="utf-8")
+        "def _loopback_only_ex(sock, address):\n"
+        " _assert_loopback(address)\n"
+        " return _connect_ex(sock, address)\n"
+        "socket.socket.connect = _loopback_only\n"
+        "socket.socket.connect_ex = _loopback_only_ex\n", encoding="utf-8")
     env = os.environ.copy()
     env["HAMARTIA_DATA_DIR"] = str(data_dir)
     env["PYTHONPATH"] = os.pathsep.join([str(guard_dir), str(Path(__file__).resolve().parents[1]), env.get("PYTHONPATH", "")])
@@ -345,6 +382,7 @@ def main():
     assert 1 <= args.workers <= 8 and 1 <= args.writes <= 25
     assert 1 <= args.clients <= 8 and 1 <= args.requests_per_client <= 10
     assert 1 <= len(args.seeds) <= 4
+    self_check_loopback_guard()
     with tempfile.TemporaryDirectory(prefix="hamartia-system-resilience-") as temporary:
         root = Path(temporary)
         contention = multiprocess_writers(root, args.workers, args.writes)
@@ -354,7 +392,7 @@ def main():
         "benchmark": "system_resilience_and_loopback_http", "multiprocess_storage": contention,
         "atomic_replace_crash_recovery": recovery, "loopback_http": http,
         "fault_and_correctness_checks_timed": False,
-        "network_boundary": "API child connect guard rejects non-loopback socket targets; benchmark client guard rejects non-loopback targets; only /exams is called; no settings or AI route is contacted",
+        "network_boundary": "API child and benchmark client reject non-loopback socket connect/connect_ex targets; both guards pass synthetic self-checks; only /exams is called; no settings or AI route is contacted",
         "ai_included": False,
     }, args.json_output)
 

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { inflateSync } = require('node:zlib')
-const { onePixelPng } = require('./smokeFixtures.cjs')
+const { dashboardExamHistory, onePixelPng } = require('./smokeFixtures.cjs')
 
 function crc32(buffer) {
   let crc = 0xffffffff
@@ -34,4 +34,14 @@ test('browser image fixture has valid PNG chunk CRCs and decodes to one pixel', 
   assert.equal(offset, onePixelPng.length)
   assert.deepEqual([width, height], [1, 1])
   assert.equal(inflateSync(idat).length, 5)
+})
+
+test('dashboard benchmark history is deterministic, unique, and fully sized', () => {
+  const first = dashboardExamHistory()
+  const second = dashboardExamHistory()
+  assert.equal(first.length, 512)
+  assert.deepEqual(first, second)
+  assert.equal(new Set(first.map((exam) => exam.id)).size, first.length)
+  assert.equal(new Set(first.map((exam) => exam.date)).size, first.length)
+  assert.deepEqual([first[0].date, first.at(-1).date], ['2024-01-01', '2025-05-26'])
 })

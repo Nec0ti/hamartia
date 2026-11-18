@@ -18,9 +18,14 @@ export function examPayloadFromForm(form) {
   if (!form.sections?.length) return form
   return {
     ...form,
-    subject: `${form.exam_type.toUpperCase()} Geneli`,
+    subject: form.exam_type === 'custom' ? form.format_name.trim() : `${form.exam_type.toUpperCase()} Geneli`,
     ...examSectionTotals(form.sections),
   }
+}
+
+export function examTypeDisplay(exam, t) {
+  if (exam?.exam_type === 'custom') return `${t('exams.type.custom')}: ${exam.format_name || exam.subject}`
+  return t(`exams.type.${exam?.exam_type || 'branch'}`)
 }
 
 export function examScoringProfileKey(examOrProfile) {

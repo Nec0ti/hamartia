@@ -3,6 +3,7 @@ import { ArrowDownRight, Clock, Pencil, Trash2 } from 'lucide-react'
 import { Panel, Header } from '../components/ui.jsx'
 import { fmtDate, fmtInt, fmtNet, fmtDuration, subjectLabel, netScoreWithRule } from '../utils/formatters'
 import { useI18n } from '../i18n.jsx'
+import { examTypeDisplay } from '../utils/examSections.js'
 
 /**
  * Recent-exams table. Each row shows the derived net and XP. Double-clicking
@@ -70,7 +71,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
                       </details>
                     ) : subjectLabel(ex.subject, t('common.unlabelled'))}
                   </td>
-                  <td className="py-3 pr-4 text-canvas-muted">{t(`exams.type.${ex.exam_type || 'branch'}`)}</td>
+                  <td className="py-3 pr-4 text-canvas-muted">{examTypeDisplay(ex, t)}</td>
                   <td className="py-3 pr-4 text-canvas-muted">{ex.scoring_profile?.display_name || 'YKS (legacy)'} · v{ex.scoring_profile?.version || 1}</td>
                   <td className="py-3 pr-4 text-canvas-text">{fmtInt(ex.correct, locale)}</td>
                   <td

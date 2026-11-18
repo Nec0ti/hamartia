@@ -27,6 +27,7 @@ const EMPTY_FORM = {
   incorrect: 2,
   blank: 1,
   sections: [],
+  format_name: '',
   scoring_profile_id: 'legacy-yks',
   scoring_profile_version: 1,
 }
@@ -138,6 +139,7 @@ export default function DashboardTab({ onUploadQuestion }) {
       subject: exam.subject,
       duration_minutes: exam.duration_minutes,
       duration_seconds: exam.duration_seconds,
+      format_name: exam.format_name || '',
       correct: exam.correct,
       incorrect: exam.incorrect,
       blank: exam.blank,
@@ -221,6 +223,7 @@ export default function DashboardTab({ onUploadQuestion }) {
           <option value="tyt">TYT</option>
           <option value="ayt">AYT</option>
           <option value="branch">{t('dashboard.branch')}</option>
+          <option value="custom">{t('exams.type.custom')}</option>
         </select>
       </div>
       <StatsCards profile={profile} stats={stats} examType={examTypeFilter} />

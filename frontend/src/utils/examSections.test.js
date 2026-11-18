@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { averageRecordedNet, examChartLabel, examChartSummaryRows, examNetChanges, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, filterExamsByScoringProfile, orderExamTimeline } from './examSections.js'
+import { averageRecordedNet, examChartLabel, examChartSummaryRows, examNetChanges, examPayloadFromForm, examResultsForSubject, examScoringProfileKey, examSectionTotals, examSubjectOptions, examTypeDisplay, filterExamsByScoringProfile, orderExamTimeline } from './examSections.js'
 
 const mock = {
   id: 'mock-1', subject: 'TYT Geneli', net: 40, correct: 45, incorrect: 20, blank: 15,
@@ -28,6 +28,13 @@ test('full mock payload totals sections once while branch input stays unchanged'
   assert.deepEqual(examPayloadFromForm(form), { ...form, subject: 'AYT Geneli', correct: 45, incorrect: 20, blank: 15 })
   const branch = { exam_type: 'branch', subject: 'Fizik', correct: 7, incorrect: 2, blank: 1 }
   assert.equal(examPayloadFromForm(branch), branch)
+})
+
+test('custom mock payload uses the user format name and displays it without an official claim', () => {
+  const form = { exam_type: 'custom', format_name: 'Personal assessment', subject: '', correct: 0, incorrect: 0, blank: 0,
+    sections: [{ subject: 'Reading', correct: 4, incorrect: 1, blank: 2 }] }
+  assert.deepEqual(examPayloadFromForm(form), { ...form, subject: 'Personal assessment', correct: 4, incorrect: 1, blank: 2 })
+  assert.equal(examTypeDisplay({ exam_type: 'custom', format_name: 'Personal assessment' }, (key) => key === 'exams.type.custom' ? 'Custom mock' : key), 'Custom mock: Personal assessment')
 })
 
 test('profile versions remain isolated in history aggregates', () => {

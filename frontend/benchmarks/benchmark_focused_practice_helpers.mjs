@@ -8,7 +8,7 @@ import tls from 'node:tls'
 import { performance } from 'node:perf_hooks'
 
 const SEED = 20261119
-const SCENARIOS = 192
+const SCENARIOS = 256
 const DURATION_CASES = 4096
 const REPEATS = 9
 const WARMUPS = 2
@@ -71,7 +71,7 @@ function createResolverCases() {
   const random = seededRandom(SEED)
   const cases = []
   for (let index = 0; index < SCENARIOS; index += 1) {
-    const kind = index % 8
+    const kind = index % 16
     const completionId = `completion-${index}`
     const scoringProfile = profile(index)
     const draft = {
@@ -94,36 +94,31 @@ function createResolverCases() {
       id: `unrelated-${index}-${rowIndex}`, date: '2026-01-01', subject: 'Other', topic: 'Other',
       correct: 0, incorrect: 0, blank: 0, scoring_profile: profile(rowIndex + index + 100),
     }))
-    if (kind <= 5) sessions[random(sessions.length)] = target
+    if (kind <= 13) sessions[random(sessions.length)] = target
     if (kind === 1) target.date = '2025-12-31'
     if (kind === 2) target.subject = 'Wrong subject'
     if (kind === 3) target.topic = 'Wrong topic'
     if (kind === 4) target.correct += 1
-    if (kind === 5) target.scoring_profile.scoring_rule.wrong_penalty += 1
-    if (kind === 7) draft.completion_payload = { frozen: true }
+    if (kind === 5) target.incorrect += 1
+    if (kind === 6) target.blank += 1
+    if (kind === 7) target.scoring_profile.profile_id = 'wrong-profile-id'
+    if (kind === 8) target.scoring_profile.version += 1
+    if (kind === 9) target.scoring_profile.display_name = 'Wrong profile name'
+    if (kind === 10) target.scoring_profile.country_label = 'Wrong country label'
+    if (kind === 11) target.scoring_profile.scoring_rule.correct_points += 1
+    if (kind === 12) target.scoring_profile.scoring_rule.wrong_penalty += 1
+    if (kind === 13) target.scoring_profile.scoring_rule.blank_points += 1
+    if (kind === 15) draft.completion_payload = { frozen: true }
     cases.push({ timer, sessions, kind, target })
   }
   return cases
 }
 
-function expectedLegacyResult({ timer, sessions, kind, target }) {
-  const draft = timer?.practice_draft
-  if (!draft?.completion_id || draft.completion_payload) return { kind: 'not-legacy' }
-  const rowId = `practice_focus_${draft.completion_id}`
-  const row = sessions.find((item) => item.id === rowId)
-  if (!row) return { kind: 'missing' }
-  const profileMatches = (left, right) => Boolean(left && right
-    && left.profile_id === right.profile_id
-    && left.version === right.version
-    && left.display_name === right.display_name
-    && left.country_label === right.country_label
-    && left.scoring_rule?.correct_points === right.scoring_rule?.correct_points
-    && left.scoring_rule?.wrong_penalty === right.scoring_rule?.wrong_penalty
-    && left.scoring_rule?.blank_points === right.scoring_rule?.blank_points)
-  const matches = row.date === draft.date && row.subject === draft.subject && row.topic === draft.topic
-    && row.correct === draft.correct && row.incorrect === draft.incorrect && row.blank === draft.blank
-    && profileMatches(row.scoring_profile, draft.scoring_profile)
-  return matches ? { kind: 'match', row } : { kind: 'mismatch' }
+function expectedLegacyResult({ kind, target }) {
+  if (kind === 0) return { kind: 'match', row: target }
+  if (kind >= 1 && kind <= 13) return { kind: 'mismatch' }
+  if (kind === 14) return { kind: 'missing' }
+  return { kind: 'not-legacy' }
 }
 
 function createDurationCases() {
@@ -176,7 +171,7 @@ try {
     resolverCounts[actual.kind] += 1
     if (expected.kind === 'match') assert.equal(actual.row, expected.row, 'matched row must be returned unchanged')
   }
-  assert.deepEqual(resolverCounts, { match: 24, mismatch: 120, missing: 24, 'not-legacy': 24 })
+  assert.deepEqual(resolverCounts, { match: 16, mismatch: 208, missing: 16, 'not-legacy': 16 })
   const durationCases = createDurationCases()
   for (const elapsedMs of durationCases) {
     assert.deepEqual(practiceDurationFromElapsedMilliseconds(elapsedMs), expectedDuration(elapsedMs), `duration ${elapsedMs}ms`)
@@ -190,7 +185,7 @@ try {
       if (result.kind === 'match') matched += 1
       checksum += result.kind.length
     }
-    assert.equal(matched, 24)
+    assert.equal(matched, 16)
     assert.ok(checksum > 0)
   })
   const durationTiming = measure(() => {
@@ -206,7 +201,7 @@ try {
     benchmark: 'focused_practice_helpers',
     seed: SEED,
     resolver_scenarios_per_repeat: resolverCases.length,
-    resolver_oracle_counts: { match: 24, mismatch: 120, missing: 24, not_legacy: 24 },
+    resolver_oracle_counts: { match: 16, mismatch: 208, missing: 16, not_legacy: 16 },
     duration_cases_per_repeat: durationCases.length,
     repeats: REPEATS,
     warmups: WARMUPS,

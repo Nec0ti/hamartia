@@ -40,6 +40,8 @@ jobs:
         working-directory: frontend
       - run: npm run bench:clock
         working-directory: frontend
+      - run: npm run bench:practice-helpers
+        working-directory: frontend
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'

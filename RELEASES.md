@@ -1717,3 +1717,61 @@ Yalnızca dahili araçlar ve dokümantasyon değişti\. Uygulamanın çalışma 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Canlı sağlayıcı, yerel model, harici ağ hedefi, masaüstü paket derlemesi veya üretim paketi boyut benchmark'ı çalıştırılmadı\. Bayt sayıları Vite geliştirme sunucusu yanıt gövdeleridir; üretim paketi boyutlarını göstermez\. Süreler bu yerel ana makine ve tarayıcıya özgüdür\.
+
+## ARETE-074
+
+## English
+
+`ARETE-074` — [PR #78](https://github.com/Nec0ti/hamartia/pull/78): Add focused practice helper benchmark
+
+### Highlights
+
+This internal verification update adds a deterministic benchmark for the focused\-practice recovery and duration\-conversion helpers\. It is not a user\-facing feature; application behavior and stored data do not change\.
+
+### Behavior and why
+
+Students see no behavior change\. The repository now measures two non\-AI clock paths against seeded fixtures and independent correctness oracles so regressions can be found before release\.
+
+### How to use
+
+Contributors can run \`npm run bench\:practice\-helpers\` from \`frontend\/\` to verify 256 legacy\-recovery scenarios and 4,096 elapsed\-time conversions\. CI runs the same command\.
+
+### Compatibility / migration
+
+No migration or compatibility change is needed\. The benchmark uses existing production helpers and does not alter records or APIs\.
+
+### Verification
+
+The new benchmark passed nine timed repeats after two warmups, with all 256 resolver scenarios and 4,096 duration oracle cases passing and zero network attempts\. Frontend unit tests passed 59\/59, the production build passed with its existing large\-chunk advisory, and the existing clock benchmark passed\.
+
+### Not run / known limitations
+
+Exact\-head pull\-request CI and independent review passed; Linux and Windows package checks also passed\. Timing output is descriptive and has no pass threshold\. The Node\-level network guards are benchmark\-process safeguards, not an operating\-system sandbox\.
+
+## Türkçe
+
+`ARETE-074` — [PR #78](https://github.com/Nec0ti/hamartia/pull/78): Add focused practice helper benchmark
+
+### Öne çıkanlar
+
+Bu iç doğrulama güncellemesi, odaklı çalışma kurtarma ve süre dönüşümü yardımcı işlevleri için deterministik bir benchmark ekler\. Kullanıcıya yönelik bir özellik değildir; uygulama davranışı ve saklanan veriler değişmez\.
+
+### Davranış ve nedeni
+
+Öğrenciler uygulamada bir değişiklik görmez\. Depo artık yapay zekâ içermeyen iki saat akışını sabit tohumlu fixture'lar ve bağımsız doğruluk oracle'larıyla ölçerek hataları sürümden önce bulabilir\.
+
+### Kullanım
+
+Katkıda bulunanlar \`frontend\/\` dizininde \`npm run bench\:practice\-helpers\` komutunu çalıştırarak 256 eski kayıt kurtarma senaryosunu ve 4\.096 geçen süre dönüşümünü doğrulayabilir\. CI da aynı komutu çalıştırır\.
+
+### Uyumluluk / geçiş
+
+Geçiş veya uyumluluk değişikliği gerekmez\. Benchmark mevcut üretim yardımcı işlevlerini kullanır; kayıtları veya API'leri değiştirmez\.
+
+### Doğrulama
+
+Yeni benchmark iki ısınma turundan sonra dokuz ölçümü tamamladı; 256 sayaç senaryosunun ve 4\.096 süre oracle'ının tamamı geçti, ağ girişimi sıfırdı\. Ön uç birim testleri 59\/59 geçti, üretim derlemesi mevcut büyük paket uyarısıyla tamamlandı ve mevcut saat benchmark'ı geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Son commit için pull request CI kontrolleri ve bağımsız inceleme geçti; Linux ve Windows paket kontrolleri de başarılı oldu\. Süre ölçümleri bilgilendirme amaçlıdır, geçme eşiği yoktur\. Node ağ korumaları yalnızca benchmark sürecinde çalışır; işletim sistemi düzeyinde sandbox değildir\.

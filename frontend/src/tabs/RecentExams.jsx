@@ -28,7 +28,7 @@ export default function RecentExams({ exams, onDoubleClickIncorrect, onEdit, onD
     <Panel>
       <Header title={t('exams.history')} />
       <div className="overflow-x-auto">
-        <table aria-label={t('exams.history')} className="w-full text-left text-sm">
+        <table id="exam-history-table" aria-label={t('exams.history')} className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-canvas-line text-xs uppercase tracking-wider text-canvas-muted">
               <th className="py-3 pr-4">{t('exams.date')}</th>

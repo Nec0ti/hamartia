@@ -40,7 +40,7 @@ Custom mock documentation is present in English and Turkish. It describes user-d
 
 ### Compatibility and review state
 
-Custom data uses the existing `Exam` record shape with optional `format_name`; old rows that omit it continue to load as before. Section-name length is bounded only for custom exams, preserving prior TYT/AYT behavior. The custom approval tombstone ledger is optional for old backups and is included in new backups. The branch still requires rebase after PR #78 merges, independent review, and exact-head CI before it is ready to merge or release.
+Custom data uses the existing `Exam` record shape with optional `format_name`; old rows that omit it continue to load as before. Section-name length is bounded only for custom exams, preserving prior TYT/AYT behavior. The custom approval tombstone ledger is optional for old backups and is included in new backups. Independent review found and fixed a React key collision between custom question-order groups with the same subject label. PR #79 was rebased onto `ae837622` after PR #78. Because the follow-up fix created a new head, exact-head CI/package checks must run again; independent review is also incomplete. The PR remains draft and is not ready to merge or release.
 
 ## Türkçe
 
@@ -82,4 +82,4 @@ Hamartia artık sınav biçimini bir ülkenin resmî müfredatına bağlamadan k
 
 ### Uyumluluk ve inceleme durumu
 
-Özel kayıtlar isteğe bağlı `format_name` alanıyla mevcut `Exam` biçimini kullanır; bu alanı içermeyen eski kayıtlar eskisi gibi yüklenir. Bölüm adı uzunluğu yalnızca özel denemelerde sınırlıdır; TYT/AYT davranışı korunur. Özel onay tombstone dosyası eski yedeklerde isteğe bağlıdır ve yeni yedeklere eklenir. PR #78 birleştikten sonra bu dalın rebase edilmesi, bağımsız inceleme ve birleştirmeden/yayımdan önce tam kafa CI doğrulaması gerekir.
+Özel kayıtlar isteğe bağlı `format_name` alanıyla mevcut `Exam` biçimini kullanır; bu alanı içermeyen eski kayıtlar eskisi gibi yüklenir. Bölüm adı uzunluğu yalnızca özel denemelerde sınırlıdır; TYT/AYT davranışı korunur. Özel onay tombstone dosyası eski yedeklerde isteğe bağlıdır ve yeni yedeklere eklenir. Bağımsız incelemede özel denemelerde aynı ders etiketi için React anahtarı çakışması bulundu ve giderildi. PR #79 dalı PR #78 sonrası `ae837622` üzerine rebase edilip draft olarak açıldı; takip düzeltmesi yeni bir kafa oluşturduğu için CI/package işleri yeniden başlamalıdır. Bağımsız inceleme henüz tamamlanmadı; doğrulamalar tamamlanmadan birleştirme veya yayın hazır sayılmaz.

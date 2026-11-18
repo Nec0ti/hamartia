@@ -13,7 +13,7 @@ Built the clean `origin/master` baseline and the changed frontend with the same 
 | Initial JavaScript | 895.56 kB / 246.21 kB gzip | 781.35 kB / 223.68 kB gzip | −114.21 kB / −22.53 kB gzip |
 | CSS | 18.96 kB / 4.49 kB gzip | 18.96 kB / 4.49 kB gzip | unchanged |
 
-Vite emitted deferred feature chunks: Questions 20.37 kB (5.41 gzip), Study Plan 34.11 (8.76), Study Agent 35.42 (7.13), Clock 19.54 (4.98), Cosmos 4.65 (1.64), and Coming Soon 0.97 (0.47). Small shared icon chunks are also deferred. The chart-trends changes merged in PR #73 add 4.29 kB / 1.09 kB gzip to both initial-build measurements compared with the earlier PR baseline, so the measured lazy-loading savings remain effectively unchanged. The initial chunk remains above Vite's 500 kB advisory because the dashboard still needs Recharts; splitting these tabs does not remove the dashboard chart dependency.
+Vite emitted deferred feature chunks: Questions 20.37 kB (5.41 gzip), Study Plan 34.11 (8.76), Study Agent 35.42 (7.13), Clock 19.54 (4.98), Cosmos 4.65 (1.64), and Coming Soon 0.97 (0.47). Small shared icon chunks are also deferred. The chart-trends changes merged in PR #73 add 4.29 kB minified and 1.10 kB gzip to the clean baseline, and 4.29 kB minified and 1.09 kB gzip to the lazy-tab build, compared with the earlier PR measurements, so the measured lazy-loading savings remain effectively unchanged. The initial chunk remains above Vite's 500 kB advisory because the dashboard still needs Recharts; splitting these tabs does not remove the dashboard chart dependency.
 
 ## Verification
 

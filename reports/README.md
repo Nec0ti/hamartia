@@ -4,6 +4,7 @@ Add each review, test, or benchmark report here as a dated Markdown file. Includ
 
 - [2026-11-18 benchmark network-boundary tripwires](2026-11-18-benchmark-network-tripwires.md)
 - [2026-11-18 dashboard chart and lazy-tab UI benchmark](2026-11-18-dashboard-ui-benchmark.md)
+- [2026-11-19 focused-practice helper benchmark](2026-11-19-focused-practice-helper-benchmark.md)
 
 - [2026-11-18 dashboard chart trends](2026-11-18-dashboard-chart-trends.md)
 - [2026-11-18 dashboard initial-bundle reduction](2026-11-18-dashboard-tab-code-splitting.md)

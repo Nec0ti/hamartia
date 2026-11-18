@@ -1531,3 +1531,61 @@ PR CI kontrollerinin tümü geçti\: ön uç işleri \(2\:11 ve 2\:13\), arka u�
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Ana Sayfa Recharts kullandığı için başlangıç JavaScript'i Vite'ın 500 kB uyarı eşiğinin üzerinde kalıyor\. Ertelenmiş bir parçanın indirilememesi için özel bir yeniden deneme ekranı henüz yok\. Playwright'ın önbellekteki Chromium'u bu makinede \`libglib\-2\.0\.so\.0\` eksik olduğu için başlayamadı; test bunun yerine Nix Chromium ile geçti\.
+
+## ARETE-071
+
+## English
+
+`ARETE-071` — [PR #75](https://github.com/Nec0ti/hamartia/pull/75): docs\: refresh trackers through ARETE\-070
+
+### Highlights
+
+This documentation\-only update records the merged dashboard chart work in PR \#73 \/ ARETE\-069 and lazy tab loading in PR \#74 \/ ARETE\-070\. It updates the backlog, backlog log, and implementation notes\. No user\-facing behavior changed\.
+
+### Behavior and why
+
+The trackers now reflect the current released work and no longer describe PR \#60 as the latest checkpoint\. They state that solve\-order and timing summaries describe saved missed questions only; because the total attempted\-question denominator is unknown, they do not claim an exam success rate\. Existing physical\-device, human, provider, and power\-loss verification gates remain open\.
+
+### How to use
+
+No user action applies\. These are internal repository tracking documents\.
+
+### Compatibility / migration
+
+Not applicable\. No application code, API contract, stored data, backup format, or public guide content changed\.
+
+### Verification
+
+\`python3 scripts\/benchmark\_docs\.py\` passed with 17 rendered routes per locale, 1,060 local links\/assets, 156 exact evidence excerpts, zero errors, no network access, and \`ai\_included\: false\`\. \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+Application tests and builds, provider\/model execution, physical\-device checks, and the human retrieval\/screenshot pilot were not run\. The manual gates remain open, including Windows 10\/11 and Debian package persistence, configured endpoint and synthetic image transfer, real SIWC lifecycle, human documentation evaluation, and Windows restore power\-loss durability\. Solve\-order summaries do not cover all attempted questions or provide a success rate\.
+
+## Türkçe
+
+`ARETE-071` — [PR #75](https://github.com/Nec0ti/hamartia/pull/75): docs\: refresh trackers through ARETE\-070
+
+### Öne çıkanlar
+
+Bu yalnızca belge güncellemesi, PR \#73 \/ ARETE\-069 ile birleştirilen Ana Sayfa grafiklerini ve PR \#74 \/ ARETE\-070 ile birleştirilen sekme yüklemesini kayda geçiriyor\. Backlog, backlog günlüğü ve uygulama notları güncellendi\. Kullanıcıya görünen davranış değişmedi\.
+
+### Davranış ve nedeni
+
+Takip belgeleri yayımlanmış güncel çalışmayı yansıtıyor ve PR \#60'ı son aşama olarak gösteren eski yönlendirmeyi kaldırıyor\. Çözüm sırası ve süre özetlerinin yalnızca kaydedilmiş yanlış soruları kapsadığını açıklıyor\. Toplam denenen soru sayısı bilinmediğinden sınav başarı oranı hesaplanmıyor\. Fiziksel cihaz, insan değerlendirmesi, sağlayıcı ve ani güç kaybı doğrulama kapıları açık kalıyor\.
+
+### Kullanım
+
+Kullanıcı işlemi gerekmiyor\. Bu dosyalar yalnızca depo içindeki takip belgeleridir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Uygulama kodu, API sözleşmesi, kayıtlı veri, yedek biçimi veya yayımlanmış kullanıcı kılavuzu değişmedi\.
+
+### Doğrulama
+
+\`python3 scripts\/benchmark\_docs\.py\` başarıyla geçti\: her dilde 17 oluşturulmuş rota, 1\.060 yerel bağlantı\/varlık, 156 tam kanıt alıntısı, sıfır hata, ağ erişimi yok ve \`ai\_included\: false\`\. \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Uygulama testleri ve derlemeleri, sağlayıcı\/model çalıştırması, fiziksel cihaz kontrolleri ve insan erişim\/görüntü değerlendirmesi yapılmadı\. Windows 10\/11 ve Debian paket kalıcılığı, yapılandırılmış uç nokta ve sentetik görsel aktarımı, gerçek SIWC yaşam döngüsü, insan dokümantasyon değerlendirmesi ve Windows geri yükleme güç kaybı dayanıklılığı dâhil manuel kapılar açık\. Çözüm sırası özetleri tüm denenen soruları kapsamaz ve başarı oranı vermez\.

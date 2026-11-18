@@ -159,26 +159,56 @@ def _blocked_network(*_args, **_kwargs):
 @contextmanager
 def network_tripwires():
     with ExitStack() as stack:
-        guards = {
-            "socket_connect": stack.enter_context(patch.object(socket.socket, "connect", side_effect=_blocked_network)),
-            "socket_connect_ex": stack.enter_context(patch.object(socket.socket, "connect_ex", side_effect=_blocked_network)),
-            "httpx_sync": stack.enter_context(patch.object(httpx.HTTPTransport, "handle_request", side_effect=_blocked_network)),
-            "httpx_async": stack.enter_context(patch.object(httpx.AsyncHTTPTransport, "handle_async_request", side_effect=_blocked_network)),
-        }
+        guards = {}
+        for name in ("connect", "connect_ex", "send", "sendall", "sendto", "sendmsg"):
+            if hasattr(socket.socket, name):
+                guards[f"socket_{name}"] = stack.enter_context(patch.object(socket.socket, name, side_effect=_blocked_network))
+        for name in ("create_connection", "getaddrinfo", "gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo", "getfqdn"):
+            if hasattr(socket, name):
+                guards[f"socket_{name}"] = stack.enter_context(patch.object(socket, name, side_effect=_blocked_network))
+        guards["httpx_sync"] = stack.enter_context(patch.object(httpx.HTTPTransport, "handle_request", side_effect=_blocked_network))
+        guards["httpx_async"] = stack.enter_context(patch.object(httpx.AsyncHTTPTransport, "handle_async_request", side_effect=_blocked_network))
         yield guards
 
 
 def self_check_network_tripwires() -> None:
     with network_tripwires() as guards:
         with socket.socket() as probe:
-            for name in ("connect", "connect_ex"):
+            for name, operation in (
+                ("connect", lambda: probe.connect(("127.0.0.1", 1))),
+                ("connect_ex", lambda: probe.connect_ex(("127.0.0.1", 1))),
+                ("send", lambda: probe.send(b"x")),
+                ("sendall", lambda: probe.sendall(b"x")),
+                ("sendto", lambda: probe.sendto(b"x", ("127.0.0.1", 1))),
+                ("sendmsg", lambda: probe.sendmsg([b"x"], [], 0, ("127.0.0.1", 1))),
+            ):
+                if not hasattr(socket.socket, name):
+                    continue
                 try:
-                    getattr(probe, name)(("127.0.0.1", 1))
+                    operation()
                 except AssertionError as exc:
                     if "network access" not in str(exc):
                         raise
                 else:
                     raise AssertionError(f"{name} network tripwire allowed a synthetic connection")
+        for name, operation in (
+            ("create_connection", lambda: socket.create_connection(("127.0.0.1", 1))),
+            ("getaddrinfo", lambda: socket.getaddrinfo("synthetic.invalid", 443)),
+            ("gethostbyname", lambda: socket.gethostbyname("synthetic.invalid")),
+            ("gethostbyname_ex", lambda: socket.gethostbyname_ex("synthetic.invalid")),
+            ("gethostbyaddr", lambda: socket.gethostbyaddr("203.0.113.1")),
+            ("getnameinfo", lambda: socket.getnameinfo(("203.0.113.1", 9), 0)),
+            ("getfqdn", lambda: socket.getfqdn("synthetic.invalid")),
+        ):
+            if not hasattr(socket, name):
+                continue
+            try:
+                operation()
+            except AssertionError as exc:
+                if "network access" not in str(exc):
+                    raise
+            else:
+                raise AssertionError(f"{name} network tripwire allowed a synthetic operation")
         for name, operation in (
             ("httpx_sync", lambda: httpx.HTTPTransport.handle_request(object.__new__(httpx.HTTPTransport), None)),
             ("httpx_async", lambda: asyncio.run(httpx.AsyncHTTPTransport.handle_async_request(object.__new__(httpx.AsyncHTTPTransport), None))),

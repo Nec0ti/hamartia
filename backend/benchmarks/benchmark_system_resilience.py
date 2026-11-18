@@ -14,15 +14,15 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from fractions import Fraction
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import DEFAULT, patch
 from uuid import UUID
 
 from app.services.storage import StorageService
 from benchmark_common import assert_oracle, emit, probe_oracle_self_check
+from benchmark_network_guard import loopback_only
 
 
 def percentile(samples, percent):
@@ -36,55 +36,80 @@ def timing(samples):
     }
 
 
-@contextmanager
-def loopback_only():
-    original_connect = socket.socket.connect
-    original_connect_ex = socket.socket.connect_ex
-
-    def assert_loopback(address):
-        host = address[0] if isinstance(address, tuple) else address
-        try:
-            loopback = ipaddress.ip_address(host).is_loopback
-        except ValueError:
-            loopback = host == "localhost"
-        if not loopback:
-            raise AssertionError(f"benchmark blocked non-loopback connection: {host}")
-
-    def guarded_connect(sock, address):
-        assert_loopback(address)
-        return original_connect(sock, address)
-
-    def guarded_connect_ex(sock, address):
-        assert_loopback(address)
-        return original_connect_ex(sock, address)
-
-    import ipaddress
-    socket.socket.connect = guarded_connect
-    socket.socket.connect_ex = guarded_connect_ex
-    try:
-        yield
-    finally:
-        socket.socket.connect = original_connect
-        socket.socket.connect_ex = original_connect_ex
-
-
 def self_check_loopback_guard():
-    with patch.object(socket.socket, "connect", return_value=None) as original_connect, \
-            patch.object(socket.socket, "connect_ex", return_value=0) as original_connect_ex:
-        with loopback_only():
-            with socket.socket() as probe:
-                for name in ("connect", "connect_ex"):
-                    try:
-                        getattr(probe, name)(("203.0.113.1", 9))
-                    except AssertionError as exc:
-                        if "non-loopback" not in str(exc):
-                            raise
-                    else:
-                        raise AssertionError(f"{name} guard allowed a synthetic non-loopback address")
-                probe.connect(("127.0.0.1", 9))
-                probe.connect_ex(("127.0.0.1", 9))
-        original_connect.assert_called_once()
-        original_connect_ex.assert_called_once()
+    harmless_returns = {
+        "connect": None, "connect_ex": 0, "send": 1, "sendall": None,
+        "sendto": 1, "sendmsg": 1,
+    }
+    with patch.object(socket.socket, "getpeername", return_value=("127.0.0.1", 9)):
+        with patch.multiple(socket.socket, **{
+            name: DEFAULT
+            for name in harmless_returns if hasattr(socket.socket, name)
+        }) as original_methods:
+            with patch.multiple(socket, **{
+                name: DEFAULT
+                for name in ("getaddrinfo", "gethostbyname", "gethostbyname_ex", "getnameinfo") if hasattr(socket, name)
+            }) as original_resolvers:
+                for name, value in harmless_returns.items():
+                    if name in original_methods:
+                        original_methods[name].return_value = value
+                if "getaddrinfo" in original_resolvers:
+                    original_resolvers["getaddrinfo"].return_value = []
+                if "gethostbyname" in original_resolvers:
+                    original_resolvers["gethostbyname"].return_value = "127.0.0.1"
+                if "gethostbyname_ex" in original_resolvers:
+                    original_resolvers["gethostbyname_ex"].return_value = ("127.0.0.1", [], ["127.0.0.1"])
+                if "getnameinfo" in original_resolvers:
+                    original_resolvers["getnameinfo"].return_value = ("127.0.0.1", "9")
+                with loopback_only():
+                    with socket.socket() as probe:
+                        for name, operation in (
+                            ("connect", lambda: probe.connect(("203.0.113.1", 9))),
+                            ("connect_ex", lambda: probe.connect_ex(("203.0.113.1", 9))),
+                            ("sendto", lambda: probe.sendto(b"x", ("203.0.113.1", 9))),
+                            ("sendmsg", lambda: probe.sendmsg([b"x"], [], 0, ("203.0.113.1", 9))),
+                        ):
+                            if not hasattr(socket.socket, name):
+                                continue
+                            try:
+                                operation()
+                            except RuntimeError as exc:
+                                if "blocked" not in str(exc):
+                                    raise
+                            else:
+                                raise AssertionError(f"{name} guard allowed a synthetic non-loopback address")
+                        for operation in (
+                            lambda: socket.getaddrinfo("provider.invalid", 443),
+                            lambda: socket.gethostbyname("provider.invalid"),
+                            lambda: socket.gethostbyname_ex("provider.invalid"),
+                            lambda: socket.gethostbyaddr("203.0.113.1"),
+                            lambda: socket.getnameinfo(("203.0.113.1", 9), 0),
+                            lambda: socket.getfqdn("provider.invalid"),
+                        ):
+                            try:
+                                operation()
+                            except RuntimeError as exc:
+                                if "blocked" not in str(exc):
+                                    raise
+                            else:
+                                raise AssertionError("DNS/name-resolution guard allowed a synthetic hostname")
+                        probe.connect(("127.0.0.1", 9))
+                        probe.connect_ex(("127.0.0.1", 9))
+                        probe.send(b"x")
+                        probe.sendall(b"x")
+                        probe.sendto(b"x", ("127.0.0.1", 9))
+                        if hasattr(socket.socket, "sendmsg"):
+                            probe.sendmsg([b"x"], [], 0, ("127.0.0.1", 9))
+                        socket.getaddrinfo("127.0.0.1", 9)
+                        socket.gethostbyname("127.0.0.1")
+                        socket.gethostbyname_ex("127.0.0.1")
+                        socket.getnameinfo(("127.0.0.1", 9), 0)
+                for name, mock in original_methods.items():
+                    if name == "getpeername":
+                        continue
+                    mock.assert_called_once()
+                for name, mock in original_resolvers.items():
+                    mock.assert_called_once()
 
 
 def request_json(url, method="GET", payload=None):
@@ -150,27 +175,72 @@ def expected_exam_response(payload, response, started_at, finished_at):
     return expected
 
 
+def child_guard_source():
+    return "from benchmark_network_guard import install_loopback_guard\n" "install_loopback_guard()\n" "HAMARTIA_NETWORK_GUARD_INSTALLED = True\n"
+
+def self_check_child_guard(guard_dir):
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join([str(guard_dir), str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parents[1]), env.get("PYTHONPATH", "")])
+    probe = '''import ipaddress, socket, sitecustomize
+assert sitecustomize.HAMARTIA_NETWORK_GUARD_INSTALLED is True
+def must_block(name, operation):
+    try:
+        operation()
+    except RuntimeError as exc:
+        if "blocked" not in str(exc):
+            raise
+    else:
+        raise AssertionError(name + " escaped child network guard")
+
+for name in ("connect", "connect_ex"):
+    sock = socket.socket()
+    try:
+        must_block(name, lambda: getattr(sock, name)(("203.0.113.1", 9)))
+    finally:
+        sock.close()
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+try:
+    must_block("sendto", lambda: sock.sendto(b"x", ("203.0.113.1", 9)))
+    if hasattr(sock, "sendmsg"):
+        must_block("sendmsg", lambda: sock.sendmsg([b"x"], [], 0, ("203.0.113.1", 9)))
+finally:
+    sock.close()
+for name, operation in (
+    ("getaddrinfo", lambda: socket.getaddrinfo("203.0.113.1", 9)),
+    ("gethostbyname", lambda: socket.gethostbyname("benchmark.invalid")),
+    ("gethostbyname_ex", lambda: socket.gethostbyname_ex("benchmark.invalid")),
+    ("gethostbyaddr", lambda: socket.gethostbyaddr("203.0.113.1")),
+    ("getnameinfo", lambda: socket.getnameinfo(("203.0.113.1", 9), 0)),
+    ("getfqdn", lambda: socket.getfqdn("benchmark.invalid")),
+):
+    must_block(name, operation)
+original_getpeername = socket.socket.getpeername
+socket.socket.getpeername = lambda _sock: ("203.0.113.1", 9)
+sock = socket.socket()
+try:
+    must_block("send", lambda: sock.send(b"x"))
+    must_block("sendall", lambda: sock.sendall(b"x"))
+finally:
+    sock.close()
+    socket.socket.getpeername = original_getpeername
+resolved = socket.getaddrinfo("127.0.0.1", 9)
+assert resolved and all(ipaddress.ip_address(item[4][0]).is_loopback for item in resolved)
+print("child network guard loaded and rejected synthetic outbound paths")
+'''
+    result = subprocess.run(
+        [sys.executable, "-c", probe], env=env, capture_output=True, text=True,
+        timeout=5, check=False,
+    )
+    if result.returncode or "child network guard loaded" not in result.stdout:
+        raise AssertionError(f"API child network guard self-check failed: {result.stdout} {result.stderr}")
+
+
 def start_api(data_dir, port, guard_dir):
-    (guard_dir / "sitecustomize.py").write_text(
-        "import ipaddress, socket\n"
-        "_connect = socket.socket.connect\n"
-        "_connect_ex = socket.socket.connect_ex\n"
-        "def _assert_loopback(address):\n"
-        " host = address[0] if isinstance(address, tuple) else address\n"
-        " try: allowed = ipaddress.ip_address(host).is_loopback\n"
-        " except ValueError: allowed = host == 'localhost'\n"
-        " if not allowed: raise RuntimeError('non-loopback network blocked: ' + str(host))\n"
-        "def _loopback_only(sock, address):\n"
-        " _assert_loopback(address)\n"
-        " return _connect(sock, address)\n"
-        "def _loopback_only_ex(sock, address):\n"
-        " _assert_loopback(address)\n"
-        " return _connect_ex(sock, address)\n"
-        "socket.socket.connect = _loopback_only\n"
-        "socket.socket.connect_ex = _loopback_only_ex\n", encoding="utf-8")
+    (guard_dir / "sitecustomize.py").write_text(child_guard_source(), encoding="utf-8")
+    self_check_child_guard(guard_dir)
     env = os.environ.copy()
     env["HAMARTIA_DATA_DIR"] = str(data_dir)
-    env["PYTHONPATH"] = os.pathsep.join([str(guard_dir), str(Path(__file__).resolve().parents[1]), env.get("PYTHONPATH", "")])
+    env["PYTHONPATH"] = os.pathsep.join([str(guard_dir), str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parents[1]), env.get("PYTHONPATH", "")])
     log = open(guard_dir / "uvicorn.log", "wb")
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "error"],
@@ -392,7 +462,7 @@ def main():
         "benchmark": "system_resilience_and_loopback_http", "multiprocess_storage": contention,
         "atomic_replace_crash_recovery": recovery, "loopback_http": http,
         "fault_and_correctness_checks_timed": False,
-        "network_boundary": "API child and benchmark client reject non-loopback socket connect/connect_ex targets; both guards pass synthetic self-checks; only /exams is called; no settings or AI route is contacted",
+        "network_boundary": "Parent and API child guard TCP/UDP destinations and DNS to numeric loopback only; parent and spawned child self-checks pass; only /exams is called; no settings or AI route is contacted",
         "ai_included": False,
     }, args.json_output)
 

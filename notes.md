@@ -22,7 +22,7 @@ A local-first study tool for learners across curricula: record exam and practice
 - Track progress with charts and measures that account for question solve order.
 - Use local AI; because the model will be tried on another computer, exclude the AI component from tests and benchmarks.
 
-## Current repository (GitHub `master`, reviewed 2026-11-15)
+## Repository implementation reference (baseline reviewed 2026-11-15; current changes below)
 
 - Backend: Python/FastAPI, Pydantic, JSON file storage (`backend/app`). Storage mutations combine thread/per-file locks with a canonical-path OS process lock on a sibling `.mutation.lock` file; multi-file question upload/delete and backup snapshot capture use the same reentrant process guard. API startup still reserves the data directory for its lifetime, so multi-worker API hosting remains unsupported.
 - Frontend: React 18, Vite, Tailwind, Recharts, Axios (`frontend`).
@@ -76,6 +76,13 @@ A local-first study tool for learners across curricula: record exam and practice
 - `frontend/package.json`: contains a Node test script and formatter tests that make no AI calls.
 - Backend tests are tracked under `backend/tests/`; non-AI benchmarks are under `backend/benchmarks/`.
 - `frontend/_smoke.cjs` starts the real FastAPI+Vite app with a temporary data directory; it adds a text-only question, records an answer, and verifies persistence after reload. This flow does not request AI endpoints.
+
+## 2026-11-18 dashboard releases
+
+- PR #73 / ARETE-069 updated the dashboard net chart to retain zero and negative scores, order exams by date/creation time/ID, and show the change from the prior saved exam under the existing exam-type, subject, and scoring-profile-version filters. Both charts expose screen-reader tables with the filtered rows. One exam has no comparison. Frontend tests, production build, Nix Chromium browser smoke, and final-head GitHub checks passed; no API or saved-data contract changed. No screenshot artifact or separate human visual review was produced ([report](reports/2026-11-18-dashboard-chart-trends.md)).
+- Solve-order and pacing summaries describe only notebook-saved misses with a surviving exam link and a recorded order. They do not describe all attempted questions or calculate a success rate because the total attempted-question denominator is unknown.
+- PR #74 / ARETE-070 deferred Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon until selected while retaining Dashboard-first loading and the always-mounted ClockProvider. The same-host, same-lockfile Vite report measured initial JavaScript at 895.56 kB / 246.21 kB gzip before and 781.35 kB / 223.68 kB gzip after. Frontend tests, build, browser smoke, and PR package checks passed. The initial bundle remains above Vite's 500 kB advisory because Dashboard includes Recharts; lazy chunk failures have no dedicated retry UI ([report](reports/2026-11-18-dashboard-tab-code-splitting.md)).
+- Open external verification remains open: physical Windows 10/11 and Debian `.deb`/AppImage install and persistence, separate-device configured endpoint and synthetic image-transfer checks, real SIWC lifecycle checks, human EN/TR retrieval and fixed-viewport evaluation, and Windows restore behavior after abrupt power loss. These checks are not implied by the merged releases or CI evidence; see [the manual verification template](reports/2026-11-15-external-manual-verification-template.md) and [backlog](backlog.md).
 
 ## Legacy diagnosis design
 

@@ -1,10 +1,16 @@
 # Backlog log
 
-## 2026-11-18 — dashboard initial-bundle reduction
+## 2026-11-18 — dashboard initial-bundle reduction, PR #74 / ARETE-070
 
-- Deferred Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon until selected, with an accessible bilingual loading status; kept Dashboard eager and ClockProvider mounted.
-- Initial JS fell from 891.27 kB / 245.11 kB gzip to 777.06 kB / 222.59 kB gzip (−114.21 kB / −22.52 kB gzip). The dashboard still includes Recharts and the >500 kB warning remains.
-- Frontend tests passed 54/54, production build passed, and the full browser smoke passed under Nix Chromium. Browser assertions cover lazy loading and dashboard question-upload context. No AI/provider call; see [report](reports/2026-11-18-dashboard-tab-code-splitting.md).
+- Deferred Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon until selected, with an accessible bilingual loading status; kept Dashboard eager and ClockProvider mounted. Dashboard question uploads still carry exam context into Questions.
+- The final same-host, same-lockfile Vite measurement reduced initial JavaScript from 895.56 kB / 246.21 kB gzip to 781.35 kB / 223.68 kB gzip (−114.21 kB / −22.53 kB gzip). The main chunk still exceeds Vite's 500 kB advisory because Dashboard uses Recharts; lazy chunk downloads have no dedicated retry screen.
+- Frontend tests passed 58/58, the production build passed, full browser smoke passed under Nix Chromium, and PR CI/package checks passed. The smoke covered lazy loading, loading status, and exam-to-question context. No API/data contract or AI/provider behavior changed. See [report](reports/2026-11-18-dashboard-tab-code-splitting.md).
+
+## 2026-11-18 — dashboard chart trends, PR #73 / ARETE-069
+
+- The dashboard net chart now includes zero and negative results, orders them by exam date, and pairs them with the change from the previous saved exam under the existing exam-type, subject, and scoring-profile-version filters. Accessible tables expose each chart's values; the first exam has no comparison.
+- Solve-order/timing summaries remain limited to notebook-saved missed questions with a surviving exam link and recorded order. The denominator of all attempted questions is unknown, so the app does not compute or claim an exam success rate from these saved misses.
+- Frontend tests passed 58/58, production build and full Nix Chromium browser smoke passed, and final-head GitHub frontend/backend/recovery/package checks passed. No API/storage change or AI/provider call. No screenshot artifact or separate human visual review was produced. See [report](reports/2026-11-18-dashboard-chart-trends.md).
 
 ## 2026-11-17 — README logo visibility
 

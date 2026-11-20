@@ -2057,3 +2057,61 @@ Sürüm metadata testi geçti ve iki dilli özet ayrıştırıcısı gerekli ala
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Bu belge düzeltmesi için yerel tarayıcı smoke testi veya insan/fiziksel cihaz kontrolü yapılmadı; ARETE\-078'deki bu sınırlamalar devam ediyor\. Gerçek sağlayıcı veya yerel model çalıştırılmadı\. PR \#83'ün backend/frontend ve Linux/Windows paket işleri çalıştı ve geçti; sonuçları yukarıda kayıtlıdır\.
+
+## ARETE-080
+
+## English
+
+`ARETE-080` — [PR #84](https://github.com/Nec0ti/hamartia/pull/84): docs\: correct ARETE\-079 verification evidence
+
+### Highlights
+
+This documentation\-only correction updates ARETE\-079's verification and not\-run wording with the actual PR \#83 CI, package, and review results\.
+
+### Behavior and why
+
+No user\-facing behavior changed\. The previous wording said application tests and package builds had not run, although PR \#83's hosted backend\/frontend, Windows recovery, and Linux\/Windows package workflows all passed\.
+
+### How to use
+
+No user action applies\. Contributors can read ARETE\-079 for an accurate record of the PR \#83 verification and the manual checks that remain open\.
+
+### Compatibility / migration
+
+Not applicable\. This correction changes only the two ARETE\-079 verification paragraphs in \`RELEASES\.md\`; there is no application, data, API, or package behavior change\.
+
+### Verification
+
+The release metadata test passed; the bilingual summary parser accepts all required fields; and \`git diff \-\-check\` passed\. PR \#83 exact\-head backend\/frontend, Windows backup\-recovery, and Linux\/Windows package workflows passed before merge\. An independent read\-only pre\-merge review was clean\. PR \#83 merged at \`746a475e01d1de80daa8293636d39f49c18c2b18\`, and ARETE\-079 was published\.
+
+### Not run / known limitations
+
+No local browser smoke, human retrieval\/usability trial, physical\-device check, or real provider\/local\-model execution was performed for this documentation correction\. The outstanding human and physical\-device gates listed in ARETE\-078 remain open\. Hosted PR checks and the independent re\-review are tracked separately from these local doc\-only checks\.
+
+## Türkçe
+
+`ARETE-080` — [PR #84](https://github.com/Nec0ti/hamartia/pull/84): docs\: correct ARETE\-079 verification evidence
+
+### Öne çıkanlar
+
+Bu yalnızca belge düzeltmesi, ARETE\-079'un doğrulama ve çalıştırılmayan kontroller metnini PR \#83'ün gerçek CI, paket ve inceleme sonuçlarına göre günceller\.
+
+### Davranış ve nedeni
+
+Kullanıcıya yönelik davranış değişmedi\. Önceki metin uygulama testleri ve paket derlemelerinin çalıştırılmadığını söylüyordu; oysa PR \#83'ün hosted backend\/frontend, Windows kurtarma ve Linux\/Windows paket işleri geçti\.
+
+### Kullanım
+
+Kullanıcı için bir işlem gerekmez\. Katkıda bulunanlar PR \#83 doğrulamasının doğru kaydı ve açık manuel kontroller için ARETE\-079'u okuyabilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Bu düzeltme yalnızca \`RELEASES\.md\` içindeki ARETE\-079 doğrulama bölümlerini değiştirir; uygulama, veri, API veya paket davranışı değişmez\.
+
+### Doğrulama
+
+Sürüm metadata testi, iki dilli özet ayrıştırıcısı ve \`git diff \-\-check\` geçti\. PR \#83'ün tam kafa backend\/frontend, Windows yedek\-kurtarma ve Linux\/Windows paket işleri birleştirmeden önce geçti\. Bağımsız salt\-okunur birleştirme öncesi inceleme temizdi\. PR \#83 \`746a475e01d1de80daa8293636d39f49c18c2b18\` commit'iyle birleştirildi ve ARETE\-079 yayımlandı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Bu belge düzeltmesi için yerel tarayıcı smoke testi, insanlarla doküman erişim\/kullanılabilirlik denemesi, fiziksel cihaz kontrolü veya gerçek sağlayıcı\/yerel model çalıştırılmadı\. ARETE\-078'de listelenen insan ve fiziksel cihaz kapıları açık kalıyor\. Hosted PR kontrolleri ve bağımsız tekrar incelemesi bu yerel belge kontrollerinden ayrı izlenir\.

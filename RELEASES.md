@@ -1883,3 +1883,61 @@ Doküman bütünlük benchmark'ı her dilde 17 oluşturulmuş sayfa, 1\.064 yere
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Takip PR'ının son kafasında backend\/frontend CI, Windows yedek\-kurtarma kontrolleri, Linux\/Windows paket derlemeleri geçti; yerel bağımsız salt\-okunur incelemeci değişikliği tekrar kontrol etti\. GitHub inceleme onayı gönderilmedi\. Bu makinede \`libglib\-2\.0\.so\.0\` bulunmadığı için yerel Chromium doküman smoke testi çalışmadı; CI tarayıcı smoke testi geçti\. İnsanlarla doküman erişim\/kullanılabilirlik denemesi belgelerde belirtildiği gibi hâlâ bekliyor\. Bu PR bağımsız doküman kullanılabilirliği pilotunun tamamlandığını iddia etmez\.
+
+## ARETE-077
+
+## English
+
+`ARETE-077` — [PR #81](https://github.com/Nec0ti/hamartia/pull/81): Allow safe retries for Study Agent continuations
+
+### Highlights
+
+All five signed Study Agent capture flows now let students safely retry a turn after a provider or draft\-validation error while preserving one\-use replay protection\.
+
+### Behavior and why
+
+The server reserves a continuation during processing, releases it when the draft fails, and consumes it after a successful draft is produced\. This prevents transient failures from forcing a restart while ensuring concurrent duplicate requests have only one winner\.
+
+### How to use
+
+If a provider or draft\-validation error occurs, retry the same student turn\. If a successfully completed reply is lost before the app receives it, restart that capture because replay of the consumed continuation is rejected\.
+
+### Compatibility / migration
+
+No data migration is needed\. The change adds no transcript persistence and does not change saved records, backups, or provider payload fields\.
+
+### Verification
+
+The backend suite passed with 306 tests and one Windows\-only skip; the focused retry suite passed all four tests\. All 16 provider\-free backend benchmarks passed\. Frontend tests \(63\), desktop tests \(58\), frontend production build, and offline bilingual documentation integrity check passed\. Exact\-head GitHub CI and Linux\/Windows package jobs will provide hosted browser and package verification\.
+
+### Not run / known limitations
+
+No real model\/provider was run\. Browser\-backed docs\/onboarding\/dashboard checks and package builds could not be run locally because Chromium lacks \`libglib\-2\.0\.so\.0\`; hosted CI is pending\. If a successful draft response is lost in transit, the token remains consumed and the capture must restart; no completed\-response cache is retained\.
+
+## Türkçe
+
+`ARETE-077` — [PR #81](https://github.com/Nec0ti/hamartia/pull/81): Allow safe retries for Study Agent continuations
+
+### Öne çıkanlar
+
+Beş imzalı Çalışma Asistanı akışının tümü, sağlayıcı veya taslak doğrulama hatasından sonra bir mesajı güvenle yeniden denemeyi ve tek kullanımlık tekrar korumasını sürdürüyor\.
+
+### Davranış ve nedeni
+
+Sunucu işlem sırasında devam durumunu ayırır, taslak başarısız olursa bu ayırmayı bırakır ve taslak başarıyla oluşturulunca durumu tüketir\. Böylece geçici hatalar akışın baştan başlatılmasını gerektirmez; eşzamanlı yinelenen isteklerden yalnızca biri ilerler\.
+
+### Kullanım
+
+Sağlayıcı veya taslak doğrulama hatası alırsan aynı öğrenci mesajını yeniden gönder\. Başarıyla oluşturulan yanıt uygulamaya ulaşmadan kaybolursa, tüketilmiş devam durumunun tekrarı reddedileceği için akışı yeniden başlat\.
+
+### Uyumluluk / geçiş
+
+Veri geçişi gerekmez\. Konuşma kaydı eklenmedi; kayıtlar, yedekler veya sağlayıcıya gönderilen alanlar değişmedi\.
+
+### Doğrulama
+
+Backend paketi 306 testle geçti; Windows'a özgü bir test atlandı\. Odaklı yeniden deneme paketi dört testin tümünü geçti\. Sağlayıcıdan bağımsız 16 backend karşılaştırmasının tümü geçti\. Frontend testleri \(63\), desktop testleri \(58\), frontend üretim derlemesi ve çevrimdışı iki dilli belge bütünlüğü kontrolü geçti\. Tarayıcı ve paket doğrulaması için tam commit üzerinde GitHub CI ve Linux\/Windows paket işleri bekleniyor\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Gerçek model\/sağlayıcı çalıştırılmadı\. Chromium'da \`libglib\-2\.0\.so\.0\` bulunmadığından tarayıcı tabanlı belge\/ilk kullanım\/dashboard kontrolleri ve paket derlemeleri yerelde çalıştırılamadı; hosted CI bekleniyor\. Başarıyla oluşturulan taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği tutulmaz\.

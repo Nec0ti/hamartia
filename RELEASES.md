@@ -1775,3 +1775,61 @@ Yeni benchmark iki ısınma turundan sonra dokuz ölçümü tamamladı; 256 saya
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Son commit için pull request CI kontrolleri ve bağımsız inceleme geçti; Linux ve Windows paket kontrolleri de başarılı oldu\. Süre ölçümleri bilgilendirme amaçlıdır, geçme eşiği yoktur\. Node ağ korumaları yalnızca benchmark sürecinde çalışır; işletim sistemi düzeyinde sandbox değildir\.
+
+## ARETE-075
+
+## English
+
+`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat\: add globally configurable sectioned mock exams
+
+### Highlights
+
+Custom mock exams can now use a bounded format name, 1–12 user\-defined section labels, and a snapshot of an existing versioned scoring profile\. The Study Agent can capture approved requests from ChatGPT or a configured endpoint, and the local CLI can create drafts that require approval\.
+
+### Behavior and why
+
+Custom exam records preserve the selected scoring profile snapshot so later profile edits do not change saved results\. Existing TYT\/AYT presets and legacy scoring remain available\. Study Agent host processing asks for missing fields, checks exact latest\-turn quotes, computes a preview, and keeps approval separate from drafting\.
+
+### How to use
+
+Create a custom exam format with a name and section labels, select a scoring profile, then enter and review the exam as usual\. For Study Agent capture, grant consent for each request; for local CLI drafts, review the preview and approve explicitly before saving\.
+
+### Compatibility / migration
+
+Existing presets, exam records, and scoring behavior are preserved\. No migration is required\. Custom formats and their scoring\-profile snapshots are additive\.
+
+### Verification
+
+The PR reports 302 backend tests passed and 1 skipped, 61 frontend tests passed with a successful Vite production build, and 58 desktop tests passed\. Its provider\-free custom\-host benchmark passed 3 repeats with result\/profile oracle, idempotency, altered\-replay, ambiguous\-no\-write, provider\-call tripwire, and loopback\-only network checks\. The docs integrity benchmark reported zero errors across 17 EN\/TR pages\.
+
+### Not run / known limitations
+
+The local docs browser smoke could not launch because Chromium could not load \`libglib\-2\.0\.so\.0\`; the PR states that exact\-head CI and browser\/package workflows remained required at merge time\. The provider\-free benchmark did not run an AI provider or make external requests\. The Vite build emitted its existing chunk\-size advisory\.
+
+## Türkçe
+
+`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat\: add globally configurable sectioned mock exams
+
+### Öne çıkanlar
+
+Özel deneme biçimleri artık sınırlı uzunlukta bir ad, kullanıcı tanımlı 1–12 bölüm etiketi ve mevcut sürümlü puanlama profilinin anlık görüntüsüyle oluşturulabiliyor\. Study Agent, ChatGPT veya yapılandırılmış bir uç nokta için onaylı istekleri kaydedebiliyor; yerel CLI ise onay gerektiren taslaklar oluşturabiliyor\.
+
+### Davranış ve nedeni
+
+Özel deneme kayıtları seçilen puanlama profilinin anlık görüntüsünü saklar; böylece profilde sonradan yapılan değişiklikler kayıtlı sonuçları değiştirmez\. TYT\/AYT hazır biçimleri ve eski puanlama davranışı korunur\. Study Agent ana bilgisayar akışı eksik alanları sorar, en son turdaki alıntıların birebir eşleşmesini denetler, önizleme hesaplar ve taslak oluşturma ile onayı ayrı tutar\.
+
+### Kullanım
+
+Bir ad ve bölüm etiketleriyle özel deneme biçimi oluşturup puanlama profili seçin; ardından denemeyi alıştığınız şekilde girip inceleyin\. Study Agent isteği başına izin verin; yerel CLI taslaklarında kaydetmeden önce önizlemeyi inceleyip açıkça onaylayın\.
+
+### Uyumluluk / geçiş
+
+Mevcut hazır biçimler, deneme kayıtları ve puanlama davranışı korunur\. Geçiş gerekmez\. Özel biçimler ve puanlama profili anlık görüntüleri ek özelliklerdir\.
+
+### Doğrulama
+
+PR raporuna göre 302 backend testi geçti, 1 test atlandı; 61 frontend testi geçti ve Vite üretim derlemesi başarılı oldu; 58 desktop testi geçti\. Sağlayıcı çalıştırmayan özel ana bilgisayar benchmark'ı sonuç\/profil oracle'ı, idempotency, değiştirilmiş tekrar oynatma, belirsiz durumda yazmama, sağlayıcı çağrısı engelleri ve yalnız loopback ağ denetimleriyle 3 tekrarı geçti\. Doküman bütünlüğü benchmark'ı 17 EN\/TR sayfada sıfır hata bildirdi\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Yerel doküman tarayıcı smoke testi, Chromium \`libglib\-2\.0\.so\.0\` dosyasını yükleyemediği için başlatılamadı; PR birleştirme anında tam SHA CI ve tarayıcı\/paket iş akışlarının hâlâ gerekli olduğunu belirtiyordu\. Sağlayıcısız benchmark bir yapay zekâ sağlayıcısı çalıştırmadı ve dış istekte bulunmadı\. Vite derlemesi mevcut parça boyutu uyarısını verdi\.

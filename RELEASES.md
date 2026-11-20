@@ -1941,3 +1941,61 @@ Backend paketi 306 testle geçti; Windows'a özgü bir test atlandı\. Odaklı y
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Gerçek model\/sağlayıcı çalıştırılmadı\. Chromium'da \`libglib\-2\.0\.so\.0\` bulunmadığından tarayıcı tabanlı belge\/ilk kullanım\/dashboard kontrolleri ve paket derlemeleri yerelde çalıştırılamadı; hosted CI bekleniyor\. Başarıyla oluşturulan taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği tutulmaz\.
+
+## ARETE-078
+
+## English
+
+`ARETE-078` — [PR #82](https://github.com/Nec0ti/hamartia/pull/82): docs\: record PR \#81 continuation retry release
+
+### Highlights
+
+This documentation\-only change adds the missing chronological \`backloglog\.md\` record for PR \#81 \/ ARETE\-077\. It records the verified continuation retry\/concurrency behavior, test and benchmark results, release refs and asset hashes, and remaining manual gates\.
+
+### Behavior and why
+
+No user\-facing behavior changed\. The feature was already merged and released; this entry fills the repository's chronological verification trail with its implementation scope and post\-merge evidence\.
+
+### How to use
+
+No user action applies\. Contributors can use the new log entry as the compact handoff for PR \#81 and ARETE\-077, with a link to the detailed retry report\.
+
+### Compatibility / migration
+
+Not applicable\. The PR only edits \`backloglog\.md\`; it changes no application code, stored data, API, or package behavior\.
+
+### Verification
+
+The docs integrity benchmark passed across 17 rendered pages per locale, 1,064 local links\/assets, 26 rubrics, and 156 evidence excerpts, with zero errors and no network\/provider execution\. \`git diff \-\-check\` passed\. The recorded PR \#81 evidence includes 306 backend tests passed with one Windows\-only skip, 4 focused retry tests, 16 provider\-free backend benchmarks, 63 frontend tests, 58 desktop tests, production build and docs integrity, plus passing exact\-head GitHub backend\/frontend\/recovery and Linux\/Windows package workflows\. Published ARETE\-077 assets have verified SHA\-256 digests recorded in the entry\.
+
+### Not run / known limitations
+
+PR \#82's exact\-head CI and reviewer recheck are pending\. The docs integrity benchmark does not run human retrieval\/screenshot trials\. Physical manual gates remain open for SIWC lifecycle, configured endpoint\/model and image transfer, and Windows 10\/11, Debian, and AppImage install\/persistence\. No real model\/provider execution was performed\. If a completed draft response is lost in transit, its continuation stays consumed and the capture must restart; completed\-response caching is not implemented\.
+
+## Türkçe
+
+`ARETE-078` — [PR #82](https://github.com/Nec0ti/hamartia/pull/82): docs\: record PR \#81 continuation retry release
+
+### Öne çıkanlar
+
+Bu yalnızca belge değişikliği, PR \#81 \/ ARETE\-077 için eksik kronolojik \`backloglog\.md\` kaydını ekler\. Doğrulanmış devam\-token yeniden deneme\/eşzamanlılık davranışını, test ve benchmark sonuçlarını, sürüm referanslarını ve paket SHA\-256 değerlerini, ayrıca açık manuel kapıları kaydeder\.
+
+### Davranış ve nedeni
+
+Kullanıcıya yönelik davranış değişmedi\. Özellik zaten birleştirilip yayımlandı; bu kayıt, uygulama kapsamı ve birleştirme sonrası kanıtlarla deponun kronolojik doğrulama izini tamamlar\.
+
+### Kullanım
+
+Kullanıcı için bir işlem gerekmez\. Katkıda bulunanlar yeni kaydı PR \#81 ve ARETE\-077 için kısa devir notu olarak, ayrıntılı yeniden deneme raporuyla birlikte kullanabilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. PR yalnızca \`backloglog\.md\` dosyasını düzenler; uygulama kodu, saklanan veri, API veya paket davranışını değiştirmez\.
+
+### Doğrulama
+
+Doküman bütünlük benchmark'ı dil başına 17 oluşturulmuş sayfada, 1\.064 yerel bağlantı\/varlıkta, 26 ölçütte ve 156 kanıt alıntısında sıfır hatayla geçti; ağ veya sağlayıcı çalıştırılmadı\. \`git diff \-\-check\` geçti\. Kayda alınan PR \#81 kanıtı\: 306 backend testi geçti, Windows'a özgü bir test atlandı; odaklı 4 yeniden deneme testi; sağlayıcısız 16 backend benchmark'ı; 63 frontend testi; 58 desktop testi; üretim derlemesi ve doküman bütünlüğü; tam SHA GitHub backend\/frontend\/kurtarma ile Linux\/Windows paket işleri geçti\. Yayımlanan ARETE\-077 paketlerinin doğrulanmış SHA\-256 değerleri kayıtta yer alıyor\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+PR \#82'nin tam kafa CI kontrolleri ve incelemeci tekrar kontrolü bekliyor\. Doküman bütünlük benchmark'ı insanlarla erişim\/görsel değerlendirme denemesi yapmaz\. SIWC yaşam döngüsü, yapılandırılmış uç nokta\/model ve görsel aktarımı, Windows 10\/11, Debian ve AppImage kurulum\/veri saklama kontrolleri fiziksel cihazlarda hâlâ bekliyor\. Gerçek model\/sağlayıcı çalıştırılmadı\. Tamamlanmış taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği yoktur\.

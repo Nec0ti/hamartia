@@ -1,5 +1,14 @@
 # Backlog log
 
+## 2026-11-21 — Study Agent continuation retry safety, PR #81 / ARETE-077
+
+- PR #81 merged at `f5de9986a27d37bcc1e3857470b2c524fea962d9` from final head `869e3749efe536514bc278f635ac6d36070231f6`; ARETE-077 is published. The retry/concurrency fix covers five signed capture flows: branch exam, sectioned TYT/AYT exam, custom mock, LearningEvidence, and missed question. Failed validation/provider preparation releases the in-flight reservation so the same turn can retry; only one concurrent request wins, while a successful draft consumes the token and replay is rejected.
+- Verification: backend 306 passed / 1 Windows-only skip; focused retry tests 4/4; all 16 provider-free backend benchmarks passed; frontend 63/63, desktop 58/58, production frontend build, offline EN/TR docs integrity, and Clock/focused-practice helper benchmarks passed. Final-head GitHub backend/frontend/recovery and Linux/Windows package workflows passed.
+- No real provider/model execution or external network calls were made; provider entry points were fail-fast guarded and benchmark results reported `ai_included: false`.
+- ARETE-077 assets were downloaded and SHA-256 verified against the published digests: Debian `.deb` `6ce850e082062b802fbac293f850dbda5c56e367895a363ed3d67ef21b687438`; AppImage `dc1bcab59891cc0fd6d122da4bcfba2089f314102487650044f0a86351dfd4b5`; Windows installer `740b392c7f1817b269f04f6cd5139c3d84b8341904411a22854aa2023d977097`.
+- A successfully produced draft response lost before reaching the app leaves its continuation consumed; the student must restart that capture. No completed-response cache is kept, so exactly-once response delivery is not claimed.
+- Physical/manual gates remain open: real SIWC login/inference/cancel/sign-out/revocation/reauthorization on a separate physical user's device; configured endpoint/model and synthetic image-transfer checks on a separate physical device; and install/launch/persistence checks on separate Windows 10, Windows 11, Debian `.deb`, and AppImage devices. See [the external manual run template](reports/2026-11-15-external-manual-verification-template.md) and [the retry safety report](reports/2026-11-21-study-agent-continuation-token-retries.md).
+
 ## 2026-11-18 — dashboard initial-bundle reduction, PR #74 / ARETE-070
 
 - Deferred Questions, Study Plan, Study Agent, Cosmos, Clock, and Coming Soon until selected, with an accessible bilingual loading status; kept Dashboard eager and ClockProvider mounted. Dashboard question uploads still carry exam context into Questions.

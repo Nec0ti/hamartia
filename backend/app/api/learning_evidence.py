@@ -20,7 +20,9 @@ from app.services.study_agent_learning_evidence import (
     issue_learning_evidence_state_token,
     prepare_learning_evidence,
     resolve_learning_evidence_state_token,
+    finish_learning_evidence_state_token,
 )
+from app.services.continuation_tokens import use as use_continuation_token
 
 router = APIRouter(prefix="/learning-evidence", tags=["learning-evidence"])
 AGENT_APPROVALS_FILE = "learning_evidence_agent_approvals.json"
@@ -82,29 +84,30 @@ async def learning_evidence_agent_draft(
     interactive = payload.expected_evidence_field is not None or payload.state_token is not None
     if payload.state_token is not None and payload.expected_evidence_field is None:
         raise HTTPException(status_code=409, detail="The learning-evidence conversation state is invalid or expired.")
-    try:
-        prior_claims = resolve_learning_evidence_state_token(
-            payload.state_token, payload.messages, payload.language,
-        ) if interactive else []
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    prior = prepare_learning_evidence(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
-    expected = prior["expected_field"] if prior else "activity"
-    if payload.expected_evidence_field is not None:
-        if expected != payload.expected_evidence_field:
-            raise HTTPException(status_code=409, detail="The learning-evidence conversation changed. Review the current question again.")
-        for claim in payload.evidence_claims:
-            occurrences = _occurrences(payload.messages[-1], claim.quote)
-            if claim.field != expected or len(occurrences) != 1:
-                raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
-    combined = [*prior_claims, *[item.model_dump() for item in payload.evidence_claims]]
-    prepared = prepare_learning_evidence(payload.messages, payload.language, combined)
-    if interactive and prepared["status"] != "ready":
-        verified = prepared["verified_evidence"]
-        prepared["state_token"] = issue_learning_evidence_state_token(
-            payload.messages, payload.language, verified,
-        )
-    return prepared
+    with use_continuation_token(payload.state_token, finish_learning_evidence_state_token):
+        try:
+            prior_claims = resolve_learning_evidence_state_token(
+                payload.state_token, payload.messages, payload.language, reserve=True,
+            ) if interactive else []
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        prior = prepare_learning_evidence(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
+        expected = prior["expected_field"] if prior else "activity"
+        if payload.expected_evidence_field is not None:
+            if expected != payload.expected_evidence_field:
+                raise HTTPException(status_code=409, detail="The learning-evidence conversation changed. Review the current question again.")
+            for claim in payload.evidence_claims:
+                occurrences = _occurrences(payload.messages[-1], claim.quote)
+                if claim.field != expected or len(occurrences) != 1:
+                    raise HTTPException(status_code=422, detail="The provider quote does not match the current host-expected student turn.")
+        combined = [*prior_claims, *[item.model_dump() for item in payload.evidence_claims]]
+        prepared = prepare_learning_evidence(payload.messages, payload.language, combined)
+        if interactive and prepared["status"] != "ready":
+            verified = prepared["verified_evidence"]
+            prepared["state_token"] = issue_learning_evidence_state_token(
+                payload.messages, payload.language, verified,
+            )
+        return prepared
 
 
 def build_learning_evidence_agent_draft(

@@ -1825,3 +1825,61 @@ PR'ın son kafa SHA'sı `4e8fa058f23404f3683c941457d71467b38be3b4` idi. Tam SHA 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Bu makinede `libglib-2.0.so.0` yüklenemediği için yerel Chromium doküman smoke testi kullanılamıyor; CI tarayıcı smoke testi geçti. Sağlayıcısız benchmark AI/sağlayıcı çağrısı veya dış istek yapmadı. Vite mevcut parça boyutu uyarısını verdi.
+
+## ARETE-076
+
+## English
+
+`ARETE-076` — [PR #80](https://github.com/Nec0ti/hamartia/pull/80): docs\: correct ARETE\-075 verification status
+
+### Highlights
+
+This documentation\-only update corrects the ARETE\-075 release verification record and the stale unchecked PR \#79 backlog item\. It records that the final\-head checks, package builds, review, and CI browser smoke passed and that the release and package assets were verified\.
+
+### Behavior and why
+
+No user\-facing behavior changed\. The repository previously said required checks and review were still pending after PR \#79 had merged, so the tracking and release narrative now reflect the actual result\.
+
+### How to use
+
+No user action applies\. Contributors can use the corrected backlog, report, and release notes as the verification handoff for ARETE\-075\.
+
+### Compatibility / migration
+
+Not applicable\. No application code, stored data, API, or package behavior changed\.
+
+### Verification
+
+The documentation integrity benchmark passed with 17 rendered pages per locale, 1,064 local links\/assets, 26 rubrics, 156 evidence excerpts, and zero errors\. \`git diff \-\-check\` passed\. PR \#79 exact\-head CI, Linux and Windows package builds, independent review, and CI browser smoke passed before merge\. GitHub Pages returned HTTP 200 for the home and exam\-formats\-and\-maarif routes; downloaded release assets matched GitHub SHA\-256 digests\.
+
+### Not run / known limitations
+
+The follow\-up PR's backend\/frontend CI, Windows backup\-recovery checks, and Linux\/Windows package builds passed; a local independent read\-only reviewer rechecked the change\. No GitHub review approval was submitted\. Local Chromium docs smoke could not run because this host lacks \`libglib\-2\.0\.so\.0\`; CI browser smoke passed\. Human retrieval\/usability testing remains pending as already documented\. This PR does not claim the independent docs usability pilot is complete\.
+
+## Türkçe
+
+`ARETE-076` — [PR #80](https://github.com/Nec0ti/hamartia/pull/80): docs\: correct ARETE\-075 verification status
+
+### Öne çıkanlar
+
+Bu yalnızca belge güncellemesi, ARETE\-075 doğrulama kaydını ve PR \#79 için eski kalmış işaretlenmemiş backlog maddesini düzeltir\. Son kafa kontrollerinin, paket derlemelerinin, incelemenin ve CI tarayıcı smoke testinin geçtiğini; sürümün ve paket dosyalarının doğrulandığını kaydeder\.
+
+### Davranış ve nedeni
+
+Kullanıcıya yönelik davranış değişmedi\. PR \#79 birleştikten sonra depo, gerekli kontroller ve inceleme hâlâ bekliyor gibi görünüyordu; takip ve sürüm anlatımı gerçek sonucu yansıtacak şekilde güncellendi\.
+
+### Kullanım
+
+Kullanıcı için bir işlem gerekmez\. Katkıda bulunanlar düzeltilen backlog, rapor ve sürüm notlarını ARETE\-075 doğrulama devri olarak kullanabilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Uygulama kodu, saklanan veriler, API veya paket davranışı değişmedi\.
+
+### Doğrulama
+
+Doküman bütünlük benchmark'ı her dilde 17 oluşturulmuş sayfa, 1\.064 yerel bağlantı\/varlık, 26 ölçüt ve 156 kanıt alıntısıyla sıfır hata verdi\. \`git diff \-\-check\` geçti\. PR \#79'un son kafa CI kontrolleri, Linux ve Windows paket derlemeleri, yerel bağımsız salt\-okunur incelemesi, incelemeci tekrar kontrolü ve CI tarayıcı smoke testi birleştirmeden önce geçti\. GitHub inceleme onayı gönderilmedi\. GitHub Pages ana sayfası ile sınav biçimleri ve Maarif rotası HTTP 200 döndürdü; indirilen sürüm dosyaları GitHub SHA\-256 değerleriyle eşleşti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Takip PR'ının son kafasında backend\/frontend CI, Windows yedek\-kurtarma kontrolleri, Linux\/Windows paket derlemeleri geçti; yerel bağımsız salt\-okunur incelemeci değişikliği tekrar kontrol etti\. GitHub inceleme onayı gönderilmedi\. Bu makinede \`libglib\-2\.0\.so\.0\` bulunmadığı için yerel Chromium doküman smoke testi çalışmadı; CI tarayıcı smoke testi geçti\. İnsanlarla doküman erişim\/kullanılabilirlik denemesi belgelerde belirtildiği gibi hâlâ bekliyor\. Bu PR bağımsız doküman kullanılabilirliği pilotunun tamamlandığını iddia etmez\.

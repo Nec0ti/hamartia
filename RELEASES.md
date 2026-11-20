@@ -2144,7 +2144,7 @@ The offline bilingual documentation integrity checker passed with 17 rendered pa
 
 ### Not run / known limitations
 
-Application tests\/builds and real provider\/model execution were not run for this documentation\-only change\. Windows power\-loss durability, the human EN\/TR documentation pilot, configured endpoint and synthetic image\-transfer checks, physical Windows 10\/11 and Debian package install\/persistence checks, and the real SIWC lifecycle remain unverified and open\.
+Exact-head hosted PR \#85 backend, frontend, and Windows backup\/recovery checks passed, and its automatic release workflow built the Linux and Windows packages before ARETE\-081 was published\. No real provider\/local\-model execution was performed\. Human and physical\-device verification was not run; all six external\/manual gates remain open: Windows power\-loss durability; the human EN\/TR documentation retrieval and fixed\-viewport pilot; configured endpoint\/model checks on a separate physical device; synthetic image\-transfer checks on a separate physical device; install\, launch, and persistence checks on separate physical Windows 10 and Windows 11 devices plus one separate physical Debian desktop for both the \`.deb\` and AppImage; and the real SIWC lifecycle on a separate physical user device\.
 
 ## Türkçe
 
@@ -2172,4 +2172,4 @@ Uygulanamaz\. Uygulama kodu, API, kayıtlı veri, yedek biçimi veya yayımlanm�
 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
-Bu yalnızca belge değişikliği için uygulama testleri\/derlemeleri ve gerçek sağlayıcı\/model çalıştırması yapılmadı\. Windows güç kaybı dayanıklılığı, insanlarla EN\/TR dokümantasyon pilotu, yapılandırılmış uç nokta ve sentetik görsel aktarımı kontrolleri, fiziksel Windows 10\/11 ve Debian paket kurulum\/kalıcılık kontrolleri ve gerçek SIWC yaşam döngüsü doğrulanmadı; açık kalıyor\.
+PR \#85’in tam kafa barındırılan backend, frontend ve Windows yedek\/kurtarma kontrolleri geçti; otomatik sürüm iş akışı ARETE\-081 yayımlanmadan önce Linux ve Windows paketlerini oluşturdu\. Gerçek sağlayıcı\/yerel model çalıştırması yapılmadı\. İnsan ve fiziksel cihaz doğrulaması yapılmadı; altı dış\/manuel kapının tümü açık: Windows güç kaybı dayanıklılığı; insanlarla EN\/TR dokümantasyon bulma ve sabit görünüm alanı pilotu; ayrı bir fiziksel cihazda yapılandırılmış uç nokta\/model kontrolleri; ayrı bir fiziksel cihazda sentetik görsel aktarımı kontrolleri; ayrı fiziksel Windows 10 ve Windows 11 cihazlarında, ayrıca hem \`.deb\` hem AppImage için tek bir ayrı fiziksel Debian masaüstünde kurulum, başlatma ve kalıcılık kontrolleri; ayrı bir fiziksel kullanıcı cihazında gerçek SIWC yaşam döngüsü\.

@@ -59,6 +59,21 @@ class ReviewScheduleTests(unittest.TestCase):
         self.assertEqual((order[0]["exam_type"], order[0]["subject"]), ("tyt", "Matematik"))
         self.assertEqual(order[0]["late"], {"wrong_count": 1, "median_seconds": 42})
 
+    def test_custom_sectioned_exam_order_groups_by_user_format_name(self):
+        exams = [
+            Exam(id="mock-a", date="2026-11-14", exam_type="custom", format_name="Mock A", subject="Mock A",
+                 correct=1, incorrect=1, blank=0, sections=[{"subject": "Reading", "correct": 1, "incorrect": 1, "blank": 0}]),
+            Exam(id="mock-b", date="2026-11-15", exam_type="custom", format_name="Mock B", subject="Mock B",
+                 correct=1, incorrect=1, blank=0, sections=[{"subject": "Reading", "correct": 1, "incorrect": 1, "blank": 0}]),
+        ]
+        questions = [
+            Question(id="a", subject="Reading", exam_id="mock-a", solve_order=1, exam_section_total=2),
+            Question(id="b", subject="Reading", exam_id="mock-b", solve_order=2, exam_section_total=2),
+        ]
+        rows = topic_priorities(questions, exams=exams)["question_order"]
+        self.assertEqual({(row["format_name"], row["subject"], row["early"]["wrong_count"], row["middle"]["wrong_count"]) for row in rows},
+                         {("Mock A", "Reading", 1, 0), ("Mock B", "Reading", 0, 1)})
+
     def test_new_question_is_due_and_legacy_review_flag_stays_archived(self):
         today = date(2026, 11, 14)
 

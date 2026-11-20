@@ -346,7 +346,7 @@ def run(exam_count=1500, question_count=2500, session_count=4000, repeats=21, js
             xp = max(0, int(net * item["correct"] * 1.5
                             - duration * item["incorrect"] * 0.25))
             expected_concurrent.append({
-                **item, "total": item["correct"] + item["incorrect"], "net": net, "xp": xp,
+                **item, "format_name": "", "total": item["correct"] + item["incorrect"], "net": net, "xp": xp,
                 "scoring_profile": {
                     "profile_id": "legacy-yks", "version": 1,
                     "display_name": "YKS (legacy)", "country_label": "Türkiye",
@@ -497,7 +497,7 @@ def _expected_priorities(questions, exams):
     reviews.sort(key=lambda item: (item["due_date"], item["subject"].casefold(), item["topic"].casefold(), item["id"]))
     order_rows = []
     for (exam_type, subject), group in order_groups.items():
-        row = {"exam_type": exam_type, "subject": subject, "exam_count": len(group["exam_ids"])}
+        row = {"exam_type": exam_type, "format_name": "", "subject": subject, "exam_count": len(group["exam_ids"])}
         for stage in ("early", "middle", "late"):
             values = group[stage]
             row[stage] = {"wrong_count": len(values), "median_seconds": median(values) if values else None}

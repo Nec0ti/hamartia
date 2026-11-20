@@ -4,6 +4,7 @@ import api, { API_BASE, handleApiError } from '../services/api'
 import PracticeSessions from './PracticeSessions.jsx'
 import LearningEvidence from './LearningEvidence.jsx'
 import { useI18n } from '../i18n.jsx'
+import { questionOrderGroupKey } from '../utils/questionOrder.js'
 import { fmtDate, labelOr, localDateToday } from '../utils/formatters.js'
 
 const newFocusTopic = (topic) => ({ subject: topic.subject, topic: topic.topic, requestedAt: Date.now() })
@@ -67,8 +68,8 @@ export default function StudyPlanTab() {
           <p className="text-sm text-canvas-muted">{t('study.orderIntro')}</p>
         </div>
         {plan.question_order?.length ? plan.question_order.map((group) => (
-          <article key={`${group.exam_type}-${group.subject}`} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
-            <h3 className="font-semibold text-canvas-text">{examTypeLabel(group.exam_type, t)} · {group.subject}</h3>
+          <article key={questionOrderGroupKey(group)} className="rounded-xl border border-canvas-line bg-canvas-panel p-4">
+            <h3 className="font-semibold text-canvas-text">{group.format_name ? `${group.format_name} · ` : ''}{examTypeLabel(group.exam_type, t)} · {group.subject}</h3>
             <p className="text-xs text-canvas-muted">{t('study.errorsFromExams', { count: formatInt(group.exam_count, locale) })}</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               {[["early", t('study.early')], ["middle", t('study.middle')], ["late", t('study.late')]].map(([key, label]) => {
@@ -177,7 +178,7 @@ function tagLabel(tag, t) {
 }
 
 function examTypeLabel(type, t) {
-  return ({ tyt: 'TYT', ayt: 'AYT', branch: t('common.branchExam') })[type] || type
+  return ({ tyt: 'TYT', ayt: 'AYT', branch: t('common.branchExam'), custom: t('exams.type.custom') })[type] || type
 }
 
 function formatInt(value, locale) {

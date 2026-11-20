@@ -91,7 +91,7 @@ def run(counts=(1000, 10000), repeats=7, json_output=None):
             group_exam_counts = Counter((exam.exam_type, section.subject) for exam in exams for section in exam.sections)
             group_exam_counts.update(Counter((exam.exam_type, exam.subject) for exam in exams if not exam.sections))
             for key, stages in expected.items():
-                row = {"exam_type": key[0], "subject": key[1], "exam_count": group_exam_counts[key]}
+                row = {"exam_type": key[0], "format_name": "", "subject": key[1], "exam_count": group_exam_counts[key]}
                 for stage, times in stages.items():
                     valid_times = [value for value in times if value is not None]
                     row[stage] = {

@@ -4,6 +4,7 @@ import api, { API_BASE, handleApiError } from '../services/api'
 import Modal from '../components/Modal.jsx'
 import { prepareQuestionAnalysisConsent, sendApprovedQuestionAnalysis } from '../services/questionAnalysisConsent.js'
 import { useI18n } from '../i18n.jsx'
+import { examTypeDisplay } from '../utils/examSections.js'
 import { fmtDate } from '../utils/formatters.js'
 
 const TAGS = ['[Knowledge Gap]', '[Distractor Trap]', '[Reading Slip]', '[Time Panic]']
@@ -170,7 +171,7 @@ export default function QuestionsTab({ initialExam = null }) {
 
       <form onSubmit={upload} className="grid gap-4 rounded-xl border border-canvas-line bg-canvas-panel p-4 sm:grid-cols-2">
         {initialExam && <div className="rounded-lg border border-canvas-line bg-canvas-base p-3 text-sm text-canvas-muted sm:col-span-2">
-          {t('questions.linkedExam', { date: fmtDate(initialExam.date, locale), subject: initialExam.subject, type: examTypeLabel(initialExam.exam_type, t) })}
+          {t('questions.linkedExam', { date: fmtDate(initialExam.date, locale), subject: initialExam.subject, type: examTypeDisplay(initialExam, t) })}
           <p className="mt-1 text-xs">{t('questions.sectionCount', { count: initialExam.correct + initialExam.incorrect + initialExam.blank })}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label>{t('questions.questionNumber')}<input type="number" min="1" max={initialExam.correct + initialExam.incorrect + initialExam.blank} value={questionNumber} onChange={(e) => setQuestionNumber(e.target.value)} className={inputClass} /></label>
@@ -360,8 +361,4 @@ function tagLabel(tag, t) {
     '[Reading Slip]': t('questions.tag.readingSlip'),
     '[Time Panic]': t('questions.tag.timePanic'),
   })[tag] || tag
-}
-
-function examTypeLabel(type, t) {
-  return ({ tyt: 'TYT', ayt: 'AYT', branch: t('common.branchExam') })[type] || type?.toUpperCase() || t('common.branchExam')
 }

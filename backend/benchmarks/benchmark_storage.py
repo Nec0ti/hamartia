@@ -41,6 +41,7 @@ def main(count=1000, repeats=7, json_output=None):
             record = {
                 "id": f"exam-{index}", "date": exam_date,
                 "subject": subject, "exam_type": "tyt" if sectioned else "branch",
+                "format_name": "",
                 "correct": correct, "incorrect": incorrect, "blank": blank,
                 "total": correct + incorrect,
                 "net": correct - incorrect / 4,

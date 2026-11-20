@@ -415,7 +415,7 @@ def _exam_payload(profile, exam_type="branch", sections=None):
     else:
         correct, incorrect, blank, subject = 12, 4, 4, "Custom profile benchmark"
     return {
-        "date": "2026-11-15", "exam_type": exam_type, "subject": subject,
+        "date": "2026-11-15", "exam_type": exam_type, "format_name": "", "subject": subject,
         "correct": correct, "incorrect": incorrect, "blank": blank,
         "duration_minutes": 30, "duration_seconds": 0, "sections": sections or [],
         "scoring_profile_id": profile["profile_id"],

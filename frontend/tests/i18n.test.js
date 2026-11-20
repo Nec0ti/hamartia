@@ -99,3 +99,13 @@ test('Study Agent sectioned-exam capture describes consent, explicit roster, six
     assert.ok(translate('agent.sectionedExamNoWrite', language).includes(language === 'en' ? 'Hamartia' : 'Hamartia'))
   }
 })
+
+test('Study Agent custom mock flow describes user-defined names, twelve-section safety limit, and explicit consent', () => {
+  for (const language of ['en', 'tr']) {
+    assert.ok(translate('agent.workflowCustomExam', language))
+    assert.ok(translate('agent.customExamHint', language).includes('12'))
+    assert.ok(translate('agent.customExamConsent', language).includes(language === 'en' ? 'OpenAI' : 'OpenAI'))
+    assert.ok(translate('agent.customExamLocalConsent', language).includes('{{endpoint}}'))
+    assert.ok(translate('agent.customExamNoWrite', language).includes(language === 'en' ? 'official' : 'resmî'))
+  }
+})

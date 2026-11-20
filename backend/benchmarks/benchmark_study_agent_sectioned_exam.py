@@ -54,7 +54,7 @@ def expected_fields(messages, sections, profile):
     incorrect = sum(section["incorrect"] for section in sections)
     blank = sum(section["blank"] for section in sections)
     return {
-        "date": messages[1], "exam_type": messages[0].lower(),
+        "date": messages[1], "exam_type": messages[0].lower(), "format_name": "",
         "subject": f"{messages[0].upper()} Geneli", "correct": correct, "incorrect": incorrect, "blank": blank,
         "duration_minutes": int(messages[2]), "duration_seconds": int(messages[3]),
         "scoring_profile_id": profile.profile_id, "scoring_profile_version": profile.version,

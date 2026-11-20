@@ -19,7 +19,9 @@ def _question_order_insights(questions, exams):
         if size < 1 or question.solve_order > size:
             continue
         subject = question.subject if question.exam_section_total else exam.subject
-        key = (getattr(exam, "exam_type", "branch"), subject)
+        exam_type = getattr(exam, "exam_type", "branch")
+        format_name = getattr(exam, "format_name", "") if exam_type == "custom" else ""
+        key = (exam_type, format_name, subject)
         group = groups.setdefault(key, {"exam_ids": set(), **{label: {"wrong_count": 0, "times": []} for label in labels}})
         stage = labels[min(2, ((question.solve_order - 1) * 3) // size)]
         group["exam_ids"].add(exam.id)
@@ -28,8 +30,8 @@ def _question_order_insights(questions, exams):
             group[stage]["times"].append(question.time_spent_seconds)
 
     result = []
-    for (exam_type, subject), group in groups.items():
-        row = {"exam_type": exam_type, "subject": subject, "exam_count": len(group["exam_ids"])}
+    for (exam_type, format_name, subject), group in groups.items():
+        row = {"exam_type": exam_type, "format_name": format_name, "subject": subject, "exam_count": len(group["exam_ids"])}
         for label in labels:
             data = group[label]
             row[label] = {
@@ -37,7 +39,7 @@ def _question_order_insights(questions, exams):
                 "median_seconds": median(data["times"]) if data["times"] else None,
             }
         result.append(row)
-    result.sort(key=lambda row: (-sum(row[label]["wrong_count"] for label in labels), row["subject"].casefold(), row["exam_type"]))
+    result.sort(key=lambda row: (-sum(row[label]["wrong_count"] for label in labels), row["format_name"].casefold(), row["subject"].casefold(), row["exam_type"]))
     return result
 
 

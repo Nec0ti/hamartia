@@ -27,6 +27,7 @@ export const exams = {
   agentDraft: (payload) => client.post('/exams/agent-draft', payload).then((r) => r.data),
   agentCreate: (payload) => client.post('/exams/agent-create', payload).then((r) => r.data),
   sectionedAgentCreate: (payload) => client.post('/exams/sectioned-agent-create', payload).then((r) => r.data),
+  customSectionedAgentCreate: (payload) => client.post('/exams/custom-sectioned-agent-create', payload).then((r) => r.data),
   get: (id) => client.get(`/exams/${id}`).then((r) => r.data),
   create: (payload) =>
     client.post('/exams', payload).then((r) => r.data),

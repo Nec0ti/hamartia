@@ -535,7 +535,7 @@ def _expected_question_order(records, exams):
         group[stage].append(question.time_spent_seconds)
     output = []
     for (exam_type, subject), group in groups.items():
-        row = {"exam_type": exam_type, "subject": subject, "exam_count": len(group["exam_ids"])}
+        row = {"exam_type": exam_type, "format_name": "", "subject": subject, "exam_count": len(group["exam_ids"])}
         for stage, values in ((name, group[name]) for name in ("early", "middle", "late")):
             valid = [value for value in values if value is not None]
             row[stage] = {"wrong_count": len(values), "median_seconds": median(valid) if valid else None}

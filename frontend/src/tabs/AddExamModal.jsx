@@ -16,6 +16,7 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }))
 
   const fullMock = form.exam_type !== 'branch'
+  const customMock = form.exam_type === 'custom'
   const sections = form.sections || []
   const totals = fullMock ? examSectionTotals(sections) : form
   const selectedProfile = profiles.find((item) => item.profile_id === (form.scoring_profile_id || 'legacy-yks')
@@ -28,8 +29,10 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
     setValidationError('')
     if (fullMock) {
       const names = sections.map((section) => section.subject.trim().toLocaleLowerCase())
+      if (customMock && !form.format_name.trim()) return setValidationError(t('exams.customNameRequired'))
       if (!sections.length || names.some((name) => !name)) return setValidationError(t('exams.sectionRequired'))
       if (new Set(names).size !== names.length) return setValidationError(t('exams.uniqueSubjects'))
+      if (customMock && sections.length > 12) return setValidationError(t('exams.customSectionLimit', { count: 12 }))
     }
     onSubmit(event)
   }
@@ -77,14 +80,20 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
             <select value={form.exam_type} onChange={(e) => setForm((current) => ({
               ...current,
               exam_type: e.target.value,
+              format_name: e.target.value === 'custom' ? (current.format_name || '') : '',
               sections: e.target.value === 'branch' ? [] : current.sections,
               subject: e.target.value === 'branch' && current.exam_type !== 'branch' ? t('exams.defaultSubject') : current.subject,
             }))} className={inputCls}>
               <option value="tyt">TYT</option>
               <option value="ayt">AYT</option>
               <option value="branch">{t('exams.branch')}</option>
+              <option value="custom">{t('exams.type.custom')}</option>
             </select>
           </Field>
+          {customMock && <Field label={t('exams.customFormatName')}>
+            <input type="text" maxLength={120} required value={form.format_name || ''} onChange={(e) => set('format_name', e.target.value)} placeholder={t('exams.customFormatPlaceholder')} className={inputCls} />
+            <p className="mt-1 text-xs text-canvas-muted">{t('exams.customFormatHelp')}</p>
+          </Field>}
           {!fullMock && <Field label={t('exams.subject')}>
             <input
               type="text"
@@ -114,21 +123,23 @@ export default function AddExamModal({ open, form, setForm, onClose, onSubmit, e
               <h3 className="text-sm font-semibold text-canvas-text">{t('exams.sectionResults')}</h3>
               <button
                 type="button"
+                disabled={customMock && sections.length >= 12}
                 onClick={() => setForm((current) => ({
                   ...current,
                   sections: [...(current.sections || []), { subject: '', correct: 0, incorrect: 0, blank: 0 }],
                 }))}
-                className="rounded-lg border border-canvas-line px-3 py-2 text-xs text-canvas-text hover:bg-canvas-raise"
+                className="rounded-lg border border-canvas-line px-3 py-2 text-xs text-canvas-text hover:bg-canvas-raise disabled:opacity-50"
               >
-                {t('exams.addSubject')}
+                {customMock ? t('exams.addSection') : t('exams.addSubject')}
               </button>
             </div>
+            {customMock && <p className="text-xs text-canvas-muted">{t('exams.customSectionLimit', { count: 12 })}</p>}
             {sections.length === 0 && <p className="text-xs text-canvas-muted">{t('exams.addOneSubject')}</p>}
             {sections.map((section, index) => (
               <div key={index} className="grid grid-cols-2 gap-2 rounded-lg border border-canvas-line p-3 sm:grid-cols-5">
                 <label className="col-span-2 text-xs text-canvas-muted sm:col-span-1">
-                  {t('exams.subject')}
-                  <input aria-label={t('exams.subjectNumber', { number: index + 1 })} required value={section.subject} onChange={(e) => updateSection(index, 'subject', e.target.value)} placeholder={t('exams.turkishPlaceholder')} className={inputCls} />
+                  {customMock ? t('exams.sectionName') : t('exams.subject')}
+                  <input aria-label={t(customMock ? 'exams.sectionNumber' : 'exams.subjectNumber', { number: index + 1 })} maxLength={customMock ? 120 : undefined} required value={section.subject} onChange={(e) => updateSection(index, 'subject', e.target.value)} placeholder={customMock ? '' : t('exams.turkishPlaceholder')} className={inputCls} />
                 </label>
                 {['correct', 'incorrect', 'blank'].map((key, itemIndex) => (
                   <label key={key} className="text-xs text-canvas-muted">

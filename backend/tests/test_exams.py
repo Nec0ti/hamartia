@@ -99,6 +99,49 @@ class ExamFlowTests(unittest.TestCase):
                 {"subject": "Fizik", "correct": 1, "incorrect": 0, "blank": 0},
             ])
 
+    def test_custom_sectioned_exam_uses_user_name_custom_profile_and_round_trips(self):
+        from app.api.exam_profiles import create_profile
+        from app.models.schemas import ExamScoringProfileCreate, ExamScoringRule
+
+        profile = asyncio.run(create_profile(ExamScoringProfileCreate(
+            display_name="My rule", country_label="User context",
+            scoring_rule=ExamScoringRule(correct_points="3/2", wrong_penalty="1/3", blank_points="0"),
+        ), self.storage))
+        payload = ExamCreate(
+            date="2026-11-19", exam_type="custom", format_name="Personal mock",
+            subject="ignored", correct=0, incorrect=0, blank=0, scoring_profile_id=profile.profile_id,
+            scoring_profile_version=profile.version, sections=[
+                {"subject": "Reading", "correct": 12, "incorrect": 2, "blank": 1},
+                {"subject": "Quantitative reasoning", "correct": 8, "incorrect": 1, "blank": 3},
+            ],
+        )
+        created = asyncio.run(create_exam(payload, self.storage))
+        saved = self.storage.load_list("exams.json", Exam)[0]
+
+        self.assertEqual((saved.exam_type, saved.format_name, saved.subject), ("custom", "Personal mock", "Personal mock"))
+        self.assertEqual((saved.correct, saved.incorrect, saved.blank), (20, 3, 4))
+        self.assertEqual(saved.scoring_profile.model_dump(), profile.model_dump())
+        self.assertEqual(created.net, 29.0)
+        self.assertEqual(len(saved.sections), 2)
+
+        edited_payload = ExamCreate.model_validate(payload.model_dump() | {"format_name": "Edited mock"})
+        edited = asyncio.run(update_exam(created.id, edited_payload, self.storage))
+        self.assertEqual((edited.id, edited.format_name, edited.subject), (created.id, "Edited mock", "Edited mock"))
+        self.assertEqual(edited.scoring_profile.model_dump(), profile.model_dump())
+
+    def test_custom_sectioned_exam_requires_bounded_name_and_one_to_twelve_sections(self):
+        common = dict(date="2026-11-19", exam_type="custom", subject="", correct=0, incorrect=0, blank=0)
+        with self.assertRaises(ValidationError):
+            ExamCreate(**common, sections=[{"subject": "A", "correct": 0, "incorrect": 0, "blank": 0}])
+        with self.assertRaises(ValidationError):
+            ExamCreate(**common, format_name=" ", sections=[{"subject": "A", "correct": 0, "incorrect": 0, "blank": 0}])
+        with self.assertRaises(ValidationError):
+            ExamCreate(**common, format_name="Mock", sections=[])
+        with self.assertRaises(ValidationError):
+            ExamCreate(**common, format_name="Mock", sections=[{"subject": f"S{i}", "correct": 0, "incorrect": 0, "blank": 0} for i in range(13)])
+        with self.assertRaises(ValidationError):
+            ExamCreate(**common, format_name="x" * 121, sections=[{"subject": "A", "correct": 0, "incorrect": 0, "blank": 0}])
+
     def test_update_and_delete_missing_exam_return_404(self):
         payload = ExamCreate(date="2026-11-14", subject="Math", correct=1, incorrect=0, blank=0)
         with self.assertRaises(HTTPException) as update_error:

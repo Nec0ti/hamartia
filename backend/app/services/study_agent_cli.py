@@ -674,6 +674,8 @@ async def dispatch_record_command(envelope: Mapping[str, Any]) -> dict[str, Any]
         "study.exam.approve": (exams.AgentExamCreateRequest, exams.exam_agent_create),
         "study.sectioned_exam.draft": (exams.SectionedExamDraftRequest, exams.sectioned_exam_agent_draft),
         "study.sectioned_exam.approve": (exams.SectionedExamCreateRequest, exams.sectioned_exam_agent_create),
+        "study.custom_sectioned_exam.draft": (exams.CustomSectionedExamDraftRequest, exams.custom_sectioned_exam_agent_draft),
+        "study.custom_sectioned_exam.approve": (exams.CustomSectionedExamCreateRequest, exams.custom_sectioned_exam_agent_create),
     }
     command = envelope.get("command")
     if command == "study.practice.prepare":
@@ -700,7 +702,7 @@ async def dispatch_record_command(envelope: Mapping[str, Any]) -> dict[str, Any]
                 evidence_claims=payload.evidence_claims,
             ), storage)
             payload = payload.model_copy(update={"proposal": preview["proposal"]})
-        if is_approval or command in {"study.practice.draft", "study.exam.draft", "study.sectioned_exam.draft"}:
+        if is_approval or command in {"study.practice.draft", "study.exam.draft", "study.sectioned_exam.draft", "study.custom_sectioned_exam.draft"}:
             result = await handler(payload, storage)
         else:
             result = await handler(payload)

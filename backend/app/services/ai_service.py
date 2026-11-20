@@ -39,6 +39,10 @@ from app.services.study_agent_sectioned_exam import (
     TOOL_NAME as SECTIONED_EXAM_TOOL_NAME, SectionedExamToolArguments,
     provider_tool_parameters as sectioned_exam_tool_parameters,
 )
+from app.services.study_agent_custom_exam import (
+    TOOL_NAME as CUSTOM_EXAM_TOOL_NAME, SectionedExamToolArguments as CustomExamToolArguments,
+    provider_tool_parameters as custom_exam_tool_parameters,
+)
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image
 
 HAMARTIA_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/..
@@ -446,6 +450,35 @@ class AIService:
         except (TypeError, json.JSONDecodeError) as exc:
             raise ValueError("The configured endpoint returned malformed sectioned exam evidence.") from exc
         parsed = SectionedExamToolArguments.model_validate(arguments)
+        return {"current_evidence_claims": [item.model_dump() for item in parsed.evidence]}
+
+    async def study_custom_exam_prepare(self, messages: list[str], language: str, expected_field: str) -> dict:
+        """Request one exact current-turn quote for a user-defined mock field."""
+        client = await self._ensure_async()
+        system = (
+            "You are Hamartia's user-defined mock exam evidence assistant. Use the one available tool exactly once. "
+            f"The host currently expects only `{expected_field}`. Submit its exact quote equal to the entire newest student message, "
+            "or an empty evidence list if unclear. Never parse, infer, normalize, choose a profile, calculate, or write. Answer in "
+            + ("Turkish" if language == "tr" else "English") + "."
+        )
+        tool = {"type": "function", "function": {"name": CUSTOM_EXAM_TOOL_NAME,
+            "description": "Submit one exact current-turn quote for host verification and a read-only user-defined mock preview.",
+            "parameters": custom_exam_tool_parameters(), "strict": True}}
+        response = await client.chat.completions.create(model=self.model_name,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": json.dumps({"student_messages": messages}, ensure_ascii=False)}],
+            tools=[tool], tool_choice={"type": "function", "function": {"name": CUSTOM_EXAM_TOOL_NAME}}, parallel_tool_calls=False, temperature=0)
+        message = response.choices[0].message
+        calls = message.tool_calls or []
+        if message.content not in (None, "") or len(calls) != 1:
+            raise ValueError("The configured endpoint did not return exactly one custom exam quote tool call.")
+        call = calls[0]
+        if call.type != "function" or call.function.name != CUSTOM_EXAM_TOOL_NAME or not call.id:
+            raise ValueError("The configured endpoint returned an unsupported custom exam tool call.")
+        try:
+            arguments = json.loads(call.function.arguments)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("The configured endpoint returned malformed custom exam evidence.") from exc
+        parsed = CustomExamToolArguments.model_validate(arguments)
         return {"current_evidence_claims": [item.model_dump() for item in parsed.evidence]}
 
     def _build_prompt(self, question: Question, data_dir: Path | None = None) -> list:

@@ -2024,11 +2024,11 @@ Not applicable\. This change edits only two verification sentences in \`RELEASES
 
 ### Verification
 
-The release metadata test passed, and the bilingual summary parser accepts all required fields\. \`git diff \-\-check\` passed\. PR \#82's exact\-head backend\/frontend and Windows backup\-recovery checks passed, and its independent reviewer recheck was clean before merge\. It merged at \`12987f59b713260e4cd0dd9e5176d9d479cca556\`; ARETE\-078 is published\.
+The release metadata test passed, and the bilingual summary parser accepts all required fields\. \`git diff \-\-check\` passed\. PR \#82's exact\-head backend\/frontend and Windows backup\-recovery checks passed, and its independent reviewer recheck was clean before merge\. It merged at \`12987f59b713260e4cd0dd9e5176d9d479cca556\`; ARETE\-078 is published\. PR \#83's exact\-head backend\/frontend, Windows backup\-recovery, and Linux\/Windows package workflows passed; an independent pre\-merge read\-only review was clean\. PR \#83 merged as \`746a475e01d1de80daa8293636d39f49c18c2b18\`, and ARETE\-079 was published\.
 
 ### Not run / known limitations
 
-Exact\-head CI and independent review are pre\-merge gates for PR \#83\. No application tests, package builds, or local browser smoke were run for this one\-sentence release\-note correction\. The human and physical\-device limitations listed in ARETE\-078 remain open\.
+No local browser smoke or human/physical\-device checks were run for this docs\-only correction; the human and physical\-device limitations in ARETE\-078 remain open\. No real provider or local model was executed\. PR \#83's backend/frontend and Linux/Windows package workflows ran and passed, as recorded above\.
 
 ## Türkçe
 
@@ -2052,8 +2052,8 @@ Uygulanamaz\. Bu değişiklik yalnızca \`RELEASES\.md\` içindeki iki doğrulam
 
 ### Doğrulama
 
-Sürüm metadata testi geçti ve iki dilli özet ayrıştırıcısı gerekli alanların tümünü kabul etti\. \`git diff \-\-check\` geçti\. PR \#82'nin tam kafa backend\/frontend ve Windows yedek\-kurtarma kontrolleri geçti; bağımsız incelemeci tekrar kontrolü birleştirmeden önce temizdi\. PR \`12987f59b713260e4cd0dd9e5176d9d479cca556\` commit'iyle birleştirildi; ARETE\-078 yayımlandı\.
+Sürüm metadata testi geçti ve iki dilli özet ayrıştırıcısı gerekli alanların tümünü kabul etti\. \`git diff \-\-check\` geçti\. PR \#82'nin tam kafa backend\/frontend ve Windows yedek\-kurtarma kontrolleri geçti; bağımsız incelemeci tekrar kontrolü birleştirmeden önce temizdi\. PR \`12987f59b713260e4cd0dd9e5176d9d479cca556\` commit'iyle birleştirildi; ARETE\-078 yayımlandı\. PR \#83'ün tam kafa backend\/frontend, Windows yedek\-kurtarma ve Linux\/Windows paket işleri geçti; bağımsız birleştirme öncesi salt\-okunur inceleme temizdi\. PR \#83 \`746a475e01d1de80daa8293636d39f49c18c2b18\` commit'iyle birleştirildi ve ARETE\-079 yayımlandı\.
 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
-Tam kafa CI kontrolleri ve bağımsız inceleme PR \#83'ün birleştirme öncesi kapılarıdır\. Bu tek cümlelik sürüm notu düzeltmesi için yerel uygulama testleri, paket derlemeleri veya tarayıcı smoke testi çalıştırılmadı\. ARETE\-078'de listelenen insan ve fiziksel cihaz sınırlamaları devam ediyor\.
+Bu belge düzeltmesi için yerel tarayıcı smoke testi veya insan/fiziksel cihaz kontrolü yapılmadı; ARETE\-078'deki bu sınırlamalar devam ediyor\. Gerçek sağlayıcı veya yerel model çalıştırılmadı\. PR \#83'ün backend/frontend ve Linux/Windows paket işleri çalıştı ve geçti; sonuçları yukarıda kayıtlıdır\.

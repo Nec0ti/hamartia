@@ -1135,7 +1135,7 @@ async function main(smokeRun) {
     const englishExamPreview = await page.evaluate(() => window.__examCaptureDraftResponse)
     assert.equal(englishExamPreview.status, 'ready')
     assert.deepEqual(englishExamPreview.fields, {
-      date: '2026-11-16', exam_type: 'branch', subject: 'Biology',
+      date: '2026-11-16', exam_type: 'branch', format_name: '', subject: 'Biology',
       duration_minutes: 55, duration_seconds: 0, correct: 25, incorrect: 3, blank: 2,
       scoring_profile_id: customProfile.profile_id, scoring_profile_version: 1, sections: [],
     })

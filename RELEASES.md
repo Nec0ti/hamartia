@@ -1999,3 +1999,61 @@ Doküman bütünlük benchmark'ı dil başına 17 oluşturulmuş sayfada, 1\.064
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 PR \#82'nin tam SHA backend\/frontend ve Windows yedek\-kurtarma kontrolleri geçti; bağımsız incelemecinin tekrar kontrolü birleştirmeden önce temizdi\. PR \#82 \`12987f59b713260e4cd0dd9e5176d9d479cca556\` commit'iyle birleştirildi ve ARETE\-078 yayımlandı\. Doküman bütünlük benchmark'ı insanlarla erişim\/görsel değerlendirme denemesi yapmaz\. SIWC yaşam döngüsü, yapılandırılmış uç nokta\/model ve görsel aktarımı, Windows 10\/11, Debian ve AppImage kurulum\/veri saklama kontrolleri fiziksel cihazlarda hâlâ bekliyor\. Gerçek model\/sağlayıcı çalıştırılmadı\. Tamamlanmış taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği yoktur\.
+
+## ARETE-079
+
+## English
+
+`ARETE-079` — [PR #83](https://github.com/Nec0ti/hamartia/pull/83): docs\: correct ARETE\-078 verification status
+
+### Highlights
+
+This documentation\-only correction replaces the stale pending\-status sentence in the ARETE\-078 release notes with PR \#82's verified checks, independent reviewer recheck, merge commit, and published status\.
+
+### Behavior and why
+
+No user\-facing behavior changed\. ARETE\-078 was generated from PR \#82's body before its checks finished, so the published release incorrectly said the checks and re\-review were pending after they had passed\.
+
+### How to use
+
+No user action applies\. Contributors can read the corrected ARETE\-078 release entry for the final PR \#82 status\.
+
+### Compatibility / migration
+
+Not applicable\. This change edits only two verification sentences in \`RELEASES\.md\`; it changes no application code, stored data, API, or package behavior\.
+
+### Verification
+
+The release metadata test passed, and the bilingual summary parser accepts all required fields\. \`git diff \-\-check\` passed\. PR \#82's exact\-head backend\/frontend and Windows backup\-recovery checks passed, and its independent reviewer recheck was clean before merge\. It merged at \`12987f59b713260e4cd0dd9e5176d9d479cca556\`; ARETE\-078 is published\.
+
+### Not run / known limitations
+
+Exact\-head CI and independent review are pre\-merge gates for PR \#83\. No application tests, package builds, or local browser smoke were run for this one\-sentence release\-note correction\. The human and physical\-device limitations listed in ARETE\-078 remain open\.
+
+## Türkçe
+
+`ARETE-079` — [PR #83](https://github.com/Nec0ti/hamartia/pull/83): docs\: correct ARETE\-078 verification status
+
+### Öne çıkanlar
+
+Bu yalnızca belge düzeltmesi, ARETE\-078 sürüm notlarındaki eski bekleme cümlesini PR \#82'nin doğrulanmış kontrolleri, bağımsız incelemeci tekrar kontrolü, birleştirme commit'i ve yayımlanma durumu ile değiştirir\.
+
+### Davranış ve nedeni
+
+Kullanıcıya yönelik davranış değişmedi\. ARETE\-078, PR \#82'nin kontrolleri tamamlanmadan önceki PR metninden üretildiği için yayımlanan sürüm, kontroller ve tekrar inceleme geçmişte kaldıktan sonra da bekliyor gibi görünüyordu\.
+
+### Kullanım
+
+Kullanıcı için bir işlem gerekmez\. Katkıda bulunanlar PR \#82'nin son durumunu düzeltilmiş ARETE\-078 kaydından görebilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Bu değişiklik yalnızca \`RELEASES\.md\` içindeki iki doğrulama cümlesini düzenler; uygulama kodu, saklanan veri, API veya paket davranışı değişmez\.
+
+### Doğrulama
+
+Sürüm metadata testi geçti ve iki dilli özet ayrıştırıcısı gerekli alanların tümünü kabul etti\. \`git diff \-\-check\` geçti\. PR \#82'nin tam kafa backend\/frontend ve Windows yedek\-kurtarma kontrolleri geçti; bağımsız incelemeci tekrar kontrolü birleştirmeden önce temizdi\. PR \`12987f59b713260e4cd0dd9e5176d9d479cca556\` commit'iyle birleştirildi; ARETE\-078 yayımlandı\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Tam kafa CI kontrolleri ve bağımsız inceleme PR \#83'ün birleştirme öncesi kapılarıdır\. Bu tek cümlelik sürüm notu düzeltmesi için yerel uygulama testleri, paket derlemeleri veya tarayıcı smoke testi çalıştırılmadı\. ARETE\-078'de listelenen insan ve fiziksel cihaz sınırlamaları devam ediyor\.

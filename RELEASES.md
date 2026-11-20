@@ -1780,56 +1780,48 @@ Son commit için pull request CI kontrolleri ve bağımsız inceleme geçti; Lin
 
 ## English
 
-`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat\: add globally configurable sectioned mock exams
+`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat: add globally configurable sectioned mock exams
 
 ### Highlights
 
-Custom mock exams can now use a bounded format name, 1–12 user\-defined section labels, and a snapshot of an existing versioned scoring profile\. The Study Agent can capture approved requests from ChatGPT or a configured endpoint, and the local CLI can create drafts that require approval\.
+Custom mock exams can use a user-defined format name, 1–12 named sections, and an existing versioned scoring profile. Saved records preserve the exact scoring snapshot. The Study Agent and local CLI support reviewed drafts with a separate approval step.
 
-### Behavior and why
+### Behavior and compatibility
 
-Custom exam records preserve the selected scoring profile snapshot so later profile edits do not change saved results\. Existing TYT\/AYT presets and legacy scoring remain available\. Study Agent host processing asks for missing fields, checks exact latest\-turn quotes, computes a preview, and keeps approval separate from drafting\.
+Custom formats appear in exam history, filters, analytics, question context, and backups. Existing TYT/AYT presets and legacy scoring remain unchanged; no migration is required. Names remain user-defined and imply no official curriculum or exam alignment.
 
 ### How to use
 
-Create a custom exam format with a name and section labels, select a scoring profile, then enter and review the exam as usual\. For Study Agent capture, grant consent for each request; for local CLI drafts, review the preview and approve explicitly before saving\.
-
-### Compatibility / migration
-
-Existing presets, exam records, and scoring behavior are preserved\. No migration is required\. Custom formats and their scoring\-profile snapshots are additive\.
+Create a custom exam format with a name and section labels, select a scoring profile, then enter and review the exam as usual. For Study Agent capture, grant consent for each request; for local CLI drafts, review the preview and approve explicitly before saving.
 
 ### Verification
 
-The PR reports 302 backend tests passed and 1 skipped, 61 frontend tests passed with a successful Vite production build, and 58 desktop tests passed\. Its provider\-free custom\-host benchmark passed 3 repeats with result\/profile oracle, idempotency, altered\-replay, ambiguous\-no\-write, provider\-call tripwire, and loopback\-only network checks\. The docs integrity benchmark reported zero errors across 17 EN\/TR pages\.
+The final PR head was `4e8fa058f23404f3683c941457d71467b38be3b4`. Exact-head backend/frontend CI, Windows backup-recovery jobs, Linux and Windows package builds, and a local independent read-only review with reviewer recheck passed; no GitHub review approval was submitted. PR #79 merged as `0bed9a9a52c8c310cb3c6b6e490d88db3090fd14`. GitHub Pages deployment and CI browser smoke passed. The published `.deb`, AppImage, and Windows installer were downloaded and matched their GitHub SHA-256 digests; see [the verification report](reports/2026-11-19-custom-sectioned-mocks.md).
 
 ### Not run / known limitations
 
-The local docs browser smoke could not launch because Chromium could not load \`libglib\-2\.0\.so\.0\`; the PR states that exact\-head CI and browser\/package workflows remained required at merge time\. The provider\-free benchmark did not run an AI provider or make external requests\. The Vite build emitted its existing chunk\-size advisory\.
+Local Chromium docs smoke remains unavailable because this host cannot load `libglib-2.0.so.0`; the CI browser smoke passed. The provider-free benchmark made no AI/provider calls or external requests. Vite emitted its existing chunk-size advisory.
 
 ## Türkçe
 
-`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat\: add globally configurable sectioned mock exams
+`ARETE-075` — [PR #79](https://github.com/Nec0ti/hamartia/pull/79): feat: add globally configurable sectioned mock exams
 
 ### Öne çıkanlar
 
-Özel deneme biçimleri artık sınırlı uzunlukta bir ad, kullanıcı tanımlı 1–12 bölüm etiketi ve mevcut sürümlü puanlama profilinin anlık görüntüsüyle oluşturulabiliyor\. Study Agent, ChatGPT veya yapılandırılmış bir uç nokta için onaylı istekleri kaydedebiliyor; yerel CLI ise onay gerektiren taslaklar oluşturabiliyor\.
+Özel denemeler kullanıcı tanımlı bir biçim adı, 1–12 adlandırılmış bölüm ve mevcut sürümlü bir puanlama profiliyle oluşturulabilir. Kayıtlar puanlama kurallarının tam anlık görüntüsünü saklar. Çalışma Asistanı ve yerel CLI, incelenen taslakları ayrı bir onay adımıyla destekler.
 
-### Davranış ve nedeni
+### Davranış ve uyumluluk
 
-Özel deneme kayıtları seçilen puanlama profilinin anlık görüntüsünü saklar; böylece profilde sonradan yapılan değişiklikler kayıtlı sonuçları değiştirmez\. TYT\/AYT hazır biçimleri ve eski puanlama davranışı korunur\. Study Agent ana bilgisayar akışı eksik alanları sorar, en son turdaki alıntıların birebir eşleşmesini denetler, önizleme hesaplar ve taslak oluşturma ile onayı ayrı tutar\.
+Özel biçimler deneme geçmişinde, filtrelerde, analizlerde, soru bağlamında ve yedeklerde görünür. Mevcut TYT/AYT hazır biçimleri ve eski puanlama değişmez; geçiş gerekmez. Adlar kullanıcı tanımlıdır ve resmî müfredat veya sınav uyumu iddiası taşımaz.
 
 ### Kullanım
 
-Bir ad ve bölüm etiketleriyle özel deneme biçimi oluşturup puanlama profili seçin; ardından denemeyi alıştığınız şekilde girip inceleyin\. Study Agent isteği başına izin verin; yerel CLI taslaklarında kaydetmeden önce önizlemeyi inceleyip açıkça onaylayın\.
-
-### Uyumluluk / geçiş
-
-Mevcut hazır biçimler, deneme kayıtları ve puanlama davranışı korunur\. Geçiş gerekmez\. Özel biçimler ve puanlama profili anlık görüntüleri ek özelliklerdir\.
+Bir ad ve bölüm etiketleriyle özel deneme biçimi oluşturup puanlama profili seçin; ardından denemeyi alıştığınız şekilde girip inceleyin. Study Agent isteği başına izin verin; yerel CLI taslaklarında kaydetmeden önce önizlemeyi inceleyip açıkça onaylayın.
 
 ### Doğrulama
 
-PR raporuna göre 302 backend testi geçti, 1 test atlandı; 61 frontend testi geçti ve Vite üretim derlemesi başarılı oldu; 58 desktop testi geçti\. Sağlayıcı çalıştırmayan özel ana bilgisayar benchmark'ı sonuç\/profil oracle'ı, idempotency, değiştirilmiş tekrar oynatma, belirsiz durumda yazmama, sağlayıcı çağrısı engelleri ve yalnız loopback ağ denetimleriyle 3 tekrarı geçti\. Doküman bütünlüğü benchmark'ı 17 EN\/TR sayfada sıfır hata bildirdi\.
+PR'ın son kafa SHA'sı `4e8fa058f23404f3683c941457d71467b38be3b4` idi. Tam SHA backend/frontend CI, Windows yedek-kurtarma işleri, Linux ve Windows paket derlemeleri, yerel bağımsız salt-okunur inceleme ve incelemeci tekrar kontrolü geçti; GitHub inceleme onayı gönderilmedi. PR #79 `0bed9a9a52c8c310cb3c6b6e490d88db3090fd14` commit'iyle birleştirildi. GitHub Pages dağıtımı ve CI tarayıcı smoke testi geçti. Yayımlanan `.deb`, AppImage ve Windows yükleyicisi indirilip GitHub SHA-256 değerleriyle eşleşti; ayrıntılar için [doğrulama raporuna](reports/2026-11-19-custom-sectioned-mocks.md) bakın.
 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
-Yerel doküman tarayıcı smoke testi, Chromium \`libglib\-2\.0\.so\.0\` dosyasını yükleyemediği için başlatılamadı; PR birleştirme anında tam SHA CI ve tarayıcı\/paket iş akışlarının hâlâ gerekli olduğunu belirtiyordu\. Sağlayıcısız benchmark bir yapay zekâ sağlayıcısı çalıştırmadı ve dış istekte bulunmadı\. Vite derlemesi mevcut parça boyutu uyarısını verdi\.
+Bu makinede `libglib-2.0.so.0` yüklenemediği için yerel Chromium doküman smoke testi kullanılamıyor; CI tarayıcı smoke testi geçti. Sağlayıcısız benchmark AI/sağlayıcı çağrısı veya dış istek yapmadı. Vite mevcut parça boyutu uyarısını verdi.

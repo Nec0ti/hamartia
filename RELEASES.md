@@ -1970,7 +1970,7 @@ The docs integrity benchmark passed across 17 rendered pages per locale, 1,064 l
 
 ### Not run / known limitations
 
-PR \#82's exact\-head CI and reviewer recheck are pending\. The docs integrity benchmark does not run human retrieval\/screenshot trials\. Physical manual gates remain open for SIWC lifecycle, configured endpoint\/model and image transfer, and Windows 10\/11, Debian, and AppImage install\/persistence\. No real model\/provider execution was performed\. If a completed draft response is lost in transit, its continuation stays consumed and the capture must restart; completed\-response caching is not implemented\.
+Exact\-head PR \#82 backend\/frontend and Windows backup\-recovery checks passed; the independent reviewer recheck was clean before merge\. PR \#82 merged as \`12987f59b713260e4cd0dd9e5176d9d479cca556\` and ARETE\-078 was published\. The docs integrity benchmark does not run human retrieval\/screenshot trials\. Physical manual gates remain open for SIWC lifecycle, configured endpoint\/model and image transfer, and Windows 10\/11, Debian, and AppImage install\/persistence\. No real model\/provider execution was performed\. If a completed draft response is lost in transit, its continuation stays consumed and the capture must restart; completed\-response caching is not implemented\.
 
 ## Türkçe
 
@@ -1998,4 +1998,4 @@ Doküman bütünlük benchmark'ı dil başına 17 oluşturulmuş sayfada, 1\.064
 
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
-PR \#82'nin tam kafa CI kontrolleri ve incelemeci tekrar kontrolü bekliyor\. Doküman bütünlük benchmark'ı insanlarla erişim\/görsel değerlendirme denemesi yapmaz\. SIWC yaşam döngüsü, yapılandırılmış uç nokta\/model ve görsel aktarımı, Windows 10\/11, Debian ve AppImage kurulum\/veri saklama kontrolleri fiziksel cihazlarda hâlâ bekliyor\. Gerçek model\/sağlayıcı çalıştırılmadı\. Tamamlanmış taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği yoktur\.
+PR \#82'nin tam SHA backend\/frontend ve Windows yedek\-kurtarma kontrolleri geçti; bağımsız incelemecinin tekrar kontrolü birleştirmeden önce temizdi\. PR \#82 \`12987f59b713260e4cd0dd9e5176d9d479cca556\` commit'iyle birleştirildi ve ARETE\-078 yayımlandı\. Doküman bütünlük benchmark'ı insanlarla erişim\/görsel değerlendirme denemesi yapmaz\. SIWC yaşam döngüsü, yapılandırılmış uç nokta\/model ve görsel aktarımı, Windows 10\/11, Debian ve AppImage kurulum\/veri saklama kontrolleri fiziksel cihazlarda hâlâ bekliyor\. Gerçek model\/sağlayıcı çalıştırılmadı\. Tamamlanmış taslak yanıtı aktarım sırasında kaybolursa devam durumu tüketilmiş kalır ve akış yeniden başlatılmalıdır; tamamlanmış yanıt önbelleği yoktur\.

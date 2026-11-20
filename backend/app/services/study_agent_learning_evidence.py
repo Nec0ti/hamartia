@@ -17,6 +17,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.models.schemas import LearningEvidenceCreate
+from app.services.continuation_tokens import finish as finish_continuation, reserve as reserve_continuation
 
 PROVIDER_TOOL_NAME = "hamartia_learning_evidence_prepare"
 REQUIRED_FIELDS = ("activity", "subject", "topic", "date", "observation")
@@ -28,6 +29,7 @@ MAX_MESSAGE_LENGTH = 4000
 LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS = 3600
 _LEARNING_EVIDENCE_STATE_SECRET = secrets.token_bytes(32)
 _LEARNING_EVIDENCE_STATE_USED: dict[str, int] = {}
+_LEARNING_EVIDENCE_STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 _LEARNING_EVIDENCE_STATE_LOCK = threading.Lock()
 
 
@@ -195,7 +197,7 @@ def issue_learning_evidence_state_token(messages: list[str], language: str, veri
 
 
 def resolve_learning_evidence_state_token(
-    token: str | None, messages: list[str], language: str,
+    token: str | None, messages: list[str], language: str, *, reserve: bool = False,
 ) -> list[dict[str, str]]:
     """Return only host-issued prior claims for one exact appended student turn."""
     if token is None:
@@ -237,22 +239,23 @@ def resolve_learning_evidence_state_token(
         claims = [LearningEvidenceQuote.model_validate(item).model_dump() for item in payload["claims"]]
         if len(claims) > 12:
             raise ValueError
-        canonical_token = f"{body_text}.{signature_text}".encode("ascii")
-        token_key = hashlib.sha256(canonical_token).hexdigest()
-        now = int(time.time())
-        with _LEARNING_EVIDENCE_STATE_LOCK:
-            expired = [key for key, timestamp in _LEARNING_EVIDENCE_STATE_USED.items()
-                       if now - timestamp > LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS]
-            for key in expired:
-                _LEARNING_EVIDENCE_STATE_USED.pop(key, None)
-            if token_key in _LEARNING_EVIDENCE_STATE_USED:
-                raise ValueError
-            if len(_LEARNING_EVIDENCE_STATE_USED) >= 4096:
-                raise ValueError
-            _LEARNING_EVIDENCE_STATE_USED[token_key] = now
+        reserve_continuation(
+            _LEARNING_EVIDENCE_STATE_USED, _LEARNING_EVIDENCE_STATE_PENDING,
+            _LEARNING_EVIDENCE_STATE_LOCK, token, issued_at + LEARNING_EVIDENCE_STATE_MAX_AGE_SECONDS,
+        )
+        if not reserve:
+            finish_learning_evidence_state_token(token, commit=True)
         return claims
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error) as exc:
         raise ValueError("Learning-evidence conversation state is invalid or expired.") from exc
+
+
+def finish_learning_evidence_state_token(token: str | None, *, commit: bool) -> None:
+    if token is not None:
+        finish_continuation(
+            _LEARNING_EVIDENCE_STATE_USED, _LEARNING_EVIDENCE_STATE_PENDING,
+            _LEARNING_EVIDENCE_STATE_LOCK, token, commit=commit,
+        )
 
 
 def prepare_learning_evidence(

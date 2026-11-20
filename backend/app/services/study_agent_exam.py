@@ -17,6 +17,7 @@ from typing import Any, Literal, Mapping
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.models.schemas import Exam, ExamCreate, ExamScoringProfile
+from app.services.continuation_tokens import finish as finish_continuation, reserve as reserve_continuation
 
 EXAM_FIELDS = (
     "date", "subject", "correct", "incorrect", "blank",
@@ -32,6 +33,7 @@ STATE_MAX_AGE_SECONDS = 3600
 STATE_SECRET = secrets.token_bytes(32)
 _STATE_LOCK = threading.Lock()
 _STATE_USED: dict[str, int] = {}
+_STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 
 
 class ExamQuote(BaseModel):
@@ -136,7 +138,7 @@ def issue_exam_state_token(
 
 def resolve_exam_state_token(
     token: str | None, messages: list[str], language: str,
-    profile_id: str, profile_version: int,
+    profile_id: str, profile_version: int, *, reserve: bool = False,
 ) -> list[dict[str, Any]]:
     if token is None:
         if len(messages) != 1:
@@ -173,18 +175,17 @@ def resolve_exam_state_token(
                     or not 0 <= item["message_index"] < message_count
                     or messages[item["message_index"]] != item["quote"]):
                 raise ValueError("Invalid verified exam claim state.")
-        replay_key = hashlib.sha256(token.encode("ascii")).hexdigest()
-        now = int(time.time())
-        with _STATE_LOCK:
-            for key, used_at in list(_STATE_USED.items()):
-                if now - used_at > STATE_MAX_AGE_SECONDS:
-                    _STATE_USED.pop(key, None)
-            if replay_key in _STATE_USED or len(_STATE_USED) >= 4096:
-                raise ValueError("Exam-capture state was already used or the state cache is full.")
-            _STATE_USED[replay_key] = now
+        reserve_continuation(_STATE_USED, _STATE_PENDING, _STATE_LOCK, token, issued_at + STATE_MAX_AGE_SECONDS)
+        if not reserve:
+            finish_exam_state_token(token, commit=True)
         return claims
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error) as exc:
         raise ValueError("Exam-capture conversation state is invalid, expired, or already used.") from exc
+
+
+def finish_exam_state_token(token: str | None, *, commit: bool) -> None:
+    if token is not None:
+        finish_continuation(_STATE_USED, _STATE_PENDING, _STATE_LOCK, token, commit=commit)
 
 
 def _parse_value(field: str, quote: str) -> Any:

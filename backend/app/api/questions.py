@@ -41,9 +41,11 @@ from app.services.study_agent_question import (
     QuestionQuote,
     is_unique_latest_turn_quote,
     issue_question_state_token,
+    finish_question_state_token,
     prepare_question_capture,
     resolve_question_state_token,
 )
+from app.services.continuation_tokens import use as use_continuation_token
 from app.services.upload_paths import UnsafeUploadPath, resolve_question_image, resolve_upload_root
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -267,18 +269,19 @@ async def question_agent_draft(payload: AgentQuestionDraftRequest):
     interactive = payload.state_token is not None or len(payload.messages) > 1
     if payload.state_token is not None and len(payload.messages) < 2:
         raise HTTPException(status_code=409, detail="The question-capture conversation state is invalid or expired.")
-    try:
-        prior_claims = resolve_question_state_token(payload.state_token, payload.messages, payload.language) if interactive else []
-        prior = prepare_question_capture(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    expected = prior["expected_field"] if prior else "question_text"
-    if expected != payload.expected_question_field:
-        raise HTTPException(status_code=409, detail="The question-capture conversation changed. Review the current question again.")
-    current_claims = [item.model_dump() for item in payload.evidence_claims]
-    if len(current_claims) > 1:
-        raise HTTPException(status_code=422, detail="Submit only the current expected field.")
-    return build_question_agent_draft(payload.messages, payload.language, expected, prior_claims, current_claims)
+    with use_continuation_token(payload.state_token, finish_question_state_token):
+        try:
+            prior_claims = resolve_question_state_token(payload.state_token, payload.messages, payload.language, reserve=True) if interactive else []
+            prior = prepare_question_capture(payload.messages[:-1], payload.language, prior_claims) if prior_claims else None
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        expected = prior["expected_field"] if prior else "question_text"
+        if expected != payload.expected_question_field:
+            raise HTTPException(status_code=409, detail="The question-capture conversation changed. Review the current question again.")
+        current_claims = [item.model_dump() for item in payload.evidence_claims]
+        if len(current_claims) > 1:
+            raise HTTPException(status_code=422, detail="Submit only the current expected field.")
+        return build_question_agent_draft(payload.messages, payload.language, expected, prior_claims, current_claims)
 
 
 @router.post("/agent-create", status_code=201, response_model=Question)

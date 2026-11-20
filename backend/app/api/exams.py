@@ -26,17 +26,19 @@ from app.services.study_agent_exam import (
     issue_exam_state_token,
     prepare_exam_capture,
     resolve_exam_state_token,
+    finish_exam_state_token,
 )
+from app.services.continuation_tokens import use as use_continuation_token
 from app.services.study_agent_sectioned_exam import (
     MAX_SECTIONS, STATIC_FIELDS as SECTIONED_STATIC_FIELDS, SectionedExamQuote,
     issue_state_token as issue_sectioned_state_token, prepare_capture as prepare_sectioned_capture,
-    resolve_state_token as resolve_sectioned_state_token,
+    resolve_state_token as resolve_sectioned_state_token, finish_state_token as finish_sectioned_state_token,
 )
 from app.services.study_agent_custom_exam import (
     MAX_SECTIONS as MAX_CUSTOM_SECTIONS, MAX_MESSAGES as MAX_CUSTOM_MESSAGES, MAX_TRANSCRIPT_CHARACTERS as MAX_CUSTOM_TRANSCRIPT_CHARACTERS,
     STATIC_FIELDS as CUSTOM_STATIC_FIELDS, SectionedExamQuote as CustomExamQuote,
     issue_state_token as issue_custom_state_token, prepare_capture as prepare_custom_capture,
-    resolve_state_token as resolve_custom_state_token,
+    resolve_state_token as resolve_custom_state_token, finish_state_token as finish_custom_state_token,
 )
 
 router = APIRouter(prefix="/exams", tags=["exams"])
@@ -172,9 +174,9 @@ class CustomSectionedExamCreateRequest(CustomSectionedExamDraftRequest):
     approval_id: UUID
 
 
-def build_sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, profile: ExamScoringProfile, prior_claims: list[dict] | None = None) -> dict:
+def build_sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, profile: ExamScoringProfile, prior_claims: list[dict] | None = None, *, reserve_state: bool = False) -> dict:
     try:
-        claims = resolve_sectioned_state_token(payload.state_token, payload.messages, payload.language, profile) if prior_claims is None else prior_claims
+        claims = resolve_sectioned_state_token(payload.state_token, payload.messages, payload.language, profile, reserve=reserve_state) if prior_claims is None else prior_claims
         expected = prepare_sectioned_capture(payload.messages, payload.language, claims, [], profile)["expected_field"]
         if expected != payload.expected_exam_field:
             raise HTTPException(status_code=409, detail="The sectioned exam conversation changed. Review the current question again.")
@@ -188,7 +190,8 @@ def build_sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, profile
 @router.post("/sectioned-agent-draft")
 async def sectioned_exam_agent_draft(payload: SectionedExamDraftRequest, storage: StorageService = Depends(get_storage)):
     profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
-    return build_sectioned_exam_agent_draft(payload, profile)
+    with use_continuation_token(payload.state_token, finish_sectioned_state_token):
+        return build_sectioned_exam_agent_draft(payload, profile, reserve_state=True)
 
 
 @router.post("/sectioned-agent-create", status_code=201, response_model=Exam)
@@ -248,9 +251,10 @@ async def sectioned_exam_agent_create(payload: SectionedExamCreateRequest, stora
 
 def build_custom_sectioned_exam_agent_draft(
     payload: CustomSectionedExamDraftRequest, profile: ExamScoringProfile, prior_claims: list[dict] | None = None,
+    *, reserve_state: bool = False,
 ) -> dict:
     try:
-        claims = resolve_custom_state_token(payload.state_token, payload.messages, payload.language, profile) if prior_claims is None else prior_claims
+        claims = resolve_custom_state_token(payload.state_token, payload.messages, payload.language, profile, reserve=reserve_state) if prior_claims is None else prior_claims
         expected = prepare_custom_capture(payload.messages, payload.language, claims, [], profile)["expected_field"]
         if expected != payload.expected_exam_field:
             raise HTTPException(status_code=409, detail="The custom exam conversation changed. Review the current question again.")
@@ -264,7 +268,8 @@ def build_custom_sectioned_exam_agent_draft(
 @router.post("/custom-sectioned-agent-draft")
 async def custom_sectioned_exam_agent_draft(payload: CustomSectionedExamDraftRequest, storage: StorageService = Depends(get_storage)):
     profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
-    return build_custom_sectioned_exam_agent_draft(payload, profile)
+    with use_continuation_token(payload.state_token, finish_custom_state_token):
+        return build_custom_sectioned_exam_agent_draft(payload, profile, reserve_state=True)
 
 
 @router.post("/custom-sectioned-agent-create", status_code=201, response_model=Exam)
@@ -349,18 +354,19 @@ def build_exam_agent_draft(
 async def exam_agent_draft(payload: AgentExamDraftRequest, storage: StorageService = Depends(get_storage)):
     """Resolve one evidence-only answer into a non-writing branch-exam preview."""
     profile = resolve_profile(storage, payload.scoring_profile_id, payload.scoring_profile_version)
-    try:
-        prior_claims = resolve_exam_state_token(
-            payload.state_token, payload.messages, payload.language,
-            profile.profile_id, profile.version,
+    with use_continuation_token(payload.state_token, finish_exam_state_token):
+        try:
+            prior_claims = resolve_exam_state_token(
+                payload.state_token, payload.messages, payload.language,
+                profile.profile_id, profile.version, reserve=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        current_claims = [item.model_dump() for item in payload.evidence_claims]
+        return build_exam_agent_draft(
+            payload.messages, payload.language, payload.expected_exam_field,
+            prior_claims, current_claims, profile,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    current_claims = [item.model_dump() for item in payload.evidence_claims]
-    return build_exam_agent_draft(
-        payload.messages, payload.language, payload.expected_exam_field,
-        prior_claims, current_claims, profile,
-    )
 
 
 @router.post("/agent-create", status_code=201, response_model=Exam)

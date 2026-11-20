@@ -17,6 +17,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.schemas import MAX_QUESTION_TEXT_BYTES, require_utf8_byte_limit
+from app.services.continuation_tokens import finish as finish_continuation, reserve as reserve_continuation
 
 QUESTION_TOOL_NAME = "hamartia_question_prepare"
 QUESTION_FIELDS = ("question_text", "subject", "topic")
@@ -26,6 +27,7 @@ MAX_MESSAGE_LENGTH = 4000
 QUESTION_STATE_MAX_AGE_SECONDS = 3600
 _QUESTION_STATE_SECRET = secrets.token_bytes(32)
 _QUESTION_STATE_USED: dict[str, int] = {}
+_QUESTION_STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 _QUESTION_STATE_LOCK = threading.Lock()
 
 
@@ -141,7 +143,7 @@ def issue_question_state_token(messages: list[str], language: str, verified_evid
     return f"{body.decode('ascii')}.{urlsafe_b64encode(signature).rstrip(b'=').decode('ascii')}"
 
 
-def resolve_question_state_token(token: str | None, messages: list[str], language: str) -> list[dict[str, str]]:
+def resolve_question_state_token(token: str | None, messages: list[str], language: str, *, reserve: bool = False) -> list[dict[str, str]]:
     if token is None:
         if len(messages) != 1:
             raise ValueError("A host-issued question-capture state token is required to continue this conversation.")
@@ -173,19 +175,23 @@ def resolve_question_state_token(token: str | None, messages: list[str], languag
         claims = [QuestionQuote.model_validate(item).model_dump() for item in payload["claims"]]
         if len(claims) > len(QUESTION_FIELDS):
             raise ValueError
-        canonical = f"{body_text}.{signature_text}".encode("ascii")
-        replay_key = hashlib.sha256(canonical).hexdigest()
-        now = int(time.time())
-        with _QUESTION_STATE_LOCK:
-            for key, used_at in list(_QUESTION_STATE_USED.items()):
-                if now - used_at > QUESTION_STATE_MAX_AGE_SECONDS:
-                    _QUESTION_STATE_USED.pop(key, None)
-            if replay_key in _QUESTION_STATE_USED or len(_QUESTION_STATE_USED) >= 4096:
-                raise ValueError
-            _QUESTION_STATE_USED[replay_key] = now
+        reserve_continuation(
+            _QUESTION_STATE_USED, _QUESTION_STATE_PENDING, _QUESTION_STATE_LOCK,
+            token, issued_at + QUESTION_STATE_MAX_AGE_SECONDS,
+        )
+        if not reserve:
+            finish_question_state_token(token, commit=True)
         return claims
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, binascii.Error) as exc:
         raise ValueError("Question-capture conversation state is invalid or expired.") from exc
+
+
+def finish_question_state_token(token: str | None, *, commit: bool) -> None:
+    if token is not None:
+        finish_continuation(
+            _QUESTION_STATE_USED, _QUESTION_STATE_PENDING, _QUESTION_STATE_LOCK,
+            token, commit=commit,
+        )
 
 
 def _questions(language: str, field: str) -> list[str]:

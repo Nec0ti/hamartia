@@ -16,6 +16,7 @@ from typing import Any, Mapping
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.models.schemas import Exam, ExamCreate, ExamScoringProfile
+from app.services.continuation_tokens import finish as finish_continuation, reserve as reserve_continuation
 from app.services.study_agent_exam import MAX_MESSAGE_LENGTH, MAX_MESSAGES, MAX_SUBJECT_LENGTH, validate_messages
 
 MAX_SECTIONS = 6
@@ -27,6 +28,7 @@ SECTION_FIELDS = ("subject", "correct", "incorrect", "blank")
 STATE_SECRET = secrets.token_bytes(32)
 STATE_LOCK = threading.Lock()
 STATE_USED: dict[str, int] = {}
+STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 
 
 class SectionedExamQuote(BaseModel):
@@ -73,7 +75,7 @@ def issue_state_token(messages: list[str], language: str, claims: list[dict], pr
     return body + "." + _encode(hmac.new(STATE_SECRET, body.encode(), hashlib.sha256).digest())
 
 
-def resolve_state_token(token: str | None, messages: list[str], language: str, profile: ExamScoringProfile) -> list[dict]:
+def resolve_state_token(token: str | None, messages: list[str], language: str, profile: ExamScoringProfile, *, reserve: bool = False) -> list[dict]:
     if token is None:
         if len(messages) != 1:
             raise ValueError("Sectioned exam conversation state is missing or expired.")
@@ -102,18 +104,17 @@ def resolve_state_token(token: str | None, messages: list[str], language: str, p
                     or not isinstance(claim["quote"], str) or messages[claim["message_index"]] != claim["quote"]):
                 raise ValueError("Invalid verified claims.")
             previous = claim["message_index"]
-        replay_key = hashlib.sha256(token.encode()).hexdigest()
-        now = int(time.time())
-        with STATE_LOCK:
-            for key, timestamp in list(STATE_USED.items()):
-                if now - timestamp > 3600:
-                    STATE_USED.pop(key, None)
-            if replay_key in STATE_USED or len(STATE_USED) >= 4096:
-                raise ValueError("State was already used or cache is full.")
-            STATE_USED[replay_key] = now
+        reserve_continuation(STATE_USED, STATE_PENDING, STATE_LOCK, token, payload["issued_at"] + 3600)
+        if not reserve:
+            finish_state_token(token, commit=True)
         return claims
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise ValueError("Sectioned exam conversation state is invalid, expired, or already used.") from exc
+
+
+def finish_state_token(token: str | None, *, commit: bool) -> None:
+    if token is not None:
+        finish_continuation(STATE_USED, STATE_PENDING, STATE_LOCK, token, commit=commit)
 
 
 def expected_fields(claims: list[dict]) -> list[str]:

@@ -1,5 +1,12 @@
 # Hamartia — project notes
 
+## 2026-11-21 Study Agent continuation retry safety
+
+- Branch exam, sectioned TYT/AYT, custom mock, LearningEvidence, and Question drafts now reserve signed continuation state atomically during processing. Wrong expected fields, rejected latest-turn quotes, and provider errors release that reservation; successful draft responses consume it. Same-token concurrent requests remain single-winner.
+- Only per-process SHA-256 token digests are cached. HMAC, expiry, transcript, schema, quote and profile validation remain; no transcript or approval data format/backup changed. PracticeSession has no signed continuation token.
+- Response loss after successful draft completion remains a boundary: the state has been consumed, so replay is rejected and capture must restart. No completed-response cache or transcript-derived response is retained.
+- Verification report: [Study Agent continuation retries](reports/2026-11-21-study-agent-continuation-token-retries.md).
+
 ## 2026-11-18 dashboard chart trends
 
 - Dashboard exam net history is date-ordered and includes zero and negative results. A companion chart shows each result's net change from the previous saved result after the existing exam-type, subject, and scoring-profile-version filters.

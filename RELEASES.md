@@ -2115,3 +2115,61 @@ Sürüm metadata testi, iki dilli özet ayrıştırıcısı ve \`git diff \-\-ch
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 Bu belge düzeltmesi için yerel tarayıcı smoke testi, insanlarla doküman erişim\/kullanılabilirlik denemesi, fiziksel cihaz kontrolü veya gerçek sağlayıcı\/yerel model çalıştırılmadı\. ARETE\-078'de listelenen insan ve fiziksel cihaz kapıları açık kalıyor\. Hosted PR kontrolleri ve bağımsız tekrar incelemesi bu yerel belge kontrollerinden ayrı izlenir\.
+
+## ARETE-081
+
+## English
+
+`ARETE-081` — [PR #85](https://github.com/Nec0ti/hamartia/pull/85): docs\: refresh project snapshot through ARETE\-080
+
+### Highlights
+
+Refreshes the backlog and implementation notes to the 2026\-11\-21 project snapshot through PR \#84 \/ ARETE\-080, including the later custom sectioned\-mock and Study Agent continuation\-retry work\.
+
+### Behavior and why
+
+These documentation\-only changes correct stale latest\-work summaries and clearly keep the six external\/manual verification items open\. They do not change application behavior or mark the overall project complete\.
+
+### How to use
+
+No user action applies\. Contributors can use the dated summaries to orient themselves to completed work and remaining manual verification\.
+
+### Compatibility / migration
+
+Not applicable\. No application code, API, stored data, backup format, or public guide was changed\.
+
+### Verification
+
+The offline bilingual documentation integrity checker passed with 17 rendered pages per locale, 1,064 local links\/assets, 156 evidence excerpts, and zero errors\. The release metadata tests passed \(6\/6\), and \`git diff \-\-check\` passed\.
+
+### Not run / known limitations
+
+Application tests\/builds and real provider\/model execution were not run for this documentation\-only change\. Windows power\-loss durability, the human EN\/TR documentation pilot, configured endpoint and synthetic image\-transfer checks, physical Windows 10\/11 and Debian package install\/persistence checks, and the real SIWC lifecycle remain unverified and open\.
+
+## Türkçe
+
+`ARETE-081` — [PR #85](https://github.com/Nec0ti/hamartia/pull/85): docs\: refresh project snapshot through ARETE\-080
+
+### Öne çıkanlar
+
+Backlog ve uygulama notları, PR \#84 \/ ARETE\-080 dâhil 2026\-11\-21 proje anlık durumuna göre güncellendi; sonraki özel bölümlü deneme sınavı ve Study Agent devam isteği yeniden deneme çalışmaları da eklendi\.
+
+### Davranış ve nedeni
+
+Bu belgeye özel değişiklikler, son çalışma özetlerindeki eski bilgileri düzeltir ve altı dış\/manuel doğrulama maddesini açık tutar\. Uygulama davranışı değişmez ve projenin tamamlandığı belirtilmez\.
+
+### Kullanım
+
+Kullanıcı işlemi gerekmez\. Katkıda bulunanlar, tamamlanan işleri ve kalan manuel doğrulamaları görmek için tarihli özetleri kullanabilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Uygulama kodu, API, kayıtlı veri, yedek biçimi veya yayımlanmış kullanıcı kılavuzu değişmedi\.
+
+### Doğrulama
+
+Çevrimdışı iki dilli dokümantasyon bütünlük denetimi her dilde 17 oluşturulmuş sayfa, 1\.064 yerel bağlantı\/varlık, 156 kanıt alıntısı ve sıfır hatayla geçti\. Sürüm metadata testleri \(6\/6\) ve \`git diff \-\-check\` geçti\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Bu yalnızca belge değişikliği için uygulama testleri\/derlemeleri ve gerçek sağlayıcı\/model çalıştırması yapılmadı\. Windows güç kaybı dayanıklılığı, insanlarla EN\/TR dokümantasyon pilotu, yapılandırılmış uç nokta ve sentetik görsel aktarımı kontrolleri, fiziksel Windows 10\/11 ve Debian paket kurulum\/kalıcılık kontrolleri ve gerçek SIWC yaşam döngüsü doğrulanmadı; açık kalıyor\.

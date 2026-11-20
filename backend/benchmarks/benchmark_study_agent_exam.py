@@ -43,7 +43,7 @@ def fixture(index: int):
     messages = list(values)
     claims = [{"field": field, "quote": value} for field, value in zip(EXAM_FIELDS, values, strict=True)]
     fields = {
-        "date": values[0], "exam_type": "branch", "subject": values[1],
+        "date": values[0], "exam_type": "branch", "format_name": "", "subject": values[1],
         "correct": int(values[2]), "incorrect": int(values[3]), "blank": int(values[4]),
         "duration_minutes": int(values[5]), "duration_seconds": int(values[6]),
         "scoring_profile_id": "legacy-yks", "scoring_profile_version": 1, "sections": [],

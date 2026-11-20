@@ -188,7 +188,7 @@ def expected_exam_response(payload, response, started_at, finished_at):
 
     expected = dict(payload)
     expected.update({
-        "id": record_id, "created_at": created_at, "sections": [],
+        "id": record_id, "created_at": created_at, "format_name": "", "sections": [],
         "total": total, "net": float(net), "xp": earned,
         "scoring_profile": {
             "profile_id": "legacy-yks", "version": 1,

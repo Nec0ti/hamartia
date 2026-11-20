@@ -37,6 +37,8 @@
 
 ## P2 — verification and hardening
 
+- [x] Make all five signed Study Agent continuation flows reserve one-use state while a draft is in flight, release it after validation/provider errors for safe retry, commit on success, and reject concurrent or later replay; test provider-free mocks and document response-loss behavior ([report](reports/2026-11-21-study-agent-continuation-token-retries.md)).
+
 - [x] Non-AI backend tests for formulas, boundary validation, records, and the image route.
 - [x] Storage and question workflow benchmarks; frontend test/build baseline.
 - [x] End-to-end smoke test of the real browser flow and a basic accessibility check.

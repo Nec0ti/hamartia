@@ -31,7 +31,7 @@ SECTION_FIELDS = ("subject", "correct", "incorrect", "blank")
 STATE_SECRET = secrets.token_bytes(32)
 STATE_LOCK = threading.Lock()
 STATE_USED: dict[str, int] = {}
-STATE_PENDING: dict[str, float] = {}
+STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 
 
 class SectionedExamQuote(BaseModel):

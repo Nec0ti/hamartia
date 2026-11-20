@@ -27,7 +27,7 @@ MAX_MESSAGE_LENGTH = 4000
 QUESTION_STATE_MAX_AGE_SECONDS = 3600
 _QUESTION_STATE_SECRET = secrets.token_bytes(32)
 _QUESTION_STATE_USED: dict[str, int] = {}
-_QUESTION_STATE_PENDING: dict[str, float] = {}
+_QUESTION_STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 _QUESTION_STATE_LOCK = threading.Lock()
 
 

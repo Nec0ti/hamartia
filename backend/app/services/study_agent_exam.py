@@ -33,7 +33,7 @@ STATE_MAX_AGE_SECONDS = 3600
 STATE_SECRET = secrets.token_bytes(32)
 _STATE_LOCK = threading.Lock()
 _STATE_USED: dict[str, int] = {}
-_STATE_PENDING: dict[str, float] = {}
+_STATE_PENDING: dict[str, tuple[float, object | None]] = {}
 
 
 class ExamQuote(BaseModel):

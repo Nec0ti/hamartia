@@ -118,19 +118,28 @@ class ContinuationTokenRetryTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             futures = [pool.submit(contender), pool.submit(contender)]
             self.assertCountEqual([future.result() for future in futures], ["reserved", "rejected"])
-        with self.assertRaises(RuntimeError):
-            with use(token, lambda value, *, commit: finish(used, pending, lock, value, commit=commit)):
-                raise RuntimeError("provider failed")
-        reserve(used, pending, lock, token, 4_000_000_000)
         finish(used, pending, lock, token, commit=True)
         with self.assertRaises(ValueError):
             reserve(used, pending, lock, token, 4_000_000_000)
+
+        retry_token = "retryable-signed-token"
+        with self.assertRaises(RuntimeError):
+            with use(retry_token, lambda value, *, commit: finish(used, pending, lock, value, commit=commit)):
+                reserve(used, pending, lock, retry_token, 4_000_000_000)
+                raise RuntimeError("provider failed")
+        reserve(used, pending, lock, retry_token, 4_000_000_000)
+        finish(used, pending, lock, retry_token, commit=True)
+        with self.assertRaises(ValueError):
+            reserve(used, pending, lock, retry_token, 4_000_000_000)
 
     def test_concurrent_duplicate_request_is_rejected_while_winner_is_in_flight(self):
         workflow, method, token_key, field_key, expected, prefix, _, token, claims, response_key = self.workflows()[0]
         started, release = threading.Event(), threading.Event()
 
+        provider_calls = []
+
         async def slow_provider(*_args):
+            provider_calls.append(True)
             started.set()
             await asyncio.to_thread(release.wait, 5)
             return {response_key: claims}
@@ -151,8 +160,11 @@ class ContinuationTokenRetryTests(unittest.TestCase):
                 self.assertTrue(started.wait(3), "provider was not reached")
                 duplicate = self.client.post("/study-agent/local", json=body)
                 self.assertEqual(duplicate.status_code, 409, duplicate.text)
+                second_duplicate = self.client.post("/study-agent/local", json=body)
+                self.assertEqual(second_duplicate.status_code, 409, second_duplicate.text)
                 release.set()
                 self.assertEqual(winner.result().status_code, 200)
+                self.assertEqual(provider_calls, [True])
 
     def test_learning_and_question_claim_rejection_releases_token_for_corrected_retry(self):
         for workflow, method, token_key, field_key, expected, prefix, _, token, claims, response_key in self.workflows()[3:]:

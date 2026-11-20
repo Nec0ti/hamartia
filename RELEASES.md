@@ -2173,3 +2173,61 @@ Uygulanamaz\. Uygulama kodu, API, kayıtlı veri, yedek biçimi veya yayımlanm�
 ### Çalıştırılmayanlar / bilinen sınırlamalar
 
 PR \#85’in tam kafa barındırılan backend, frontend ve Windows yedek\/kurtarma kontrolleri geçti; otomatik sürüm iş akışı ARETE\-081 yayımlanmadan önce Linux ve Windows paketlerini oluşturdu\. Gerçek sağlayıcı\/yerel model çalıştırması yapılmadı\. İnsan ve fiziksel cihaz doğrulaması yapılmadı; altı dış\/manuel kapının tümü açık: Windows güç kaybı dayanıklılığı; insanlarla EN\/TR dokümantasyon bulma ve sabit görünüm alanı pilotu; ayrı bir fiziksel cihazda yapılandırılmış uç nokta\/model kontrolleri; ayrı bir fiziksel cihazda sentetik görsel aktarımı kontrolleri; ayrı fiziksel Windows 10 ve Windows 11 cihazlarında, ayrıca hem \`.deb\` hem AppImage için tek bir ayrı fiziksel Debian masaüstünde kurulum, başlatma ve kalıcılık kontrolleri; ayrı bir fiziksel kullanıcı cihazında gerçek SIWC yaşam döngüsü\.
+
+## ARETE-082
+
+## English
+
+`ARETE-082` — [PR #86](https://github.com/Nec0ti/hamartia/pull/86): docs\: correct ARETE\-081 verification status
+
+### Highlights
+
+This documentation\-only correction updates the ARETE\-081 release record in \`RELEASES\.md\` to accurately distinguish completed hosted checks and package builds from open human and physical\-device verification\.
+
+### Behavior and why
+
+No application behavior changes\. The previous “Not run” wording could imply that hosted backend\/frontend\/recovery checks and Linux\/Windows package builds had not run, although PR \#85's exact\-head checks passed and its automatic release workflow built both packages before ARETE\-081 was published\.
+
+### How to use
+
+No user action applies\. Readers can use the corrected release entry to see what CI verified and which manual gates remain\.
+
+### Compatibility / migration
+
+Not applicable\. This changes release documentation only and requires no migration\.
+
+### Verification
+
+The release metadata tests and bilingual summary parser passed with all six fields in both locales\. The offline documentation integrity benchmark passed, and \`git diff \-\-check\` passed\. PR \#86 exact\-head backend, frontend, Windows backup\/recovery, Linux package, and Windows package checks passed, and independent read\-only re\-review was clear\. The corrected entry records PR \#85's passed exact\-head backend, frontend, and Windows backup\/recovery checks, its Linux and Windows package builds, and ARETE\-081 publication\.
+
+### Not run / known limitations
+
+No real provider\/local\-model execution was performed for the recorded documentation work\. Human and physical\-device verification was not run\. All six external\/manual gates remain open\: Windows power\-loss durability; the human EN\/TR documentation retrieval and fixed\-viewport pilot; configured endpoint\/model checks on a separate physical device; synthetic image\-transfer checks on a separate physical device; installation, launch, and persistence checks on separate physical Windows 10 and Windows 11 devices plus one separate physical Debian desktop for both \`\.deb\` and AppImage; and the real SIWC lifecycle on a separate physical user's device\.
+
+## Türkçe
+
+`ARETE-082` — [PR #86](https://github.com/Nec0ti/hamartia/pull/86): docs\: correct ARETE\-081 verification status
+
+### Öne çıkanlar
+
+Bu yalnızca belge düzeltmesi, \`RELEASES\.md\` içindeki ARETE\-081 kaydının İngilizce ve Türkçe “Çalıştırılmayanlar \/ bilinen sınırlamalar” paragraflarını tamamlanmış barındırılan kontrolleri ve paket derlemelerini açık insan ve fiziksel cihaz doğrulamalarından doğru biçimde ayıracak şekilde günceller\.
+
+### Davranış ve nedeni
+
+Uygulama davranışı değişmez\. Önceki “Çalıştırılmayanlar” ifadesi, PR \#85'in tam kafa kontrolleri geçtiği ve otomatik sürüm iş akışı ARETE\-081 yayımlanmadan önce iki paketi de oluşturduğu hâlde, barındırılan backend\/frontend\/kurtarma kontrollerinin ve Linux\/Windows paket derlemelerinin çalıştırılmadığı izlenimini verebilirdi\.
+
+### Kullanım
+
+Kullanıcı işlemi gerekmez\. Okuyucular, düzeltilen sürüm kaydından CI doğrulamalarını ve açık kalan manuel kapıları görebilir\.
+
+### Uyumluluk / geçiş
+
+Uygulanamaz\. Yalnızca sürüm dokümantasyonu değişir; geçiş gerekmez\.
+
+### Doğrulama
+
+Sürüm metadata testleri ve iki dilli özet ayrıştırıcısı her dilde altı alanla geçti\. Çevrimdışı dokümantasyon bütünlük denetimi ve \`git diff \-\-check\` geçti\. PR \#86'nın tam kafa backend, frontend, Windows yedek\/kurtarma, Linux paket ve Windows paket kontrolleri geçti; bağımsız salt\-okunur tekrar incelemesi temizdi\. Düzeltilen kayıt, PR \#85'in tam kafa backend, frontend ve Windows yedek\/kurtarma kontrollerinin geçtiğini, Linux ve Windows paketlerinin oluşturulduğunu ve ARETE\-081'in yayımlandığını kaydeder\.
+
+### Çalıştırılmayanlar / bilinen sınırlamalar
+
+Kaydedilen belge çalışması için gerçek sağlayıcı\/yerel model çalıştırması yapılmadı\. İnsan ve fiziksel cihaz doğrulaması yapılmadı\. Altı dış\/manuel kapının tümü açık\: Windows güç kaybı dayanıklılığı; insanlarla EN\/TR dokümantasyon bulma ve sabit görünüm alanı pilotu; ayrı bir fiziksel cihazda yapılandırılmış uç nokta\/model kontrolleri; ayrı bir fiziksel cihazda sentetik görsel aktarımı kontrolleri; ayrı fiziksel Windows 10 ve Windows 11 cihazlarında, ayrıca hem \`\.deb\` hem AppImage için tek bir ayrı fiziksel Debian masaüstünde kurulum, başlatma ve kalıcılık kontrolleri; ayrı bir fiziksel kullanıcı cihazında gerçek SIWC yaşam döngüsü\.
